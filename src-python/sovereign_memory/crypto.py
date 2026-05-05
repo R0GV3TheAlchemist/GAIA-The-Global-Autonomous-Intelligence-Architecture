@@ -37,58 +37,57 @@ try:
 except ImportError:
     keyring = None  # type: ignore
 
-# ─────────────────────────────────────────────
-# CONSTANTS
-# ─────────────────────────────────────────────
-
+# ─────────────────────────────────────────────────────────────────
 KEYRING_SERVICE = "GAIA-OS"
 KEYRING_USERNAME = "sovereign-memory-mk"
 NONCE_BYTES = 12       # 96-bit nonce for AES-256-GCM
 KEY_BYTES = 32         # 256-bit keys throughout
 
 
-# ─────────────────────────────────────────────
-# MASTER KEY MANAGEMENT
-# ─────────────────────────────────────────────
-
+# ─────────────────────────────────────────────────────────────────
 class MasterKeyManager:
     """
     Manages the 32-byte Master Key (MK) via the OS keychain.
     The MK is loaded into process memory on startup and wiped on shutdown.
     It is never written to disk unencrypted.
+
+    Priority order for load_or_create:
+      1. Already in memory (_mk set) → return immediately
+      2. Explicit passphrase supplied → derive via Argon2id/PBKDF2 (no keychain)
+      3. keyring available → load or generate in OS keychain
+      4. Raise RuntimeError (no keychain, no passphrase)
     """
 
     _mk: bytes | None = None
 
     @classmethod
     def load_or_create(cls, passphrase: str | None = None) -> bytes:
-        """
-        Load MK from OS keychain. If not found, generate a new one and store it.
-        On Linux without Secret Service, falls back to Argon2id passphrase derivation.
-        Returns the MK as 32 raw bytes (held in memory only).
-        """
         if cls._mk is not None:
             return cls._mk
 
-        if keyring is not None:
-            stored = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME)
-            if stored:
-                cls._mk = bytes.fromhex(stored)
-                return cls._mk
-            # First run: generate and store
-            mk = os.urandom(KEY_BYTES)
-            keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, mk.hex())
-            cls._mk = mk
+        # Explicit passphrase → skip keychain entirely (works on headless CI)
+        if passphrase is not None:
+            cls._mk = cls._derive_from_passphrase(passphrase)
             return cls._mk
 
-        # Linux fallback: derive from passphrase via Argon2id
-        if passphrase is None:
-            raise RuntimeError(
-                "No keyring backend available and no passphrase provided. "
-                "Install libsecret or provide a passphrase."
-            )
-        cls._mk = cls._derive_from_passphrase(passphrase)
-        return cls._mk
+        # No passphrase → use OS keychain (production path)
+        if keyring is not None:
+            try:
+                stored = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME)
+                if stored:
+                    cls._mk = bytes.fromhex(stored)
+                    return cls._mk
+                mk = os.urandom(KEY_BYTES)
+                keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, mk.hex())
+                cls._mk = mk
+                return cls._mk
+            except Exception:
+                pass
+
+        raise RuntimeError(
+            "No keyring backend available and no passphrase provided. "
+            "Install libsecret or provide a passphrase."
+        )
 
     @classmethod
     def wipe(cls) -> None:
@@ -97,13 +96,8 @@ class MasterKeyManager:
 
     @staticmethod
     def _derive_from_passphrase(passphrase: str) -> bytes:
-        """
-        Argon2id passphrase → 32-byte MK.
-        Uses argon2-cffi if available; falls back to PBKDF2-SHA256.
-        """
         try:
             from argon2.low_level import hash_secret_raw, Type
-            # Argon2id params: memory=64MB, iterations=3, parallelism=4
             salt = _load_or_create_salt()
             return hash_secret_raw(
                 secret=passphrase.encode(),
@@ -117,7 +111,6 @@ class MasterKeyManager:
         except ImportError:
             pass
 
-        # PBKDF2-SHA256 fallback (weaker but available everywhere)
         salt = _load_or_create_salt()
         return hashlib.pbkdf2_hmac(
             "sha256", passphrase.encode(), salt, iterations=600_000, dklen=KEY_BYTES
@@ -147,16 +140,8 @@ def _load_or_create_salt() -> bytes:
     return salt
 
 
-# ─────────────────────────────────────────────
-# DATA ENCRYPTION KEY DERIVATION
-# ─────────────────────────────────────────────
-
+# ─────────────────────────────────────────────────────────────────
 def derive_dek(master_key: bytes, key_id: str) -> bytes:
-    """
-    Derive a 32-byte Domain Encryption Key from the Master Key.
-    Uses HKDF-SHA256 with key_id as the info string.
-    Deterministic: same MK + key_id always produces the same DEK.
-    """
     hkdf = HKDF(
         algorithm=crypto_hashes.SHA256(),
         length=KEY_BYTES,
@@ -166,27 +151,12 @@ def derive_dek(master_key: bytes, key_id: str) -> bytes:
     return hkdf.derive(master_key)
 
 
-# ─────────────────────────────────────────────
-# AES-256-GCM ENCRYPT / DECRYPT
-# ─────────────────────────────────────────────
-
+# ─────────────────────────────────────────────────────────────────
 def encrypt(
     dek: bytes,
     plaintext: str | bytes,
     aad: dict | None = None,
 ) -> tuple[bytes, bytes, bytes | None]:
-    """
-    Encrypt plaintext with AES-256-GCM.
-
-    Args:
-        dek:       32-byte Data Encryption Key
-        plaintext: content to encrypt (str or bytes)
-        aad:       optional dict serialised as JSON for Associated Authenticated Data
-
-    Returns:
-        (ciphertext, nonce, aad_bytes)
-        Store all three; nonce and aad_bytes are needed for decryption.
-    """
     if isinstance(plaintext, str):
         plaintext = plaintext.encode("utf-8")
     nonce = os.urandom(NONCE_BYTES)
@@ -202,19 +172,10 @@ def decrypt(
     nonce: bytes,
     aad_bytes: bytes | None = None,
 ) -> str:
-    """
-    Decrypt AES-256-GCM ciphertext.
-    Raises cryptography.exceptions.InvalidTag if tampered.
-    Returns plaintext as a UTF-8 string.
-    """
     aesgcm = AESGCM(dek)
     plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, aad_bytes)
     return plaintext_bytes.decode("utf-8")
 
-
-# ─────────────────────────────────────────────
-# CONVENIENCE: build AAD dict for a DB row
-# ─────────────────────────────────────────────
 
 def make_aad(table: str, row_id: str, schema_version: int = 1) -> dict:
     return {"table": table, "id": row_id, "v": schema_version}
