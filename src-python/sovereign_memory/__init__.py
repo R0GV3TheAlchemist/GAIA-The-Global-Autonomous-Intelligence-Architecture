@@ -94,7 +94,9 @@ class SovereignMemory:
 
     def open(self) -> None:
         """Load MK from keychain, open DB, apply schema migrations."""
-        os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
+        parent = os.path.dirname(self._db_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         self._mk = MasterKeyManager.load_or_create(self._passphrase)
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
@@ -131,11 +133,6 @@ class SovereignMemory:
         created_at: int | None = None,
         key_id: str = "episodic-v1",
     ) -> str:
-        """
-        Encrypt and store a new episodic memory.
-        Returns the new episode_id.
-        TODO: embed content into vector store after storing.
-        """
         self._assert_open()
         episode_id = _new_id()
         now = created_at or _now_ms()
@@ -210,11 +207,6 @@ class SovereignMemory:
         tags: Sequence[str] | None = None,
         key_id: str = "semantic-v1",
     ) -> str:
-        """
-        Store a distilled semantic pattern derived from episodic memory.
-        Returns the new pattern_id.
-        TODO: caller (AffectEngine / ShadowEngine) synthesises the pattern string.
-        """
         self._assert_open()
         pattern_id = _new_id()
         now = _now_ms()
@@ -252,11 +244,6 @@ class SovereignMemory:
         limit: int = 20,
         memory_types: Sequence[Literal["episodic", "semantic"]] = ("episodic", "semantic"),
     ) -> list[MemoryRecord]:
-        """
-        Search episodic and/or semantic memory.
-        TODO: replace keyword fallback with sqlite-vec / Chroma vector search.
-        Currently returns a recency-ordered list (placeholder until vector store is wired).
-        """
         self._assert_open()
         results: list[MemoryRecord] = []
 
@@ -282,7 +269,6 @@ class SovereignMemory:
             ).fetchall()
             results.extend(self._semantic_row_to_record(r) for r in rows)
 
-        # deduplicate and cap
         seen: set[str] = set()
         out: list[MemoryRecord] = []
         for r in results:
@@ -406,7 +392,7 @@ class SovereignMemory:
         dek = self._get_dek(key_id)
 
         title_aad = make_aad("legacy_artifacts", artifact_id + ":title")
-        title_cipher, title_nonce, _ = encrypt(dek, title, title_aad)
+        title_cipher, title_nonce, title_aad_bytes = encrypt(dek, title, title_aad)
 
         content_aad = make_aad("legacy_artifacts", artifact_id + ":content")
         content_cipher, content_nonce, content_aad_bytes = encrypt(dek, content, content_aad)
@@ -415,13 +401,15 @@ class SovereignMemory:
             """
             INSERT INTO legacy_artifacts
                 (id, principal_id, created_at, stage_at_creation,
-                 title_cipher, title_nonce, content_cipher, content_nonce, content_aad,
+                 title_cipher, title_nonce, title_aad,
+                 content_cipher, content_nonce, content_aad,
                  source_episode_id, export_formats, tags_json, key_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 artifact_id, principal_id, now, stage_at_creation,
-                title_cipher, title_nonce, content_cipher, content_nonce, content_aad_bytes,
+                title_cipher, title_nonce, title_aad_bytes,
+                content_cipher, content_nonce, content_aad_bytes,
                 source_episode_id,
                 json.dumps(list(export_formats)),
                 json.dumps(list(tags or [])),
@@ -450,15 +438,18 @@ class SovereignMemory:
         artifacts = []
         for row in rows:
             dek = self._get_dek(row["key_id"])
-            title = decrypt(dek, row["title_cipher"], row["title_nonce"])
+            title = decrypt(dek, row["title_cipher"], row["title_nonce"], row["title_aad"])
             content = decrypt(dek, row["content_cipher"], row["content_nonce"], row["content_aad"])
-            artifacts.append({"title": title, "content": content, "created_at": row["created_at"], "stage": row["stage_at_creation"]})
+            artifacts.append({
+                "title": title,
+                "content": content,
+                "created_at": row["created_at"],
+                "stage": row["stage_at_creation"],
+            })
 
         if format == "json":
-            import json as _json
-            return _json.dumps(artifacts, indent=2, ensure_ascii=False)
+            return json.dumps(artifacts, indent=2, ensure_ascii=False)
 
-        # Markdown
         lines = ["# GAIA-OS Legacy Archive\n"]
         for a in artifacts:
             lines.append(f"## {a['title']}")
@@ -521,9 +512,6 @@ class SovereignMemory:
                 "SELECT key_id FROM encryption_keys WHERE key_id=?", (key_id,)
             ).fetchone()
             if not existing:
-                # Store a placeholder wrapped_key — in production this would
-                # be the DEK encrypted under the KEK for cross-device sync.
-                # For local-only use, the DEK is re-derived from MK each session.
                 self._conn.execute(
                     """
                     INSERT INTO encryption_keys (key_id, wrapped_key, algorithm, created_at, status)
