@@ -45,9 +45,11 @@ jobs:
         run: npx tsc --noEmit
 
       # 6. Python tests
+      # PYTHONPATH includes both repo root (for core/) and src-python/ (for
+      # sovereign_memory/, affect_engine/, stage_engine/, shadow_engine/)
       - name: Run Python tests
         env:
-          PYTHONPATH: ${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src-python
         run: |
           pytest tests/ \
             --cov=core \
