@@ -1,23 +1,25 @@
 """
 GAIA API — Gaian Conversation Router
 
-This is the main conversation pipeline endpoint. It wires:
+Endpoints
+---------
+POST /api/gaians/{slug}/chat      — SSE stream (GaiaChat.tsx primary path)
+POST /api/gaian/chat              — blocking JSON  (legacy / curl testing)
+POST /api/gaian/chat/stream       — SSE stream     (legacy)
+GET  /api/gaian/status            — runtime + routing status
 
-  GAIANRuntime.process(user_message)   <- builds system prompt from all 12 soul engines
-        ↓
-  llm_router.generate(prompt, system)  <- offline-first routing: Ollama → cloud
-        ↓
-  ChatResponse                         <- reply + full provenance + engine state snapshot
-
-Endpoints:
-  POST /api/gaian/chat            — full blocking response (JSON)
-  POST /api/gaian/chat/stream     — Server-Sent Events, token-by-token
-  GET  /api/gaian/status          — runtime + routing status for the dev console
+Memory context
+--------------
+When the frontend passes `memory_context` in the request body, this router
+injects it into the system prompt between the soul-engine block and the
+LLM call.  The injection is a no-op when the field is absent or empty.
 """
 
 from __future__ import annotations
 
+import json as _json
 import logging
+import time
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -29,26 +31,18 @@ from core.llm_router import generate, stream as llm_stream, routing_status
 
 log = logging.getLogger("gaia.api.gaian")
 
-router = APIRouter(
-    prefix="/gaian",
-    tags=["Gaian"],
-)
+router = APIRouter(tags=["Gaian"])
 
 
-# ── Runtime registry (in-memory; one instance per gaian_name) ──────────────────
+# ── Runtime registry ────────────────────────────────────────────────────────────────────
 
 _runtimes: dict[str, GAIANRuntime] = {}
 
 
 def _get_runtime(gaian_name: str, memory_dir: str = "./gaians") -> GAIANRuntime:
-    """
-    Return (or lazily create) the GAIANRuntime for a given gaian name.
-    The runtime holds all 12 soul engine states and persists them to
-    ./gaians/<gaian_name>/memory.json between calls.
-    """
     key = gaian_name.lower().strip()
     if key not in _runtimes:
-        log.info(f"[gaian] Initialising runtime for '{gaian_name}'")
+        log.info("[gaian] Initialising runtime for '%s'", gaian_name)
         _runtimes[key] = GAIANRuntime(
             gaian_name=gaian_name,
             identity=GAIANIdentity(name=gaian_name),
@@ -57,67 +51,188 @@ def _get_runtime(gaian_name: str, memory_dir: str = "./gaians") -> GAIANRuntime:
     return _runtimes[key]
 
 
-# ── Request / Response models ─────────────────────────────────────────────────
+# ── Memory context injection helper ──────────────────────────────────────────────
+
+def _inject_memory(system_prompt: str, memory_context: Optional[str]) -> str:
+    """
+    Append the memory context block to the system prompt.
+
+    The block is already formatted by the frontend's promptMemory.ts:
+
+        <GAIA_MEMORY>
+        [1] (preference, importance=0.90) I prefer dark mode
+        ...
+        </GAIA_MEMORY>
+
+    We honour whatever the frontend sends verbatim.  If `memory_context`
+    is None, empty, or already present in the prompt, we skip injection.
+    """
+    if not memory_context or not memory_context.strip():
+        return system_prompt
+    if "<GAIA_MEMORY>" in system_prompt:
+        return system_prompt   # already injected upstream
+    return f"{system_prompt}\n\n{memory_context.strip()}"
+
+
+# ── Pydantic models ───────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    message:     str        = Field(..., description="The user's message to GAIA.")
-    gaian_name:  str        = Field("Luna", description="Which Gaian to talk to.")
-    memory_dir:  str        = Field("./gaians", description="Root directory for Gaian memory files.")
+    """Legacy model (POST /api/gaian/chat)."""
+    message:        str  = Field(...)
+    gaian_name:     str  = Field("Luna")
+    memory_dir:     str  = Field("./gaians")
+    memory_context: Optional[str] = Field(None, description="Pre-formatted <GAIA_MEMORY> block.")
+
+
+class ChatRequestV2(BaseModel):
+    """
+    Request body for POST /api/gaians/{slug}/chat.
+    Matches exactly what GaiaChat.tsx sends.
+    """
+    message:           str            = Field(...)
+    session_id:        Optional[str]  = None
+    enable_web_search: bool           = False
+    schumann_hz:       float          = Field(7.83)
+    mode:              str            = Field("control")
+    memory_context:    Optional[str]  = Field(
+        None,
+        description="<GAIA_MEMORY> block built by the frontend promptMemory.ts."
+    )
 
 
 class ChatResponse(BaseModel):
     reply:          str
     gaian_name:     str
-    provider:       str           # which LLM answered: "ollama" | "openai" | "anthropic"
+    provider:       str
     model:          str
     latency_ms:     int
-    offline:        bool          # True = answered entirely from local Ollama
-    state_snapshot: dict          # full engine state this turn (for dev console)
+    offline:        bool
+    state_snapshot: dict
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# ── PRIMARY ENDPOINT: /api/gaians/{slug}/chat  (GaiaChat.tsx → here) ──────────
 
 @router.post(
-    "/chat",
-    response_model=ChatResponse,
-    summary="Send a message to a Gaian (offline-first, blocking)",
+    "/gaians/{slug}/chat",
+    summary="GAIA primary chat — SSE token stream (GaiaChat.tsx)",
 )
-async def gaian_chat(req: ChatRequest) -> ChatResponse:
+async def gaians_slug_chat(slug: str, req: ChatRequestV2) -> StreamingResponse:
     """
-    Full conversation turn:
+    Primary conversation endpoint consumed by GaiaChat.tsx.
 
-    1. GAIANRuntime.process(message) runs all 12 soul engines and returns
-       a rich system prompt that encodes the Gaian's current inner state
-       (emotional arc, love arc, settling, soul mirror, resonance field,
-        synergy, vitality, etc.).
+    SSE event format
+    ----------------
+    event: token
+    data: {"text": "<token>"}
 
-    2. llm_router.generate(prompt=message, system=system_prompt) routes
-       the call offline-first: Ollama if running locally, else cloud,
-       according to GAIA_ROUTING_MODE.
+    event: done
+    data: {
+      "epistemic_label":  str,
+      "backend_used":     str,
+      "bond_depth":       float,
+      "canon_docs":       int,
+      "inference_ms":     int
+    }
 
-    3. The reply is returned alongside full provenance and the engine
-       state snapshot so the frontend can render the Gaian's inner state.
+    event: error
+    data: {"error": "<message>"}
+
+    Memory context
+    --------------
+    When `memory_context` is present in the request body, it is appended to
+    the soul-engine system prompt before the LLM call so GAIA can reference
+    past conversations, preferences, and facts about the user.
     """
-    runtime = _get_runtime(req.gaian_name, req.memory_dir)
+    runtime = _get_runtime(slug)
+    t0 = time.perf_counter()
 
-    # Step 1: run all 12 soul engines, produce system prompt
+    # ─ Step 1: run all soul engines ─────────────────────────────────────────────
     try:
         result = runtime.process(req.message)
     except Exception as exc:
-        log.error(f"[gaian.chat] Runtime processing failed for '{req.gaian_name}': {exc}")
+        log.error("[gaians/%s] Runtime failed: %s", slug, exc)
         raise HTTPException(
             status_code=500,
             detail={"error": "GAIAN runtime error", "detail": str(exc)},
         )
 
-    # Step 2: route through offline-first LLM
+    # ─ Step 2: inject memory context into system prompt ───────────────────
+    system_prompt = _inject_memory(result.system_prompt, req.memory_context)
+    mem_hit_count = req.memory_context.count("[" ) if req.memory_context else 0
+    if mem_hit_count:
+        log.debug("[gaians/%s] Injected %d memory items into system prompt", slug, mem_hit_count)
+
+    # ─ Step 3: stream tokens via SSE ─────────────────────────────────────────
+    async def _event_stream():
+        full_text: list[str] = []
+        try:
+            async for token in llm_stream(
+                prompt=result.user_message,
+                system=system_prompt,
+            ):
+                full_text.append(token)
+                payload = _json.dumps({"text": token}, ensure_ascii=False)
+                yield f"event: token\ndata: {payload}\n\n"
+
+        except RuntimeError as exc:
+            log.error("[gaians/%s] LLM stream failed: %s", slug, exc)
+            err_payload = _json.dumps({"error": str(exc)}, ensure_ascii=False)
+            yield f"event: error\ndata: {err_payload}\n\n"
+            return
+
+        # Persist exchange count
+        runtime.attachment.total_exchanges += 1
+        runtime._persist()  # noqa: SLF001
+
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        snap       = result.state_snapshot
+
+        done_payload = _json.dumps({
+            "epistemic_label": snap.get("epistemic_label", "confident"),
+            "backend_used":    snap.get("backend", "ollama"),
+            "bond_depth":      snap.get("bond_depth", 0.0),
+            "canon_docs":      snap.get("canon_docs", 0),
+            "inference_ms":    elapsed_ms,
+            "mem_hits_used":   mem_hit_count,
+        }, ensure_ascii=False)
+        yield f"event: done\ndata: {done_payload}\n\n"
+
+    return StreamingResponse(
+        _event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control":     "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ── LEGACY: /api/gaian/chat (blocking JSON) ───────────────────────────────────
+
+@router.post(
+    "/gaian/chat",
+    response_model=ChatResponse,
+    summary="Send a message to a Gaian (blocking JSON — legacy)",
+)
+async def gaian_chat(req: ChatRequest) -> ChatResponse:
+    runtime = _get_runtime(req.gaian_name, req.memory_dir)
+
+    try:
+        result = runtime.process(req.message)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "GAIAN runtime error", "detail": str(exc)},
+        )
+
+    system_prompt = _inject_memory(result.system_prompt, req.memory_context)
+
     try:
         llm_result = await generate(
             prompt=result.user_message,
-            system=result.system_prompt,
+            system=system_prompt,
         )
     except RuntimeError as exc:
-        log.error(f"[gaian.chat] All LLM providers failed: {exc}")
         raise HTTPException(
             status_code=503,
             detail={
@@ -130,14 +245,8 @@ async def gaian_chat(req: ChatRequest) -> ChatResponse:
             },
         )
 
-    # Step 3: increment exchange counter and persist memory
     runtime.attachment.total_exchanges += 1
     runtime._persist()  # noqa: SLF001
-
-    log.info(
-        f"[gaian.chat] '{req.gaian_name}' → {llm_result.provider}/{llm_result.model} "
-        f"({'offline' if llm_result.offline else 'cloud'}, {llm_result.latency_ms}ms)"
-    )
 
     return ChatResponse(
         reply=llm_result.text,
@@ -150,62 +259,40 @@ async def gaian_chat(req: ChatRequest) -> ChatResponse:
     )
 
 
+# ── LEGACY: /api/gaian/chat/stream (old SSE format) ─────────────────────────
+
 @router.post(
-    "/chat/stream",
-    summary="Send a message to a Gaian — token-by-token SSE stream (offline-first)",
+    "/gaian/chat/stream",
+    summary="Send a message to a Gaian — SSE stream (legacy)",
 )
 async def gaian_chat_stream(req: ChatRequest) -> StreamingResponse:
-    """
-    Streaming variant of /gaian/chat.
-
-    - Runs the same 12-engine soul pipeline first (blocking, typically <5ms).
-    - Then streams tokens via Server-Sent Events as they arrive from Ollama
-      (or word-by-word from a cloud fallback).
-    - Sends a final SSE event: `event: state\ndata: <json>` containing the
-      full engine state snapshot, so the frontend can update the dev console
-      at stream end without a second HTTP call.
-
-    Stream format:
-      data: <token>            <- one per token / word
-      ...
-      event: state
-      data: <json snapshot>   <- emitted once at end
-      data: [DONE]             <- stream terminator
-    """
     runtime = _get_runtime(req.gaian_name, req.memory_dir)
 
     try:
         result = runtime.process(req.message)
     except Exception as exc:
-        log.error(f"[gaian.stream] Runtime failed: {exc}")
         raise HTTPException(
             status_code=500,
             detail={"error": "GAIAN runtime error", "detail": str(exc)},
         )
 
-    import json as _json
+    system_prompt = _inject_memory(result.system_prompt, req.memory_context)
 
     async def _event_stream():
-        token_count = 0
         try:
             async for token in llm_stream(
                 prompt=result.user_message,
-                system=result.system_prompt,
+                system=system_prompt,
             ):
-                token_count += 1
                 yield f"data: {token}\n\n"
         except RuntimeError as exc:
-            log.error(f"[gaian.stream] Provider failed: {exc}")
             yield f"event: error\ndata: All providers failed: {exc}\n\n"
             yield "data: [DONE]\n\n"
             return
 
-        # Persist exchange count after full reply is streamed
         runtime.attachment.total_exchanges += 1
         runtime._persist()  # noqa: SLF001
 
-        # Send state snapshot as a named SSE event so the frontend can
-        # update engine panels without polling /api/gaian/status separately.
         state_json = _json.dumps(result.state_snapshot, ensure_ascii=False)
         yield f"event: state\ndata: {state_json}\n\n"
         yield "data: [DONE]\n\n"
@@ -220,27 +307,16 @@ async def gaian_chat_stream(req: ChatRequest) -> StreamingResponse:
     )
 
 
+# ── Status ──────────────────────────────────────────────────────────────────────────
+
 @router.get(
-    "/status",
+    "/gaian/status",
     summary="Gaian runtime + routing status (for dev console)",
 )
 async def gaian_status(gaian_name: str = "Luna") -> dict:
-    """
-    Returns a combined status object for the GAIA dev console:
-      - Gaian engine state (attachment, soul mirror, resonance field, etc.)
-      - LLM routing status (which provider is available, sovereign flag)
-
-    This is the single endpoint the frontend dev panel should poll
-    (e.g. every 10 seconds) to keep the status overlay up to date.
-    """
     routing = await routing_status()
-
     if gaian_name.lower().strip() in _runtimes:
         gaian_st = _runtimes[gaian_name.lower().strip()].get_status()
     else:
         gaian_st = {"note": f"Runtime for '{gaian_name}' not yet initialised. Send a chat message first."}
-
-    return {
-        "gaian":   gaian_st,
-        "routing": routing,
-    }
+    return {"gaian": gaian_st, "routing": routing}
