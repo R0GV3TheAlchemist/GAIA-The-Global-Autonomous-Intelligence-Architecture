@@ -1,6 +1,6 @@
 """
 core/gaian_runtime.py
-GAIA Runtime v1.3.2 — The Living Heart of a GAIAN
+GAIA Runtime v1.3.3 — The Living Heart of a GAIAN
 
 Engine chain per turn (Phase 3 additions marked ★):
   1.  ConsciousnessRouter       subtle_body_engine.py
@@ -15,13 +15,13 @@ Engine chain per turn (Phase 3 additions marked ★):
   10. ResonanceFieldEngine      resonance_field_engine.py
   11. SynergyEngine             synergy_engine.py          ← C32
   12. VitalityEngine            vitality_engine.py         ← T-VITA
-  ── Phase 3 ──────────────────────────────────────────────
+  ── Phase 3 ────────────────────────────────────────────────────────
   13. QuantumKernel    ★        core/quantum/state_kernel.py
   14. MemoryStore      ★        core/memory/store.py
   15. GoalRegistry     ★        core/planner/goal.py
   16. PolicyEngine     ★        core/planner/policy.py
   17. TaskScheduler    ★        core/planner/scheduler.py
-  18. AuditLedger      ★        core/audit/ledger.py
+  18. ActionLedger     ★        core/audit/ledger.py
 
 Memory schema version: 1.9
 Grounded in:
@@ -74,7 +74,7 @@ from core.vitality_engine import (                                   # T-VITA
     VitalityEngine, VitalityState, blank_vitality_state, get_vitality_engine,
 )
 
-# ── Phase 3: new subsystems ★ ─────────────────────────────────────────────────
+# ── Phase 3: new subsystems ★ ──────────────────────────────────────────────────
 from core.quantum.state_kernel import QuantumKernel, QuantumState           # ★
 from core.memory.store import MemoryStore, MemoryItem                        # ★
 # goal.py exports: GoalRegistry, Goal, GoalStatus, GoalPriority, GoalStep
@@ -83,12 +83,14 @@ from core.planner.goal import GoalRegistry, Goal, GoalStatus, GoalPriority   # �
 from core.planner.policy import PolicyEngine, PolicyDecision                 # ★
 # scheduler.py exports: TaskScheduler, Task, TaskStatus
 from core.planner.scheduler import TaskScheduler, Task, TaskStatus           # ★
-from core.audit.ledger import AuditLedger, AuditEvent, AuditSeverity         # ★
+# audit/ledger.py exports: ActionLedger, AuditEvent, EventType
+# NOTE: class is ActionLedger (not AuditLedger); severity is EventType (no AuditSeverity)
+from core.audit.ledger import ActionLedger, AuditEvent, EventType            # ★
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  CONSTANTS
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 MEMORY_SCHEMA_VERSION = "1.9"
 
@@ -129,9 +131,9 @@ _BCI_GUIDANCE: dict[str, str] = {
 }
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  DATA CLASSES
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class GAIANIdentity:
@@ -174,9 +176,9 @@ class RuntimeResult:
     audit_events:     Optional[list[dict]] = None
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  MEMORY HELPERS
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _blank_memory(name: str) -> dict:
     return {
@@ -230,9 +232,9 @@ def _blank_memory(name: str) -> dict:
     }
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  SYSTEM PROMPT BLOCK BUILDERS
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _build_identity_block(identity: GAIANIdentity, settling: SettlingState) -> str:
     if settling.is_settled() and settling.settled_form:
@@ -320,7 +322,6 @@ def _build_vitality_block(directives: list[str]) -> str:
 
 
 def _build_quantum_block(qs: QuantumState) -> str:
-    """Inject a compact quantum state summary into the system prompt."""
     _, dominant_label, dominant_prob = qs.dominant()
     lines = [
         "[QUANTUM STATE KERNEL — PHASE 3]",
@@ -368,15 +369,15 @@ def _build_policy_block(decision: PolicyDecision) -> str:
     return "\n".join(lines)
 
 
-# ─────────────────────────────────────────────
-#  THE GAIAN RUNTIME v1.3.2
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+#  THE GAIAN RUNTIME v1.3.3
+# ─────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
-    The living heart of a GAIAN. v1.3.2
+    The living heart of a GAIAN. v1.3.3
     Twelve soul engines + quantum kernel + semantic memory +
-    goal registry + policy engine + task scheduler + audit ledger.
+    goal registry + policy engine + task scheduler + action ledger.
     """
 
     def __init__(
@@ -386,7 +387,7 @@ class GAIANRuntime:
         memory_dir:    str = "./gaians",
         canon_text:    Optional[str] = None,
         memory_store:  Optional[MemoryStore] = None,
-        audit_ledger:  Optional[AuditLedger] = None,
+        audit_ledger:  Optional[ActionLedger] = None,
         goal_registry: Optional[GoalRegistry] = None,
         policy_engine: Optional[PolicyEngine] = None,
         scheduler:     Optional[TaskScheduler] = None,
@@ -395,7 +396,7 @@ class GAIANRuntime:
         self.memory_dir = Path(memory_dir)
         self.canon_text = canon_text
 
-        # ── Existing soul engines ────────────────────────────────
+        # ── Existing soul engines ─────────────────────────────────────────────
         self._router          = ConsciousnessRouter()
         self._arc             = EmotionalArcEngine()
         self._settling        = SettlingEngine()
@@ -409,7 +410,7 @@ class GAIANRuntime:
         self._synergy         = SynergyEngine()
         self._vitality        = get_vitality_engine()
 
-        # ── Phase 3: subsystems ★ ──────────────────────────────
+        # ── Phase 3: subsystems ★ ─────────────────────────────────────────────
         self._quantum_kernel: QuantumKernel = QuantumKernel(
             user_id=gaian_name,
             session_id="runtime",
@@ -421,10 +422,11 @@ class GAIANRuntime:
         # TaskScheduler is async; we hold a reference but do not run the
         # event loop inside process() — tasks are submitted and stats exposed.
         self._scheduler     = scheduler     or TaskScheduler(policy_engine=self._policy)
+        # ActionLedger (not AuditLedger) is the correct class name
         _audit_db = str(self.memory_dir / gaian_name / "audit.db")
-        self._audit         = audit_ledger  or AuditLedger(db_path=_audit_db)
+        self._audit: ActionLedger = audit_ledger or ActionLedger(db_path=_audit_db)
 
-        # ── JSON memory file ─────────────────────────────────
+        # ── JSON memory file ──────────────────────────────────────────────────
         self._mem_path = self.memory_dir / gaian_name / "memory.json"
         self._memory   = self._load_memory()
 
@@ -440,7 +442,7 @@ class GAIANRuntime:
 
         self.identity = identity or GAIANIdentity(name=gaian_name)
 
-    # ── Public API ───────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def process(
         self,
@@ -455,39 +457,39 @@ class GAIANRuntime:
         uid    = user_id    or self.gaian_name
         action = action_label or "generate_response"
 
-        # ── Audit: turn opened ─────────────────────────────────
-        self._audit.record(AuditEvent(
-            event_type="turn_start",
+        # ── Audit: turn opened ─────────────────────────────────────────────────
+        # ActionLedger uses .append(AuditEvent(...)); AuditEvent takes event_type=EventType.*
+        self._audit.append(AuditEvent(
+            event_type=EventType.SYSTEM_EVENT,
             actor=uid,
             action=action,
-            details={"message_len": len(user_message)},
-            severity=AuditSeverity.INFO,
+            metadata={"message_len": len(user_message)},
         ))
 
-        # ── 13. Quantum: decoherence step to open the turn ────────────
+        # ── 13. Quantum: decoherence step to open the turn ────────────────────
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
-        # ── 14. Semantic memory retrieval ───────────────────────
+        # ── 14. Semantic memory retrieval ─────────────────────────────────────
         recalled_memories: list[MemoryItem] = self._memory_store.retrieve(
             query=user_message, user_id=uid, top_k=8,
         )
 
-        # ── 1. Consciousness routing ────────────────────────────
+        # ── 1. Consciousness routing ──────────────────────────────────────────
         layer      = self._router.analyze(user_message)
         layer_hint = layer.to_system_prompt_hint()
 
-        # ── 2. Emotional arc ────────────────────────────────────
+        # ── 2. Emotional arc ──────────────────────────────────────────────────
         neuro, self.attachment, arc_hint = self._arc.process(
             layer, self.attachment, user_message
         )
 
-        # ── 3. Daemon settling ─────────────────────────────────
+        # ── 3. Daemon settling ────────────────────────────────────────────────
         intensity = (neuro.adrenaline + neuro.cortisol) / 2.0
         self.settling_state, settle_hint = self._settling.update(
             layer, self.settling_state, intensity
         )
 
-        # ── 4. Affect inference ────────────────────────────────
+        # ── 4. Affect inference ───────────────────────────────────────────────
         identity_score    = min(1.0, (neuro.serotonin + neuro.oxytocin) / 2.0)
         wisdom_score      = min(1.0, neuro.dopamine)
         truth_score       = min(1.0, (neuro.gaba + neuro.serotonin) / 2.0)
@@ -505,7 +507,7 @@ class GAIANRuntime:
         self._quantum_kernel.step(operators=[], decoherence_rate=decoherence_rate)
         qs: QuantumState = self._quantum_kernel._state.clone()
 
-        # ── 5–11: Soul engines (unchanged) ──────────────────────
+        # ── 5–11: Soul engines (unchanged) ───────────────────────────────────
         self.love_arc_state, love_hint = self._love_arc.update(
             state=self.love_arc_state, bond_depth=self.attachment.bond_depth,
             feeling=feeling,
@@ -558,12 +560,12 @@ class GAIANRuntime:
             epistemic_label=epistemic_label,
         )
 
-        # ── 15. Goal registry: fetch active goals ★ ─────────────────
+        # ── 15. Goal registry: fetch active goals ★ ──────────────────────────
         # GoalRegistry.active() accepts an optional user_id filter.
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
-        # ── 16. Policy gate ★ ─────────────────────────────────
-        # PolicyEngine.evaluate(action, context) — note: action is positional first.
+        # ── 16. Policy gate ★ ─────────────────────────────────────────────────
+        # PolicyEngine.evaluate(action, context) — action is positional first.
         _, dominant_label, dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -578,12 +580,11 @@ class GAIANRuntime:
             context=policy_ctx,
         )
 
-        # ── 17. Scheduler: expose queued task count (sync-safe) ★ ──────
+        # ── 17. Scheduler: expose queued task count (sync-safe) ★ ────────────
         # TaskScheduler is async; we don't tick it synchronously.
-        # Expose stats for the state snapshot.
         sched_stats = self._scheduler.stats()
 
-        # ── 18. Semantic memory: store this turn ★ ────────────────
+        # ── 18. Semantic memory: store this turn ★ ───────────────────────────
         self._memory_store.remember(
             user_id=uid,
             text=user_message,
@@ -596,12 +597,13 @@ class GAIANRuntime:
             },
         )
 
-        # ── 19. Audit: phase 3 events ★ ───────────────────────────
-        self._audit.record(AuditEvent(
-            event_type="phase3_subsystems",
+        # ── 19. Audit: phase 3 events ★ ──────────────────────────────────────
+        # ActionLedger.append() takes a single AuditEvent; no severity field.
+        self._audit.append(AuditEvent(
+            event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
-            action="quantum+memory+goals+policy",
-            details={
+            action="phase3_subsystems",
+            metadata={
                 "quantum_dominant": dominant_label,
                 "quantum_purity":   round(qs.purity, 4),
                 "recalled_count":   len(recalled_memories),
@@ -609,10 +611,9 @@ class GAIANRuntime:
                 "policy_allowed":   policy_decision.allowed,
                 "queued_tasks":     sched_stats.get("queued", 0),
             },
-            severity=AuditSeverity.INFO,
         ))
 
-        # ── 12. Assemble system prompt ───────────────────────────
+        # ── 12. Assemble system prompt ────────────────────────────────────────
         system_prompt = self._assemble(
             layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
             layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
@@ -723,8 +724,9 @@ class GAIANRuntime:
         return self._goal_registry.add(goal)
 
     def get_audit_log(self, limit: int = 50, user_id: Optional[str] = None) -> list[dict]:
+        # ActionLedger.query() uses keyword-only args
         uid = user_id or self.gaian_name
-        return self._audit.query(actor=uid, limit=limit)
+        return self._audit.query(user_id=uid, limit=limit)
 
     def get_status(self) -> dict:
         _, dominant_label, _ = self._quantum_kernel._state.dominant()
@@ -753,7 +755,7 @@ class GAIANRuntime:
     def get_vitality_status(self) -> dict:
         return self.vitality_state.health_summary()
 
-    # ── Private ────────────────────────────────────────────
+    # ── Private ───────────────────────────────────────────────────────────────
 
     def _assemble(
         self,
@@ -911,7 +913,7 @@ class GAIANRuntime:
             json.dumps(self._memory, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    # ── Deserialisation helpers ──────────────────────────────
+    # ── Deserialisation helpers ───────────────────────────────────────────────
 
     def _deserialise_attachment(self) -> AttachmentRecord:
         d = self._memory.get("attachment", {})
