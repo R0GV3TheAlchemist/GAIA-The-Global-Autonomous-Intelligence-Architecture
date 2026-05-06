@@ -1,6 +1,6 @@
 """
 core/gaian_runtime.py
-GAIA Runtime v1.3.3 — The Living Heart of a GAIAN
+GAIA Runtime v1.3.4 — The Living Heart of a GAIAN
 
 Engine chain per turn (Phase 3 additions marked ★):
   1.  ConsciousnessRouter       subtle_body_engine.py
@@ -370,12 +370,12 @@ def _build_policy_block(decision: PolicyDecision) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  THE GAIAN RUNTIME v1.3.3
+#  THE GAIAN RUNTIME v1.3.4
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
-    The living heart of a GAIAN. v1.3.3
+    The living heart of a GAIAN. v1.3.4
     Twelve soul engines + quantum kernel + semantic memory +
     goal registry + policy engine + task scheduler + action ledger.
     """
@@ -458,7 +458,6 @@ class GAIANRuntime:
         action = action_label or "generate_response"
 
         # ── Audit: turn opened ─────────────────────────────────────────────────
-        # ActionLedger uses .append(AuditEvent(...)); AuditEvent takes event_type=EventType.*
         self._audit.append(AuditEvent(
             event_type=EventType.SYSTEM_EVENT,
             actor=uid,
@@ -469,8 +468,8 @@ class GAIANRuntime:
         # ── 13. Quantum: decoherence step to open the turn ────────────────────
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
-        # ── 14. Semantic memory retrieval ─────────────────────────────────────
-        recalled_memories: list[MemoryItem] = self._memory_store.retrieve(
+        # ── 14. Semantic memory retrieval (sync wrapper) ──────────────────────
+        recalled_memories: list[MemoryItem] = self._memory_store.retrieve_sync(
             query=user_message, user_id=uid, top_k=8,
         )
 
@@ -561,11 +560,9 @@ class GAIANRuntime:
         )
 
         # ── 15. Goal registry: fetch active goals ★ ──────────────────────────
-        # GoalRegistry.active() accepts an optional user_id filter.
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
         # ── 16. Policy gate ★ ─────────────────────────────────────────────────
-        # PolicyEngine.evaluate(action, context) — action is positional first.
         _, dominant_label, dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -581,11 +578,10 @@ class GAIANRuntime:
         )
 
         # ── 17. Scheduler: expose queued task count (sync-safe) ★ ────────────
-        # TaskScheduler is async; we don't tick it synchronously.
         sched_stats = self._scheduler.stats()
 
-        # ── 18. Semantic memory: store this turn ★ ───────────────────────────
-        self._memory_store.remember(
+        # ── 18. Semantic memory: store this turn ★ (sync wrapper) ────────────
+        self._memory_store.remember_sync(
             user_id=uid,
             text=user_message,
             kind="message",
@@ -598,7 +594,6 @@ class GAIANRuntime:
         )
 
         # ── 19. Audit: phase 3 events ★ ──────────────────────────────────────
-        # ActionLedger.append() takes a single AuditEvent; no severity field.
         self._audit.append(AuditEvent(
             event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
@@ -698,7 +693,7 @@ class GAIANRuntime:
     def remember(self, text: str, kind: str = "note",
                  importance: float = 0.7, user_id: Optional[str] = None) -> None:
         uid = user_id or self.gaian_name
-        self._memory_store.remember(
+        self._memory_store.remember_sync(
             user_id=uid, text=text, kind=kind,
             role="user", importance=importance,
         )
@@ -706,7 +701,7 @@ class GAIANRuntime:
     def recall(self, query: str, top_k: int = 5,
                user_id: Optional[str] = None) -> list[MemoryItem]:
         uid = user_id or self.gaian_name
-        return self._memory_store.retrieve(query=query, user_id=uid, top_k=top_k)
+        return self._memory_store.retrieve_sync(query=query, user_id=uid, top_k=top_k)
 
     def add_goal(
         self,
@@ -724,7 +719,6 @@ class GAIANRuntime:
         return self._goal_registry.add(goal)
 
     def get_audit_log(self, limit: int = 50, user_id: Optional[str] = None) -> list[dict]:
-        # ActionLedger.query() uses keyword-only args
         uid = user_id or self.gaian_name
         return self._audit.query(user_id=uid, limit=limit)
 

@@ -29,6 +29,7 @@ semantic retrieval — a warning is emitted at startup.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -36,7 +37,7 @@ import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .embedder import EmbeddingProvider, FallbackEmbedder
 from .taxonomy import MemoryItem, MemoryKind, MemoryTier
@@ -133,9 +134,15 @@ class MemoryStore:
                 session_id  TEXT,
                 topic_tag   TEXT,
                 ttl_seconds INTEGER,
+                metadata    TEXT,
                 deleted     INTEGER NOT NULL DEFAULT 0
             )
         """)
+        # Add metadata column to existing databases that predate this migration
+        try:
+            c.execute("ALTER TABLE memory_items ADD COLUMN metadata TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
         c.execute(
             "CREATE INDEX IF NOT EXISTS idx_mem_user_deleted "
             "ON memory_items (user_id, deleted)"
@@ -170,6 +177,7 @@ class MemoryStore:
         session_id:  Optional[str] = None,
         topic_tag:   Optional[str] = None,
         ttl_seconds: Optional[int] = None,
+        metadata:    Optional[Dict] = None,
     ) -> int:
         """
         Persist a memory item and its embedding.
@@ -177,17 +185,22 @@ class MemoryStore:
         Returns the newly-assigned row ``id``.
         """
         now = int(time.time())
+        metadata_json = json.dumps(metadata) if metadata else None
         cur = self._conn.execute(
             """
             INSERT INTO memory_items
                 (user_id, kind, tier, role, text, importance,
-                 created_at, session_id, topic_tag, ttl_seconds)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 created_at, session_id, topic_tag, ttl_seconds, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                user_id, kind.value, tier.value, role,
+                user_id,
+                kind.value if isinstance(kind, MemoryKind) else kind,
+                tier.value if isinstance(tier, MemoryTier) else tier,
+                role,
                 text, importance, now,
                 session_id, topic_tag, ttl_seconds,
+                metadata_json,
             ),
         )
         item_id = cur.lastrowid
@@ -207,6 +220,59 @@ class MemoryStore:
 
         self._conn.commit()
         return item_id
+
+    def remember_sync(
+        self,
+        user_id:     str,
+        text:        str,
+        role:        str        = "user",
+        kind:        MemoryKind = MemoryKind.MESSAGE,
+        tier:        MemoryTier = MemoryTier.SHORT_TERM,
+        importance:  float      = 0.5,
+        session_id:  Optional[str] = None,
+        topic_tag:   Optional[str] = None,
+        ttl_seconds: Optional[int] = None,
+        metadata:    Optional[Dict] = None,
+    ) -> int:
+        """
+        Synchronous wrapper around ``remember()`` — safe to call from
+        non-async code (e.g. GAIANRuntime.process()).
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Already inside an event loop (e.g. pytest-asyncio); run in
+                # a new thread to avoid "cannot run nested event loops".
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                    fut = ex.submit(
+                        asyncio.run,
+                        self.remember(
+                            user_id=user_id, text=text, role=role,
+                            kind=kind, tier=tier, importance=importance,
+                            session_id=session_id, topic_tag=topic_tag,
+                            ttl_seconds=ttl_seconds, metadata=metadata,
+                        ),
+                    )
+                    return fut.result()
+            else:
+                return loop.run_until_complete(
+                    self.remember(
+                        user_id=user_id, text=text, role=role,
+                        kind=kind, tier=tier, importance=importance,
+                        session_id=session_id, topic_tag=topic_tag,
+                        ttl_seconds=ttl_seconds, metadata=metadata,
+                    )
+                )
+        except RuntimeError:
+            return asyncio.run(
+                self.remember(
+                    user_id=user_id, text=text, role=role,
+                    kind=kind, tier=tier, importance=importance,
+                    session_id=session_id, topic_tag=topic_tag,
+                    ttl_seconds=ttl_seconds, metadata=metadata,
+                )
+            )
 
     async def remember_item(self, item: MemoryItem) -> int:
         """Convenience wrapper — persist a fully-constructed MemoryItem."""
@@ -285,6 +351,38 @@ class MemoryStore:
             )
         else:
             return self._retrieve_fallback(top_k, where, params)
+
+    def retrieve_sync(
+        self,
+        user_id:         str,
+        query:           str,
+        top_k:           int = 20,
+        **kwargs,
+    ) -> List[MemoryItem]:
+        """
+        Synchronous wrapper around ``retrieve()`` — returns a plain list of
+        MemoryItem objects (not RetrievedMemory wrappers) for convenience.
+        Safe to call from non-async code.
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                    fut = ex.submit(
+                        asyncio.run,
+                        self.retrieve(user_id=user_id, query=query, top_k=top_k, **kwargs),
+                    )
+                    results: List[RetrievedMemory] = fut.result()
+            else:
+                results = loop.run_until_complete(
+                    self.retrieve(user_id=user_id, query=query, top_k=top_k, **kwargs)
+                )
+        except RuntimeError:
+            results = asyncio.run(
+                self.retrieve(user_id=user_id, query=query, top_k=top_k, **kwargs)
+            )
+        return [r.item for r in results]
 
     async def _retrieve_vec(
         self,
@@ -429,8 +527,21 @@ class MemoryStore:
         return len(ids)
 
     # ------------------------------------------------------------------
-    # Stats
+    # Stats / counts
     # ------------------------------------------------------------------
+
+    def count(self, user_id: Optional[str] = None) -> int:
+        """Return the number of non-deleted memory items for *user_id* (or all users)."""
+        if user_id:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM memory_items WHERE user_id = ? AND deleted = 0",
+                (user_id,),
+            ).fetchone()
+        else:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM memory_items WHERE deleted = 0"
+            ).fetchone()
+        return int(row[0])
 
     def stats(self, user_id: Optional[str] = None) -> dict:
         """Return a dict with row counts, broken down by kind."""
@@ -453,10 +564,7 @@ class MemoryStore:
                 GROUP BY kind
                 """
             ).fetchall()
-        total = self._conn.execute(
-            "SELECT COUNT(*) FROM memory_items WHERE deleted = 0"
-            + (f" AND user_id = '{user_id}'" if user_id else "")
-        ).fetchone()[0]
+        total = self.count(user_id=user_id)
         return {
             "total": total,
             "by_kind": {row["kind"]: row["cnt"] for row in rows},
