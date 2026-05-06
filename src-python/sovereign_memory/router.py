@@ -13,17 +13,20 @@ POST /memory/episode                           — store an episodic memory
 GET  /memory/episode/{principal_id}/{ep_id}    — retrieve one episode (decrypted)
 GET  /memory/episodes/{principal_id}           — list recent episodes
 POST /memory/semantic                          — distil a semantic pattern
-GET  /memory/search/{principal_id}             — search memory
+GET  /memory/search/{principal_id}             — semantic vector search
 GET  /memory/biometric/{principal_id}          — get biometric history
 DELETE /memory/episode/{principal_id}/{ep_id}  — soft-delete an episode
 GET  /memory/schema-version                    — return current schema version
 POST /memory/crypto-erase/{key_id}             — GDPR Art.17 crypto-erasure
+POST /memory/remember                          — convenience: store a chat turn
+POST /memory/recall                            — convenience: retrieve context for query
+POST /memory/prune                             — remove orphaned vector rows
 """
 
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -67,14 +70,34 @@ class StoreSemanticRequest(BaseModel):
     tags         : List[str] = Field(default_factory=list)
 
 
+class RememberRequest(BaseModel):
+    """Convenience model: store a single chat turn as an episodic memory."""
+    principal_id : str
+    text         : str
+    role         : Literal["user", "gaia", "system"] = "user"
+    type         : str = "conversation"
+    tags         : List[str] = Field(default_factory=list)
+
+
+class RecallRequest(BaseModel):
+    """Convenience model: retrieve relevant memories for a query."""
+    principal_id : str
+    query        : str
+    limit        : int = Field(10, ge=1, le=100)
+
+
 # ─────────────────────────────────────────────
 # Endpoints
 # ─────────────────────────────────────────────
 
 @memory_router.get("/health")
 async def health() -> JSONResponse:
+    from . import vec_search
     ok = _memory is not None
-    return JSONResponse(status_code=200 if ok else 503, content={"ok": ok})
+    return JSONResponse(status_code=200 if ok else 503, content={
+        "ok": ok,
+        "vec_search": vec_search.is_vec_available(),
+    })
 
 
 @memory_router.post("/episode")
@@ -133,10 +156,13 @@ async def search_memory(
     q: str = Query(..., description="Search query"),
     limit: int = Query(20, ge=1, le=100),
 ) -> JSONResponse:
-    """Search episodic + semantic memory."""
+    """Semantic vector search over episodic + semantic memory."""
     _assert_ready()
     results = _memory.search_memory(principal_id, q, limit=limit)
-    return JSONResponse(content={"results": [r.__dict__ for r in results]})
+    return JSONResponse(content={
+        "results": [r.__dict__ for r in results],
+        "vec_search": True,
+    })
 
 
 @memory_router.get("/biometric/{principal_id}")
@@ -188,3 +214,50 @@ async def crypto_erase(key_id: str) -> JSONResponse:
         "key_id": key_id,
         "warning": "All data encrypted under this key is permanently unrecoverable."
     })
+
+
+# ─────────────────────────────────────────────
+# Convenience endpoints (used by frontend)
+# ─────────────────────────────────────────────
+
+@memory_router.post("/remember")
+async def remember(req: RememberRequest) -> JSONResponse:
+    """
+    Store a single conversation turn as an episodic memory and embed it.
+    Call after every user + GAIA message pair.
+    """
+    _assert_ready()
+    episode_id = _memory.remember(
+        principal_id=req.principal_id,
+        text=req.text,
+        role=req.role,
+        type=req.type,
+        tags=req.tags,
+    )
+    return JSONResponse(status_code=201, content={"episode_id": episode_id})
+
+
+@memory_router.post("/recall")
+async def recall(req: RecallRequest) -> JSONResponse:
+    """
+    Retrieve the most semantically relevant memories for a given query.
+    Use this to populate GAIA's context window before generating a response.
+    """
+    _assert_ready()
+    results = _memory.recall(
+        principal_id=req.principal_id,
+        query=req.query,
+        limit=req.limit,
+    )
+    return JSONResponse(content={
+        "results": [r.__dict__ for r in results],
+        "count": len(results),
+    })
+
+
+@memory_router.post("/prune")
+async def prune_vectors() -> JSONResponse:
+    """Remove orphaned vector rows (vec rows whose parent is soft-deleted)."""
+    _assert_ready()
+    removed = _memory.prune_vectors()
+    return JSONResponse(content={"removed": removed})

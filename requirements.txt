@@ -36,9 +36,10 @@ anthropic>=0.25.0           # Anthropic Claude   (set ANTHROPIC_API_KEY)
 # ── Tokenization (BPE streaming) ──────────────────────────────
 tiktoken>=0.7.0             # BPE tokenizer for real subword streaming (cl100k_base)
 
-# ── Vector Memory (ChromaDB semantic recall) ──────────────────
-chromadb>=0.4.0             # Local vector store for long-term semantic memory (C17)
-sentence-transformers>=2.7.0  # Embeddings for ChromaDB (all-MiniLM-L6-v2)
+# ── Vector Memory (sqlite-vec — local, no separate process) ───────
+sqlite-vec>=0.1.0           # SQLite vector extension for sovereign_memory
+sentence-transformers>=2.7.0  # Local embeddings: all-MiniLM-L6-v2 (384-dim)
+# chromadb>=0.4.0           # Replaced by sqlite-vec (kept for reference)
 
 # ── Earth Intelligence (ATLAS layer) ─────────────────────────
 # earthengine-api>=0.1.390  # Google Earth Engine (run: earthengine authenticate)

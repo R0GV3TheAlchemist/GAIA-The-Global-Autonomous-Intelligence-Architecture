@@ -6,6 +6,9 @@ The Sovereign Memory System is the foundation for all continuity in GAIA-OS.
 All data is local-first, encrypted at rest (AES-256-GCM), and never transmitted
 without explicit cryptographic consent.
 
+Vector search is powered by sqlite-vec (sqlite extension) and degrades
+gracefully to time-ordered recall when the extension is unavailable.
+
 Usage::
 
     from sovereign_memory import SovereignMemory
@@ -55,10 +58,23 @@ from .types import (
     StageRecord,
     StageTransitionRecord,
 )
+from . import vec_search
 
 __all__ = ["SovereignMemory"]
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+
+# Embedding dimension for the configured model
+_EMBED_DIM_MAP = {
+    "local": vec_search._DIM_MINILM,
+    "openai": vec_search._DIM_OPENAI,
+    "nomic": vec_search._DIM_NOMIC,
+}
+
+
+def _embed_dim() -> int:
+    mode = os.environ.get("GAIA_EMBED_MODEL", "local").lower()
+    return _EMBED_DIM_MAP.get(mode, vec_search._DIM_MINILM)
 
 
 def _now_ms() -> int:
@@ -75,6 +91,8 @@ class SovereignMemory:
 
     All public methods accept and return plain Python types / dataclasses.
     Encryption / decryption is handled internally — callers never touch raw keys.
+    Vector search is provided by sqlite-vec and degrades gracefully to
+    time-ordered retrieval when the extension is unavailable.
     """
 
     def __init__(
@@ -93,15 +111,20 @@ class SovereignMemory:
     # ─────────────────────────────────────────
 
     def open(self) -> None:
-        """Load MK from keychain, open DB, apply schema migrations."""
+        """Load MK from keychain, open DB, load sqlite-vec, apply schema."""
         parent = os.path.dirname(self._db_path)
         if parent:
             os.makedirs(parent, exist_ok=True)
         self._mk = MasterKeyManager.load_or_create(self._passphrase)
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # Try to load sqlite-vec extension before applying schema
+        # (schema migration v2 creates the vec0 tables)
+        vec_search.try_load_sqlite_vec(self._conn)
         self._apply_schema()
         self._ensure_active_keys()
+        # Ensure vec0 tables exist for the configured embedding dimension
+        vec_search.ensure_vec_tables(self._conn, _embed_dim())
 
     def close(self) -> None:
         """Commit, close DB, wipe MK from memory."""
@@ -140,7 +163,7 @@ class SovereignMemory:
         dek = self._get_dek(key_id)
         cipher, nonce, aad_bytes = encrypt(dek, content, aad)
 
-        self._conn.execute(
+        cur = self._conn.execute(
             """
             INSERT INTO episodic_memory
                 (id, principal_id, created_at, updated_at, type,
@@ -155,6 +178,10 @@ class SovereignMemory:
             ),
         )
         self._conn.commit()
+
+        # Store embedding async-style (fire and forget — doesn't block caller)
+        vec_search.store_episodic_embedding(self._conn, cur.lastrowid, content)
+
         return episode_id
 
     def get_episode(
@@ -214,7 +241,7 @@ class SovereignMemory:
         dek = self._get_dek(key_id)
         cipher, nonce, aad_bytes = encrypt(dek, pattern, aad)
 
-        self._conn.execute(
+        cur = self._conn.execute(
             """
             INSERT INTO semantic_memory
                 (id, principal_id, pattern_cipher, pattern_nonce, pattern_aad,
@@ -231,10 +258,14 @@ class SovereignMemory:
             ),
         )
         self._conn.commit()
+
+        # Store embedding
+        vec_search.store_semantic_embedding(self._conn, cur.lastrowid, pattern)
+
         return pattern_id
 
     # ─────────────────────────────────────────
-    # SEMANTIC SEARCH
+    # SEMANTIC SEARCH  (now vector-powered)
     # ─────────────────────────────────────────
 
     def search_memory(
@@ -244,9 +275,73 @@ class SovereignMemory:
         limit: int = 20,
         memory_types: Sequence[Literal["episodic", "semantic"]] = ("episodic", "semantic"),
     ) -> list[MemoryRecord]:
+        """
+        Search episodic + semantic memory using sqlite-vec k-NN similarity.
+        Degrades gracefully to time-ordered recall if sqlite-vec is unavailable.
+        """
         self._assert_open()
-        results: list[MemoryRecord] = []
 
+        if vec_search.is_vec_available():
+            return self._search_vec(principal_id, query, limit, memory_types)
+        return self._search_fallback(principal_id, query, limit, memory_types)
+
+    def _search_vec(
+        self,
+        principal_id: str,
+        query: str,
+        limit: int,
+        memory_types: Sequence[str],
+    ) -> list[MemoryRecord]:
+        """Vector-powered search path."""
+        hits: list[tuple[str, float, str]] = []  # (id, score, table)
+
+        if "episodic" in memory_types:
+            for ep_id, score in vec_search.search_episodic_vec(
+                self._conn, principal_id, query, limit
+            ):
+                hits.append((ep_id, score, "episodic"))
+
+        if "semantic" in memory_types:
+            for pat_id, score in vec_search.search_semantic_vec(
+                self._conn, principal_id, query, limit // 2
+            ):
+                hits.append((pat_id, score, "semantic"))
+
+        # Global re-rank and de-dup
+        hits.sort(key=lambda x: x[1], reverse=True)
+        seen: set[str] = set()
+        out: list[MemoryRecord] = []
+        for item_id, _score, table in hits:
+            if item_id in seen:
+                continue
+            seen.add(item_id)
+            if table == "episodic":
+                row = self._conn.execute(
+                    "SELECT * FROM episodic_memory WHERE id=? AND deleted_at IS NULL",
+                    (item_id,),
+                ).fetchone()
+                if row:
+                    out.append(self._row_to_memory_record(row))
+            else:
+                row = self._conn.execute(
+                    "SELECT * FROM semantic_memory WHERE id=? AND deleted_at IS NULL",
+                    (item_id,),
+                ).fetchone()
+                if row:
+                    out.append(self._semantic_row_to_record(row))
+            if len(out) >= limit:
+                break
+        return out
+
+    def _search_fallback(
+        self,
+        principal_id: str,
+        query: str,
+        limit: int,
+        memory_types: Sequence[str],
+    ) -> list[MemoryRecord]:
+        """Time-ordered fallback when sqlite-vec is unavailable."""
+        results: list[MemoryRecord] = []
         if "episodic" in memory_types:
             rows = self._conn.execute(
                 """
@@ -257,7 +352,6 @@ class SovereignMemory:
                 (principal_id, limit),
             ).fetchall()
             results.extend(self._row_to_memory_record(r) for r in rows)
-
         if "semantic" in memory_types:
             rows = self._conn.execute(
                 """
@@ -268,7 +362,6 @@ class SovereignMemory:
                 (principal_id, limit),
             ).fetchall()
             results.extend(self._semantic_row_to_record(r) for r in rows)
-
         seen: set[str] = set()
         out: list[MemoryRecord] = []
         for r in results:
@@ -278,6 +371,51 @@ class SovereignMemory:
             if len(out) >= limit:
                 break
         return out
+
+    # ─────────────────────────────────────────
+    # CONVENIENCE: remember + recall
+    # (thin wrappers used by the frontend API)
+    # ─────────────────────────────────────────
+
+    def remember(
+        self,
+        principal_id: str,
+        text: str,
+        role: str = "user",
+        type: str = "conversation",
+        tags: Sequence[str] | None = None,
+    ) -> str:
+        """
+        Convenience wrapper: store a single turn of conversation as an episodic memory.
+        Returns the episode_id.
+        """
+        return self.store_episode(
+            principal_id=principal_id,
+            content=f"[{role}] {text}",
+            type=type,
+            tags=list(tags or []),
+        )
+
+    def recall(
+        self,
+        principal_id: str,
+        query: str,
+        limit: int = 10,
+    ) -> list[MemoryRecord]:
+        """
+        Convenience wrapper: retrieve the most semantically relevant memories
+        for the given query. Used to build GAIA's context window.
+        """
+        return self.search_memory(principal_id, query, limit=limit)
+
+    # ─────────────────────────────────────────
+    # MAINTENANCE
+    # ─────────────────────────────────────────
+
+    def prune_vectors(self) -> int:
+        """Remove orphaned vector rows. Returns count removed. Call periodically."""
+        self._assert_open()
+        return vec_search.prune_orphaned_vectors(self._conn)
 
     # ─────────────────────────────────────────
     # BIOMETRIC HISTORY
@@ -470,6 +608,8 @@ class SovereignMemory:
             (_now_ms(), episode_id, principal_id),
         )
         self._conn.commit()
+        # Prune its vector immediately
+        self.prune_vectors()
 
     def crypto_erase_key(self, key_id: str) -> None:
         """
