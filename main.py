@@ -26,6 +26,7 @@ else:
 sys.path.insert(0, ROOT)
 
 from api.routers import zodiac
+from api.routers import llm as llm_router
 from api.notifications import router as notifications_router
 from api.atlas import router as atlas_router
 from api.crypto import router as crypto_router
@@ -123,6 +124,11 @@ async def lifespan(application: FastAPI):
         log.info("[GAIA] Encryption layer ready")
     except Exception as e:
         log.warning(f"[GAIA] Encryption init warning: {e}")
+
+    # Log routing mode at startup so it's visible in the sidecar logs
+    routing_mode = os.environ.get("GAIA_ROUTING_MODE", "local-first")
+    log.info(f"[GAIA] LLM routing mode: {routing_mode}")
+
     yield
     await _flush_state()
 
@@ -150,10 +156,11 @@ app.add_middleware(
 
 # ── Routers ──────────────────────────────────────────────────────────────────
 
-app.include_router(zodiac.router, prefix="/api/zodiac", tags=["zodiac"])
-app.include_router(notifications_router)   # /notifications
-app.include_router(atlas_router)            # /atlas
-app.include_router(crypto_router)           # /crypto
+app.include_router(zodiac.router,          prefix="/api/zodiac", tags=["zodiac"])
+app.include_router(llm_router.router,      prefix="/api")         # /api/llm/*
+app.include_router(notifications_router)                           # /notifications
+app.include_router(atlas_router)                                   # /atlas
+app.include_router(crypto_router)                                  # /crypto
 
 
 # ── Core endpoints ────────────────────────────────────────────────────────────
@@ -170,6 +177,7 @@ async def health():
         "uptime": uptime,
         "model": ollama["model"],
         "model_ready": ollama["ready"],
+        "routing_mode": os.environ.get("GAIA_ROUTING_MODE", "local-first"),
         "error": ollama["error"],
     }
 
