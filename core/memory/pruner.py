@@ -173,6 +173,12 @@ class MemoryPruner:
         #       + tier_bonus * 0.15
         #
         # Lower score → evicted first.
+        #
+        # Parameter order MUST match placeholder order in the SQL:
+        #   1. cutoff_ts  → created_at <= ?      (WHERE clause)
+        #   2. user_id    → user_id = ?           (WHERE clause, if present)
+        #   3. now        → CAST(? - created_at)  (ORDER BY expression)
+        #   4. limit      → LIMIT ?
         sql = """
             SELECT id
             FROM memory_items
@@ -194,10 +200,15 @@ class MemoryPruner:
         """
         user_filter = "AND user_id = ?" if user_id else ""
         sql = sql.format(user_filter=user_filter)
-        params: list = [cutoff_ts, now]
+
+        # user_id goes BEFORE now — it binds to the WHERE placeholder
+        # which appears before the ORDER BY placeholder.
+        params: list = [cutoff_ts]
         if user_id:
             params.append(user_id)
+        params.append(now)
         params.append(limit)
+
         rows = self._store._conn.execute(sql, params).fetchall()
         return [row[0] for row in rows]
 
