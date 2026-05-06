@@ -1,45 +1,49 @@
 """
-core/memory/
-============
-GAIA Memory Layer — persistent memory stores, vector memory,
-session context, and the knowledge matrix.
+core.memory — Phase 2A: Persistent Semantic Memory
+====================================================
+Public surface for GAIA-OS's long-term, cross-session memory layer.
 
-Phase C: Files physically live here. Flat core/ stubs re-export from here
-for zero-breakage backward compatibility.
+Quick-start
+-----------
+    from core.memory import MemoryStore, MemoryItem, MemoryKind, MemoryTier
+    from core.memory import OllamaEmbedder, MemoryPruner
+
+    embedder = OllamaEmbedder()           # or OpenAIEmbedder(api_key=...)
+    store    = MemoryStore(embedder=embedder)
+    pruner   = MemoryPruner(store)
+
+    # Remember a turn
+    item_id = await store.remember(
+        user_id="user_001",
+        text="I prefer dark-mode interfaces and concise answers.",
+        role="user",
+        kind=MemoryKind.PREFERENCE,
+    )
+
+    # Recall relevant context
+    hits = await store.retrieve(user_id="user_001", query="UI preferences", top_k=5)
+    for hit in hits:
+        print(hit.text, hit.score)
 """
 
-from .memory_store import MemoryStore, MemoryEntry, get_memory_store
-from .memory_chroma import (
-    ChromaMemory,
-    get_chroma,
-    store_turn,
-    recall_for_prompt,
-)
-from .session_memory import (
-    SessionTurn,
-    SessionMemory,
-    SESSION_TTL,
-    get_or_create_session,
-    get_session,
-    delete_session,
-)
-from .knowledge_matrix import (
-    EpistemicTier,
-    KnowledgeDomain,
-    KnowledgeMatrixEngine,
-    KNOWLEDGE_MATRIX,
-    get_knowledge_engine,
-)
+from .taxonomy import MemoryKind, MemoryTier, MemoryItem
+from .embedder import EmbeddingProvider, OllamaEmbedder, OpenAIEmbedder, FallbackEmbedder
+from .store import MemoryStore, RetrievedMemory
+from .pruner import MemoryPruner
 
 __all__ = [
-    # memory_store
-    "MemoryStore", "MemoryEntry", "get_memory_store",
-    # memory_chroma
-    "ChromaMemory", "get_chroma", "store_turn", "recall_for_prompt",
-    # session_memory
-    "SessionTurn", "SessionMemory", "SESSION_TTL",
-    "get_or_create_session", "get_session", "delete_session",
-    # knowledge_matrix
-    "EpistemicTier", "KnowledgeDomain", "KnowledgeMatrixEngine",
-    "KNOWLEDGE_MATRIX", "get_knowledge_engine",
+    # taxonomy
+    "MemoryKind",
+    "MemoryTier",
+    "MemoryItem",
+    # embedders
+    "EmbeddingProvider",
+    "OllamaEmbedder",
+    "OpenAIEmbedder",
+    "FallbackEmbedder",
+    # store
+    "MemoryStore",
+    "RetrievedMemory",
+    # pruner
+    "MemoryPruner",
 ]
