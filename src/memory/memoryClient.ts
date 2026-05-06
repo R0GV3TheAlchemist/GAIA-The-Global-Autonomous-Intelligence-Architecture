@@ -2,22 +2,11 @@
  * src/memory/memoryClient.ts
  * ─────────────────────────────────────────────────────────────────────────────
  * Typed fetch wrapper for the GAIA sidecar memory endpoints.
- *
- * All methods are plain async functions — no React, no side-effects.
- * Every call uses a 5-second timeout so it never blocks the UI on a cold start.
- *
- * Endpoints (all relative to API_BASE from src/config.ts):
- *   POST   /api/memory/remember
- *   POST   /api/memory/retrieve
- *   DELETE /api/memory/forget/{item_id}?user_id=
- *   DELETE /api/memory/forget-user?user_id=
- *   GET    /api/memory/stats?user_id=
- *   GET    /api/memory/health
  */
 
 import { API_BASE } from '../config';
 
-const BASE = `${API_BASE}/api/memory`;
+const BASE       = `${API_BASE}/api/memory`;
 const TIMEOUT_MS = 5_000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,14 +19,14 @@ export type MemoryTier =
   | 'ephemeral' | 'short_term' | 'long_term' | 'permanent';
 
 export interface RememberParams {
-  user_id:     string;
-  text:        string;
-  role?:       'user' | 'gaia' | 'system';
-  kind?:       MemoryKind;
-  tier?:       MemoryTier;
-  importance?: number;          // 0.0 – 1.0
-  session_id?: string;
-  topic_tag?:  string;
+  user_id:      string;
+  text:         string;
+  role?:        'user' | 'gaia' | 'system';
+  kind?:        MemoryKind;
+  tier?:        MemoryTier;
+  importance?:  number;
+  session_id?:  string;
+  topic_tag?:   string;
   ttl_seconds?: number;
 }
 
@@ -48,21 +37,21 @@ export interface MemoryHit {
   tier:       MemoryTier;
   role:       string;
   importance: number;
-  score:      number;           // hybrid similarity score
-  created_at: number;           // unix timestamp
+  score:      number;
+  created_at: number;
   session_id: string | null;
   topic_tag:  string | null;
 }
 
 export interface RetrieveParams {
-  user_id:          string;
-  query:            string;
-  top_k?:           number;           // default 10
-  kinds?:           MemoryKind[];
-  tiers?:           MemoryTier[];
-  topic_tag?:       string;
-  since_ts?:        number;
-  importance_floor?: number;          // default 0.0
+  user_id:           string;
+  query:             string;
+  top_k?:            number;
+  kinds?:            MemoryKind[];
+  tiers?:            MemoryTier[];
+  topic_tag?:        string;
+  since_ts?:         number;
+  importance_floor?: number;
 }
 
 export interface MemoryStats {
@@ -73,15 +62,15 @@ export interface MemoryStats {
 }
 
 export interface MemoryHealth {
-  status:      'ok' | 'not_ready' | 'error';
-  ready:       boolean;
+  status:       'ok' | 'not_ready' | 'error';
+  ready:        boolean;
   total_items?: number;
   vec_enabled?: boolean;
-  db_path?:    string;
-  detail?:     string;
+  db_path?:     string;
+  detail?:      string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Internal fetch helpers ────────────────────────────────────────────────────
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -98,12 +87,9 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function del(path: string, params: Record<string, string> = {}): Promise<unknown> {
-  const qs = new URLSearchParams(params).toString();
+  const qs  = new URLSearchParams(params).toString();
   const url = `${BASE}${path}${qs ? `?${qs}` : ''}`;
-  const res = await fetch(url, {
-    method: 'DELETE',
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  const res = await fetch(url, { method: 'DELETE', signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) {
     const detail = await res.text().catch(() => res.statusText);
     throw new Error(`Memory API DELETE ${path} → ${res.status}: ${detail}`);
@@ -112,7 +98,7 @@ async function del(path: string, params: Record<string, string> = {}): Promise<u
 }
 
 async function get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
-  const qs = new URLSearchParams(params).toString();
+  const qs  = new URLSearchParams(params).toString();
   const url = `${BASE}${path}${qs ? `?${qs}` : ''}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) {
@@ -124,10 +110,6 @@ async function get<T>(path: string, params: Record<string, string> = {}): Promis
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-/**
- * Store a new memory item.
- * Returns the assigned row id.
- */
 export async function remember(params: RememberParams): Promise<number> {
   const body = {
     user_id:     params.user_id,
@@ -144,9 +126,6 @@ export async function remember(params: RememberParams): Promise<number> {
   return resp.id;
 }
 
-/**
- * Retrieve semantically relevant memories for a query.
- */
 export async function retrieve(params: RetrieveParams): Promise<MemoryHit[]> {
   const body = {
     user_id:          params.user_id,
@@ -162,32 +141,25 @@ export async function retrieve(params: RetrieveParams): Promise<MemoryHit[]> {
   return resp.hits;
 }
 
-/**
- * Soft-delete a single memory item.
- */
 export async function forgetItem(item_id: number, user_id: string): Promise<void> {
   await del(`/forget/${item_id}`, { user_id });
 }
 
-/**
- * Soft-delete ALL memories for a user.
- */
 export async function forgetUser(user_id: string): Promise<number> {
   const resp = await del('/forget-user', { user_id }) as { items_deleted: number };
   return resp.items_deleted;
 }
 
 /**
- * Return row counts and store metadata.
+ * stats() — fixed: build params as Record<string, string> (no undefined values)
+ * so TypeScript is happy with the `get()` helper signature.
  */
 export async function stats(user_id?: string): Promise<MemoryStats> {
-  const params = user_id ? { user_id } : {};
+  const params: Record<string, string> = {};
+  if (user_id) params['user_id'] = user_id;
   return get<MemoryStats>('/stats', params);
 }
 
-/**
- * Liveness probe for the memory subsystem.
- */
 export async function health(): Promise<MemoryHealth> {
   return get<MemoryHealth>('/health');
 }
