@@ -11,7 +11,7 @@ use tauri_plugin_shell::{process::CommandChild, ShellExt};
 /// Shared handle to the sidecar child process so we can kill it on exit.
 type SidecarHandle = Arc<Mutex<Option<CommandChild>>>;
 
-// ── Sidecar status broadcast ──────────────────────────────────────────────────
+// ── Sidecar status broadcast ──────────────────────────────────────────────────────────────
 //
 // We emit these events on the main window so the frontend can react:
 //   "sidecar:ready"   — backend is up and healthy  → window is shown here
@@ -27,19 +27,24 @@ struct NavigatePayload {
     section: String,
 }
 
-// ── Process-tree kill ─────────────────────────────────────────────────────────
-//
-// PyInstaller on Windows spawns a parent + child pair.  `CommandChild::kill()`
-// only terminates the immediate child, leaving the bootloader alive as a zombie.
-// On Windows we use `taskkill /F /T /PID <pid>` which recursively kills the
-// entire tree.  On other platforms a standard SIGKILL on the process group works.
+// ── IPC bridge types ─────────────────────────────────────────────────────────────────────
+
+/// Payload accepted by the IPC bridge HTTP server.
+/// Python POSTs this to http://127.0.0.1:8009/emit
+#[derive(serde::Deserialize)]
+struct EmitRequest {
+    event:   String,
+    payload: serde_json::Value,
+}
+
+// ── Process-tree kill ─────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
 fn kill_process_tree(pid: u32) {
     use std::os::windows::process::CommandExt;
     let _ = std::process::Command::new("taskkill")
         .args(["/F", "/T", "/PID", &pid.to_string()])
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW — no console flash
+        .creation_flags(0x08000000)
         .status();
 }
 
@@ -50,7 +55,6 @@ fn kill_process_tree(pid: u32) {
     }
 }
 
-/// Kill the sidecar and its entire process tree, then clear the stored handle.
 fn kill_sidecar(guard: &mut Option<CommandChild>) {
     if let Some(child) = guard.take() {
         let pid = child.pid();
@@ -59,7 +63,56 @@ fn kill_sidecar(guard: &mut Option<CommandChild>) {
     }
 }
 
-// ── Tauri commands ────────────────────────────────────────────────────────────
+// ── IPC bridge server ──────────────────────────────────────────────────────────────────
+//
+// Listens on 127.0.0.1:8009.  Accepts POST /emit {event, payload} from
+// the Python backend and forwards to the Tauri WebView via app_handle.emit().
+// Only binds to loopback — not reachable from outside the machine.
+
+fn start_ipc_bridge(app_handle: tauri::AppHandle) {
+    use axum::{
+        extract::State,
+        http::StatusCode,
+        routing::post,
+        Json, Router,
+    };
+
+    let handle = Arc::new(app_handle);
+
+    let router = Router::new()
+        .route(
+            "/emit",
+            post(
+                |State(h): State<Arc<tauri::AppHandle>>,
+                 Json(req): Json<EmitRequest>| async move {
+                    match h.emit(&req.event, &req.payload) {
+                        Ok(_)  => (StatusCode::OK, "ok"),
+                        Err(e) => {
+                            eprintln!("[IPC bridge] emit error: {e}");
+                            (StatusCode::INTERNAL_SERVER_ERROR, "emit failed")
+                        }
+                    }
+                },
+            ),
+        )
+        .with_state(handle);
+
+    tauri::async_runtime::spawn(async move {
+        let listener = match tokio::net::TcpListener::bind("127.0.0.1:8009").await {
+            Ok(l)  => l,
+            Err(e) => {
+                eprintln!("[IPC bridge] failed to bind :8009 — {e}");
+                return;
+            }
+        };
+        println!("[IPC bridge] listening on 127.0.0.1:8009");
+        if let Err(e) = axum::serve(listener, router).await {
+            eprintln!("[IPC bridge] server error: {e}");
+        }
+    });
+}
+
+// ── Tauri commands ─────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -98,7 +151,6 @@ async fn restart_backend(app: tauri::AppHandle) -> Result<String, String> {
     Ok("restarted".to_string())
 }
 
-/// Open the GAIA log directory in the OS file explorer.
 #[tauri::command]
 async fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
@@ -120,11 +172,6 @@ async fn open_log_dir(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-// ── Ambient Shell commands ────────────────────────────────────────────────────
-
-/// Read the saved ambient orb position from LocalData dir.
-/// Returns the raw JSON string so the frontend can parse { x, y }.
-/// Returns an empty string if no position has been saved yet.
 #[tauri::command]
 async fn load_ambient_position(app: tauri::AppHandle) -> Result<String, String> {
     let local_data = app
@@ -140,8 +187,6 @@ async fn load_ambient_position(app: tauri::AppHandle) -> Result<String, String> 
     std::fs::read_to_string(&position_file).map_err(|e| e.to_string())
 }
 
-/// Emit a "navigate" event on the main window so the frontend router
-/// can switch to the requested section ("chat" | "memory" | "settings").
 #[tauri::command]
 async fn navigate_main(app: tauri::AppHandle, section: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
@@ -154,7 +199,6 @@ async fn navigate_main(app: tauri::AppHandle, section: String) -> Result<(), Str
     Ok(())
 }
 
-/// Clean application shutdown — kills the Python sidecar then exits.
 #[tauri::command]
 async fn quit_app(app: tauri::AppHandle) {
     if let Some(state) = app.try_state::<SidecarHandle>() {
@@ -165,9 +209,8 @@ async fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
-// ── Sidecar startup ───────────────────────────────────────────────────────────
+// ── Sidecar startup ────────────────────────────────────────────────────────────────────
 
-/// Emit a sidecar:error event and show a native dialog.
 fn emit_backend_error(app: &tauri::AppHandle, reason: &str) {
     eprintln!("[GAIA] Backend error: {reason}");
 
@@ -200,7 +243,6 @@ fn emit_backend_error(app: &tauri::AppHandle, reason: &str) {
     });
 }
 
-/// Spawn the Python sidecar, store the handle, poll /health until ready.
 fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
     let shell = app.shell();
     let app_handle = app.handle().clone();
@@ -244,7 +286,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                         .await
                     {
                         Ok(resp) if resp.status().is_success() => {
-                            println!("[GAIA] Python backend ready after attempt {attempt} ✓");
+                            println!("[GAIA] Python backend ready after attempt {attempt} \u2713");
                             ready = true;
                             break;
                         }
@@ -254,6 +296,19 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                 }
 
                 if ready {
+                    // Notify the Python backend that the IPC bridge is ready.
+                    // Python will use http://127.0.0.1:8009/emit for all WebView events.
+                    let ipc_notify = reqwest::Client::new()
+                        .post("http://127.0.0.1:8008/internal/ipc-ready")
+                        .timeout(std::time::Duration::from_secs(2))
+                        .send()
+                        .await;
+                    if let Err(e) = ipc_notify {
+                        eprintln!("[GAIA] IPC-ready notify failed (non-fatal): {e}");
+                    } else {
+                        println!("[GAIA] IPC bridge registered with Python backend ✓");
+                    }
+
                     if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.emit("sidecar:ready", ());
                         let _ = window.show();
@@ -270,7 +325,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
     });
 }
 
-// ── App entry point ───────────────────────────────────────────────────────────
+// ── App entry point ────────────────────────────────────────────────────────────────────
 
 pub fn run() {
     let sidecar_handle: SidecarHandle = Arc::new(Mutex::new(None));
@@ -282,7 +337,6 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -290,7 +344,12 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            // Start the Axum IPC bridge FIRST so Python can emit to WebView
+            // as soon as its backend is ready.
+            start_ipc_bridge(app.handle().clone());
+
             let handle = app.state::<SidecarHandle>().inner().clone();
             start_python_sidecar(app, handle);
 
