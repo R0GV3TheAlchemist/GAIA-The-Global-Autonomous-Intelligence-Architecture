@@ -1,0 +1,202 @@
+/**
+ * src/shared/ActionGateDialog.css
+ * ActionGate confirmation dialog styles.
+ * BEM naming. GAIA dark theme — matches SovereignGuard aesthetic.
+ * Canon: Doc 35, Doc 21
+ */
+
+/* Overlay */
+.action-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  animation: ag-fade-in 0.18s ease;
+}
+
+@keyframes ag-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Dialog */
+.action-gate-dialog {
+  width: min(480px, 92vw);
+  background: #0f1117;
+  border: 1px solid #2a2d3a;
+  border-radius: 10px;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: ag-slide-up 0.2s ease;
+}
+
+@keyframes ag-slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Tier colour accents on left border */
+.action-gate-dialog--green  { border-left: 4px solid #22c55e; }
+.action-gate-dialog--yellow { border-left: 4px solid #eab308; }
+.action-gate-dialog--red    { border-left: 4px solid #ef4444; }
+
+/* Header */
+.action-gate-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #1e2130;
+}
+
+.action-gate-dialog__title {
+  flex: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  letter-spacing: 0.01em;
+}
+
+/* Tier badge */
+.action-gate-dialog__tier {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.action-gate-dialog__tier--green  { background: rgba(34, 197, 94, 0.18);  color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+.action-gate-dialog__tier--yellow { background: rgba(234, 179, 8, 0.18);  color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); }
+.action-gate-dialog__tier--red    { background: rgba(239, 68, 68, 0.18);  color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+/* Countdown */
+.action-gate-dialog__countdown {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+  min-width: 30px;
+  text-align: right;
+}
+
+.action-gate-dialog__countdown--urgent {
+  color: #f87171;
+  font-weight: 700;
+  animation: ag-pulse 0.8s ease infinite;
+}
+
+@keyframes ag-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* Body */
+.action-gate-dialog__body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-gate-dialog__type,
+.action-gate-dialog__description,
+.action-gate-dialog__default {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+
+.action-gate-dialog__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.action-gate-dialog__value {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+code.action-gate-dialog__value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  background: #1a1d2e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #a5b4fc;
+}
+
+/* Footer */
+.action-gate-dialog__footer {
+  padding: 12px 20px 16px;
+  border-top: 1px solid #1e2130;
+}
+
+.action-gate-dialog__sovereign-notice {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  color: #f87171;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-gate-dialog__buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.action-gate-dialog__btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.action-gate-dialog__btn:active {
+  transform: scale(0.97);
+}
+
+.action-gate-dialog__btn--deny {
+  background: transparent;
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.action-gate-dialog__btn--deny:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.action-gate-dialog__btn--approve {
+  background: #22c55e;
+  color: #052e16;
+  border-color: #22c55e;
+}
+
+.action-gate-dialog__btn--approve:hover {
+  opacity: 0.88;
+}
+
+/* Queue indicator */
+.action-gate-dialog__queue {
+  padding: 6px 20px;
+  font-size: 0.75rem;
+  color: #64748b;
+  background: #0a0c13;
+  border-top: 1px solid #1e2130;
+  text-align: center;
+}

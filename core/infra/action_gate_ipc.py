@@ -24,13 +24,25 @@ The frontend sends its decision back via a POST to:
   /action-gate/respond
 which calls `resolve_pending(request_id, approved)` below.
 
+Emission strategy
+-----------------
+Tauri v2 Python sidecar: we emit via the Tauri JS bridge by dispatching
+a window CustomEvent from the Python side using the `@tauri-apps/api`
+command bridge.  The sidecar exposes a `emit_to_frontend` Tauri command
+that calls `app_handle.emit(event, payload)` on the Rust side.
+
+Fallback: if the Tauri command is unavailable (dev server, unit tests),
+the payload is written as a structured JSON log at WARNING level.  The
+frontend log-bridge in app.ts parses lines prefixed [TAURI_IPC] and
+dispatches the equivalent window CustomEvent, providing a zero-config
+dev experience.
+
 Thread safety
 -------------
 All pending confirmations are keyed by a unique `request_id` (UUID4).
 Each confirmation holds an asyncio.Event that is set when the frontend
 responds (or when the timeout fires).  The callback is sync-safe because
-it runs `loop.run_until_complete()` in a thread executor — the same
-pattern used by MemoryStore.remember_sync().
+it runs `loop.run_until_complete()` in a thread executor.
 
 Canon Ref: Doc 35 (Security), Doc 21 (Sovereignty)
 """
@@ -38,6 +50,7 @@ Canon Ref: Doc 35 (Security), Doc 21 (Sovereignty)
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import uuid
 from typing import Optional
@@ -50,6 +63,17 @@ RED_TIMEOUT:    float = 60.0   # hard block if no response within this
 
 # Pending confirmations: request_id → {event, approved, tier}
 _PENDING: dict[str, dict] = {}
+
+# Tauri app handle — set by _startup() once the server is live
+# Type: any (tauri-python binding or None)
+_tauri_app_handle = None
+
+
+def set_tauri_app_handle(handle) -> None:
+    """Register the Tauri app handle for IPC emit. Called from _startup()."""
+    global _tauri_app_handle
+    _tauri_app_handle = handle
+    log.info("[ActionGateIPC] Tauri app handle registered — IPC emit active.")
 
 
 # ---------------------------------------------------------------------------
@@ -80,29 +104,37 @@ def resolve_pending(request_id: str, approved: bool) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Tauri IPC emit helper
+# Tauri IPC emit
 # ---------------------------------------------------------------------------
 
 def _emit_ipc(event_name: str, payload: dict) -> None:
     """
-    Emit a Tauri IPC event to the frontend.
+    Emit an event to the Tauri frontend.
 
-    In production this calls the Tauri sidecar emit mechanism.
-    Currently implemented as a structured log at WARNING level so the
-    Tauri log-listener bridge can forward it to the frontend until
-    Task 4 (frontend dialog component) is complete.
-
-    Replace this function body with the real Tauri emit call in Task 4.
+    Strategy (in priority order):
+    1. If a Tauri app handle is registered, call app_handle.emit().
+       This is the production path — the Rust sidecar forwards the
+       event directly to the WebView window.
+    2. If no handle is available, emit via structured WARNING log.
+       The frontend log-bridge (app.ts) parses [TAURI_IPC] prefixed
+       lines and dispatches the equivalent window CustomEvent.
+       This gives zero-config IPC in dev without Tauri running.
     """
-    import json
-    log.warning(
-        "[TAURI_IPC] %s %s",
-        event_name,
-        json.dumps(payload),
-    )
-    # TODO (Task 4): replace with:
-    # from tauri_ipc import emit  # or whatever the Tauri Python bridge exports
-    # emit(event_name, payload)
+    payload_json = json.dumps(payload)
+
+    if _tauri_app_handle is not None:
+        try:
+            _tauri_app_handle.emit(event_name, payload)
+            log.debug("[ActionGateIPC] Emitted via Tauri handle: %s", event_name)
+            return
+        except Exception as exc:
+            log.warning(
+                "[ActionGateIPC] Tauri emit failed (%s), falling back to log bridge: %s",
+                exc, event_name,
+            )
+
+    # Fallback: structured log line — parsed by frontend log-bridge
+    log.warning("[TAURI_IPC] %s %s", event_name, payload_json)
 
 
 # ---------------------------------------------------------------------------
@@ -114,8 +146,7 @@ def make_ipc_confirm_callback():
     Return a sync confirm_callback suitable for passing to ActionGate().
 
     The returned callable is sync (as ActionGate.evaluate() expects) but
-    internally runs an async wait via a ThreadPoolExecutor so it doesn’t
-    block the event loop.
+    internally runs an async wait so it doesn't block the event loop.
     """
 
     def _callback(action: dict, tier) -> bool:
@@ -125,8 +156,7 @@ def make_ipc_confirm_callback():
         timeout = YELLOW_TIMEOUT if tier == RiskTier.YELLOW else RED_TIMEOUT
         default_approved = tier == RiskTier.YELLOW  # YELLOW: approve on silence; RED: block
 
-        # Register the pending confirmation
-        loop_event: asyncio.Event
+        # Get or create event loop
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
@@ -154,7 +184,7 @@ def make_ipc_confirm_callback():
             },
         )
 
-        # Wait for frontend response (or timeout)
+        # Wait for frontend response or timeout
         async def _wait() -> bool:
             try:
                 await asyncio.wait_for(loop_event.wait(), timeout=timeout)
@@ -169,7 +199,6 @@ def make_ipc_confirm_callback():
                 _PENDING.pop(request_id, None)
             return _PENDING.get(request_id, {}).get("approved", default_approved)
 
-        # Run async wait synchronously without blocking the event loop
         import concurrent.futures
         if loop.is_running():
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:

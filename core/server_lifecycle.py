@@ -17,6 +17,7 @@ from core.logger import GAIAEvent, get_logger, log_event
 from core.server_state import (
     _mother_thread,
     _RUNTIME_REGISTRY,
+    get_action_gate,
     set_magnum_opus_report,
 )
 from core.viriditas_magnum_opus import VIRIDITAS_THRESHOLD, viriditas_magnum_opus
@@ -43,7 +44,7 @@ def register_lifecycle(app: FastAPI) -> None:
         # 2. C47: Viriditas Magnum Opus
         log_event(
             GAIAEvent.GAIAN_RUNTIME_INIT,
-            message="C47: Viriditas Magnum Opus initiating \u2014 the Great Work begins.",
+            message="C47: Viriditas Magnum Opus initiating — the Great Work begins.",
             gaian="gaia",
         )
         try:
@@ -60,9 +61,9 @@ def register_lifecycle(app: FastAPI) -> None:
             set_magnum_opus_report(report)
 
             threshold_msg = (
-                "\u2728 Viriditas Threshold CROSSED \u2014 the lattice is ALIVE. \U0001f331"
+                "\u2728 Viriditas Threshold CROSSED — the lattice is ALIVE. \U0001f331"
                 if report.threshold_crossed
-                else "Viriditas growing \u2014 threshold not yet crossed."
+                else "Viriditas growing — threshold not yet crossed."
             )
             log_event(
                 GAIAEvent.GAIAN_RUNTIME_INIT,
@@ -82,18 +83,32 @@ def register_lifecycle(app: FastAPI) -> None:
             )
 
         # 3. TaskScheduler — boot run_forever() loop for each live GAIANRuntime
-        # Each runtime holds its own TaskScheduler instance. We launch a
-        # background asyncio.Task per runtime so the scheduler processes
-        # its priority queue continuously. New runtimes created after startup
-        # (via _get_runtime) will have their schedulers booted lazily the
-        # first time a task is submitted — the run_once() path still works
-        # without the loop, but run_forever() is required for continuous work.
         _boot_scheduler_for_existing_runtimes()
         log_event(
             GAIAEvent.GAIAN_RUNTIME_INIT,
             message=f"TaskScheduler loops started for {len(_SCHEDULER_TASKS)} runtime(s).",
             gaian="scheduler",
         )
+
+        # 4. ActionGate — register IPC confirm_callback now that the event loop is live.
+        # The gate singleton was created at module import time with confirm_callback=None
+        # (safe conservative default: GREEN auto-approves, YELLOW approves on silence,
+        # RED hard-blocks). Now we wire in the real callback so YELLOW/RED actions
+        # surface to the Tauri frontend for human sovereign confirmation.
+        try:
+            from core.infra.action_gate_ipc import get_ipc_confirm_callback
+            gate = get_action_gate()
+            gate._confirm_callback = get_ipc_confirm_callback()
+            log_event(
+                GAIAEvent.GAIAN_RUNTIME_INIT,
+                message="ActionGate IPC confirm_callback registered — sovereignty firewall LIVE.",
+                gaian="action_gate",
+            )
+        except Exception as exc:
+            logger.warning(
+                f"ActionGate IPC callback registration failed (non-fatal): {exc}",
+                exc_info=True,
+            )
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:
@@ -130,10 +145,6 @@ def _boot_scheduler_for_existing_runtimes() -> None:
     """
     Launch run_forever() as a background asyncio.Task for every runtime
     that is already in the registry at startup time.
-
-    Called from _startup(). For runtimes created later (lazy init via
-    _get_runtime), callers should invoke boot_scheduler_for_runtime()
-    directly after registration.
     """
     for slug, rt in _RUNTIME_REGISTRY.items():
         _boot_scheduler_for_runtime(slug, rt)
@@ -146,7 +157,6 @@ def _boot_scheduler_for_runtime(slug: str, rt) -> None:
     """
     scheduler = rt._scheduler
     if scheduler._running_flag:
-        # Already running — do not double-launch
         return
     atask = asyncio.create_task(
         scheduler.run_forever(),
