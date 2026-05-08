@@ -30,6 +30,7 @@ from core.routers import (
     chat_router,
     gaians_router,
     health_router,
+    internal_router,
     memory_router,
     mood_ws_router,
     query_router,
@@ -73,6 +74,7 @@ app.add_middleware(
 app.include_router(auth_users_router)   # POST /auth/register, POST /auth/login, GET /auth/me
 app.include_router(auth_router)         # POST /auth/token (dev bootstrap)
 app.include_router(health_router)       # /health, /health/ready — no auth
+app.include_router(internal_router)     # /internal/* — Rust → Python signals, loopback only
 app.include_router(system_router)
 app.include_router(gaians_router)
 app.include_router(chat_router)
