@@ -18,6 +18,7 @@ from core.gaian import GaianMemory, ensure_default_gaian
 from core.gaian.base_forms import get_base_form
 from core.gaian_runtime import GAIANIdentity, GAIANRuntime
 from core.inference_router import GAIAInferenceRouter, get_router
+from core.infra.action_gate import ActionGate
 from core.logger import GAIAEvent, get_logger, log_event
 from core.mother_thread import MotherThread, get_mother_thread
 from core.viriditas_magnum_opus import MagnumOpusReport, VIRIDITAS_THRESHOLD
@@ -35,8 +36,19 @@ _inference_router: GAIAInferenceRouter = get_router()
 _mother_thread: MotherThread = get_mother_thread()
 _RUNTIME_REGISTRY: dict[str, GAIANRuntime] = {}
 
+# ActionGate — process-level singleton.
+# confirm_callback is registered at startup by server_lifecycle
+# once the Tauri IPC layer is ready. Until then it is None:
+# GREEN actions auto-approve, YELLOW approve on silence, RED hard-block.
+_action_gate: ActionGate = ActionGate(confirm_callback=None)
+
 # Populated at startup by server_lifecycle._startup
 _MAGNUM_OPUS_REPORT: Optional[MagnumOpusReport] = None
+
+
+def get_action_gate() -> ActionGate:
+    """Return the process-level ActionGate singleton."""
+    return _action_gate
 
 
 def get_magnum_opus_report() -> Optional[MagnumOpusReport]:
@@ -111,15 +123,10 @@ def _get_runtime(slug: str, gaian: Optional[GaianMemory] = None) -> GAIANRuntime
         # Boot the TaskScheduler run_forever() loop for this new runtime.
         # Deferred import avoids circular dependency:
         #   server_state → server_lifecycle → server_state
-        # _boot_scheduler_for_runtime() is a no-op if the loop is already
-        # running (guards on scheduler._running_flag), so it is safe to
-        # call unconditionally here.
         try:
             from core.server_lifecycle import _boot_scheduler_for_runtime
             _boot_scheduler_for_runtime(slug, rt)
         except Exception as exc:
-            # Non-fatal — scheduler will still work via run_once() calls;
-            # run_forever() simply won’t be active for this runtime.
             logger.warning(
                 f"[server_state] Could not boot scheduler for slug='{slug}': {exc}"
             )

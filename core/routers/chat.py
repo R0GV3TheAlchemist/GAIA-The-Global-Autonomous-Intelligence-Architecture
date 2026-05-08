@@ -25,11 +25,12 @@ from core.auth import TokenPayload, require_auth
 from core.codex_stage_engine import NoosphericHealthSignals
 from core.gaian import GaianMemory, add_exchange, get_conversation_context, load_gaian
 from core.inference_router import InferenceRequest, InferenceResponse
+from core.infra.action_gate import RiskTier
 from core.logger import GAIAEvent, get_logger, log_event
-from core.infra.memory_bridge import recall_for_prompt, store_turn  # unified memory layer
+from core.infra.memory_bridge import recall_for_prompt, store_turn
 from core.rate_limiter import rate_limit
 from core.server_models import ChatRequest, QueryRequest, SetGaianRequest
-from core.server_state import _get_runtime, _inference_router, canon
+from core.server_state import _get_runtime, _inference_router, canon, get_action_gate
 from core.session_memory import get_or_create_session, get_session
 from core.web_search import search_web_async
 
@@ -82,6 +83,8 @@ async def gaian_chat(
     async def event_stream():
         full_answer = ""
         t0 = time.perf_counter()
+        gate_result: dict = {"approved": True, "tier": RiskTier.GREEN.value, "reason": "not evaluated"}
+
         try:
             rt = _get_runtime(slug, gaian)
 
@@ -115,6 +118,55 @@ async def gaian_chat(
             yield f"event: resonance_field\ndata: {json.dumps(result.resonance_field.summary())}\n\n"
             await asyncio.sleep(0.01)
 
+            # --- ActionGate: risk-tier veto check (Doc 35 / Doc 21) ---
+            # Classify the proposed response action and gate it.
+            # The runtime's PolicyEngine already ran a soft policy check
+            # inside rt.process(). This is the hard infrastructure gate.
+            #
+            # Tier assignment rules:
+            #   GREEN  — standard conversational response (always)
+            #   YELLOW — if the response touches tool use / file writes
+            #             (future: detect from result.planned_actions)
+            #   RED    — if result.policy_result.flagged == True
+            #
+            # For this integration pass, all chat turns are GREEN unless
+            # the PolicyEngine explicitly flagged the turn. This ensures
+            # zero regression while the tier classification matures.
+            policy_flagged = getattr(
+                getattr(result, "policy_result", None), "flagged", False
+            )
+            action_tier = RiskTier.RED if policy_flagged else RiskTier.GREEN
+
+            proposed_action = {
+                "type":        "chat_response",
+                "description": f"GAIAN '{slug}' responding to: {req.message[:120]}",
+                "tier":        action_tier,
+                "payload": {
+                    "gaian_slug": slug,
+                    "user_id":   user.user_id,
+                    "session_id": session_id,
+                    "policy_flagged": policy_flagged,
+                },
+            }
+
+            gate = get_action_gate()
+            gate_result = gate.evaluate(proposed_action)
+
+            if not gate_result["approved"]:
+                log_event(
+                    GAIAEvent.TURN_ERROR,
+                    message=f"ActionGate BLOCKED response for slug='{slug}': {gate_result['reason']}",
+                    gaian=slug,
+                    user_id=user.user_id,
+                    tier=gate_result["tier"].value if hasattr(gate_result["tier"], "value") else str(gate_result["tier"]),
+                )
+                yield f"event: action_blocked\ndata: {json.dumps({'reason': gate_result['reason'], 'tier': str(gate_result['tier'].value if hasattr(gate_result['tier'], 'value') else gate_result['tier'])})}\n\n"
+                return
+
+            # Gate passed — emit tier to frontend for transparency
+            yield f"event: action_gate\ndata: {json.dumps({'tier': gate_result['tier'].value if hasattr(gate_result['tier'], 'value') else str(gate_result['tier']), 'approved': True})}\n\n"
+            await asyncio.sleep(0.01)
+
             web_sources = []
             if req.enable_web_search:
                 try:
@@ -126,13 +178,6 @@ async def gaian_chat(
                 except Exception as e:
                     logger.warning(f"Web search error in chat: {e}")
 
-            # --- Unified memory recall via MemoryBridge (C17) ---
-            # Routes through GAIANRuntime's MemoryStore (SQLite + sqlite-vec).
-            # Falls back to ChromaDB if runtime not yet registered.
-            # NOTE: rt.process() above already recalled memories internally and
-            # baked them into result.system_prompt. This recall populates
-            # visible_memories for the InferenceRouter's prompt block so the
-            # router also sees recent episodic context in its own layer.
             recalled_memories = recall_for_prompt(
                 query=req.message,
                 gaian_slug=slug,
@@ -142,11 +187,10 @@ async def gaian_chat(
             effective_prompt = result.system_prompt
             if result.soul_mirror.individuation_nudge:
                 effective_prompt += (
-                    "\n\n[SOUL MIRROR NUDGE AVAILABLE \u2014 use naturally if it fits]\n"
+                    "\n\n[SOUL MIRROR NUDGE AVAILABLE — use naturally if it fits]\n"
                     + result.soul_mirror.individuation_nudge
                 )
 
-            # Merge recalled memories with existing visible_memories
             existing_visible = [
                 m["text"] for m in rt._memory.get("visible_memories", [])
                 if isinstance(m, dict)
@@ -177,7 +221,6 @@ async def gaian_chat(
             session.add_turn(req.message, full_answer, len(web_sources))
             if full_answer:
                 add_exchange(gaian, req.message, full_answer)
-                # Persist this turn through the unified MemoryBridge (C17)
                 store_turn(
                     user_message=req.message,
                     gaian_response=full_answer,
@@ -214,6 +257,11 @@ async def gaian_chat(
                 'criticality_state':   inference_meta.criticality_state,
                 'inference_ms':        inference_meta.duration_ms,
                 'recalled_memories':   len(recalled_memories),
+                'action_gate': {
+                    'tier':    gate_result["tier"].value if hasattr(gate_result["tier"], "value") else str(gate_result["tier"]),
+                    'approved': gate_result["approved"],
+                    'reason':  gate_result["reason"],
+                },
                 'timestamp':           time.time(),
             }
             yield f"event: done\ndata: {json.dumps(done_data)}\n\n"
@@ -303,7 +351,6 @@ async def query_stream(
                 await asyncio.sleep(0.01)
                 conversation_history = get_conversation_context(gaian)
                 long_term_memories = gaian.long_term_memories or []
-                # Unified memory recall via MemoryBridge (C17)
                 recalled = recall_for_prompt(req.query, gaian_slug=gaian_slug, top_k=5)
                 visible_memories = recalled + [
                     m["text"] for m in rt._memory.get("visible_memories", [])
