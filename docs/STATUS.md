@@ -1,6 +1,6 @@
 # GAIA-OS System Status
 
-> Last updated: 2026-05-08 by R0GV3TheAlchemist (C-TODAY sprint)
+> Last updated: 2026-05-08 by R0GV3TheAlchemist (C-TODAY sprint — end of day)
 
 ---
 
@@ -18,8 +18,8 @@
 | `VitalityEngine` | ✅ LIVE | |
 | `MemoryStore` (recall + persist) | ✅ LIVE | SQLite + sqlite-vec, C17-governed |
 | `GoalRegistry` | ✅ LIVE | Active goals fetched each turn |
-| `PolicyEngine` | ✅ LIVE | Evaluates each turn |
-| `TaskScheduler` | ✅ LIVE | **Fixed 2026-05-08** — run_forever() now boots at startup and on lazy-init |
+| `PolicyEngine` | ✅ LIVE | Soft gate — evaluates each turn |
+| `TaskScheduler` | ✅ LIVE | **Fixed 2026-05-08** — run_forever() boots at startup + lazy-init |
 | `AuditLedger` | ✅ LIVE | |
 
 ---
@@ -52,6 +52,24 @@
 
 ---
 
+## Security — ActionGate (Doc 35 / Doc 21)
+
+| Component | Status | Notes |
+|---|---|---|
+| `ActionGate` class | ✅ BUILT | GREEN/YELLOW/RED tiers, audit log |
+| `ActionGate` singleton | ✅ LIVE | **New 2026-05-08** — `_action_gate` in server_state |
+| Gate wired in chat request lifecycle | ✅ LIVE | **New 2026-05-08** — fires after engine, before LLM |
+| `action_gate` field in `done_data` SSE | ✅ LIVE | **New 2026-05-08** — tier + approved + reason |
+| `action_blocked` SSE event on denial | ✅ LIVE | **New 2026-05-08** — stream exits early |
+| `action_gate_ipc.py` IPC callback | ✅ LIVE | **New 2026-05-08** — asyncio.Event gate, UUID4 nonces |
+| `POST /action-gate/respond` endpoint | ✅ LIVE | **New 2026-05-08** — frontend resolution route |
+| `GET /action-gate/audit` endpoint | ✅ LIVE | **New 2026-05-08** — full process-lifetime audit log |
+| Tauri frontend dialog (Task 4) | ❌ TODO | Component + IPC listener + `_emit_ipc()` swap |
+| `confirm_callback` registered at startup | ❌ TODO | Needs `_startup()` line + Task 4 complete |
+| YELLOW tier for tool-use / file-writes | ❌ TODO | Requires `result.planned_actions` population |
+
+---
+
 ## Server Infrastructure
 
 | Component | Status | Notes |
@@ -60,7 +78,7 @@
 | `MotherThread` heartbeat | ✅ LIVE | Starts at boot |
 | Viriditas Magnum Opus (C47) | ✅ LIVE | Runs at boot via run_in_executor |
 | `TaskScheduler` boot | ✅ LIVE | **Fixed 2026-05-08** — run_forever() per runtime |
-| `ActionGate` (risk-tier veto) | ❌ NOT WIRED | Built, not integrated — Task 3 pending |
+| `ActionGate` singleton | ✅ LIVE | **New 2026-05-08** — hard infrastructure firewall |
 | Rate limiting | ✅ LIVE | |
 | Error boundary | ✅ LIVE | |
 | Auth (JWT) | ✅ LIVE | |
@@ -74,9 +92,10 @@
 |---|---|---|
 | `rt.process()` fires all 18 engines | ✅ LIVE | |
 | `result.system_prompt` passed to `InferenceRequest` | ✅ LIVE | |
+| `ActionGate.evaluate()` check before LLM stream | ✅ LIVE | **New 2026-05-08** |
 | `recall_for_prompt()` routes through MemoryBridge | ✅ LIVE | **Fixed 2026-05-08** |
 | `store_turn()` routes through MemoryBridge | ✅ LIVE | **Fixed 2026-05-08** |
-| Action gate check before stream | ❌ TODO | Task 3 |
+| YELLOW tier action surfacing to user | ❌ TODO | Requires `result.planned_actions` |
 
 ---
 
@@ -89,19 +108,20 @@
 | Engine state SSE display | ✅ LIVE | |
 | Soul Mirror display | ✅ LIVE | |
 | Resonance Field display | ✅ LIVE | |
-| ActionGate confirmation dialog | ❌ TODO | Task 4 — RED-tier Tauri IPC popup |
+| `action_gate` SSE event display | ❌ TODO | Field present in done_data, no UI component yet |
+| ActionGate confirmation dialog | ❌ TODO | **Task 4** — RED/YELLOW tier Tauri IPC popup |
 
 ---
 
 ## Open Tasks (Priority Order)
 
-1. **Task 3** — Wire `ActionGate` singleton into request lifecycle + Tauri IPC for RED-tier (~35 min)
-2. **Task 4** — Tauri frontend ActionGate confirmation dialog (~30 min)
-3. **Memory consolidation** — SHORT_TERM → LONG_TERM tier promotion + ChromaDB migration script
-4. **Scheduler task population** — wire actual work items (goal step execution, memory consolidation) into the now-live scheduler
+1. **Task 4** — Tauri frontend ActionGate confirmation dialog + `_startup()` callback registration (~30 min)
+2. **Memory consolidation** — SHORT_TERM → LONG_TERM tier promotion + ChromaDB migration script
+3. **Scheduler task population** — wire goal steps and memory consolidation into the now-live scheduler
+4. **YELLOW tier classification** — detect tool-use / file-write in `result.planned_actions`
 
 ---
 
 ## Canon Refs Active This Session
 
-C12, C17, C20, C21, C27, C42, C43, C44, C47, C49
+C12, C17, C20, C21, C27, C35, C42, C43, C44, C47, C49
