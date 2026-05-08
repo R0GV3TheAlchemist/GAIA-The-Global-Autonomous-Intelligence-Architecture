@@ -26,8 +26,10 @@ from core.codex_stage_engine import NoosphericHealthSignals
 from core.gaian import GaianMemory, add_exchange, get_conversation_context, load_gaian
 from core.inference_router import InferenceRequest, InferenceResponse
 from core.infra.action_gate import RiskTier
+from core.infra.memory_consolidation import schedule_consolidation
 from core.logger import GAIAEvent, get_logger, log_event
 from core.infra.memory_bridge import recall_for_prompt, store_turn
+from core.planner.step_dispatcher import submit_pending_steps
 from core.rate_limiter import rate_limit
 from core.server_models import ChatRequest, QueryRequest, SetGaianRequest
 from core.server_state import _get_runtime, _inference_router, canon, get_action_gate
@@ -95,6 +97,19 @@ async def gaian_chat(
                 noosphere = NoosphericHealthSignals(schumann_boost=-0.05)
 
             result = rt.process(req.message, noosphere=noosphere)
+
+            # ── Scheduler: populate queue from active goal steps ──────────────────
+            # submit_pending_steps is sync (just heappush); safe to call here.
+            # schedule_consolidation is idempotent — submits once per
+            # (runtime, user_id) pair for the process lifetime.
+            submitted = submit_pending_steps(rt, user.user_id)
+            schedule_consolidation(rt, user.user_id)
+            if submitted:
+                log.debug(
+                    "[chat] submitted %d goal-step task(s) to scheduler for user=%s",
+                    submitted, user.user_id,
+                )
+
             log_event(
                 GAIAEvent.ENGINE_CHAIN,
                 message=f"Engine chain: {slug} exchange={rt.attachment.total_exchanges}",
@@ -119,19 +134,6 @@ async def gaian_chat(
             await asyncio.sleep(0.01)
 
             # --- ActionGate: risk-tier veto check (Doc 35 / Doc 21) ---
-            # Classify the proposed response action and gate it.
-            # The runtime's PolicyEngine already ran a soft policy check
-            # inside rt.process(). This is the hard infrastructure gate.
-            #
-            # Tier assignment rules:
-            #   GREEN  — standard conversational response (always)
-            #   YELLOW — if the response touches tool use / file writes
-            #             (future: detect from result.planned_actions)
-            #   RED    — if result.policy_result.flagged == True
-            #
-            # For this integration pass, all chat turns are GREEN unless
-            # the PolicyEngine explicitly flagged the turn. This ensures
-            # zero regression while the tier classification matures.
             policy_flagged = getattr(
                 getattr(result, "policy_result", None), "flagged", False
             )
@@ -163,7 +165,6 @@ async def gaian_chat(
                 yield f"event: action_blocked\ndata: {json.dumps({'reason': gate_result['reason'], 'tier': str(gate_result['tier'].value if hasattr(gate_result['tier'], 'value') else gate_result['tier'])})}\n\n"
                 return
 
-            # Gate passed — emit tier to frontend for transparency
             yield f"event: action_gate\ndata: {json.dumps({'tier': gate_result['tier'].value if hasattr(gate_result['tier'], 'value') else str(gate_result['tier']), 'approved': True})}\n\n"
             await asyncio.sleep(0.01)
 
@@ -262,6 +263,7 @@ async def gaian_chat(
                     'approved': gate_result["approved"],
                     'reason':  gate_result["reason"],
                 },
+                'scheduler_stats': rt._scheduler.stats(),
                 'timestamp':           time.time(),
             }
             yield f"event: done\ndata: {json.dumps(done_data)}\n\n"
@@ -347,6 +349,16 @@ async def query_stream(
                 ) if canon_results else None
                 result = rt.process(req.query)
                 runtime_system_prompt = result.system_prompt
+
+                # ── Scheduler: populate queue from active goal steps ────────
+                submitted = submit_pending_steps(rt, user.user_id)
+                schedule_consolidation(rt, user.user_id)
+                if submitted:
+                    log.debug(
+                        "[query] submitted %d goal-step task(s) to scheduler for user=%s",
+                        submitted, user.user_id,
+                    )
+
                 yield f"event: engine_state\ndata: {json.dumps(result.state_snapshot)}\n\n"
                 await asyncio.sleep(0.01)
                 conversation_history = get_conversation_context(gaian)
