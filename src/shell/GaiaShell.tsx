@@ -14,6 +14,7 @@
  *   <ViritasWidget />      — compact orb pinned to the bottom of the left rail
  *   useAlignmentTheme()    — Phase 2: injects alignment CSS tokens onto :root
  *                            and sets data-alignment-tier on the shell root
+ *   <FieldVisualiser />    — Phase 6: Three.js ambient particle field
  */
 
 import React, { useEffect, useState } from 'react';
@@ -28,6 +29,7 @@ import {
 import { SovereignGuard }     from '../shared/SovereignGuard';
 import { ActionGateDialog }   from '../shared/ActionGateDialog';
 import { ViritasWidget }      from '../shared/ViritasWidget';
+import { FieldVisualiser }    from '../shared/FieldVisualiser';
 import { useAlignmentTheme }  from '../hooks/useAlignmentTheme';
 import './GaiaShell.css';
 
@@ -149,129 +151,77 @@ const AuthScreen: React.FC<{
   return (
     <div className="gaia-auth">
       <div className="gaia-auth__box">
-
-        {/* Logo */}
         <div className="gaia-auth__logo">
           <span className="gaia-auth__logo-gaia">GAIA</span>
         </div>
         <p className="gaia-auth__tagline">
           Sentient Terrestrial Quantum-Intelligent Application
         </p>
-
-        {/* Tabs */}
         <div className="gaia-auth__tabs" role="tablist">
-          <button
-            role="tab"
-            aria-selected={tab === 'signin'}
+          <button role="tab" aria-selected={tab === 'signin'}
             className={`gaia-auth__tab${tab === 'signin' ? ' gaia-auth__tab--active' : ''}`}
-            onClick={() => switchTab('signin')}
-          >Sign in</button>
-          <button
-            role="tab"
-            aria-selected={tab === 'signup'}
+            onClick={() => switchTab('signin')}>Sign in</button>
+          <button role="tab" aria-selected={tab === 'signup'}
             className={`gaia-auth__tab${tab === 'signup' ? ' gaia-auth__tab--active' : ''}`}
-            onClick={() => switchTab('signup')}
-          >Create account</button>
+            onClick={() => switchTab('signup')}>Create account</button>
         </div>
-
-        {/* Form */}
         <form className="gaia-auth__form" onSubmit={handleSubmit} noValidate>
-
           {tab === 'signup' && (
             <div className="gaia-auth__field">
               <label className="gaia-auth__label" htmlFor="gaia-email">Email address</label>
-              <input
-                id="gaia-email"
-                className="gaia-auth__input"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
+              <input id="gaia-email" className="gaia-auth__input" type="email"
+                placeholder="you@example.com" value={email}
                 onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-                disabled={loading}
-              />
+                autoComplete="email" required disabled={loading} />
             </div>
           )}
-
           <div className="gaia-auth__field">
             <label className="gaia-auth__label" htmlFor="gaia-uname">
               {tab === 'signup' ? 'Username' : 'Username or email'}
             </label>
-            <input
-              id="gaia-uname"
-              className="gaia-auth__input"
-              type="text"
+            <input id="gaia-uname" className="gaia-auth__input" type="text"
               placeholder={tab === 'signup' ? 'yourname' : 'username or email'}
-              value={uname}
-              onChange={e => setUname(e.target.value)}
+              value={uname} onChange={e => setUname(e.target.value)}
               autoComplete={tab === 'signup' ? 'username' : 'username email'}
-              required
-              disabled={loading}
-            />
+              required disabled={loading} />
             {tab === 'signup' && (
               <span className="gaia-auth__hint">Letters, numbers, hyphens, underscores only</span>
             )}
           </div>
-
           <div className="gaia-auth__field">
             <label className="gaia-auth__label" htmlFor="gaia-pw">Password</label>
-            <input
-              id="gaia-pw"
-              className="gaia-auth__input"
-              type="password"
+            <input id="gaia-pw" className="gaia-auth__input" type="password"
               placeholder={tab === 'signup' ? 'At least 8 characters' : 'Password'}
-              value={pw}
-              onChange={e => setPw(e.target.value)}
+              value={pw} onChange={e => setPw(e.target.value)}
               autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
-              required
-              disabled={loading}
-            />
+              required disabled={loading} />
           </div>
-
           {tab === 'signup' && (
             <div className="gaia-auth__field">
               <label className="gaia-auth__label" htmlFor="gaia-pw2">Confirm password</label>
-              <input
-                id="gaia-pw2"
-                className="gaia-auth__input"
-                type="password"
-                placeholder="Repeat your password"
-                value={pw2}
+              <input id="gaia-pw2" className="gaia-auth__input" type="password"
+                placeholder="Repeat your password" value={pw2}
                 onChange={e => setPw2(e.target.value)}
-                autoComplete="new-password"
-                required
-                disabled={loading}
-              />
+                autoComplete="new-password" required disabled={loading} />
             </div>
           )}
-
           {displayError && (
             <div className="gaia-auth__error" role="alert">{displayError}</div>
           )}
-
-          <button
-            className="gaia-auth__submit"
-            type="submit"
-            disabled={loading}
-          >
+          <button className="gaia-auth__submit" type="submit" disabled={loading}>
             {loading
               ? (tab === 'signup' ? 'Creating account…' : 'Signing in…')
-              : (tab === 'signup' ? 'Create account' : 'Sign in')
-            }
+              : (tab === 'signup' ? 'Create account'     : 'Sign in')}
           </button>
-
           {tab === 'signin' && (
-            <p className="gaia-auth__switch">
-              New to GAIA?{' '}
+            <p className="gaia-auth__switch">New to GAIA?{' '}
               <button type="button" className="gaia-auth__switch-link" onClick={() => switchTab('signup')}>
                 Create an account
               </button>
             </p>
           )}
           {tab === 'signup' && (
-            <p className="gaia-auth__switch">
-              Already have an account?{' '}
+            <p className="gaia-auth__switch">Already have an account?{' '}
               <button type="button" className="gaia-auth__switch-link" onClick={() => switchTab('signin')}>
                 Sign in
               </button>
@@ -302,11 +252,8 @@ export const GaiaShell: React.FC = () => {
   const [activeMode,    setActiveMode]    = useState<CrystalMode>(CrystalMode.SOVEREIGN_CORE);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
 
-  // ── Phase 2: Alignment theme ———————————————————————————————————————
-  // Injects CSS tokens onto :root and sets data-alignment-tier.
-  // Only called when authenticated (this component only renders post-login).
+  // ── Phase 2: Alignment theme ───────────────────────────────────────
   const { tier: alignmentTier } = useAlignmentTheme();
-  // ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3000) })
@@ -332,6 +279,8 @@ export const GaiaShell: React.FC = () => {
       data-mode={activeMode}
       data-alignment-tier={alignmentTier}
     >
+      {/* ── Phase 6: Ambient particle field — renders behind everything ── */}
+      <FieldVisualiser tier={alignmentTier} />
 
       {/* TOP BAR */}
       <header className="gaia-shell__topbar">
@@ -357,8 +306,6 @@ export const GaiaShell: React.FC = () => {
 
       {/* BODY */}
       <div className="gaia-shell__body">
-
-        {/* LEFT RAIL — mode buttons + Viriditas orb pinned to bottom */}
         <nav className="gaia-shell__rail" aria-label="Operating modes">
           {CRYSTAL_ORDER.map(mode => (
             <button
@@ -372,14 +319,10 @@ export const GaiaShell: React.FC = () => {
               <span className="gaia-shell__rail-name">{CRYSTAL_LABELS[mode]}</span>
             </button>
           ))}
-
-          {/* Viriditas alignment orb — compact, always-visible */}
           <div className="gaia-shell__rail-alignment">
             <ViritasWidget />
           </div>
         </nav>
-
-        {/* CHAT */}
         <main className="gaia-shell__content">
           <GaiaChat
             token={token}
@@ -387,7 +330,6 @@ export const GaiaShell: React.FC = () => {
             mode={MODE_TO_SLUG[activeMode]}
           />
         </main>
-
       </div>
 
       {/* SOVEREIGNTY LAYER */}

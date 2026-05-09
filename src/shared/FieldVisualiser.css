@@ -1,0 +1,53 @@
+/*
+ * src/shared/FieldVisualiser.css
+ * GAIA-OS — Ambient Field Visualiser
+ * Issue #68 Phase 6
+ *
+ * Canvas sits behind all shell UI.
+ * Opacity per tier is controlled by CSS attribute selector;
+ * the Three.js ShaderMaterial opacity handles individual particle
+ * opacity — this CSS opacity dims the entire layer holistically.
+ */
+
+.field-visualiser {
+  position:       fixed;
+  inset:          0;
+  z-index:        0;    /* above the ::before nebula bloom (no z), below shell body (z:1) */
+  pointer-events: none;
+  overflow:       hidden;
+
+  /* Default opacity — overridden per tier below */
+  opacity: 0.55;
+  transition: opacity 3s ease;  /* matches Phase 2 transition bridge duration */
+}
+
+.field-visualiser__canvas {
+  display: block;
+  width:   100%;
+  height:  100%;
+}
+
+/* ── Tier-specific layer opacity ────────────────────────────────────── */
+/*
+ * These are applied to the wrapper div via the parent
+ * .gaia-shell[data-alignment-tier] selector set by Phase 2.
+ * The Three.js ShaderMaterial opacity already ramps per tier;
+ * this CSS opacity provides an additional holistic layer dim so
+ * the field is almost invisible at minimal tier and vivid at vibrant.
+ */
+
+[data-alignment-tier="minimal"]  .field-visualiser { opacity: 0.18; }
+[data-alignment-tier="core"]     .field-visualiser { opacity: 0.32; }
+[data-alignment-tier="standard"] .field-visualiser { opacity: 0.50; }
+[data-alignment-tier="full"]     .field-visualiser { opacity: 0.65; }
+[data-alignment-tier="vibrant"]  .field-visualiser { opacity: 0.82; }
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .field-visualiser {
+    /* Static frame only — RAF loop is stopped inside FieldParticles */
+    opacity:    0.30 !important;
+    transition: none;
+  }
+}
