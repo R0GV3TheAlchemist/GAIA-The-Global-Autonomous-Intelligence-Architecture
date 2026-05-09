@@ -277,3 +277,36 @@
   inset: 0;
   z-index: 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Viriditas alignment panel (React island overlay)    Issue #64       */
+/* ------------------------------------------------------------------ */
+
+.ht-alignment-panel {
+  position:       absolute;
+  bottom:         20px;
+  left:           20px;
+  z-index:        10;          /* above Three.js canvas (z=0), below rescan btn (z=20) */
+  width:          160px;
+
+  /* glass card */
+  background:     rgba(10, 10, 20, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border:         1px solid rgba(255, 255, 255, 0.08);
+  border-radius:  16px;
+  padding:        16px 12px 12px;
+
+  /* Don't intercept Three.js pointer events outside the panel */
+  pointer-events: auto;
+
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45),
+              0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+
+  transition: opacity 0.4s ease;
+}
+
+/* Full-width widget inside the glass card */
+.ht-alignment-panel .viriditas-widget {
+  width: 100%;
+}

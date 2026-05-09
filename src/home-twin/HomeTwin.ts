@@ -7,6 +7,12 @@
  *   3. After scan → RoomRenderer + SurfaceDetector overlay
  *
  * Canon Ref: C20 (Home Twin — Spatial Presence)
+ *
+ * Viriditas addition (Issue #64):
+ *   After the renderer mounts, a React island containing
+ *   <ViritasWidget showDetail /> is injected into the bottom-left
+ *   corner of the room container as a glass-card overlay.
+ *   The island is cleanly unmounted on dispose() and rescan.
  */
 
 import './home-twin.css';
@@ -14,11 +20,15 @@ import { RoomScanner }     from './RoomScanner';
 import { RoomRenderer }    from './RoomRenderer';
 import { SurfaceDetector } from './SurfaceDetector';
 import { RoomStore }       from './RoomStore';
+import React               from 'react';
+import { createRoot, Root } from 'react-dom/client';
+import { ViritasWidget }   from '../shared/ViritasWidget';
 
 export class HomeTwin {
-  private root: HTMLElement;
-  private renderer: RoomRenderer | null = null;
-  private scanner:  RoomScanner  | null = null;
+  private root:          HTMLElement;
+  private renderer:      RoomRenderer | null = null;
+  private scanner:       RoomScanner  | null = null;
+  private viritasRoot:   Root         | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -36,8 +46,39 @@ export class HomeTwin {
   }
 
   dispose(): void {
+    this._disposeViritasPanel();
     this.renderer?.dispose();
     this.scanner?.dispose();
+  }
+
+  // ------------------------------------------------------------------ //
+  //  Viriditas panel (React island)                                      //
+  // ------------------------------------------------------------------ //
+
+  private _mountViritasPanel(container: HTMLElement): void {
+    // Create the host slot if it doesn't already exist
+    let slot = container.querySelector<HTMLElement>('#ht-alignment-root');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.id        = 'ht-alignment-root';
+      slot.className = 'ht-alignment-panel';
+      container.appendChild(slot);
+    }
+
+    this._disposeViritasPanel();
+    this.viritasRoot = createRoot(slot);
+    this.viritasRoot.render(
+      React.createElement(ViritasWidget, { showDetail: true })
+    );
+  }
+
+  private _disposeViritasPanel(): void {
+    if (this.viritasRoot) {
+      this.viritasRoot.unmount();
+      this.viritasRoot = null;
+    }
+    // Remove the DOM slot so _mountViritasPanel re-creates it cleanly
+    this.root.querySelector('#ht-alignment-root')?.remove();
   }
 
   // ------------------------------------------------------------------ //
@@ -45,6 +86,7 @@ export class HomeTwin {
   // ------------------------------------------------------------------ //
 
   private _mountScanPrompt(): void {
+    this._disposeViritasPanel();
     this.root.innerHTML = `
 <div class="ht-prompt">
   <div class="ht-prompt-icon">◉</div>
@@ -64,6 +106,7 @@ export class HomeTwin {
   // ------------------------------------------------------------------ //
 
   private _mountScanner(): void {
+    this._disposeViritasPanel();
     this.root.innerHTML = '<div id="ht-scanner-host" class="ht-scanner-host"></div>';
     const host = this.root.querySelector<HTMLElement>('#ht-scanner-host')!;
 
@@ -86,9 +129,10 @@ export class HomeTwin {
     const container = this.root.querySelector<HTMLElement>('#ht-room-container')!;
 
     const rescanBtn = document.createElement('button');
-    rescanBtn.className = 'ht-btn-rescan';
+    rescanBtn.className   = 'ht-btn-rescan';
     rescanBtn.textContent = '↺ Rescan Room';
     rescanBtn.addEventListener('click', () => {
+      this._disposeViritasPanel();
       this.renderer?.dispose();
       this._mountScanner();
     });
@@ -96,6 +140,9 @@ export class HomeTwin {
 
     this.renderer = new RoomRenderer(container);
     await this.renderer.mount();
+
+    // Mount the Viriditas detail panel after the renderer is ready
+    this._mountViritasPanel(container);
   }
 
   // ------------------------------------------------------------------ //
