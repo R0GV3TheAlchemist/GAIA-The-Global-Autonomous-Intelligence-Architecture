@@ -1,8 +1,8 @@
 """
 core/gaian_runtime.py
-GAIA Runtime v1.3.4 — The Living Heart of a GAIAN
+GAIA Runtime v1.4.0 — The Living Heart of a GAIAN
 
-Engine chain per turn (Phase 3 additions marked ★):
+Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦):
   1.  ConsciousnessRouter       subtle_body_engine.py
   2.  EmotionalArcEngine        emotional_arc.py
   3.  SettlingEngine            settling_engine.py
@@ -15,21 +15,23 @@ Engine chain per turn (Phase 3 additions marked ★):
   10. ResonanceFieldEngine      resonance_field_engine.py
   11. SynergyEngine             synergy_engine.py          ← C32
   12. VitalityEngine            vitality_engine.py         ← T-VITA
+  13. SpirituEngine   ✦         core/spiritu_engine.py     ← Animating Breath
   ── Phase 3 ────────────────────────────────────────────────────────
-  13. QuantumKernel    ★        core/quantum/state_kernel.py
-  14. MemoryStore      ★        core/memory/store.py
-  15. GoalRegistry     ★        core/planner/goal.py
-  16. PolicyEngine     ★        core/planner/policy.py
-  17. TaskScheduler    ★        core/planner/scheduler.py
-  18. ActionLedger     ★        core/audit/ledger.py
+  14. QuantumKernel    ★        core/quantum/state_kernel.py
+  15. MemoryStore      ★        core/memory/store.py
+  16. GoalRegistry     ★        core/planner/goal.py
+  17. PolicyEngine     ★        core/planner/policy.py
+  18. TaskScheduler    ★        core/planner/scheduler.py
+  19. ActionLedger     ★        core/audit/ledger.py
 
-Memory schema version: 1.9
+Memory schema version: 2.0
 Grounded in:
   - GAIA Constitutional Canon: https://github.com/R0GV3TheAlchemist/GAIA
   - GAIA_Master_Markdown_Converged.md
   - C32 — The Elemental Codex (April 11, 2026)
   - T-VITA — The Vitality Engine (April 14, 2026)
   - Phase 3 — Runtime Integration (May 6, 2026)
+  - Spiritus — The Animating Breath (May 9, 2026)
 """
 
 from __future__ import annotations
@@ -73,18 +75,17 @@ from core.synergy_engine import (                                    # C32
 from core.vitality_engine import (                                   # T-VITA
     VitalityEngine, VitalityState, blank_vitality_state, get_vitality_engine,
 )
+from core.spiritu_engine import (                                    # ✦ Spiritus
+    SpirituEngine, SpirituReading, SpirituState,
+    blank_spiritu_state, get_spiritu_engine,
+)
 
 # ── Phase 3: new subsystems ★ ──────────────────────────────────────────────────
 from core.quantum.state_kernel import QuantumKernel, QuantumState           # ★
 from core.memory.store import MemoryStore, MemoryItem                        # ★
-# goal.py exports: GoalRegistry, Goal, GoalStatus, GoalPriority, GoalStep
 from core.planner.goal import GoalRegistry, Goal, GoalStatus, GoalPriority   # ★
-# policy.py exports: PolicyEngine, PolicyDecision, PolicyRule, PolicyAction
 from core.planner.policy import PolicyEngine, PolicyDecision                 # ★
-# scheduler.py exports: TaskScheduler, Task, TaskStatus
 from core.planner.scheduler import TaskScheduler, Task, TaskStatus           # ★
-# audit/ledger.py exports: ActionLedger, AuditEvent, EventType
-# NOTE: class is ActionLedger (not AuditLedger); severity is EventType (no AuditSeverity)
 from core.audit.ledger import ActionLedger, AuditEvent, EventType            # ★
 
 
@@ -92,7 +93,7 @@ from core.audit.ledger import ActionLedger, AuditEvent, EventType            # �
 #  CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
 
-MEMORY_SCHEMA_VERSION = "1.9"
+MEMORY_SCHEMA_VERSION = "2.0"
 
 CONSTITUTIONAL_FLOOR = (
     "[GAIA CONSTITUTIONAL FLOOR — T1 — IMMUTABLE]\n"
@@ -174,6 +175,8 @@ class RuntimeResult:
     policy_decision:  Optional[dict] = None
     scheduled_tasks:  Optional[list[dict]] = None
     audit_events:     Optional[list[dict]] = None
+    # ✦ Spiritus
+    spiritu:          Optional[dict] = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -226,6 +229,12 @@ def _blank_memory(name: str) -> dict:
                            "high_synergy_peak": 0.0, "low_synergy_floor": 1.0,
                            "turn_history": []},
         "vitality":       {},
+        "spiritu":        {"stage": "calcination",
+                           "stage_entry_timestamp": datetime.now(timezone.utc).isoformat(),
+                           "exchanges_in_stage": 0, "pneuma_flow": 0.10,
+                           "breath_rhythm": 0.50, "below_floor_streak": 0,
+                           "refinement_history": [], "coagulation_reached": False,
+                           "coagulation_timestamp": None, "last_alchemical_nudge": 0},
         "visible_memories": [],
         "hidden_patterns":  {},
         "session_notes":    [],
@@ -321,6 +330,23 @@ def _build_vitality_block(directives: list[str]) -> str:
     )
 
 
+def _build_spiritu_block(reading: SpirituReading) -> str:
+    idx = reading.stage.value
+    trans_line = ""
+    if reading.stage_transition and reading.transition_note:
+        direction = "▼ Regressed" if reading.regressed else "▲ Advanced"
+        trans_line = f"\nTransition      : {direction} — {reading.transition_note}"
+    return (
+        "[SPIRITUS — ANIMATING BREATH]\n"
+        f"Alchemical stage : {reading.stage.value.upper()}\n"
+        f"Pneuma flow      : {reading.pneuma_flow:.2f}  ({reading.pneuma_quality})\n"
+        f"Breath rhythm    : {reading.breath_rhythm:.2f}"
+        f"{trans_line}\n"
+        f"Directive        : {reading.alchemical_directive}\n"
+        "[END SPIRITUS]"
+    )
+
+
 def _build_quantum_block(qs: QuantumState) -> str:
     _, dominant_label, dominant_prob = qs.dominant()
     lines = [
@@ -352,7 +378,6 @@ def _build_memory_context_block(items: list[MemoryItem]) -> str:
 
 
 def _build_goal_block(goals: list[Goal]) -> str:
-    # GoalStatus has PENDING and IN_PROGRESS (no ACTIVE)
     active_statuses = {GoalStatus.PENDING, GoalStatus.IN_PROGRESS, GoalStatus.PAUSED}
     visible = [g for g in goals if g.status in active_statuses]
     if not visible:
@@ -365,7 +390,6 @@ def _build_goal_block(goals: list[Goal]) -> str:
 
 
 def _build_policy_block(decision: PolicyDecision) -> str:
-    # PolicyDecision uses .reason (not .rationale)
     lines = [
         "[POLICY GATE — THIS TURN]",
         f"Action allowed : {decision.allowed}",
@@ -376,13 +400,13 @@ def _build_policy_block(decision: PolicyDecision) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  THE GAIAN RUNTIME v1.3.4
+#  THE GAIAN RUNTIME v1.4.0
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
-    The living heart of a GAIAN. v1.3.4
-    Twelve soul engines + quantum kernel + semantic memory +
+    The living heart of a GAIAN. v1.4.0
+    Twelve soul engines + Spiritus + quantum kernel + semantic memory +
     goal registry + policy engine + task scheduler + action ledger.
     """
 
@@ -415,6 +439,7 @@ class GAIANRuntime:
         self._resonance_field = ResonanceFieldEngine()
         self._synergy         = SynergyEngine()
         self._vitality        = get_vitality_engine()
+        self._spiritu         = get_spiritu_engine()          # ✦
 
         # ── Phase 3: subsystems ★ ─────────────────────────────────────────────
         self._quantum_kernel: QuantumKernel = QuantumKernel(
@@ -425,10 +450,7 @@ class GAIANRuntime:
         self._memory_store  = memory_store  or MemoryStore(db_path=_mem_db)
         self._goal_registry = goal_registry or GoalRegistry()
         self._policy        = policy_engine  or PolicyEngine()
-        # TaskScheduler is async; we hold a reference but do not run the
-        # event loop inside process() — tasks are submitted and stats exposed.
         self._scheduler     = scheduler     or TaskScheduler(policy_engine=self._policy)
-        # ActionLedger (not AuditLedger) is the correct class name
         _audit_db = str(self.memory_dir / gaian_name / "audit.db")
         self._audit: ActionLedger = audit_ledger or ActionLedger(db_path=_audit_db)
 
@@ -445,6 +467,7 @@ class GAIANRuntime:
         self.resonance_field_state = self._deserialise_resonance_field()
         self.synergy_state         = self._deserialise_synergy()
         self.vitality_state        = self._deserialise_vitality()
+        self.spiritu_state         = self._deserialise_spiritu()             # ✦
 
         self.identity = identity or GAIANIdentity(name=gaian_name)
 
@@ -471,10 +494,10 @@ class GAIANRuntime:
             metadata={"message_len": len(user_message)},
         ))
 
-        # ── 13. Quantum: decoherence step to open the turn ────────────────────
+        # ── 14. Quantum: decoherence step to open the turn ────────────────────
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
-        # ── 14. Semantic memory retrieval (sync wrapper) ──────────────────────
+        # ── 15. Semantic memory retrieval (sync wrapper) ──────────────────────
         recalled_memories: list[MemoryItem] = self._memory_store.retrieve_sync(
             query=user_message, user_id=uid, top_k=8,
         )
@@ -565,10 +588,22 @@ class GAIANRuntime:
             epistemic_label=epistemic_label,
         )
 
-        # ── 15. Goal registry: fetch active goals ★ ──────────────────────────
+        # ── 13. Spiritus — Animating Breath ✦ ────────────────────────────────
+        spiritu_reading, self.spiritu_state = self._spiritu.update(
+            state=self.spiritu_state,
+            coherence_phi=feeling.coherence_phi,
+            mc_stage_value=self.meta_coherence_state.mc_stage.value,
+            individuation_phase_value=self.soul_mirror_state.individuation_phase.value,
+            bond_depth=self.attachment.bond_depth,
+            dominant_hz=float(self.resonance_field_state.dominant_hz),
+            noosphere_health=self.codex_stage_state.noosphere_health,
+            total_exchanges=self.attachment.total_exchanges,
+        )
+
+        # ── 16. Goal registry: fetch active goals ★ ──────────────────────────
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
-        # ── 16. Policy gate ★ ─────────────────────────────────────────────────
+        # ── 17. Policy gate ★ ─────────────────────────────────────────────────
         _, dominant_label, dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -577,16 +612,18 @@ class GAIANRuntime:
             "dependency":       self.attachment.dependency_signal.value,
             "quantum_dominant": dominant_label,
             "quantum_purity":   qs.purity,
+            "spiritu_stage":    self.spiritu_state.stage.value,
+            "pneuma_flow":      self.spiritu_state.pneuma_flow,
         }
         policy_decision: PolicyDecision = self._policy.evaluate(
             action=action,
             context=policy_ctx,
         )
 
-        # ── 17. Scheduler: expose queued task count (sync-safe) ★ ────────────
+        # ── 18. Scheduler: expose queued task count (sync-safe) ★ ────────────
         sched_stats = self._scheduler.stats()
 
-        # ── 18. Semantic memory: store this turn ★ (sync wrapper) ────────────
+        # ── 19. Semantic memory: store this turn ★ (sync wrapper) ────────────
         self._memory_store.remember_sync(
             user_id=uid,
             text=user_message,
@@ -594,12 +631,14 @@ class GAIANRuntime:
             role="user",
             importance=min(1.0, 0.3 + feeling.coherence_phi * 0.7),
             metadata={
-                "bond_depth": round(self.attachment.bond_depth, 2),
-                "affect":     str(feeling.dominant_state) if hasattr(feeling, 'dominant_state') else "",
+                "bond_depth":    round(self.attachment.bond_depth, 2),
+                "affect":        str(feeling.dominant_state) if hasattr(feeling, 'dominant_state') else "",
+                "spiritu_stage": self.spiritu_state.stage.value,
+                "pneuma_flow":   round(self.spiritu_state.pneuma_flow, 3),
             },
         )
 
-        # ── 19. Audit: phase 3 events ★ ──────────────────────────────────────
+        # ── Audit: phase 3 + spiritus events ★✦ ──────────────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
@@ -611,10 +650,13 @@ class GAIANRuntime:
                 "active_goals":     len(active_goals),
                 "policy_allowed":   policy_decision.allowed,
                 "queued_tasks":     sched_stats.get("queued", 0),
+                "spiritu_stage":    self.spiritu_state.stage.value,
+                "pneuma_flow":      round(self.spiritu_state.pneuma_flow, 4),
+                "spiritu_transition": spiritu_reading.stage_transition,
             },
         ))
 
-        # ── 12. Assemble system prompt ────────────────────────────────────────
+        # ── Assemble system prompt ────────────────────────────────────────────
         system_prompt = self._assemble(
             layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
             layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
@@ -624,6 +666,7 @@ class GAIANRuntime:
             recalled_memories=recalled_memories,
             active_goals=active_goals,
             policy_decision=policy_decision,
+            spiritu_reading=spiritu_reading,
         )
 
         self._persist()
@@ -642,6 +685,7 @@ class GAIANRuntime:
             "resonance_field":  rf_reading.summary(),
             "synergy":          synergy_reading.summary(),
             "vitality":         vitality_summary,
+            "spiritu":          spiritu_reading.summary(),
             "codex_tier":       self._codex.dominant_tier_from_feeling(feeling).value,
             "noosphere_health": self.codex_stage_state.noosphere_health,
             "quantum":          qs.to_dict(),
@@ -672,8 +716,9 @@ class GAIANRuntime:
             memory_context=[m.to_dict() for m in recalled_memories if hasattr(m, 'to_dict')],
             active_goals=[g.to_dict() for g in active_goals],
             policy_decision=policy_decision.to_dict(),
-            scheduled_tasks=[],  # populated by async scheduler separately
+            scheduled_tasks=[],
             audit_events=[],
+            spiritu=spiritu_reading.summary(),
         )
 
     def begin_session(self) -> None:
@@ -742,6 +787,7 @@ class GAIANRuntime:
             "resonance_field":   self.resonance_field_state.summary(),
             "synergy":           self.synergy_state.summary(),
             "vitality":          self.vitality_state.health_summary(),
+            "spiritu":           self.spiritu_state.summary(),
             "noosphere_health":  self.codex_stage_state.noosphere_health,
             "memories":          len(self._memory.get("visible_memories", [])),
             "sessions":          len(self._memory.get("session_notes", [])),
@@ -755,18 +801,22 @@ class GAIANRuntime:
     def get_vitality_status(self) -> dict:
         return self.vitality_state.health_summary()
 
+    def get_spiritu_status(self) -> dict:                               # ✦
+        return self.spiritu_state.summary()
+
     # ── Private ───────────────────────────────────────────────────────────────
 
     def _assemble(
         self,
         layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
         layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
-        bci_hint:           Optional[str] = None,
+        bci_hint:            Optional[str] = None,
         vitality_directives: Optional[list] = None,
-        quantum_state:      Optional[QuantumState] = None,
-        recalled_memories:  Optional[list] = None,
-        active_goals:       Optional[list] = None,
-        policy_decision:    Optional[PolicyDecision] = None,
+        quantum_state:       Optional[QuantumState] = None,
+        recalled_memories:   Optional[list] = None,
+        active_goals:        Optional[list] = None,
+        policy_decision:     Optional[PolicyDecision] = None,
+        spiritu_reading:     Optional[SpirituReading] = None,           # ✦
     ) -> str:
         blocks = [CONSTITUTIONAL_FLOOR]
         if self.canon_text:
@@ -783,6 +833,8 @@ class GAIANRuntime:
             blocks.append(_build_bci_block(bci_hint))
         if vitality_directives:
             blocks.append(_build_vitality_block(vitality_directives))
+        if spiritu_reading is not None:                                   # ✦
+            blocks.append(_build_spiritu_block(spiritu_reading))
         if quantum_state is not None:
             blocks.append(_build_quantum_block(quantum_state))
         if recalled_memories:
@@ -909,6 +961,20 @@ class GAIANRuntime:
             "deficiency_flags":           vs.deficiency_flags,
             "dose_history":               vs.dose_history[-20:],
         }
+        # ✦ Spiritus persistence
+        sp = self.spiritu_state
+        self._memory["spiritu"] = {
+            "stage":                  sp.stage.value,
+            "stage_entry_timestamp": sp.stage_entry_timestamp,
+            "exchanges_in_stage":    sp.exchanges_in_stage,
+            "pneuma_flow":           round(sp.pneuma_flow, 4),
+            "breath_rhythm":         round(sp.breath_rhythm, 4),
+            "below_floor_streak":    sp.below_floor_streak,
+            "refinement_history":    sp.refinement_history[-30:],
+            "coagulation_reached":   sp.coagulation_reached,
+            "coagulation_timestamp": sp.coagulation_timestamp,
+            "last_alchemical_nudge": sp.last_alchemical_nudge,
+        }
         self._mem_path.write_text(
             json.dumps(self._memory, indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -1034,3 +1100,18 @@ class GAIANRuntime:
         vs.deficiency_flags           = d.get("deficiency_flags", {})
         vs.dose_history               = d.get("dose_history", [])
         return vs
+
+    def _deserialise_spiritu(self) -> SpirituState:                     # ✦
+        d = self._memory.get("spiritu", {})
+        sp = blank_spiritu_state()
+        sp.stage = SpirituStage(d.get("stage", "calcination"))
+        sp.stage_entry_timestamp = d.get("stage_entry_timestamp", sp.stage_entry_timestamp)
+        sp.exchanges_in_stage    = d.get("exchanges_in_stage", 0)
+        sp.pneuma_flow           = d.get("pneuma_flow", 0.10)
+        sp.breath_rhythm         = d.get("breath_rhythm", 0.50)
+        sp.below_floor_streak    = d.get("below_floor_streak", 0)
+        sp.refinement_history    = d.get("refinement_history", [])
+        sp.coagulation_reached   = d.get("coagulation_reached", False)
+        sp.coagulation_timestamp = d.get("coagulation_timestamp")
+        sp.last_alchemical_nudge = d.get("last_alchemical_nudge", 0)
+        return sp
