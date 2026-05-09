@@ -8,6 +8,9 @@ use tauri::{
 };
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
+// ── Modules ───────────────────────────────────────────────────────────────────
+pub mod schumann;
+
 /// Shared handle to the sidecar child process so we can kill it on exit.
 type SidecarHandle = Arc<Mutex<Option<CommandChild>>>;
 
@@ -296,8 +299,6 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                 }
 
                 if ready {
-                    // Notify the Python backend that the IPC bridge is ready.
-                    // Python will use http://127.0.0.1:8009/emit for all WebView events.
                     let ipc_notify = reqwest::Client::new()
                         .post("http://127.0.0.1:8008/internal/ipc-ready")
                         .timeout(std::time::Duration::from_secs(2))
@@ -346,8 +347,6 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // Start the Axum IPC bridge FIRST so Python can emit to WebView
-            // as soon as its backend is ready.
             start_ipc_bridge(app.handle().clone());
 
             let handle = app.state::<SidecarHandle>().inner().clone();
@@ -414,7 +413,8 @@ pub fn run() {
             open_log_dir,
             load_ambient_position,
             navigate_main,
-            quit_app
+            quit_app,
+            schumann::get_alignment_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running GAIA");
