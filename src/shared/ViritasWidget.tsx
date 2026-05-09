@@ -3,6 +3,7 @@
  *
  * GAIA-OS Viriditas Biometric Alignment Widget
  * Pillar II: Viriditas — Issue #64 (Phase 2, frontend)
+ * Issue #68 Phase 3: GSAP breathing animation
  *
  * Renders a tier-driven animated orb + score ring that reflects the
  * current Schumann–HRV alignment state fetched by `useAlignment`.
@@ -18,18 +19,25 @@
  * Accessibility:
  *   role="status" + aria-live="polite" so screen readers announce
  *   tier changes without interrupting the current focus.
+ *
+ * Animation:
+ *   GSAP breathing tween via useBreathingAnimation() — the orb inhales
+ *   and exhales at the physiological rate of the current alignment tier.
+ *   CSS keyframe animation (viriditas-pulse) remains active as a
+ *   reduced-motion fallback via the @media query in ViritasWidget.css.
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useAlignment, AlignmentTier } from '../hooks/useAlignment';
+import { useBreathingAnimation }        from '../hooks/useBreathingAnimation';
 import './ViritasWidget.css';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const RING_RADIUS  = 42;                         // px, inside 100x100 viewBox
-const CIRCUMF      = 2 * Math.PI * RING_RADIUS;  // ~263.9
+const RING_RADIUS  = 42;
+const CIRCUMF      = 2 * Math.PI * RING_RADIUS;
 
 const TIER_LABELS: Record<AlignmentTier, string> = {
   minimal:  'Restorative',
@@ -40,11 +48,11 @@ const TIER_LABELS: Record<AlignmentTier, string> = {
 };
 
 const TIER_ICONS: Record<AlignmentTier, string> = {
-  minimal:  '🌑',
-  core:     '🌒',
-  standard: '🌕',
-  full:     '✨',
-  vibrant:  '🌟',
+  minimal:  '\uD83C\uDF11',
+  core:     '\uD83C\uDF12',
+  standard: '\uD83C\uDF15',
+  full:     '\u2728',
+  vibrant:  '\uD83C\uDF1F',
 };
 
 // ---------------------------------------------------------------------------
@@ -64,16 +72,22 @@ export const ViritasWidget: React.FC<ViritasWidgetProps> = ({
 }) => {
   const { state, loading, error, refresh } = useAlignment(rawRmssd);
 
+  // Ref for GSAP breathing animation target
+  const orbRef = useRef<HTMLDivElement>(null);
+
   // Stroke dasharray: filled arc proportional to score
   const dashArray = useMemo(() => {
-    const score = state?.score ?? 50;
+    const score  = state?.score ?? 50;
     const filled = (score / 100) * CIRCUMF;
     return `${filled.toFixed(2)} ${(CIRCUMF - filled).toFixed(2)}`;
   }, [state?.score]);
 
   const tier: AlignmentTier = state?.ui_tier ?? 'standard';
-  const score = state?.score ?? 50;
-  const isFallback = !!state?.fallback_mode;
+  const score               = state?.score   ?? 50;
+  const isFallback          = !!state?.fallback_mode;
+
+  // ── Phase 3: GSAP breathing — mounts on orbRef, reacts to tier changes
+  useBreathingAnimation(orbRef, tier);
 
   return (
     <div
@@ -86,7 +100,7 @@ export const ViritasWidget: React.FC<ViritasWidgetProps> = ({
         loading ? 'loading' : error ? 'unavailable' : `${TIER_LABELS[tier]}, ${Math.round(score)} of 100`
       }`}
     >
-      {/* ── Animated orb ──────────────────────────────────────── */}
+      {/* ── Animated orb ———————————————————————————————— */}
       <div className="viriditas-widget__orb-wrap" aria-hidden="true">
         <svg
           className="viriditas-widget__ring"
@@ -113,30 +127,31 @@ export const ViritasWidget: React.FC<ViritasWidgetProps> = ({
           />
         </svg>
 
-        {/* pulsing orb core */}
+        {/* Orb core — GSAP breathing target via orbRef */}
         <div
+          ref={orbRef}
           className={`viriditas-widget__orb${
             loading ? ' viriditas-widget__orb--loading' : ''
           }`}
           aria-hidden="true"
         >
           <span className="viriditas-widget__icon">
-            {error ? '🛑' : loading ? '◯' : TIER_ICONS[tier]}
+            {error ? '\uD83D\uDED1' : loading ? '\u25EF' : TIER_ICONS[tier]}
           </span>
         </div>
       </div>
 
-      {/* ── Score + tier label ─────────────────────────────── */}
+      {/* ── Score + tier label ——————————————————————————— */}
       <div className="viriditas-widget__labels">
         <span className="viriditas-widget__score">
-          {loading ? '—' : error ? 'offline' : Math.round(score)}
+          {loading ? '\u2014' : error ? 'offline' : Math.round(score)}
         </span>
         <span className="viriditas-widget__tier-label">
           {error ? 'Unavailable' : TIER_LABELS[tier]}
         </span>
       </div>
 
-      {/* ── Detail panel (opt-in) ──────────────────────────── */}
+      {/* ── Detail panel (opt-in) ————————————————————————— */}
       {showDetail && state && !error && (
         <div className="viriditas-widget__detail">
           <div className="viriditas-widget__detail-row">
@@ -171,7 +186,7 @@ export const ViritasWidget: React.FC<ViritasWidgetProps> = ({
         </div>
       )}
 
-      {/* ── Refresh button ───────────────────────────────────── */}
+      {/* ── Refresh button ——————————————————————————————— */}
       <button
         className="viriditas-widget__refresh"
         onClick={refresh}
