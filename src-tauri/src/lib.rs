@@ -289,7 +289,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                         .await
                     {
                         Ok(resp) if resp.status().is_success() => {
-                            println!("[GAIA] Python backend ready after attempt {attempt} \u2713");
+                            println!("[GAIA] Python backend ready after attempt {attempt} \u{2713}");
                             ready = true;
                             break;
                         }
@@ -307,7 +307,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                     if let Err(e) = ipc_notify {
                         eprintln!("[GAIA] IPC-ready notify failed (non-fatal): {e}");
                     } else {
-                        println!("[GAIA] IPC bridge registered with Python backend ✓");
+                        println!("[GAIA] IPC bridge registered with Python backend \u{2713}");
                     }
 
                     if let Some(window) = app_handle.get_webview_window("main") {
