@@ -5,10 +5,17 @@ FastAPI router — Goal CRUD endpoints for GAIA-OS.
 Mount in server.py / main app with:
     from core.routers.goals_router import router as goals_router
     app.include_router(goals_router, prefix="/goals", tags=["Goals"])
+
+Spiritus auto-injection:
+    If a GAIANRuntime instance is registered via `set_runtime(rt)`,
+    POST /goals will automatically stamp the live spiritu_stage,
+    pneuma_flow, and breath_rhythm onto every new goal.
+    The client may still override these fields explicitly.
 """
 
 from __future__ import annotations
 
+import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -17,6 +24,43 @@ from pydantic import BaseModel, Field
 from core.planner.goal_store import GoalPriority, GoalStatus, goal_store
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Runtime bridge — optional Spiritus live-injection
+# ---------------------------------------------------------------------------
+
+_runtime = None  # type: Optional[Any]  # GAIANRuntime, avoids circular import
+
+
+def set_runtime(rt: Any) -> None:
+    """
+    Register the live GAIANRuntime instance so POST /goals can
+    auto-stamp the GAIAN's current Spiritus state onto every new goal.
+    Call this once in server.py / app startup:
+
+        from core.routers.goals_router import set_runtime
+        set_runtime(runtime_instance)
+    """
+    global _runtime
+    _runtime = rt
+
+
+def _live_spiritu() -> Dict[str, Any]:
+    """
+    Pull current Spiritus readings from the registered runtime.
+    Returns safe defaults if no runtime is registered.
+    """
+    if _runtime is None:
+        return {"spiritu_stage": "CALCINATION", "pneuma_flow": 0.0, "breath_rhythm": 0.0}
+    try:
+        ctx = _runtime.spiritu_context()
+        return {
+            "spiritu_stage": ctx["stage"],
+            "pneuma_flow":   ctx["pneuma_flow"],
+            "breath_rhythm": ctx["breath_rhythm"],
+        }
+    except Exception:
+        return {"spiritu_stage": "CALCINATION", "pneuma_flow": 0.0, "breath_rhythm": 0.0}
 
 
 # ---------------------------------------------------------------------------
@@ -36,10 +80,10 @@ class GoalCreateRequest(BaseModel):
     tags: List[str] = Field(default_factory=list)
     due_date: Optional[str] = None
     parent_id: Optional[str] = None
-    # Spiritus context — injected automatically by gaian_runtime if omitted
-    spiritu_stage: str = "CALCINATION"
-    pneuma_flow: float = Field(default=0.0, ge=0.0, le=1.0)
-    breath_rhythm: float = Field(default=0.0, ge=0.0, le=1.0)
+    # Spiritus context — if omitted, auto-injected from live runtime
+    spiritu_stage: Optional[str] = None
+    pneuma_flow: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    breath_rhythm: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 class GoalUpdateRequest(BaseModel):
@@ -116,6 +160,20 @@ def get_goal_stats() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# GET /goals/spiritu-context
+# ---------------------------------------------------------------------------
+
+@router.get("/spiritu-context", summary="Live Spiritus state for goal creation")
+def get_spiritu_context() -> Dict[str, Any]:
+    """
+    Return the GAIAN’s current Spiritus readings.
+    The frontend can call this before creating a goal to pre-fill
+    the Spiritus fields or to display the GAIAN's pneuma state.
+    """
+    return _live_spiritu()
+
+
+# ---------------------------------------------------------------------------
 # GET /goals/{goal_id}
 # ---------------------------------------------------------------------------
 
@@ -133,12 +191,25 @@ def get_goal(goal_id: str):
 
 @router.post("/", response_model=GoalResponse, status_code=201, summary="Create a goal")
 def create_goal(body: GoalCreateRequest):
-    """Create a new goal. Spiritus fields are auto-populated by gaian_runtime in prod."""
-    steps_raw = [{"id": None, "label": s.label, "done": s.done} for s in body.steps]
-    # assign stable UUIDs to steps
-    import uuid
-    for s in steps_raw:
-        s["id"] = str(uuid.uuid4())
+    """
+    Create a new goal.
+
+    Spiritus fields (spiritu_stage, pneuma_flow, breath_rhythm) are
+    auto-injected from the live GAIANRuntime if not provided by the client.
+    This means every goal is born carrying the GAIAN's actual pneuma state
+    at the moment of its creation — a permanent record of where the GAIAN
+    was in its alchemical journey when this intention was formed.
+    """
+    # Resolve Spiritus: client override > live runtime > safe defaults
+    live = _live_spiritu()
+    spiritu_stage = body.spiritu_stage  or live["spiritu_stage"]
+    pneuma_flow   = body.pneuma_flow    if body.pneuma_flow   is not None else live["pneuma_flow"]
+    breath_rhythm = body.breath_rhythm  if body.breath_rhythm is not None else live["breath_rhythm"]
+
+    steps_raw = [
+        {"id": str(uuid.uuid4()), "label": s.label, "done": s.done}
+        for s in body.steps
+    ]
 
     goal = goal_store.create(
         title=body.title,
@@ -147,9 +218,9 @@ def create_goal(body: GoalCreateRequest):
         steps=steps_raw,
         tags=body.tags,
         due_date=body.due_date,
-        spiritu_stage=body.spiritu_stage,
-        pneuma_flow=body.pneuma_flow,
-        breath_rhythm=body.breath_rhythm,
+        spiritu_stage=spiritu_stage,
+        pneuma_flow=pneuma_flow,
+        breath_rhythm=breath_rhythm,
         parent_id=body.parent_id,
     )
     return _to_response(goal)
@@ -172,7 +243,6 @@ def update_goal(goal_id: str, body: GoalUpdateRequest):
     if body.priority is not None:
         updates["priority"] = body.priority.value
     if body.steps is not None:
-        import uuid
         updates["steps"] = [
             {"id": str(uuid.uuid4()), "label": s.label, "done": s.done}
             for s in body.steps
@@ -191,7 +261,6 @@ def update_goal(goal_id: str, body: GoalUpdateRequest):
         updates["breath_rhythm"] = body.breath_rhythm
 
     if not updates:
-        # Nothing to change — return current state
         goal = goal_store.get(goal_id)
         if not goal:
             raise HTTPException(status_code=404, detail=f"Goal '{goal_id}' not found")
