@@ -1,28 +1,42 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react            from '@vitejs/plugin-react';
 
-// @ts-expect-error process is a nodejs global
-const host = process.env.TAURI_DEV_HOST;
-
-// https://vite.dev/config/
-export default defineConfig(async () => ({
+/**
+ * vite.config.ts — web-app branch
+ * Pure Vite SPA config. No Tauri plugin or env vars.
+ *
+ * Dev server proxies /api/* to the Python backend at :8008
+ * so fetch('/api/alignment') works without CORS headers in dev.
+ * In production, configure your reverse proxy (nginx / Caddy /
+ * Cloudflare) to route /api/* to the backend service.
+ */
+export default defineConfig({
   plugins: [react()],
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  clearScreen: false,
   server: {
-    port: 1420,
-    strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: 'ws',
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      ignored: ['**/src-tauri/**'],
+    port:        3000,
+    strictPort:  false,
+    open:        true,   // open browser on `vite dev`
+    proxy: {
+      '/api': {
+        target:       'http://localhost:8008',
+        changeOrigin: true,
+        rewrite:      (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
-}));
+
+  build: {
+    outDir:          'dist',
+    sourcemap:       true,
+    rollupOptions: {
+      output: {
+        // Split Three.js into its own chunk — it's large (~600 kB)
+        manualChunks: {
+          three: ['three'],
+          gsap:  ['gsap'],
+        },
+      },
+    },
+  },
+});

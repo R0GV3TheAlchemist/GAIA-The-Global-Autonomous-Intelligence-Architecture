@@ -1,25 +1,25 @@
 /**
  * src/hooks/useAlignment.ts
+ * GAIA-OS — Alignment State Hook  (web-app branch)
  *
- * React hook — polls the Rust `get_alignment_state` Tauri command
- * every POLL_INTERVAL_MS milliseconds and returns the live
- * AlignmentStateResponse for use by ViritasWidget and any other
- * consumer that needs the current biometric alignment tier.
+ * React hook — polls GET /api/alignment every POLL_INTERVAL_MS
+ * milliseconds and returns the live AlignmentStateResponse.
+ *
+ * Web migration: replaced Tauri invoke() with fetch().
+ * rawRmssd is forwarded as a query param when available.
  *
  * Usage:
  *   const { state, loading, error, refresh } = useAlignment();
  *
- * Privacy contract:
- *   rawRmssd is sourced from the wearable store if available;
- *   passes null when no wearable is connected so the Rust layer
- *   uses the neutral HRV baseline.
+ * Backend contract:
+ *   GET /api/alignment?rmssd=<number|omit>
+ *   → JSON AlignmentState  (same shape as the Rust response)
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 
 // ---------------------------------------------------------------------------
-// Types  (mirror AlignmentStateResponse in src-tauri/src/schumann.rs)
+// Types  (mirror AlignmentStateResponse from the Python backend)
 // ---------------------------------------------------------------------------
 
 export type AlignmentTier =
@@ -36,25 +36,26 @@ export interface AlignmentState {
   solar_kp:         number;
   ui_tier:          AlignmentTier;
   last_updated:     string;   // ISO-8601 UTC
-  fallback_mode:    string;   // empty when all feeds healthy
+  fallback_mode:    string;   // empty string when all feeds healthy
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const POLL_INTERVAL_MS  = 30_000;   // 30 seconds
-const ERROR_BACKOFF_MS  = 10_000;   // retry after 10 s on error
+const POLL_INTERVAL_MS = 30_000;  // 30 s
+const ERROR_BACKOFF_MS = 10_000;  // 10 s retry on error
+const API_ENDPOINT     = '/api/alignment';
 
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
 interface UseAlignmentResult {
-  state:    AlignmentState | null;
-  loading:  boolean;
-  error:    string | null;
-  refresh:  () => void;
+  state:   AlignmentState | null;
+  loading: boolean;
+  error:   string | null;
+  refresh: () => void;
 }
 
 export function useAlignment(rawRmssd: number | null = null): UseAlignmentResult {
@@ -70,29 +71,34 @@ export function useAlignment(rawRmssd: number | null = null): UseAlignmentResult
     setLoading(true);
 
     try {
-      const result = await invoke<AlignmentState>('get_alignment_state', {
-        rawRmssd: rawRmssd ?? null,
+      // Build URL — attach rmssd as query param when available
+      const url = new URL(API_ENDPOINT, window.location.origin);
+      if (rawRmssd !== null) url.searchParams.set('rmssd', String(rawRmssd));
+
+      const res = await fetch(url.toString(), {
+        headers: { 'Accept': 'application/json' },
+        signal:  AbortSignal.timeout(8_000),   // 8 s hard timeout
       });
+
+      if (!res.ok) throw new Error(`Alignment API ${res.status}: ${res.statusText}`);
+
+      const result = await res.json() as AlignmentState;
 
       if (!mountedRef.current) return;
       setState(result);
       setError(null);
-
-      // Schedule next poll at normal cadence
       timerRef.current = setTimeout(fetchAlignment, POLL_INTERVAL_MS);
+
     } catch (err) {
       if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
-
-      // Retry sooner after a failure
       timerRef.current = setTimeout(fetchAlignment, ERROR_BACKOFF_MS);
     } finally {
       if (mountedRef.current) setLoading(false);
     }
   }, [rawRmssd]);
 
-  // Manual refresh exposed to consumers
   const refresh = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     fetchAlignment();
@@ -101,7 +107,6 @@ export function useAlignment(rawRmssd: number | null = null): UseAlignmentResult
   useEffect(() => {
     mountedRef.current = true;
     fetchAlignment();
-
     return () => {
       mountedRef.current = false;
       if (timerRef.current) clearTimeout(timerRef.current);
