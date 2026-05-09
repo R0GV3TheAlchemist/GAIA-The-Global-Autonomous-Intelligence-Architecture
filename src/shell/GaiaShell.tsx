@@ -33,7 +33,9 @@ import { FieldVisualiser }    from '../shared/FieldVisualiser';
 import { useAlignmentTheme }  from '../hooks/useAlignmentTheme';
 import './GaiaShell.css';
 
-const API_BASE = 'http://localhost:8008';
+// Relative paths — routed through the Vite proxy to :8008 in dev,
+// and through your reverse proxy in production.
+const API_BASE = '/api';
 
 // ------------------------------------------------------------------ //
 // Auth types
@@ -252,7 +254,7 @@ export const GaiaShell: React.FC = () => {
   const [activeMode,    setActiveMode]    = useState<CrystalMode>(CrystalMode.SOVEREIGN_CORE);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
 
-  // ── Phase 2: Alignment theme ───────────────────────────────────────
+  // ── Phase 2: Alignment theme ───────────────────────────────────────────────
   const { tier: alignmentTier } = useAlignmentTheme();
 
   useEffect(() => {
