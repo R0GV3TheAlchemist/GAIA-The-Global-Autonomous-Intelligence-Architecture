@@ -1,6 +1,6 @@
 """
 tests/test_gaian_runtime_smoke.py
-Smoke tests for the full GAIANRuntime chain — v1.2.0 (twelve engines).
+Smoke tests for the full GAIANRuntime chain — v1.4.0 (nineteen engines).
 
 These tests verify that the entire engine chain fires without error
 and that every output contract is satisfied. They do not test the
@@ -161,13 +161,13 @@ class TestRuntimePersistence:
         assert "total_turns" in memory["vitality"]
         assert "dose_history" in memory["vitality"]
 
-    def test_schema_version_is_1_9(self, tmp_path):                  # T-VITA: bumped 1.8 → 1.9
-        """Schema version must match MEMORY_SCHEMA_VERSION = '1.9'."""
+    def test_schema_version_is_2_0(self, tmp_path):                  # Spiritus / Phase 3: bumped 1.9 → 2.0
+        """Schema version must match MEMORY_SCHEMA_VERSION = '2.0'."""
         rt = GAIANRuntime(gaian_name="SchemaTest", memory_dir=str(tmp_path))
         rt.process("Hello.")
         mem_file = tmp_path / "SchemaTest" / "memory.json"
         memory = json.loads(mem_file.read_text())
-        assert memory["schema_version"] == "1.9"
+        assert memory["schema_version"] == "2.0"
 
 
 class TestGetStatus:
