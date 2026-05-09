@@ -32,6 +32,7 @@ from api.routers import alignment as alignment_router
 from api.notifications import router as notifications_router
 from api.atlas import router as atlas_router
 from api.crypto import router as crypto_router
+from api.auth import router as auth_router
 
 log = logging.getLogger("gaia")
 
@@ -157,9 +158,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",   # Vite web-app dev server
-        "http://localhost:5173",   # Vite fallback port
-        "http://localhost:1420",   # legacy Tauri dev port
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:1420",
         "tauri://localhost",
         "https://tauri.localhost",
     ],
@@ -170,14 +171,15 @@ app.add_middleware(
 
 # ── Routers ────────────────────────────────────────────────────────────────────────────
 
+app.include_router(auth_router)                                        # /auth/*
 app.include_router(zodiac.router,              prefix="/api/zodiac",  tags=["Zodiac"])
-app.include_router(llm_router.router,          prefix="/api")         # /api/llm/*
-app.include_router(gaian_router.router,        prefix="/api")         # /api/gaian/*
+app.include_router(llm_router.router,          prefix="/api")
+app.include_router(gaian_router.router,        prefix="/api")
 app.include_router(memory_router.router,       prefix="/api/memory",  tags=["Memory"])
 app.include_router(alignment_router.router,    prefix="/alignment",   tags=["Alignment"])
-app.include_router(notifications_router)                               # /notifications
-app.include_router(atlas_router)                                       # /atlas
-app.include_router(crypto_router)                                      # /crypto
+app.include_router(notifications_router)
+app.include_router(atlas_router)
+app.include_router(crypto_router)
 
 
 # ── Core endpoints ───────────────────────────────────────────────────────────────────────
@@ -206,7 +208,6 @@ async def health():
 
 @app.get("/api/state")
 async def get_state():
-    """Current GAIA engine state snapshot."""
     return {
         "soul_mirror": {"archetype": "seeker", "individuation_stage": 1},
         "shadow": {"flags": []},
