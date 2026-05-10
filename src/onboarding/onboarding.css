@@ -1,0 +1,692 @@
+/* C-OB01 — Onboarding Styles
+   Art direction: Dark, intimate, reverent.
+   No bright colors. No UI chrome. The experience IS the content.
+   Tokens from the main GAIA design system are inherited via body.
+*/
+
+/* ─── Shell ──────────────────────────────────────────────────── */
+.onboarding-shell {
+  position: fixed;
+  inset: 0;
+  background-color: #0d0c0b;
+  color: #cdccca;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Spectral', 'Georgia', serif;
+  overflow: hidden;
+  z-index: 9999;
+}
+
+.onboarding-phase-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Phase base ─────────────────────────────────────────────── */
+.phase {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 5vw, 4rem);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  animation: phase-in 0.5s ease forwards;
+}
+
+@keyframes phase-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.phase--transitioning {
+  animation: phase-out 0.28s ease forwards;
+}
+
+@keyframes phase-out {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase,
+  .phase--transitioning { animation: none; }
+}
+
+/* ─── Sigil ───────────────────────────────────────────────────── */
+.phase__sigil-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a8c4c0;
+}
+
+.phase__sigil-wrap--bright .gaia-sigil {
+  color: #c8dbd8;
+}
+
+.gaia-sigil--animate .gaia-sigil__core {
+  animation: sigil-pulse 3.2s ease-in-out infinite;
+}
+
+.gaia-sigil--animate circle:nth-child(2) {
+  animation: sigil-breathe 5s ease-in-out infinite;
+}
+
+@keyframes sigil-pulse {
+  0%, 100% { r: 6; opacity: 0.9; }
+  50%       { r: 8; opacity: 0.6; }
+}
+
+@keyframes sigil-breathe {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gaia-sigil--animate .gaia-sigil__core,
+  .gaia-sigil--animate circle:nth-child(2) {
+    animation: none;
+  }
+}
+
+/* ─── Poetry / Awakening lines ───────────────────────────────── */
+.phase__poetry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.awakening-line {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: #cdccca;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 1s ease, transform 1s ease;
+  margin: 0;
+  max-width: 40ch;
+}
+
+.awakening-line--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .awakening-line { opacity: 1; transform: none; transition: none; }
+}
+
+/* ─── CTA area ────────────────────────────────────────────────── */
+.phase__cta-wrap {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  pointer-events: none;
+}
+
+.phase__cta-wrap--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase__cta-wrap { opacity: 1; transform: none; transition: none; pointer-events: auto; }
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65em 1.6em;
+  border-radius: 0.375rem;
+  font-family: inherit;
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  text-decoration: none;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.btn--primary {
+  background: #2e6e6b;
+  color: #f0edea;
+  border-color: #2e6e6b;
+}
+.btn--primary:hover { background: #246260; border-color: #246260; }
+.btn--primary:focus-visible { outline: 2px solid #4f98a3; outline-offset: 3px; }
+
+.btn--secondary {
+  background: transparent;
+  color: #4f98a3;
+  border-color: #4f98a3;
+}
+.btn--secondary:hover { background: rgba(79, 152, 163, 0.1); }
+
+.btn--ghost {
+  background: transparent;
+  color: #7a7974;
+  border-color: rgba(205, 204, 202, 0.15);
+}
+.btn--ghost:hover { color: #cdccca; border-color: rgba(205, 204, 202, 0.3); }
+
+.btn--glow {
+  box-shadow: 0 0 16px rgba(79, 152, 163, 0.2);
+}
+.btn--glow:hover { box-shadow: 0 0 24px rgba(79, 152, 163, 0.35); }
+
+.btn--small { font-size: 0.8rem; padding: 0.4em 1em; }
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── Content containers ──────────────────────────────────────── */
+.phase__content {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.5vw, 2rem);
+}
+
+.phase__content--centered { align-items: center; text-align: center; }
+.phase__content--wide { max-width: 820px; }
+.phase__content--prose { max-width: 620px; }
+
+/* ─── GAIA voice ──────────────────────────────────────────────── */
+.gaia-voice {
+  line-height: 1.75;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 300;
+  color: #cdccca;
+}
+
+.gaia-voice p { margin: 0 0 1em; max-width: 64ch; }
+.gaia-voice p:last-child { margin-bottom: 0; }
+
+.gaia-voice--short { font-size: clamp(0.95rem, 1.5vw, 1.1rem); }
+
+.gaia-voice__text {
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+.gaia-aside {
+  font-size: 0.95rem;
+  color: #7a7974;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ─── Typewriter ──────────────────────────────────────────────── */
+.typewriter-cursor {
+  display: inline-block;
+  animation: cursor-blink 0.9s step-end infinite;
+  color: #4f98a3;
+  margin-left: 1px;
+  font-weight: 300;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typewriter-cursor { animation: none; }
+}
+
+/* ─── Phase question heading ──────────────────────────────────── */
+.phase__question {
+  font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  color: #e8e6e2;
+  text-align: center;
+  max-width: 44ch;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.phase__subtext {
+  font-size: 0.875rem;
+  color: #7a7974;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ─── Actions row ─────────────────────────────────────────────── */
+.phase__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.phase__actions--stack {
+  flex-direction: column;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ─── Choice list (checkboxes) ────────────────────────────────── */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+}
+
+.choice-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(205, 204, 202, 0.1);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+  font-size: 0.95rem;
+  color: #cdccca;
+  min-height: 44px;
+}
+
+.choice-item:hover {
+  background: rgba(205, 204, 202, 0.04);
+  border-color: rgba(205, 204, 202, 0.2);
+}
+
+.choice-item input[type="checkbox"] {
+  accent-color: #4f98a3;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.other-input-wrap {
+  padding: 0 0 0 2.5rem;
+}
+
+/* ─── Depth choice ────────────────────────────────────────────── */
+.depth-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+}
+
+.depth-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(205, 204, 202, 0.1);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+  min-height: 44px;
+}
+
+.depth-item:hover {
+  background: rgba(205, 204, 202, 0.04);
+  border-color: rgba(205, 204, 202, 0.18);
+}
+
+.depth-item--selected {
+  background: rgba(79, 152, 163, 0.1);
+  border-color: #4f98a3;
+}
+
+.depth-item__label {
+  font-size: 0.95rem;
+  color: #e8e6e2;
+  font-weight: 500;
+  font-family: 'Spectral', serif;
+}
+
+.depth-item__desc {
+  font-size: 0.8rem;
+  color: #7a7974;
+  line-height: 1.5;
+}
+
+/* ─── Name form ───────────────────────────────────────────────── */
+.name-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 380px;
+  align-items: center;
+}
+
+.name-form__input {
+  width: 100%;
+  background: rgba(205, 204, 202, 0.06);
+  border: 1px solid rgba(205, 204, 202, 0.18);
+  border-radius: 0.375rem;
+  color: #cdccca;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.65rem 1rem;
+  outline: none;
+  min-height: 44px;
+  transition: border-color 180ms ease, background 180ms ease;
+  text-align: center;
+}
+
+.name-form__input::placeholder { color: #5a5957; }
+
+.name-form__input:focus {
+  border-color: #4f98a3;
+  background: rgba(79, 152, 163, 0.06);
+}
+
+.name-response {
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  font-weight: 300;
+  color: #e8e6e2;
+  text-align: center;
+  max-width: 42ch;
+  animation: phase-in 0.5s ease forwards;
+}
+
+/* ─── Consent cards ───────────────────────────────────────────── */
+.consent-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.consent-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(205, 204, 202, 0.1);
+  background: rgba(205, 204, 202, 0.03);
+  min-height: 56px;
+}
+
+.consent-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.consent-card__what {
+  font-size: 0.9rem;
+  color: #cdccca;
+  font-weight: 500;
+}
+
+.consent-card__why {
+  font-size: 0.78rem;
+  color: #7a7974;
+}
+
+/* Toggle switch */
+.consent-toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 9999px;
+  border: 1px solid rgba(205, 204, 202, 0.2);
+  background: rgba(205, 204, 202, 0.1);
+  transition: background 200ms ease, border-color 200ms ease;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.consent-toggle--on {
+  background: #2e6e6b;
+  border-color: #4f98a3;
+}
+
+.consent-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #7a7974;
+  transition: transform 200ms ease, background 200ms ease;
+}
+
+.consent-toggle--on .consent-toggle__thumb {
+  transform: translateX(20px);
+  background: #e8e6e2;
+}
+
+.consent-toggle:focus-visible {
+  outline: 2px solid #4f98a3;
+  outline-offset: 2px;
+}
+
+.consent-footnote {
+  font-size: 0.78rem;
+  color: #5a5957;
+  text-align: center;
+  margin: 0;
+}
+
+/* ─── Gift card ───────────────────────────────────────────────── */
+.gift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.75rem 2rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(79, 152, 163, 0.25);
+  background: rgba(79, 152, 163, 0.05);
+  max-width: 480px;
+  width: 100%;
+  text-align: left;
+  align-items: flex-start;
+}
+
+.gift-card__title {
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #e8e6e2;
+  margin: 0;
+  font-family: 'Spectral', serif;
+}
+
+.gift-card__body {
+  font-size: 0.9rem;
+  color: #9a9896;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 52ch;
+}
+
+/* ─── Account form ────────────────────────────────────────────── */
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 380px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+}
+
+.form-label {
+  font-size: 0.82rem;
+  color: #9a9896;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-error {
+  font-size: 0.82rem;
+  color: #d163a7;
+  margin: 0;
+}
+
+/* ─── FAQ ─────────────────────────────────────────────────────── */
+.faq {
+  width: 100%;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(205, 204, 202, 0.08);
+}
+
+.faq__item {
+  border-bottom: 1px solid rgba(205, 204, 202, 0.07);
+  padding-bottom: 0.5rem;
+}
+
+.faq__question {
+  font-size: 0.9rem;
+  color: #9a9896;
+  cursor: pointer;
+  padding: 0.4rem 0;
+  list-style: none;
+  user-select: none;
+}
+
+.faq__question:hover { color: #cdccca; }
+
+.faq__answer {
+  font-size: 0.85rem;
+  color: #7a7974;
+  line-height: 1.6;
+  margin: 0.4rem 0 0;
+  max-width: 60ch;
+}
+
+/* ─── Threshold ───────────────────────────────────────────────── */
+.threshold-line {
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  font-weight: 300;
+  color: #cdccca;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 1s ease, transform 1s ease;
+  text-align: center;
+  margin: 0;
+  max-width: 44ch;
+}
+
+.threshold-line--muted { color: #7a7974; font-size: clamp(0.9rem, 1.8vw, 1.1rem); }
+
+.threshold-line--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .threshold-line { opacity: 1; transform: none; transition: none; }
+}
+
+/* ─── Resume dialog ───────────────────────────────────────────── */
+.onboarding-resume {
+  position: fixed;
+  inset: 0;
+  background: #0d0c0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.onboarding-resume__card {
+  max-width: 420px;
+  width: 100%;
+  padding: 2.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(205, 204, 202, 0.1);
+  background: rgba(205, 204, 202, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.onboarding-resume__card p {
+  font-size: 1.05rem;
+  color: #cdccca;
+  font-weight: 300;
+  max-width: 42ch;
+  margin: 0 auto;
+  line-height: 1.65;
+}
+
+/* ─── Skip link (accessibility) ──────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 10000;
+  background: #2e6e6b;
+  color: #f0edea;
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 0.375rem 0.375rem;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: top 150ms ease;
+}
+
+.skip-link:focus { top: 0; }
+
+/* ─── SR-only utility ─────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .phase { padding: 1.5rem 1.25rem; }
+  .consent-card { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  .gift-card { padding: 1.25rem; }
+  .phase__content--wide { max-width: 100%; }
+}
