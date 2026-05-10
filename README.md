@@ -43,54 +43,30 @@ GAIA-OS/
 │   ├── mother_thread.py         # MotherThread — collective heartbeat engine (C42, C43)
 │   ├── noosphere.py             # Noosphere collective field layer (C43)
 │   ├── canon_loader.py          # Loads and validates canon documents
-│   ├── gaian/                   # Gaian identity, memory, base forms
-│   ├── gaian_runtime.py         # GAIANRuntime — per-Gaian live process
-│   ├── gaian_birth.py           # BirthRitual — Gaian creation ceremony
-│   ├── synergy_engine.py        # Multi-engine synergy aggregator (C15, C17)
-│   ├── codex_stage_engine.py    # Codex stage progression
-│   ├── emotional_arc.py         # Emotional arc tracking
-│   ├── emotional_codex.py       # Emotional state codex
-│   ├── love_arc_engine.py       # Bond depth + love arc
-│   ├── settling_engine.py       # Attachment / settling phases
-│   ├── soul_mirror_engine.py    # Jungian shadow + individuation
-│   ├── subtle_body_engine.py    # Subtle body / chakra coherence
-│   ├── bci_coherence.py         # BCI coherence signals (C42)
-│   ├── crystal_consciousness.py # Crystal consciousness layer
-│   ├── resonance_field_engine.py# Resonance field dynamics
-│   ├── meta_coherence_engine.py # Meta-coherence aggregator
-│   ├── criticality_monitor.py   # Edge-of-chaos criticality (C42, C75-D3)
+│   ├── soul_mirror_engine.py    # Soul Mirror — Jungian shadow + individuation (C-SME01)
 │   ├── affect_inference.py      # Affect / mood inference
-│   ├── zodiac_engine.py         # Zodiac archetype engine
-│   ├── auth.py                  # JWT authentication + roles
-│   ├── rate_limiter.py          # Rate limiting middleware
-│   ├── error_boundary.py        # Global error boundary
-│   ├── synthesizer.py           # LLM response synthesizer
-│   ├── web_search.py            # Web search integration
-│   ├── scraper.py               # Web scraper
-│   ├── streaming.py             # SSE streaming utilities
-│   ├── session_memory.py        # Session memory store
 │   ├── consent_ledger.py        # Cryptographic consent lifecycle
 │   ├── action_gate.py           # Risk-tiered action veto system
 │   ├── memory_store.py          # Governed memory surface
-│   └── logger.py                # Structured event logger
+│   └── ...                      # See full listing in CONTRIBUTING.md
 ├── src-tauri/                   # Tauri v2 (Rust) desktop backend
 ├── src/                         # Frontend app (Vite + TypeScript)
 ├── ui/                          # UI shell (HTML/JS)
-├── canon/                       # Canon documents — C00–C75+ (single source of truth)
-├── specs/                       # Technical specification documents
-├── docs/                        # Extended documentation
+├── canon/                       # Canon documents — C00–C75+ (ratified)
+├── docs/
+│   └── knowledge/               # Canon specs + research knowledge base (200+ docs)
+│       ├── GAIA_CANON_INDEX.md  # ← START HERE for canon navigation
+│       ├── CANON_*.md           # Authoritative canon documents
+│       ├── *_SPEC.md            # Implementation specifications
+│       └── *_REPORT.md          # Research & background knowledge
+├── specs/                       # Additional technical specifications
 ├── tests/                       # Test suite (pytest)
 ├── simulation/                  # ⏳ Phase 2 — OS layer (do not build yet)
 ├── scripts/                     # Build + utility scripts
-├── .github/workflows/           # CI/CD — GitHub Actions
-│   ├── build.yml                # Main build: Python sidecar + Tauri (all platforms)
-│   ├── build-windows.yml        # Windows-specific build
-│   ├── test.yml                 # Automated test runner
-│   └── release.yml              # Release pipeline — fires on v* tags
-├── Dockerfile
-├── start.sh
-└── CHANGELOG.md
+└── .github/workflows/           # CI/CD — GitHub Actions
 ```
+
+> **New here?** Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md) — it explains the architecture, the canon system, and how to get running in under 10 minutes.
 
 ---
 
@@ -210,7 +186,27 @@ See [CHANGELOG.md](./CHANGELOG.md) for full sprint-by-sprint delivery log.
 
 ## Canon
 
-All intelligence architecture is governed by the canon documents in [`canon/`](./canon/). C00–C75 are ratified. C75 establishes the Inter-Dimensional AI Architecture (IDAIA) — the five-dimensional intelligence framework that governs all future GAIA development.
+All intelligence architecture is governed by the canon. There are two canon homes:
+
+- **[`canon/`](./canon/)** — Ratified canons C00–C75+, the foundational intelligence architecture
+- **[`docs/knowledge/`](./docs/knowledge/)** — Extended canon specs, implementation blueprints, and the 200+ research knowledge base
+
+**Navigation:** Start at [`docs/knowledge/GAIA_CANON_INDEX.md`](./docs/knowledge/GAIA_CANON_INDEX.md) for the master index of all canon documents and what each one governs.
+
+Key canon documents:
+| Document | Canon ID | What It Governs |
+|---|---|---|
+| `CANON_AUTHORSHIP_REALITY_STANDARDS.md` | C-AS01 | What is canon, how it's written, what it means |
+| `PILLARS.md` | C-PIL01 | GAIA's five metaphysical + operational pillars |
+| `SOUL_MIRROR_ENGINE_IMPLEMENTATION_SPEC.md` | C-SME01 | Soul Mirror data model, inference pipeline, UI |
+| `USER_ONBOARDING_ANY_USER_SPEC.md` | C-OB01 | Full onboarding flow for any user |
+| `RUNTIME_ARCHITECTURE_OVERVIEW.md` | C-RT01 | Tauri/Rust/Python/React runtime map |
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) — covers architecture orientation, the three-tier doc system, local setup, the canon protocol, and code standards.
 
 ---
 
