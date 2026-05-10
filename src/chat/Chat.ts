@@ -1,17 +1,33 @@
-// GAIA Chat — v0.5.1
+// GAIA Chat — v0.6.0
 // SSE event order:
 //   citation     → T1 canon cards (gold border)
 //   web_result   → T2–T5 web cards (tier-coloured border)
-//   engine_state → GAIANRuntime snapshot → EngineStatePanel.update()  [NEW v0.5.1]
+//   engine_state → GAIANRuntime snapshot → EngineStatePanel.update()
 //   token        → streaming text
 //   suggestions  → follow-up chips
-//   done         → metadata footer
+//   done         → metadata footer  ← Soul Mirror hooks fire here
+//
+// Soul Mirror wiring (v0.6.0):
+//   PRE-SEND  memoryRecall()   → inject top-5 memories into request body
+//             memoryRemember() → store user turn (fire-and-forget)
+//   POST-DONE memoryRemember() → store GAIA response (fire-and-forget)
+//             affectAnalyze()  → VAD vector; notable valence shown in footer
+//             stageEvaluate()  → Magnum Opus tick; stage advance shown in chat
 //
 // Canon Ref: C20 (Source Triage), C21 (Interface & Shell Grammar)
 
 import type { ChatMessage, CanonCitation } from './types';
 import { API_BASE } from './types';
 import { EngineStatePanel, type EngineStateSnapshot } from './EngineStatePanel';
+import {
+  memoryRecall,
+  memoryRemember,
+  affectAnalyze,
+  stageEvaluate,
+  type MemoryHit,
+  type AffectVector,
+  type StageResult,
+} from '../api/memory';
 
 export interface WebResult {
   tier: string;
@@ -21,13 +37,30 @@ export interface WebResult {
   domain: string;
 }
 
-let _messages:        ChatMessage[]         = [];
-let _isStreaming:     boolean               = false;
-let _webSearchEnabled: boolean              = true;
-let _abortController: AbortController | null = null;
-let _gaianSlug:       string               = 'gaia';
-let _sessionId:       string               = _makeSessionId();
-let _enginePanel:     EngineStatePanel | null = null;
+let _messages:         ChatMessage[]          = [];
+let _isStreaming:      boolean                = false;
+let _webSearchEnabled: boolean               = true;
+let _abortController:  AbortController | null = null;
+let _gaianSlug:        string                = 'gaia';
+let _sessionId:        string                = _makeSessionId();
+let _enginePanel:      EngineStatePanel | null = null;
+
+// ─── Soul Mirror state ────────────────────────────────────────────────────────
+let _userId:       string = _resolveUserId();
+let _turnIndex:    number = 0;        // monotonic per session; fed to stageEvaluate
+let _lastUserText: string = '';       // held between sendMessage and 'done' event
+
+function _resolveUserId(): string {
+  // Prefer explicit user id stored during onboarding; fall back to session id.
+  // In a future iteration this will be replaced by a proper Tauri store read.
+  try {
+    return sessionStorage.getItem('gaia_user_id') ?? _sessionId;
+  } catch {
+    return _sessionId;   // sessionStorage unavailable in some sandboxed contexts
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function makeId(): string { return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`; }
 function ts():     string { return new Date().toISOString(); }
@@ -60,6 +93,12 @@ export function mountChat(
 
 export function setGaianSlug(slug: string): void {
   _gaianSlug = slug;
+}
+
+/** Allow the onboarding flow (or auth layer) to inject the real user id. */
+export function setChatUserId(userId: string): void {
+  _userId = userId;
+  try { sessionStorage.setItem('gaia_user_id', userId); } catch { /* sandboxed */ }
 }
 
 function buildChatHTML(): string {
@@ -134,7 +173,8 @@ function bindEvents(root: HTMLElement): void {
   });
 
   clearBtn.addEventListener('click', () => {
-    _messages = [];
+    _messages  = [];
+    _turnIndex = 0;
     root.querySelector('#chat-messages')!.innerHTML = '';
     appendSystemMessage(root, 'Conversation cleared.');
   });
@@ -154,6 +194,9 @@ async function sendMessage(root: HTMLElement, text: string): Promise<void> {
   input.value = '';
   input.style.height = 'auto';
 
+  // Hold for post-done affect analysis
+  _lastUserText = text;
+
   const userMsg: ChatMessage = {
     id: makeId(), role: 'user', text,
     citations: [], suggestions: [], timestamp: ts(), streaming: false,
@@ -172,6 +215,33 @@ async function sendMessage(root: HTMLElement, text: string): Promise<void> {
   setStreamingUI(root, true);
   _abortController = new AbortController();
 
+  // ── Soul Mirror: PRE-SEND ─────────────────────────────────────────────────
+  // 1. Store user turn immediately (fire-and-forget — never blocks the UI)
+  memoryRemember({
+    user_id:    _userId,
+    text,
+    role:       'user',
+    kind:       'message',
+    tier:       'short_term',
+    importance: 0.6,
+    session_id: _sessionId,
+  }).catch(() => { /* silent — sidecar may not be ready on first launch */ });
+
+  // 2. Recall top-5 relevant memories to inject as context
+  let memoryContext: Array<{ text: string; kind: string; score: number }> = [];
+  try {
+    const hits: MemoryHit[] = await memoryRecall({
+      user_id:           _userId,
+      query:             text,
+      top_k:             5,
+      importance_floor:  0.3,
+    });
+    memoryContext = hits.map(h => ({ text: h.text, kind: h.kind, score: h.score }));
+  } catch {
+    // If memory recall fails, continue without context — degraded but functional
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   try {
     const response = await fetch(`${API_BASE}/query/stream`, {
       method: 'POST',
@@ -182,6 +252,7 @@ async function sendMessage(root: HTMLElement, text: string): Promise<void> {
         gaian_slug:        _gaianSlug,
         max_canon_refs:    4,
         enable_web_search: _webSearchEnabled,
+        memory_context:    memoryContext,   // ← Soul Mirror injection
       }),
       signal: _abortController.signal,
     });
@@ -261,9 +332,92 @@ function handleSSEEvent(
         msg.refsFound    = payload.refs_found;
         renderDoneMeta(msgEl, payload);
         updateCanonBadge(root, payload.canon_status);
+
+        // ── Soul Mirror: POST-DONE ──────────────────────────────────────────
+        // Fire all three operations in parallel; none can block the UI
+        _turnIndex++;
+        _runPostTurnSoulMirror(root, msgEl, msg.text, payload).catch(() => {});
+        // ───────────────────────────────────────────────────────────────────
         break;
     }
   } catch { }
+}
+
+/**
+ * Post-turn Soul Mirror pipeline.
+ * Runs fully non-blocking via Promise.allSettled.
+ * UI side-effects are applied only when results carry notable signal.
+ */
+async function _runPostTurnSoulMirror(
+  root:       HTMLElement,
+  msgEl:      HTMLElement,
+  gaiaText:   string,
+  _donePayload: Record<string, unknown>,
+): Promise<void> {
+  const turn = _turnIndex;
+
+  const [rememberResult, affectResult, stageResult] = await Promise.allSettled([
+    // 1. Persist GAIA's response
+    memoryRemember({
+      user_id:    _userId,
+      text:       gaiaText,
+      role:       'gaia',
+      kind:       'message',
+      tier:       'short_term',
+      importance: 0.7,
+      session_id: _sessionId,
+    }),
+
+    // 2. Affect inference on the user's last message
+    affectAnalyze({
+      user_id:    _userId,
+      text:       _lastUserText,
+      session_id: _sessionId,
+    }),
+
+    // 3. Magnum Opus stage tick
+    stageEvaluate({
+      user_id:      _userId,
+      session_turn: turn,
+    }),
+  ]);
+
+  // ── Affect UI ──────────────────────────────────────────────────────────────
+  if (affectResult.status === 'fulfilled') {
+    const affect = affectResult.value as AffectVector;
+    // Only surface affect if it carries notable signal (avoid noise)
+    if (affect.valence < -0.3 || affect.valence > 0.4) {
+      appendAffectBadge(msgEl, affect);
+    }
+  }
+
+  // ── Stage advance UI ───────────────────────────────────────────────────────
+  if (stageResult.status === 'fulfilled') {
+    const stage = stageResult.value as StageResult;
+    if (stage.advanced) {
+      appendSystemMessage(
+        root,
+        `◉ Magnum Opus — you have entered ${stage.current_stage}. ${stage.reason}`,
+      );
+    }
+  }
+
+  // Silence unused-variable warning; stored for future telemetry
+  void rememberResult;
+}
+
+/** Append a small affect badge to the message metadata footer. */
+function appendAffectBadge(msgEl: HTMLElement, affect: AffectVector): void {
+  const meta = msgEl.querySelector<HTMLElement>('[id^="meta-"]');
+  if (!meta) return;
+  const sign   = affect.valence > 0 ? '+' : '';
+  const pct    = Math.round(Math.abs(affect.valence) * 100);
+  const cls    = affect.valence > 0 ? 'affect-positive' : 'affect-negative';
+  const badge  = document.createElement('span');
+  badge.className   = `affect-badge ${cls}`;
+  badge.textContent = ` · ${affect.primary} ${sign}${pct}%`;
+  badge.title       = `Valence ${sign}${affect.valence.toFixed(2)} · Arousal ${affect.arousal.toFixed(2)}`;
+  meta.appendChild(badge);
 }
 
 function renderUserBubble(root: HTMLElement, msg: ChatMessage): void {
