@@ -10,6 +10,9 @@ use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
 // ── Modules ───────────────────────────────────────────────────────────────────
 pub mod schumann;
+pub mod memory;
+
+use memory::SidecarClient;
 
 /// Shared handle to the sidecar child process so we can kill it on exit.
 type SidecarHandle = Arc<Mutex<Option<CommandChild>>>;
@@ -238,7 +241,7 @@ fn emit_backend_error(app: &tauri::AppHandle, reason: &str) {
                 "GAIA's Python backend failed to start.\n\n\
                  Reason: {reason_owned}\n\n\
                  Please restart the app. If the problem persists, \
-                 check that no other process is using port 8008."
+                 check that no other process is using port 52000."
             ))
             .kind(MessageDialogKind::Error)
             .title("GAIA — Backend Error")
@@ -283,7 +286,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                 for attempt in 0..20 {
                     tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
                     match client
-                        .get("http://127.0.0.1:8008/health")
+                        .get("http://127.0.0.1:52000/health")
                         .timeout(std::time::Duration::from_secs(2))
                         .send()
                         .await
@@ -300,7 +303,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
 
                 if ready {
                     let ipc_notify = reqwest::Client::new()
-                        .post("http://127.0.0.1:8008/internal/ipc-ready")
+                        .post("http://127.0.0.1:52000/internal/ipc-ready")
                         .timeout(std::time::Duration::from_secs(2))
                         .send()
                         .await;
@@ -318,7 +321,7 @@ fn start_python_sidecar(app: &tauri::App, handle: SidecarHandle) {
                 } else {
                     emit_backend_error(
                         &app_handle,
-                        "health check timed out after 30 s — port 8008 may be blocked",
+                        "health check timed out after 30 s — port 52000 may be blocked",
                     );
                 }
             }
@@ -333,6 +336,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(sidecar_handle.clone())
+        .manage(SidecarClient::new())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -414,7 +418,17 @@ pub fn run() {
             load_ambient_position,
             navigate_main,
             quit_app,
-            schumann::get_alignment_state
+            schumann::get_alignment_state,
+            // ── Soul Mirror bridge ─────────────────────
+            memory::memory_remember,
+            memory::memory_recall,
+            memory::memory_semantic,
+            memory::memory_key_status,
+            memory::memory_key_rotate,
+            memory::affect_analyze,
+            memory::affect_history,
+            memory::affect_trend,
+            memory::stage_evaluate,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GAIA");
