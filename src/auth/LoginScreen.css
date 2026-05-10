@@ -1,0 +1,475 @@
+/*
+ * src/auth/LoginScreen.css
+ * GAIA-OS Auth UI Styles — Sprint G-9
+ *
+ * Uses design tokens from src/shell/tokens.css.
+ * All sizing references token variables or fluid clamp() values.
+ * Dark-first; adapts to light via [data-theme="light"] on <html>.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Auth Gate Loading State                                             */
+/* ------------------------------------------------------------------ */
+
+.auth-gate-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background-color: var(--color-bg, #0d0d0f);
+  gap: 1.5rem;
+}
+
+.auth-gate-orb {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    var(--color-primary, #4f98a3) 0%,
+    transparent 70%
+  );
+  box-shadow:
+    0 0 24px var(--color-primary, #4f98a3),
+    0 0 48px oklch(from var(--color-primary, #4f98a3) l c h / 0.3);
+  animation: orb-breathe 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-gate-orb { animation: none; opacity: 0.7; }
+}
+
+.auth-gate-loading-text {
+  color: var(--color-text-muted, #797876);
+  font-size: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  letter-spacing: 0.05em;
+}
+
+/* ------------------------------------------------------------------ */
+/* Login Screen Layout                                                 */
+/* ------------------------------------------------------------------ */
+
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: clamp(1rem, 4vw, 3rem);
+  background-color: var(--color-bg, #0d0d0f);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ambient Background Orbs                                             */
+/* ------------------------------------------------------------------ */
+
+.login-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+}
+
+.login-orb--1 {
+  width: 480px;
+  height: 480px;
+  top: -120px;
+  left: -80px;
+  background: radial-gradient(
+    circle,
+    var(--color-primary, #4f98a3) 0%,
+    transparent 70%
+  );
+  animation: orb-drift-1 18s ease-in-out infinite alternate;
+}
+
+.login-orb--2 {
+  width: 360px;
+  height: 360px;
+  bottom: -80px;
+  right: -60px;
+  background: radial-gradient(
+    circle,
+    var(--color-purple, #a86fdf) 0%,
+    transparent 70%
+  );
+  opacity: 0.08;
+  animation: orb-drift-2 24s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-orb--1,
+  .login-orb--2 { animation: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Card                                                                */
+/* ------------------------------------------------------------------ */
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  background: var(--color-surface, #1c1b19);
+  border: 1px solid oklch(from var(--color-text, #cdccca) l c h / 0.08);
+  border-radius: var(--radius-xl, 1rem);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  box-shadow:
+    0 2px 4px oklch(0 0 0 / 0.2),
+    0 16px 48px oklch(0 0 0 / 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Header                                                              */
+/* ------------------------------------------------------------------ */
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.login-logo {
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary, #4f98a3);
+}
+
+.login-wordmark {
+  font-family: var(--font-display, 'Instrument Serif', Georgia, serif);
+  font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  font-weight: 400;
+  letter-spacing: 0.25em;
+  color: var(--color-text, #cdccca);
+  line-height: 1;
+  margin: 0;
+}
+
+.login-tagline {
+  font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  color: var(--color-text-muted, #797876);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tabs                                                                */
+/* ------------------------------------------------------------------ */
+
+.login-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid oklch(from var(--color-text, #cdccca) l c h / 0.1);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: 3px;
+  background: var(--color-surface-offset, #1d1c1a);
+}
+
+.login-tab {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border-radius: calc(var(--radius-md, 0.5rem) - 3px);
+  font-size: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  color: var(--color-text-muted, #797876);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition:
+    color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 44px;
+}
+
+.login-tab:hover {
+  color: var(--color-text, #cdccca);
+}
+
+.login-tab--active {
+  background: var(--color-surface-2, #201f1d);
+  color: var(--color-text, #cdccca);
+}
+
+.login-tab:focus-visible {
+  outline: 2px solid var(--color-primary, #4f98a3);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Description                                                         */
+/* ------------------------------------------------------------------ */
+
+.login-description {
+  font-size: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  color: var(--color-text-muted, #797876);
+  line-height: 1.6;
+  margin: 0;
+  max-width: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Form                                                                */
+/* ------------------------------------------------------------------ */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.login-label {
+  font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  color: var(--color-text-muted, #797876);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-offset, #1d1c1a);
+  border: 1px solid oklch(from var(--color-text, #cdccca) l c h / 0.12);
+  border-radius: var(--radius-md, 0.5rem);
+  color: var(--color-text, #cdccca);
+  font-size: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  font-family: inherit;
+  min-height: 44px;
+  transition:
+    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-input::placeholder {
+  color: var(--color-text-faint, #5a5957);
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #4f98a3);
+  box-shadow: 0 0 0 3px oklch(from var(--color-primary, #4f98a3) l c h / 0.2);
+}
+
+.login-input[aria-invalid="true"] {
+  border-color: var(--color-error, #d163a7);
+}
+
+.login-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin toggle                                                         */
+/* ------------------------------------------------------------------ */
+
+.login-admin-toggle {
+  align-self: flex-start;
+  font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  color: var(--color-text-faint, #5a5957);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-admin-toggle:hover {
+  color: var(--color-text-muted, #797876);
+}
+
+.login-admin-toggle:focus-visible {
+  outline: 2px solid var(--color-primary, #4f98a3);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Error                                                               */
+/* ------------------------------------------------------------------ */
+
+.login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: oklch(from var(--color-error, #d163a7) l c h / 0.08);
+  border: 1px solid oklch(from var(--color-error, #d163a7) l c h / 0.25);
+  border-radius: var(--radius-md, 0.5rem);
+  color: var(--color-error, #d163a7);
+  font-size: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  line-height: 1.5;
+  animation: error-reveal 200ms ease-out;
+}
+
+.login-error-icon {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  margin-top: 0.2em;
+}
+
+@keyframes error-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Submit Button                                                        */
+/* ------------------------------------------------------------------ */
+
+.login-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary, #4f98a3);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md, 0.5rem);
+  font-size: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 80ms ease;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: var(--color-primary-hover, #227f8b);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(1px);
+  background: var(--color-primary-active, #1a626b);
+}
+
+.login-submit:focus-visible {
+  outline: 2px solid var(--color-primary, #4f98a3);
+  outline-offset: 3px;
+}
+
+.login-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/* Spinner                                                             */
+/* ------------------------------------------------------------------ */
+
+.login-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid oklch(1 0 0 / 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-spinner { animation: none; opacity: 0.7; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Footer                                                              */
+/* ------------------------------------------------------------------ */
+
+.login-footer {
+  border-top: 1px solid oklch(from var(--color-text, #cdccca) l c h / 0.06);
+  padding-top: 1rem;
+  text-align: center;
+}
+
+.login-footer p {
+  font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  color: var(--color-text-faint, #5a5957);
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+.login-footer-accent {
+  color: var(--color-primary, #4f98a3);
+}
+
+/* ------------------------------------------------------------------ */
+/* Keyframe animations                                                 */
+/* ------------------------------------------------------------------ */
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.8; }
+  50%       { transform: scale(1.15); opacity: 1;   }
+}
+
+@keyframes orb-drift-1 {
+  from { transform: translate(0, 0)   scale(1); }
+  to   { transform: translate(40px, 30px) scale(1.1); }
+}
+
+@keyframes orb-drift-2 {
+  from { transform: translate(0, 0)    scale(1); }
+  to   { transform: translate(-30px, -20px) scale(0.95); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Light mode overrides                                                */
+/* ------------------------------------------------------------------ */
+
+[data-theme="light"] .login-screen,
+@media (prefers-color-scheme: light) {
+  .login-screen:not([data-theme]) {
+    background-color: var(--color-bg, #f7f6f2);
+  }
+  .login-card {
+    background: var(--color-surface, #f9f8f5);
+    box-shadow:
+      0 2px 4px oklch(0.2 0.01 80 / 0.06),
+      0 16px 48px oklch(0.2 0.01 80 / 0.1);
+  }
+  .login-orb--1 { opacity: 0.06; }
+  .login-orb--2 { opacity: 0.04; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile refinements (375px)                                          */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 480px) {
+  .login-card {
+    border-radius: var(--radius-lg, 0.75rem);
+    padding: 1.5rem;
+  }
+  .login-orb--1 { width: 280px; height: 280px; }
+  .login-orb--2 { width: 200px; height: 200px; }
+}
