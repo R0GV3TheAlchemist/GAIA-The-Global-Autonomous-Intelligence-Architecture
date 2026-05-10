@@ -1,7 +1,7 @@
 // C-OB01 — Phase 3: The Name Covenant
 // GAIA asks what to call the user. Minimal, symbolic, reversible.
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useOnboardingStore } from '../store/onboardingStore';
 
 export function Phase3NameCovenant() {
@@ -11,6 +11,17 @@ export function Phase3NameCovenant() {
   const [inputValue, setInputValue] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [responseLine, setResponseLine] = useState('');
+
+  // Keep a ref to the advance timer so we can clear it on unmount
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current !== null) {
+        clearTimeout(advanceTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +36,7 @@ export function Phase3NameCovenant() {
     setResponseLine(response);
     setSubmitted(true);
 
-    setTimeout(() => nextPhase(), 2200);
+    advanceTimerRef.current = setTimeout(() => nextPhase(), 2200);
   };
 
   return (

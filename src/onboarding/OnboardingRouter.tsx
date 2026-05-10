@@ -22,7 +22,6 @@ interface OnboardingRouterProps {
 
 export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
   const phase = useOnboardingStore((s) => s.phase);
-  const interrupted = useOnboardingStore((s) => s.interrupted);
   const resumeOnboarding = useOnboardingStore((s) => s.resumeOnboarding);
   const resetOnboarding = useOnboardingStore((s) => s.resetOnboarding);
   const setPhase = useOnboardingStore((s) => s.setPhase);
@@ -36,7 +35,6 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
   useEffect(() => {
     loadPersistedState().then((saved) => {
       if (saved && saved.phase && saved.phase > 0 && !saved.completed) {
-        // Hydrate store with saved state
         setPhase(saved.phase as any);
         setResumePrompt(true);
       }
@@ -46,9 +44,8 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
 
   // Mark interrupted on unmount (if not complete)
   useEffect(() => {
-    const completed = useOnboardingStore.getState().completed;
     return () => {
-      if (!completed) markInterrupted();
+      if (!useOnboardingStore.getState().completed) markInterrupted();
     };
   }, [markInterrupted]);
 
@@ -95,9 +92,7 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
         Skip to main content
       </a>
       <div id="onboarding-main" className="onboarding-phase-container">
-        {phase === 0 && (
-          <Phase0Bootstrap onComplete={nextPhase} />
-        )}
+        {phase === 0 && <Phase0Bootstrap onComplete={nextPhase} />}
         {phase === 1 && <Phase1Awakening />}
         {phase === 2 && <Phase2Introduction />}
         {phase === 3 && <Phase3NameCovenant />}

@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { useOnboardingStore } from '../store/onboardingStore';
 import type { UserIntent, DepthPreference, SensitiveTopic } from '../types';
 
-const INTENT_OPTIONS: { value: UserIntent | 'other'; label: string }[] = [
+const INTENT_OPTIONS: { value: UserIntent; label: string }[] = [
   { value: 'productivity', label: 'I want a smarter personal assistant' },
   { value: 'exploration', label: "I'm exploring AI and want to understand it deeply" },
   { value: 'self_discovery', label: "I'm on a path of self-discovery and growth" },
@@ -51,7 +51,8 @@ export function Phase4ThreeQuestions() {
   const nextPhase = useOnboardingStore((s) => s.nextPhase);
 
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [intentSelected, setIntentSelected] = useState<(UserIntent | 'other')[]>([]);
+  // UserIntent already includes 'other' — no need for a separate union
+  const [intentSelected, setIntentSelected] = useState<UserIntent[]>([]);
   const [otherText, setOtherText] = useState('');
   const [depthSelected, setDepthSelected] = useState<DepthPreference | null>(null);
   const [topicsSelected, setTopicsSelected] = useState<SensitiveTopic[]>([]);
@@ -66,9 +67,10 @@ export function Phase4ThreeQuestions() {
   };
 
   const handleIntentSubmit = () => {
-    const mapped = intentSelected
-      .filter((v) => v !== 'other')
-      .map((v) => v as UserIntent);
+    // Persist all selected values including 'other'; strip 'other' from
+    // the typed UserIntent[] before writing to the store (store expects
+    // non-'other' intents there), then write the free-text separately.
+    const mapped = intentSelected.filter((v) => v !== 'other') as Exclude<UserIntent, 'other'>[];
     setIntent(mapped);
     if (otherText) setIntentOther(otherText);
     advance();
@@ -82,8 +84,13 @@ export function Phase4ThreeQuestions() {
 
   const handleTopicsSubmit = () => {
     setSensitiveTopics(topicsSelected);
-    // Small pause before transitioning to Phase 5
     setTimeout(() => nextPhase(), 400);
+  };
+
+  const toggleIntent = (v: UserIntent) => {
+    setIntentSelected((prev) =>
+      prev.includes(v) ? prev.filter((i) => i !== v) : [...prev, v]
+    );
   };
 
   const toggleTopic = (v: SensitiveTopic) => {
@@ -116,13 +123,7 @@ export function Phase4ThreeQuestions() {
                     type="checkbox"
                     value={opt.value}
                     checked={intentSelected.includes(opt.value)}
-                    onChange={() =>
-                      setIntentSelected((prev) =>
-                        prev.includes(opt.value)
-                          ? prev.filter((v) => v !== opt.value)
-                          : [...prev, opt.value]
-                      )
-                    }
+                    onChange={() => toggleIntent(opt.value)}
                   />
                   <span>{opt.label}</span>
                 </label>
