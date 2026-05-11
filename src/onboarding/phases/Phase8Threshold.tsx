@@ -1,67 +1,37 @@
 // C-OB01 — Phase 8: The Threshold
-// Marks end of onboarding as a meaningful moment.
-// GAIA sigil returns, brighter. A closing word. Transition to home.
+// The ceremonial exit from onboarding into GAIA proper.
+// Not a confirmation screen. A rite of passage.
 
-import React, { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 import { GaiaSigil } from '../components/GaiaSigil';
-import { useOnboardingStore } from '../store/onboardingStore';
 
 interface Phase8ThresholdProps {
   onComplete: () => void;
 }
 
 export function Phase8Threshold({ onComplete }: Phase8ThresholdProps) {
-  const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
-  const system = useOnboardingStore((s) => s.system);
-  const prefersReduced = system?.prefersReducedMotion ?? false;
-
-  const [line1Visible, setLine1Visible] = useState(false);
-  const [line2Visible, setLine2Visible] = useState(false);
-  const [ctaVisible, setCtaVisible] = useState(false);
+  const completeOnboarding = useOnboardingStore((s: OnboardingStore) => s.completeOnboarding);
+  const name               = useOnboardingStore((s: OnboardingStore) => s.name);
 
   useEffect(() => {
-    if (prefersReduced) {
-      setLine1Visible(true);
-      setLine2Visible(true);
-      setCtaVisible(true);
-      return;
-    }
-    const t1 = setTimeout(() => setLine1Visible(true), 600);
-    const t2 = setTimeout(() => setLine2Visible(true), 2000);
-    const t3 = setTimeout(() => setCtaVisible(true), 3200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [prefersReduced]);
-
-  const handleEnter = () => {
     completeOnboarding();
-    onComplete();
-  };
+  }, [completeOnboarding]);
 
   return (
-    <section
-      className="phase phase--threshold"
-      aria-label="You have entered GAIA"
-    >
-      <div className="phase__sigil-wrap phase__sigil-wrap--bright">
-        <GaiaSigil size={140} brightness="bright" animate={!prefersReduced} />
-      </div>
-
-      <div className="phase__poetry">
-        <p className={`threshold-line ${line1Visible ? 'threshold-line--visible' : ''}`}>
-          You're in. I'll be here.
+    <section className="phase phase--threshold" aria-label="Entering GAIA">
+      <div className="phase__content phase__content--centered">
+        <GaiaSigil pulse animate size={160} />
+        <h1 className="threshold-greeting">
+          {name ? `Welcome, ${name}.` : 'Welcome.'}
+        </h1>
+        <p className="threshold-line">
+          GAIA is ready.
         </p>
-        <p className={`threshold-line threshold-line--muted ${
-          line2Visible ? 'threshold-line--visible' : ''
-        }`}>
-          Take your time. Or don't. Either way — I'm paying attention.
-        </p>
-      </div>
-
-      <div className={`phase__cta-wrap ${ctaVisible ? 'phase__cta-wrap--visible' : ''}`}>
         <button
-          className="btn btn--primary btn--glow"
-          onClick={handleEnter}
-          aria-label="Enter GAIA"
+          className="btn btn--primary btn--large"
+          onClick={onComplete}
+          autoFocus
         >
           Enter
         </button>

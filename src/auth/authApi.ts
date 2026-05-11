@@ -9,8 +9,6 @@
  * Canon Ref: C01 (Sovereignty), C15 (Consent)
  */
 
-import { invoke } from '@tauri-apps/api/core';
-
 // ------------------------------------------------------------------ //
 //  Types (mirror core/auth.py)                                        //
 // ------------------------------------------------------------------ //
@@ -27,6 +25,7 @@ export interface TokenResponse {
   expires_in: number;   // seconds
   role: 'user' | 'admin';
   user_id: string;
+  gaian_slug?: string;  // returned when a Gaian is bound to this identity
 }
 
 export interface TokenPayload {
@@ -46,8 +45,6 @@ export interface AuthError {
 // ------------------------------------------------------------------ //
 
 function getBaseUrl(): string {
-  // In Tauri, the Python sidecar binds to a fixed local port.
-  // VITE_GAIA_API_URL can override for development.
   return (import.meta.env?.VITE_GAIA_API_URL as string | undefined) ?? 'http://127.0.0.1:8787';
 }
 
@@ -80,7 +77,7 @@ async function gaiiaFetch<T>(
 
     const data = (await res.json()) as T;
     return { data, error: null };
-  } catch (err) {
+  } catch {
     return {
       data: null,
       error: {
@@ -98,8 +95,6 @@ async function gaiiaFetch<T>(
 /**
  * POST /auth/token
  * Issues a JWT for the given user_id.
- * In the current backend this is the identity bootstrap endpoint.
- * Optionally pass admin_key for admin role.
  */
 export async function issueToken(
   req: TokenRequest,
@@ -113,7 +108,6 @@ export async function issueToken(
 /**
  * GET /auth/me
  * Validates an existing token and returns its decoded claims.
- * Use to verify a stored token is still valid on app boot.
  */
 export async function fetchMe(
   token: string,

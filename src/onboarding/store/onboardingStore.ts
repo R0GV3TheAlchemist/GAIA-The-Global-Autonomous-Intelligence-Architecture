@@ -42,7 +42,6 @@ const INITIAL_STATE: OnboardingState = {
   account_email: null,
 };
 
-// Persist to Tauri fs if available, otherwise silently skip
 async function persistState(state: OnboardingState): Promise<void> {
   try {
     const { writeTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs');
@@ -68,22 +67,22 @@ export async function loadPersistedState(): Promise<Partial<OnboardingState> | n
   }
 }
 
-type OnboardingStore = OnboardingState & OnboardingActions;
+export type OnboardingStore = OnboardingState & OnboardingActions;
 
 export const useOnboardingStore = create<OnboardingStore>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set: (partial: Partial<OnboardingStore>) => void, get: () => OnboardingStore) => ({
     ...INITIAL_STATE,
 
     setPhase: (phase: OnboardingPhase) => {
       set({ phase });
-      persistState(get());
+      persistState(get() as OnboardingState);
     },
 
     nextPhase: () => {
       const current = get().phase;
       const next = Math.min(current + 1, 8) as OnboardingPhase;
       set({ phase: next });
-      persistState(get());
+      persistState(get() as OnboardingState);
     },
 
     setSystem: (system: SystemCapabilities) => {
@@ -92,7 +91,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
     setName: (name: string) => {
       set({ name });
-      persistState(get());
+      persistState(get() as OnboardingState);
     },
 
     setIntent: (intent: UserIntent[]) => {
@@ -118,27 +117,25 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
     setAccountCreated: (email: string) => {
       set({ account_created: true, account_email: email });
-      persistState(get());
+      persistState(get() as OnboardingState);
     },
 
     completeOnboarding: () => {
       const completed_at = new Date().toISOString();
       set({ completed: true, interrupted: false, completed_at, phase: 8 });
-      persistState(get());
-
-      // Seed Soul Mirror baseline via Tauri command if available
+      persistState(get() as OnboardingState);
       const state = get();
-      seedSoulMirror(state).catch(() => {});
+      seedSoulMirror(state as OnboardingState).catch(() => {});
     },
 
     resetOnboarding: () => {
       set({ ...INITIAL_STATE });
-      persistState(get());
+      persistState(get() as OnboardingState);
     },
 
     markInterrupted: () => {
       set({ interrupted: true });
-      persistState(get());
+      persistState(get() as OnboardingState);
     },
 
     resumeOnboarding: () => {

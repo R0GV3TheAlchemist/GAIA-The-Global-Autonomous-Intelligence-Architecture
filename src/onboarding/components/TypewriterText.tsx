@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 interface TypewriterTextProps {
   text: string;
-  speed?: number; // ms per character
+  speed?: number;
   onComplete?: () => void;
   className?: string;
   reducedMotion?: boolean;
@@ -56,7 +56,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   }, [text, speed, prefersReduced, finish, onComplete]);
 
   return (
-    // @ts-expect-error dynamic tag
+    // @ts-ignore — Tag is a valid intrinsic element; JSX transform narrows too aggressively here
     <Tag
       className={`typewriter-text ${done ? 'typewriter-text--done' : ''} ${className}`}
       aria-live="polite"

@@ -2,8 +2,8 @@
 // GAIA gives something based on user intent before asking anything more.
 // Intentional inversion of standard onboarding psychology.
 
-import React, { useMemo } from 'react';
-import { useOnboardingStore } from '../store/onboardingStore';
+import { useMemo } from 'react';
+import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 
 interface Gift {
   title: string;
@@ -47,7 +47,6 @@ function selectGift(intent: string[]): Gift {
       action: 'Open canvas',
     };
   }
-  // Default
   return {
     title: 'A place to begin',
     body: 'GAIA is ready. Explore at whatever pace feels right. There is no wrong way to start.',
@@ -56,8 +55,8 @@ function selectGift(intent: string[]): Gift {
 }
 
 export function Phase6FirstGift() {
-  const intent = useOnboardingStore((s) => s.intent);
-  const nextPhase = useOnboardingStore((s) => s.nextPhase);
+  const intent    = useOnboardingStore((s: OnboardingStore) => s.intent);
+  const nextPhase = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
 
   const gift = useMemo(() => selectGift(intent), [intent]);
 
@@ -73,10 +72,7 @@ export function Phase6FirstGift() {
           {gift.action && (
             <button
               className="btn btn--secondary"
-              onClick={() => {
-                // Gift-specific action hook — extend per gift type in future
-                nextPhase();
-              }}
+              onClick={() => { nextPhase(); }}
             >
               {gift.action}
             </button>

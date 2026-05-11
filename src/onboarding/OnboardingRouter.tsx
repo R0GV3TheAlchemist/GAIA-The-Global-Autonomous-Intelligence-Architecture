@@ -2,8 +2,8 @@
 // Orchestrates all 8 phases. Handles interruption/resume.
 // Entry point: mount this at the /onboarding route.
 
-import React, { useEffect, useState } from 'react';
-import { useOnboardingStore, loadPersistedState } from './store/onboardingStore';
+import { useEffect, useState } from 'react';
+import { useOnboardingStore, loadPersistedState, type OnboardingStore } from './store/onboardingStore';
 import { Phase0Bootstrap } from './phases/Phase0Bootstrap';
 import { Phase1Awakening } from './phases/Phase1Awakening';
 import { Phase2Introduction } from './phases/Phase2Introduction';
@@ -16,22 +16,20 @@ import { Phase8Threshold } from './phases/Phase8Threshold';
 import './onboarding.css';
 
 interface OnboardingRouterProps {
-  /** Called when Phase 8 completes — navigate to home */
   onFinish: () => void;
 }
 
 export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
-  const phase = useOnboardingStore((s) => s.phase);
-  const resumeOnboarding = useOnboardingStore((s) => s.resumeOnboarding);
-  const resetOnboarding = useOnboardingStore((s) => s.resetOnboarding);
-  const setPhase = useOnboardingStore((s) => s.setPhase);
-  const nextPhase = useOnboardingStore((s) => s.nextPhase);
-  const markInterrupted = useOnboardingStore((s) => s.markInterrupted);
+  const phase          = useOnboardingStore((s: OnboardingStore) => s.phase);
+  const resumeOnboarding = useOnboardingStore((s: OnboardingStore) => s.resumeOnboarding);
+  const resetOnboarding  = useOnboardingStore((s: OnboardingStore) => s.resetOnboarding);
+  const setPhase       = useOnboardingStore((s: OnboardingStore) => s.setPhase);
+  const nextPhase      = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
 
   const [resumePrompt, setResumePrompt] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
 
-  // Check for persisted interrupted state on mount
   useEffect(() => {
     loadPersistedState().then((saved) => {
       if (saved && saved.phase && saved.phase > 0 && !saved.completed) {
@@ -42,7 +40,6 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
     });
   }, [setPhase]);
 
-  // Mark interrupted on unmount (if not complete)
   useEffect(() => {
     return () => {
       if (!useOnboardingStore.getState().completed) markInterrupted();
@@ -51,7 +48,6 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
 
   if (!bootstrapped) return null;
 
-  // Resume/Start-over prompt
   if (resumePrompt) {
     return (
       <div className="onboarding-resume" role="dialog" aria-modal="true" aria-label="Resume onboarding">
@@ -60,19 +56,13 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
           <div className="phase__actions">
             <button
               className="btn btn--primary"
-              onClick={() => {
-                resumeOnboarding();
-                setResumePrompt(false);
-              }}
+              onClick={() => { resumeOnboarding(); setResumePrompt(false); }}
             >
               Resume
             </button>
             <button
               className="btn btn--ghost"
-              onClick={() => {
-                resetOnboarding();
-                setResumePrompt(false);
-              }}
+              onClick={() => { resetOnboarding(); setResumePrompt(false); }}
             >
               Start over
             </button>
@@ -83,14 +73,8 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
   }
 
   return (
-    <main
-      className="onboarding-shell"
-      aria-label="GAIA onboarding"
-    >
-      {/* Skip link for keyboard users */}
-      <a href="#onboarding-main" className="skip-link">
-        Skip to main content
-      </a>
+    <main className="onboarding-shell" aria-label="GAIA onboarding">
+      <a href="#onboarding-main" className="skip-link">Skip to main content</a>
       <div id="onboarding-main" className="onboarding-phase-container">
         {phase === 0 && <Phase0Bootstrap onComplete={nextPhase} />}
         {phase === 1 && <Phase1Awakening />}

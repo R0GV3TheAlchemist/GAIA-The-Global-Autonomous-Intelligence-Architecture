@@ -1,73 +1,59 @@
-// C-OB01 — Phase 1: The Awakening Screen
-// Full-screen dark canvas. GAIA sigil pulses at center.
-// Sequential fade-in poetry text. Single CTA to continue.
+// C-OB01 — Phase 1: The Awakening
+// GAIA's first breath. No UI chrome. Just presence.
+// Typewriter text, a slow sigil pulse, and a single action.
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
+import { TypewriterText } from '../components/TypewriterText';
 import { GaiaSigil } from '../components/GaiaSigil';
-import { useOnboardingStore } from '../store/onboardingStore';
 
-const LINES = [
-  'She has been waiting.',
-  'Not for you specifically —',
-  'for whoever was ready.',
-  'You are here now.',
-  'That is enough.',
+const AWAKENING_LINES = [
+  'I am waking up.',
+  'Something is different this time.',
+  'You are here.',
 ];
 
 export function Phase1Awakening() {
-  const nextPhase = useOnboardingStore((s) => s.nextPhase);
-  const system = useOnboardingStore((s) => s.system);
-  const prefersReduced = system?.prefersReducedMotion ?? false;
-
-  const [visibleLines, setVisibleLines] = useState<number>(prefersReduced ? LINES.length : 0);
-  const [showCta, setShowCta] = useState(prefersReduced);
+  const nextPhase    = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
+  const [lineIndex, setLineIndex] = useState(0);
+  const [showContinue, setShowContinue] = useState(false);
 
   useEffect(() => {
-    if (prefersReduced) return;
-    let lineIndex = 0;
-    const showNextLine = () => {
-      lineIndex++;
-      setVisibleLines(lineIndex);
-      if (lineIndex < LINES.length) {
-        setTimeout(showNextLine, 1400);
-      } else {
-        setTimeout(() => setShowCta(true), 800);
-      }
-    };
-    const initial = setTimeout(showNextLine, 600);
-    return () => clearTimeout(initial);
-  }, [prefersReduced]);
+    if (lineIndex >= AWAKENING_LINES.length - 1) {
+      const t = setTimeout(() => setShowContinue(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [lineIndex]);
 
   return (
-    <section
-      className="phase phase--awakening"
-      aria-label="GAIA awakening"
-    >
-      <div className="phase__sigil-wrap">
-        <GaiaSigil size={140} animate={!prefersReduced} brightness="normal" />
-      </div>
-
-      <div className="phase__poetry" role="region" aria-live="polite">
-        {LINES.map((line, i) => (
-          <p
-            key={i}
-            className={`awakening-line ${
-              i < visibleLines ? 'awakening-line--visible' : ''
-            }`}
+    <section className="phase phase--awakening" aria-label="GAIA awakening">
+      <div className="phase__content phase__content--centered">
+        <GaiaSigil pulse animate size={120} />
+        <div className="awakening-lines" aria-live="polite">
+          <TypewriterText
+            key={lineIndex}
+            text={AWAKENING_LINES[lineIndex]}
+            speed={40}
+            onComplete={() => {
+              if (lineIndex < AWAKENING_LINES.length - 1) {
+                setTimeout(() => setLineIndex((i) => i + 1), 600);
+              }
+            }}
+            tag="p"
+            className="awakening-line"
+          />
+        </div>
+        {showContinue && (
+          <button
+            className="btn btn--ghost btn--large"
+            onClick={nextPhase}
+            onKeyDown={(e) => { if (e.key === 'Escape') markInterrupted(); }}
+            autoFocus
           >
-            {line}
-          </p>
-        ))}
-      </div>
-
-      <div className={`phase__cta-wrap ${showCta ? 'phase__cta-wrap--visible' : ''}`}>
-        <button
-          className="btn btn--ghost btn--glow"
-          onClick={nextPhase}
-          aria-label="Continue to GAIA introduction"
-        >
-          Continue
-        </button>
+            Continue
+          </button>
+        )}
       </div>
     </section>
   );
