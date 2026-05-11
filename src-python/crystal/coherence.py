@@ -9,16 +9,17 @@ Weights (from spec C-CC01 §3.1):
   Stage     w_S = 0.30
   Shadow    w_E = 0.20
   Schumann  w_H = 0.15
+
+API
+---
+compute_coherence(affect_coherence, stage_coherence, shadow_integration, schumann_alignment)
+
+All four arguments are pre-computed component floats in [0.0, 1.0].
+The upstream caller (CrystalCore.tick) is responsible for deriving each
+component via components.py before calling this function.
 """
 
 from __future__ import annotations
-
-from .components import (
-    derive_affect_coherence,
-    derive_schumann_alignment,
-    derive_shadow_integration,
-    derive_stage_coherence,
-)
 
 # Weights — must sum to 1.0
 W_AFFECT   = 0.35
@@ -31,48 +32,29 @@ assert abs(W_AFFECT + W_STAGE + W_SHADOW + W_SCHUMANN - 1.0) < 1e-9, \
 
 
 def compute_coherence(
-    *,
-    # Affect stream
-    arc_stability:        float,
-    valence_trend:        float,
-    volatility:           float,
-    # Stage stream
-    marker_scores:        dict[str, float],
-    # Shadow stream
-    integration_progress: float,
-    shadow_intensity:     float,
-    shadow_available:     bool = True,
-    # Schumann stream
-    schumann_alignment:   float,
-    schumann_confidence:  float,
-    schumann_available:   bool = True,
-) -> tuple[float, float, float, float, float]:
+    affect_coherence:   float,
+    stage_coherence:    float,
+    shadow_integration: float,
+    schumann_alignment: float,
+) -> float:
     """
-    Compute Ψ and all four component scores.
+    Compute Ψ from four pre-derived component scores.
+
+    Parameters
+    ----------
+    affect_coherence   : A  in [0.0, 1.0]
+    stage_coherence    : S  in [0.0, 1.0]
+    shadow_integration : E  in [0.0, 1.0]
+    schumann_alignment : H  in [0.0, 1.0]
 
     Returns
     -------
-    (psi, affect_coherence, stage_coherence, shadow_integration, schumann_alignment)
-    All values in [0.0, 1.0].
+    psi : float in [0.0, 1.0]
     """
-    A = derive_affect_coherence(
-        arc_stability=arc_stability,
-        valence_trend=valence_trend,
-        volatility=volatility,
-    )
-    S = derive_stage_coherence(marker_scores)
-    E = derive_shadow_integration(
-        integration_progress=integration_progress,
-        shadow_intensity=shadow_intensity,
-        available=shadow_available,
-    )
-    H = derive_schumann_alignment(
-        alignment_score=schumann_alignment,
-        confidence=schumann_confidence,
-        available=schumann_available,
-    )
+    A = max(0.0, min(1.0, affect_coherence))
+    S = max(0.0, min(1.0, stage_coherence))
+    E = max(0.0, min(1.0, shadow_integration))
+    H = max(0.0, min(1.0, schumann_alignment))
 
     psi = W_AFFECT * A + W_STAGE * S + W_SHADOW * E + W_SCHUMANN * H
-    psi = max(0.0, min(1.0, psi))
-
-    return psi, A, S, E, H
+    return max(0.0, min(1.0, psi))
