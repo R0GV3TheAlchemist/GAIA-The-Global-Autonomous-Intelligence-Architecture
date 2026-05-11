@@ -12,6 +12,7 @@ Engines mounted
   /stage    — StageEngine      (Magnum Opus stage evaluation, WindowTracker)
   /shadow   — ShadowEngine     (archetypal shadow detection, integration tracking)
   /schumann — SchumannEngine   (Earth resonance alignment layer)
+  /crystal  — CrystalCore      (coherence synthesis, orb params, persona tone)
 
 Usage (development)
 -------------------
@@ -60,6 +61,9 @@ from shadow_engine.router import router as shadow_router
 
 from schumann.engine import SchumannEngine
 from schumann.router import router as schumann_router, init_schumann_engine
+
+from crystal.engine import CrystalCore
+from crystal.router import router as crystal_router, init_crystal_core
 
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
@@ -132,7 +136,15 @@ async def lifespan(app: FastAPI):
     init_schumann_engine(schumann_engine)
     logger.info("SchumannEngine initialised ✓")
 
-    # ── 6. Sovereign Memory router (last — has its own init signature) ────────
+    # ── 6. Crystal Core ──────────────────────────────────────────────────────
+    # CrystalCore synthesises all four upstream engine streams into a single
+    # coherence score (Ψ), inner narrative, persona tone, and orb parameters.
+    # It talks to the other engines via their HTTP routes at localhost.
+    crystal_core = CrystalCore(base_url="http://127.0.0.1:52000")
+    init_crystal_core(crystal_core)
+    logger.info("CrystalCore initialised ✓")
+
+    # ── 7. Sovereign Memory router (last — has its own init signature) ────────
     init_memory(memory)
     logger.info("SovereignMemory router initialised ✓")
 
@@ -149,12 +161,13 @@ async def lifespan(app: FastAPI):
 # ── FastAPI application ───────────────────────────────────────────────────────
 app = FastAPI(
     title="GAIA-OS Sidecar",
-    version="0.2.0",
+    version="0.3.0",
     description=(
         "Local-first inference sidecar for GAIA-OS. "
         "Serves Soul Mirror memory, affect analysis, stage evaluation, "
-        "shadow archetype detection, and Schumann resonance alignment "
-        "to the Tauri frontend over localhost."
+        "shadow archetype detection, Schumann resonance alignment, "
+        "and Crystal Core coherence synthesis to the Tauri frontend "
+        "over localhost."
     ),
     docs_url="/docs",
     redoc_url="/redoc",
@@ -182,6 +195,7 @@ app.include_router(affect_router,  prefix="/affect")
 app.include_router(stage_router,   prefix="/stage")
 app.include_router(shadow_router)   # shadow_engine/router.py already sets prefix="/shadow"
 app.include_router(schumann_router) # schumann/router.py already sets its own prefix
+app.include_router(crystal_router)  # crystal/router.py sets prefix="/crystal"
 
 
 # ── Root health endpoint ──────────────────────────────────────────────────────
@@ -190,9 +204,9 @@ async def root() -> JSONResponse:
     """Sidecar liveness probe — returns version and online engines."""
     return JSONResponse(content={
         "service": "gaia-sidecar",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "status":  "online",
-        "engines": ["memory", "affect", "stage", "shadow", "schumann"],
+        "engines": ["memory", "affect", "stage", "shadow", "schumann", "crystal"],
     })
 
 
