@@ -1,0 +1,340 @@
+/**
+ * src/crystal-view/crystal-view.css
+ * GAIA-OS — Crystal View styles
+ * Spec: C-CC01 §11.2
+ *
+ * Design language:
+ *   - Dark-first, no light mode needed (Crystal View is always night-sky)
+ *   - Colours from BAND_HUE palette — teal base, coherence-tinted ring
+ *   - No numbers on stream bars — felt coherence, not audited performance
+ *   - 375px mobile-first; scales gracefully to desktop
+ */
+
+/* ── Overlay ──────────────────────────────────────────────────────────────── */
+
+.crystal-view-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: oklch(0.08 0.01 220 / 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: cv-overlay-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cv-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Sheet ────────────────────────────────────────────────────────────────── */
+
+.crystal-view {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: oklch(0.12 0.015 220);
+  border-top: 1px solid oklch(1 0 0 / 0.07);
+  border-radius: 20px 20px 0 0;
+  padding: 2rem 1.5rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  animation: cv-sheet-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cv-sheet-in {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* On larger screens — centre as a floating panel */
+@media (min-width: 600px) {
+  .crystal-view-overlay {
+    align-items: center;
+  }
+  .crystal-view {
+    max-height: 88dvh;
+    border-radius: 20px;
+    border: 1px solid oklch(1 0 0 / 0.07);
+  }
+}
+
+/* ── Close button ─────────────────────────────────────────────────────────── */
+
+.cv-close {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  font-size: 1rem;
+  color: oklch(0.55 0 0);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  line-height: 1;
+  transition: color 180ms ease;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cv-close:hover,
+.cv-close:focus-visible {
+  color: oklch(0.80 0 0);
+  outline: 2px solid oklch(0.50 0.10 190);
+  outline-offset: 2px;
+}
+
+/* ── Error banner ─────────────────────────────────────────────────────────── */
+
+.cv-error {
+  font-size: 0.75rem;
+  color: oklch(0.65 0.08 40);
+  text-align: center;
+  background: oklch(0.65 0.08 40 / 0.08);
+  border: 1px solid oklch(0.65 0.08 40 / 0.18);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+}
+
+/* ── Ring area ────────────────────────────────────────────────────────────── */
+
+.cv-ring-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* TrendArc and CoherenceRing are absolutely stacked */
+.cv-ring-area > svg {
+  flex-shrink: 0;
+}
+
+.cv-ring-area > .coherence-ring {
+  /* Sits over the trend arc */
+  margin-top: -300px; /* pull up to overlap — adjust if sizes change */
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.cv-ring-area > .trend-arc {
+  display: block;
+}
+
+.cv-band-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: oklch(0.55 0.06 190);
+  margin-top: 0.25rem;
+}
+
+/* ── Narrative ────────────────────────────────────────────────────────────── */
+
+.cv-narrative {
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.cv-narrative__text {
+  font-style: italic;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: oklch(0.72 0.03 200);
+  max-width: 36ch;
+  margin: 0 auto;
+}
+
+/* ── Stream bars ──────────────────────────────────────────────────────────── */
+
+.cv-streams {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.stream-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stream-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stream-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.stream-bar__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: oklch(0.62 0.03 200);
+}
+
+.stream-bar__note {
+  font-size: 0.6875rem;
+  color: oklch(0.42 0.02 200);
+  font-style: italic;
+}
+
+.stream-bar__track {
+  width: 100%;
+  height: 4px;
+  background: oklch(1 0 0 / 0.06);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.stream-bar__fill {
+  height: 100%;
+  background: linear-gradient(
+    in oklch to right,
+    oklch(0.45 0.10 190),
+    oklch(0.65 0.12 190)
+  );
+  border-radius: 99px;
+  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 100%;
+}
+
+/* ── Trend arc SVG ────────────────────────────────────────────────────────── */
+
+.trend-arc {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Coherence ring SVG ───────────────────────────────────────────────────── */
+
+.coherence-ring {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+
+.cv-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid oklch(1 0 0 / 0.05);
+}
+
+.cv-footer__tick {
+  font-size: 0.6875rem;
+  color: oklch(0.38 0.02 200);
+}
+
+.cv-footer__hint {
+  font-size: 0.6875rem;
+  color: oklch(0.35 0.01 200);
+  font-style: italic;
+}
+
+/* ── Skeleton ─────────────────────────────────────────────────────────────── */
+
+@keyframes cv-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    oklch(0.18 0.01 220) 25%,
+    oklch(0.22 0.01 220) 50%,
+    oklch(0.18 0.01 220) 75%
+  );
+  background-size: 200% 100%;
+  animation: cv-shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.skeleton-ring {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  align-self: center;
+}
+
+.skeleton-text {
+  height: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-bar {
+  height: 4px;
+  width: 100%;
+  margin-bottom: 1rem;
+  border-radius: 99px;
+}
+
+.crystal-view--loading {
+  align-items: center;
+}
+
+/* ── Ring area overlap fix ────────────────────────────────────────────────── */
+/* TrendArc (320px) + CoherenceRing (280px) overlap:
+   we use a grid overlay so they share the same centre point */
+
+.cv-ring-area {
+  display: grid;
+  grid-template-rows: auto;
+  justify-items: center;
+}
+
+.cv-ring-area > .trend-arc {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.cv-ring-area > .coherence-ring {
+  grid-row: 1;
+  grid-column: 1;
+  margin-top: 20px; /* (320 - 280) / 2 = 20px to centre inside trend arc */
+  pointer-events: none;
+}
+
+.cv-ring-area > .cv-band-label {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .crystal-view-overlay,
+  .crystal-view {
+    animation: none;
+  }
+  .stream-bar__fill,
+  .coherence-ring circle {
+    transition: none;
+  }
+  .skeleton {
+    animation: none;
+    background: oklch(0.18 0.01 220);
+  }
+}
