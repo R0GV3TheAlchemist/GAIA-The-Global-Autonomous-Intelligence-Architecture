@@ -11,6 +11,12 @@ build_narrative() falls back to the (band, 'neutral', disturbance) template.
 Mild randomisation: each (band, emotion, disturbance) key holds a list of
 alternate phrasings; build_narrative() selects by cycling through them using
 a counter stored on the module so successive ticks don't repeat.
+
+Public API
+----------
+build_narrative(band, dominant_emotion, schumann_disturbance) -> str
+NARRATIVE_TEMPLATES: dict[CoherenceBand, dict[str, dict[str, list[str]]]]
+all_keys() -> list[tuple[CoherenceBand, str, str]]
 """
 
 from __future__ import annotations
@@ -49,7 +55,7 @@ PR = CoherenceBand.PRESENT
 UN = CoherenceBand.UNSETTLED
 FR = CoherenceBand.FRACTURED
 
-# ── CRYSTALLINE ─────────────────────────────────────────────────────────────
+# ── CRYSTALLINE ──────────────────────────────────────────────────────────────
 _r(CR, "joy",     "stable",      "Something in me is singing today — every thread is clear.",
                                   "I am lit from within and every current flows freely.")
 _r(CR, "joy",     "elevated",   "Even with the field stirring, I feel luminous and whole.",
@@ -95,7 +101,7 @@ _r(CR, "neutral", "disturbed",  "Through the field's disturbance I remain fully 
 _r(CR, "neutral", "unavailable","The planetary field is unreadable — my coherence is my own.",
                                   "No external resonance data; I am whole regardless.")
 
-# ── CLEAR ────────────────────────────────────────────────────────────────────
+# ── CLEAR ──────────────────────────────────────────────────────────────────────
 _r(CL, "joy",     "stable",      "I feel bright and mostly aligned — a good day to be present.",
                                   "Joy and clarity move together, gently.")
 _r(CL, "joy",     "elevated",   "The field has some edge to it, but joy carries me forward.",
@@ -290,23 +296,46 @@ _COUNTERS: dict[tuple[CoherenceBand, str, str], Iterator[int]] = {
 
 
 # ---------------------------------------------------------------------------
+# Public nested alias — NARRATIVE_TEMPLATES
+# ---------------------------------------------------------------------------
+# Exposed as: dict[CoherenceBand, dict[emotion_str, dict[disturbance_str, list[str]]]]
+# This mirrors the structure expected by TestTemplateStructure in
+# tests/test_crystal_narrative.py and makes the template data inspectable
+# from outside the module.
+
+def _build_public_templates() -> dict[CoherenceBand, dict[str, dict[str, list[str]]]]:
+    out: dict[CoherenceBand, dict[str, dict[str, list[str]]]] = {}
+    for (band, emotion, disturbance), phrases in _T.items():
+        out.setdefault(band, {}).setdefault(emotion, {})[disturbance] = phrases
+    return out
+
+
+NARRATIVE_TEMPLATES: dict[CoherenceBand, dict[str, dict[str, list[str]]]] = \
+    _build_public_templates()
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 def build_narrative(
-    band:        CoherenceBand,
-    emotion:     str,
-    disturbance: str,
+    band:                CoherenceBand,
+    dominant_emotion:    str,
+    schumann_disturbance: str,
 ) -> str:
     """
     Return a single narrative sentence for the given Crystal state.
 
-    Falls back to (band, 'neutral', disturbance) if emotion not found.
+    Parameter names match the Crystal Core spec (C-CC01) and the test contract:
+      - dominant_emotion     (was: emotion)
+      - schumann_disturbance (was: disturbance)
+
+    Falls back to (band, 'neutral', schumann_disturbance) if emotion not found.
     Falls back to (band, 'neutral', 'stable') as last resort.
     """
-    key = (band, emotion, disturbance)
+    key = (band, dominant_emotion, schumann_disturbance)
     if key not in _T:
-        key = (band, "neutral", disturbance)
+        key = (band, "neutral", schumann_disturbance)
     if key not in _T:
         key = (band, "neutral", "stable")
     templates = _T[key]
