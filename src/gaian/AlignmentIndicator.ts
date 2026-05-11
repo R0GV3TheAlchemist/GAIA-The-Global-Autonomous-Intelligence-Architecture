@@ -38,12 +38,12 @@ function buildArcPath(value: number): string {
       'Z',
     ].join(' ');
   }
-  const angle   = v * 2 * Math.PI;
-  const startX  = ARC_CX;
-  const startY  = ARC_CY - ARC_R;
-  const endX    = ARC_CX + ARC_R * Math.sin(angle);
-  const endY    = ARC_CY - ARC_R * Math.cos(angle);
-  const large   = angle > Math.PI ? 1 : 0;
+  const angle  = v * 2 * Math.PI;
+  const startX = ARC_CX;
+  const startY = ARC_CY - ARC_R;
+  const endX   = ARC_CX + ARC_R * Math.sin(angle);
+  const endY   = ARC_CY - ARC_R * Math.cos(angle);
+  const large  = angle > Math.PI ? 1 : 0;
   return [
     `M ${startX} ${startY}`,
     `A ${ARC_R} ${ARC_R} 0 ${large} 1 ${endX.toFixed(3)} ${endY.toFixed(3)}`,
@@ -51,12 +51,10 @@ function buildArcPath(value: number): string {
 }
 
 export class AlignmentIndicator {
-  private _root:    HTMLElement;
-  private _arc:     SVGPathElement;
-  private _score:   HTMLElement;
-  private _dot:     HTMLElement;
-  private _ttBody:  HTMLElement;
-  private _lastState: AlignmentState | null = null;
+  private _root:   HTMLElement;
+  private _arc:    SVGPathElement;
+  private _score:  HTMLElement;
+  private _ttBody: HTMLElement;
 
   constructor() {
     // ── Build DOM ────────────────────────────────────────────────────────
@@ -102,11 +100,11 @@ export class AlignmentIndicator {
     score.textContent = '—';
     this._score = score;
 
-    // Disturbance dot
+    // Disturbance dot — colour driven by CSS via data-disturbance on _root;
+    // no field reference needed here.
     const dot = document.createElement('span');
     dot.className = 'viriditas-indicator__dot';
     dot.setAttribute('aria-hidden', 'true');
-    this._dot = dot;
 
     summary.appendChild(svg);
     summary.appendChild(score);
@@ -130,8 +128,6 @@ export class AlignmentIndicator {
    * Hides when confidence < 0.4 (advisory-only, sidecar data unreliable).
    */
   update(state: AlignmentState): void {
-    this._lastState = state;
-
     if (state.confidence < 0.4) {
       this._root.setAttribute('hidden', '');
       return;
@@ -148,7 +144,7 @@ export class AlignmentIndicator {
     // Score label
     this._score.textContent = score.toFixed(2);
 
-    // Disturbance dot via data attribute (CSS handles colour)
+    // Disturbance dot colour — CSS selector .viriditas-indicator[data-disturbance="..."] handles it
     this._root.setAttribute('data-disturbance', dist);
 
     // Tooltip body
