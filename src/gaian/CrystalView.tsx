@@ -11,9 +11,15 @@
  *
  * Usage:
  *   <CrystalView state={crystalState} onClose={() => setOpen(false)} />
+ *
+ * Dismiss gestures supported:
+ *   - Swipe the sheet down ≥ 80px  (touch)
+ *   - Click the backdrop
+ *   - Press the ✕ button
+ *   - Press Escape
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CrystalState } from '../hooks/useCrystalCore';
 import './crystal-view.css';
 
@@ -46,10 +52,49 @@ const TONE_COLORS: Record<string, string> = {
   SPARSE:   'crystal-badge--sparse',
 };
 
-export function CrystalView({ state, onClose }: CrystalViewProps) {
-  const sheetRef = useRef<HTMLDivElement>(null);
+/** Minimum downward swipe distance (px) required to dismiss the sheet. */
+const SWIPE_THRESHOLD = 80;
 
-  // Trap focus inside sheet while open
+export function CrystalView({ state, onClose }: CrystalViewProps) {
+  const sheetRef  = useRef<HTMLDivElement>(null);
+
+  // ── Swipe-to-dismiss state ──────────────────────────────────────────────
+  // translateY applied live during the drag so the sheet follows the finger.
+  const [dragY,     setDragY]     = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+
+  // Respect prefers-reduced-motion — skip translation, just call onClose.
+  const reducedMotion =
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartY.current = e.touches[0].clientY;
+    setIsDragging(false);
+    setDragY(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartY.current === null) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta <= 0) return; // only track downward movement
+    setIsDragging(true);
+    if (!reducedMotion) setDragY(delta);
+  };
+
+  const handleTouchEnd = () => {
+    const delta = dragY;
+    touchStartY.current = null;
+    setIsDragging(false);
+    setDragY(0);
+    if (delta >= SWIPE_THRESHOLD) {
+      onClose();
+    }
+  };
+
+  // ── Focus trap + Escape ─────────────────────────────────────────────────
   useEffect(() => {
     const el = sheetRef.current;
     if (!el) return;
@@ -74,11 +119,16 @@ export function CrystalView({ state, onClose }: CrystalViewProps) {
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const psi    = state?.psi  ?? 0.5;
-  const band   = state?.band ?? 'Coherent';
-  const tone   = state?.persona_tone ?? 'GROUNDED';
-  const pct    = Math.round(psi * 100);
-  const emoji  = BAND_EMOJI[band] ?? '🟡';
+  const psi   = state?.psi  ?? 0.5;
+  const band  = state?.band ?? 'Coherent';
+  const tone  = state?.persona_tone ?? 'GROUNDED';
+  const pct   = Math.round(psi * 100);
+  const emoji = BAND_EMOJI[band] ?? '🟡';
+
+  // Sheet inline style: translate live during drag
+  const sheetStyle: React.CSSProperties = isDragging && dragY > 0
+    ? { transform: `translateY(${dragY}px)`, transition: 'none' }
+    : {};
 
   return (
     <>
@@ -92,11 +142,18 @@ export function CrystalView({ state, onClose }: CrystalViewProps) {
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className="crystal-view"
+        className={`crystal-view${isDragging ? ' crystal-view--dragging' : ''}`}
+        style={sheetStyle}
         role="dialog"
         aria-modal="true"
         aria-label="GAIA coherence state"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
+        {/* Drag handle — visual affordance */}
+        <div className="crystal-view__drag-handle" aria-hidden="true" />
+
         {/* Header */}
         <div className="crystal-view__header">
           <div className="crystal-view__title-row">

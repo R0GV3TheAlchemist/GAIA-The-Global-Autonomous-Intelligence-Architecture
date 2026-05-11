@@ -8,6 +8,7 @@
  *   │                                                              │
  *   │              [GaianOrb canvas]                               │
  *   │           [mood label beneath orb]                          │
+ *   │           [band label — CoherenceBand from CrystalState]    │
  *   │                                                              │
  *   │  "Good morning, Kyle. The room feels quiet."                │
  *   │  [daily brief line]                                         │
@@ -21,6 +22,11 @@
  * showing GAIA's live Ψ coherence state.  The gesture is detected here
  * (per the CrystalView contract) and CrystalView is mounted imperatively
  * via ReactDOM.createRoot into a portal host div.
+ *
+ * The CoherenceBand label (.home-band-label) beneath the mood label is
+ * kept in sync with the latest CrystalState.  It is populated on mount
+ * via a lightweight GET /crystal/state poll and updated after every
+ * subsequent successful fetch triggered by the long-press open.
  */
 
 import { GaianOrb }          from './GaianOrb';
@@ -54,6 +60,15 @@ const LONG_PRESS_MS = 600;
 
 /** Sidecar endpoint for the latest CrystalState. */
 const CRYSTAL_STATE_URL = 'http://localhost:8008/crystal/state';
+
+/** CoherenceBand → display label */
+const BAND_LABELS: Record<string, string> = {
+  Fractured:   '🔴 Fractured',
+  Fragmented:  '🟠 Fragmented',
+  Coherent:    '🟡 Coherent',
+  Resonant:    '🟢 Resonant',
+  Crystalline: '✨ Crystalline',
+};
 
 // Session-level daily brief cache — generated once per session
 let _sessionBrief: string | null = null;
@@ -210,6 +225,9 @@ export class GaianHome {
   /** Cleanup refs for orb-level event listeners. */
   private _lpCleanup: (() => void) | null = null;
 
+  /** Reference to the CoherenceBand label element (below mood label). */
+  private _bandLabel: HTMLElement | null = null;
+
   constructor({ container, onNavigate }: GaianHomeOptions) {
     this.container  = container;
     this.onNavigate = onNavigate;
@@ -258,6 +276,15 @@ export class GaianHome {
     moodLabel.setAttribute('aria-live', 'polite');
     moodLabel.textContent = '';
     this.container.appendChild(moodLabel);
+
+    // ── CoherenceBand label (beneath mood label)
+    const bandLabel = document.createElement('p');
+    bandLabel.className = 'home-band-label';
+    bandLabel.setAttribute('aria-live', 'polite');
+    bandLabel.setAttribute('aria-label', 'Current coherence band');
+    bandLabel.textContent = '';
+    this.container.appendChild(bandLabel);
+    this._bandLabel = bandLabel;
 
     // ── Greeting
     const greetingEl = document.createElement('p');
@@ -319,6 +346,9 @@ export class GaianHome {
     // ── Poll health until model ready
     this._pollHealth(loadingBadge);
 
+    // ── Seed the CoherenceBand label from /crystal/state on mount
+    this._pollCrystalBand();
+
     // ── Init GaianOrb after DOM is painted
     requestAnimationFrame(() => {
       this.orb = new GaianOrb(canvas);
@@ -337,6 +367,42 @@ export class GaianHome {
 
     // ── Async hydration (non-blocking)
     this._hydrateAsync(profileCard, greetingEl, briefEl, memoriesWrap, moodLabel, dock);
+  }
+
+  // ── CoherenceBand label ─────────────────────────────────────────────────
+
+  /**
+   * Lightweight startup fetch: pulls /crystal/state once so the band label
+   * is populated as soon as the sidecar responds — without waiting for the
+   * user to trigger the long-press.
+   */
+  private async _pollCrystalBand(): Promise<void> {
+    try {
+      const res = await fetch(CRYSTAL_STATE_URL, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as CrystalState;
+        this._crystalState = data;
+        this._updateBandLabel(data.band);
+        if (this.orb && data.orb_params) this.orb.setParams(data.orb_params);
+      }
+    } catch {
+      // Sidecar offline at startup — band label stays blank, which is fine.
+    }
+  }
+
+  /**
+   * Writes the current CoherenceBand to the .home-band-label element.
+   * Called after every successful crystal/state fetch.
+   */
+  private _updateBandLabel(band: string | undefined): void {
+    if (!this._bandLabel) return;
+    if (!band) {
+      this._bandLabel.textContent = '';
+      return;
+    }
+    this._bandLabel.textContent = BAND_LABELS[band] ?? band;
   }
 
   // ── Long-press gesture ──────────────────────────────────────────────────
@@ -426,7 +492,8 @@ export class GaianHome {
    * Fetches the latest CrystalState (best-effort, 3 s timeout), then
    * mounts the CrystalView React component into a portal host element
    * appended to .gaian-home.  Falls back to the last cached state if
-   * the sidecar is unavailable.
+   * the sidecar is unavailable.  Also updates the CoherenceBand label
+   * on the Home screen with the freshest band value.
    */
   private async _openCrystalView(): Promise<void> {
     if (this._crystalOpen) return;
@@ -439,6 +506,8 @@ export class GaianHome {
       if (res.ok) {
         const data = (await res.json()) as CrystalState;
         this._crystalState = data;
+        // Update the Home band label with the freshest value
+        this._updateBandLabel(data.band);
         // Also drive the orb with fresh params while we're here
         if (this.orb && data.orb_params) this.orb.setParams(data.orb_params);
       }
@@ -629,6 +698,9 @@ export class GaianHome {
     this._crystalHost?.remove();
     this._crystalRoot = null;
     this._crystalHost = null;
+
+    // Clear band label ref
+    this._bandLabel = null;
 
     this.orb?.dispose();
     this.bg?.dispose();
