@@ -1,6 +1,6 @@
 /**
  * GaianHome.ts — Issue #80
- * The primary Home screen — GAIA’s living room.
+ * The primary Home screen — GAIA's living room.
  *
  * Layout:
  *   ┌──────────────────────────────────────────────────┐
@@ -9,13 +9,18 @@
  *   │              [GaianOrb canvas]                               │
  *   │           [mood label beneath orb]                          │
  *   │                                                              │
- *   │  “Good morning, Kyle. The room feels quiet.”                │
+ *   │  "Good morning, Kyle. The room feels quiet."                │
  *   │  [daily brief line]                                         │
  *   │                                                              │
  *   │  [recent memories: last 3 entries]                          │
  *   │                                                              │
  *   │  [ Chat ] [ Memory ] [ Search ] [ Shell ]                    │
  *   └──────────────────────────────────────────────────┘
+ *
+ * Long-press on the orb (600 ms hold) opens CrystalView — a bottom sheet
+ * showing GAIA's live Ψ coherence state.  The gesture is detected here
+ * (per the CrystalView contract) and CrystalView is mounted imperatively
+ * via ReactDOM.createRoot into a portal host div.
  */
 
 import { GaianOrb }          from './GaianOrb';
@@ -24,6 +29,16 @@ import { buildGreeting, fetchMemoryHint } from './GaianGreeting';
 import { gaianMood, MOOD_PROFILES } from './GaianMood';
 import type { GaianMoodState } from './GaianMood';
 import { API_BASE }          from '../config';
+import type { CrystalState } from '../hooks/useCrystalCore';
+
+// React + ReactDOM are loaded as globals at runtime via CDN (same pattern
+// as THREE / gsap in GaianOrb.ts).
+declare const React:     typeof import('react');
+declare const ReactDOM:  typeof import('react-dom/client');
+
+// CrystalView is a React component — imported for its type; the actual
+// module is resolved by the bundler at build time.
+import { CrystalView } from './CrystalView';
 
 export type HomeNavTarget = 'chat' | 'memory' | 'search' | 'shell';
 
@@ -32,15 +47,22 @@ export interface GaianHomeOptions {
   onNavigate: (target: HomeNavTarget) => void;
 }
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
+/** Hold duration before the CrystalView sheet opens (ms). */
+const LONG_PRESS_MS = 600;
+
+/** Sidecar endpoint for the latest CrystalState. */
+const CRYSTAL_STATE_URL = 'http://localhost:8008/crystal/state';
+
 // Session-level daily brief cache — generated once per session
 let _sessionBrief: string | null = null;
 
-/** Read the user’s name from the best available source (no fallback to stub) */
+// ── Name / archetype / age helpers ──────────────────────────────────────────
+
+/** Read the user's name from the best available source (no fallback to stub) */
 function resolveNameSync(): string | undefined {
   try {
-    // 1. Onboarding store (most reliable — set during Phase 3)
-    // Dynamic import would be async, so we access the global Zustand store
-    // via the window proxy set in app.ts after onboarding completes.
     if (window.__gaiaUserName) return window.__gaiaUserName;
   } catch { /* noop */ }
   return undefined;
@@ -159,6 +181,8 @@ async function fetchDailyBrief(name?: string): Promise<string | null> {
   }
 }
 
+// ── GaianHome ────────────────────────────────────────────────────────────────
+
 export class GaianHome {
   private container:  HTMLElement;
   private orb:        GaianOrb | null = null;
@@ -167,11 +191,32 @@ export class GaianHome {
   private _greetingRefresh: number | null = null;
   private _moodUnlisten:    (() => void) | null = null;
 
+  // ── Crystal / long-press state ──────────────────────────────────────────
+  /** Last successfully fetched CrystalState — used as fallback when offline. */
+  private _crystalState: CrystalState | null = null;
+
+  /** React root for the CrystalView portal. Created once on first open. */
+  private _crystalRoot: ReturnType<typeof ReactDOM.createRoot> | null = null;
+
+  /** Host element that holds the CrystalView portal. */
+  private _crystalHost: HTMLDivElement | null = null;
+
+  /** Whether the sheet is currently open. */
+  private _crystalOpen = false;
+
+  /** Long-press timer handle. */
+  private _lpTimer: number | null = null;
+
+  /** Cleanup refs for orb-level event listeners. */
+  private _lpCleanup: (() => void) | null = null;
+
   constructor({ container, onNavigate }: GaianHomeOptions) {
     this.container  = container;
     this.onNavigate = onNavigate;
     this._render();
   }
+
+  // ── Render ──────────────────────────────────────────────────────────────
 
   private _render(): void {
     this.container.innerHTML = '';
@@ -197,6 +242,10 @@ export class GaianHome {
     // ── Orb wrapper + canvas
     const orbWrap = document.createElement('div');
     orbWrap.className = 'home-orb-wrap';
+    // Make focusable so keyboard users can trigger the long-press hint
+    orbWrap.setAttribute('role', 'button');
+    orbWrap.setAttribute('tabindex', '0');
+    orbWrap.setAttribute('aria-label', 'GAIA orb — hold to view coherence state');
     const canvas = document.createElement('canvas');
     canvas.className = 'home-orb-canvas';
     canvas.setAttribute('aria-label', 'GAIA — Living Earth avatar');
@@ -281,11 +330,166 @@ export class GaianHome {
         this._updateMoodLabel(moodLabel, mood);
         this._applyDockAccent(dock, mood);
       });
+
+      // Wire long-press gesture
+      this._wireLongPress(orbWrap);
     });
 
     // ── Async hydration (non-blocking)
     this._hydrateAsync(profileCard, greetingEl, briefEl, memoriesWrap, moodLabel, dock);
   }
+
+  // ── Long-press gesture ──────────────────────────────────────────────────
+
+  /**
+   * Attaches pointer + touch listeners to `orbWrap`.
+   * After LONG_PRESS_MS of uninterrupted contact the CrystalView opens.
+   * A subtle ripple class is added to the canvas during the hold phase to
+   * give the user visual confirmation the gesture is registering.
+   */
+  private _wireLongPress(orbWrap: HTMLElement): void {
+    const canvas = orbWrap.querySelector<HTMLCanvasElement>('.home-orb-canvas');
+
+    const startHold = () => {
+      if (this._lpTimer !== null) return; // already counting
+      canvas?.classList.add('orb-long-press-active');
+      this._lpTimer = window.setTimeout(() => {
+        this._lpTimer = null;
+        canvas?.classList.remove('orb-long-press-active');
+        this._openCrystalView();
+      }, LONG_PRESS_MS);
+    };
+
+    const cancelHold = () => {
+      if (this._lpTimer !== null) {
+        clearTimeout(this._lpTimer);
+        this._lpTimer = null;
+      }
+      canvas?.classList.remove('orb-long-press-active');
+    };
+
+    // Pointer events (desktop + stylus + most modern mobile)
+    const onPointerDown = (e: PointerEvent) => {
+      // Only primary button / single touch
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      startHold();
+    };
+    const onPointerUp    = () => cancelHold();
+    const onPointerMove  = (e: PointerEvent) => {
+      // Cancel if the pointer drifts more than 10px (scroll intent)
+      if (Math.abs(e.movementX) > 10 || Math.abs(e.movementY) > 10) cancelHold();
+    };
+    const onPointerLeave = () => cancelHold();
+
+    // Touch events fallback (older iOS / Android WebView)
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) startHold();
+    };
+    const onTouchEnd    = () => cancelHold();
+    const onTouchMove   = () => cancelHold();
+
+    // Keyboard accessibility: Enter / Space triggers the sheet immediately
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this._openCrystalView();
+      }
+    };
+
+    orbWrap.addEventListener('pointerdown',  onPointerDown);
+    orbWrap.addEventListener('pointerup',    onPointerUp);
+    orbWrap.addEventListener('pointermove',  onPointerMove);
+    orbWrap.addEventListener('pointerleave', onPointerLeave);
+    orbWrap.addEventListener('touchstart',   onTouchStart,  { passive: true });
+    orbWrap.addEventListener('touchend',     onTouchEnd);
+    orbWrap.addEventListener('touchmove',    onTouchMove,   { passive: true });
+    orbWrap.addEventListener('keydown',      onKeyDown);
+
+    // Prevent the context menu appearing on long-press on mobile
+    orbWrap.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    this._lpCleanup = () => {
+      orbWrap.removeEventListener('pointerdown',  onPointerDown);
+      orbWrap.removeEventListener('pointerup',    onPointerUp);
+      orbWrap.removeEventListener('pointermove',  onPointerMove);
+      orbWrap.removeEventListener('pointerleave', onPointerLeave);
+      orbWrap.removeEventListener('touchstart',   onTouchStart);
+      orbWrap.removeEventListener('touchend',     onTouchEnd);
+      orbWrap.removeEventListener('touchmove',    onTouchMove);
+      orbWrap.removeEventListener('keydown',      onKeyDown);
+    };
+  }
+
+  // ── CrystalView portal ──────────────────────────────────────────────────
+
+  /**
+   * Fetches the latest CrystalState (best-effort, 3 s timeout), then
+   * mounts the CrystalView React component into a portal host element
+   * appended to .gaian-home.  Falls back to the last cached state if
+   * the sidecar is unavailable.
+   */
+  private async _openCrystalView(): Promise<void> {
+    if (this._crystalOpen) return;
+
+    // Fetch latest state (non-blocking race — show whatever we have)
+    try {
+      const res = await fetch(CRYSTAL_STATE_URL, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as CrystalState;
+        this._crystalState = data;
+        // Also drive the orb with fresh params while we're here
+        if (this.orb && data.orb_params) this.orb.setParams(data.orb_params);
+      }
+    } catch {
+      // Offline — use last known state (or null → CrystalView handles it)
+    }
+
+    // Create the host div the first time
+    if (!this._crystalHost) {
+      const host = document.createElement('div');
+      host.className = 'crystal-view-portal';
+      this.container.appendChild(host);
+      this._crystalHost = host;
+    }
+
+    // Create the React root the first time
+    if (!this._crystalRoot) {
+      this._crystalRoot = ReactDOM.createRoot(this._crystalHost);
+    }
+
+    this._crystalOpen = true;
+    this._renderCrystalView();
+  }
+
+  private _closeCrystalView(): void {
+    if (!this._crystalOpen) return;
+    this._crystalOpen = false;
+    // Render null to trigger CrystalView's exit animation (handled in CSS)
+    // then unmount after the transition completes (~320 ms)
+    this._crystalRoot?.render(null);
+    window.setTimeout(() => {
+      if (!this._crystalOpen) {
+        this._crystalRoot?.unmount();
+        this._crystalRoot = null;
+        this._crystalHost?.remove();
+        this._crystalHost = null;
+      }
+    }, 350);
+  }
+
+  private _renderCrystalView(): void {
+    if (!this._crystalRoot) return;
+    this._crystalRoot.render(
+      React.createElement(CrystalView, {
+        state:   this._crystalState,
+        onClose: () => this._closeCrystalView(),
+      })
+    );
+  }
+
+  // ── Async hydration ─────────────────────────────────────────────────────
 
   /** All async data fetches happen here — failures degrade gracefully */
   private async _hydrateAsync(
@@ -326,7 +530,7 @@ export class GaianHome {
     const memories = await fetchRecentMemories();
     memoriesWrap.innerHTML = '';
     if (memories.length === 0) {
-      memoriesWrap.innerHTML = `<p class="memories-empty">No memories yet. I’m still learning you.</p>`;
+      memoriesWrap.innerHTML = `<p class="memories-empty">No memories yet. I'm still learning you.</p>`;
     } else {
       memories.forEach(m => {
         const item = document.createElement('button');
@@ -357,6 +561,8 @@ export class GaianHome {
       briefEl.classList.add('visible');
     }
   }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
 
   private _updateMoodLabel(el: HTMLElement, mood: GaianMoodState): void {
     const LABELS: Record<GaianMoodState, string> = {
@@ -407,7 +613,23 @@ export class GaianHome {
     });
   }
 
+  // ── Lifecycle ────────────────────────────────────────────────────────────
+
   dispose(): void {
+    // Cancel any in-flight long-press timer
+    if (this._lpTimer !== null) {
+      clearTimeout(this._lpTimer);
+      this._lpTimer = null;
+    }
+    // Remove orb gesture listeners
+    this._lpCleanup?.();
+
+    // Tear down the CrystalView portal
+    this._crystalRoot?.unmount();
+    this._crystalHost?.remove();
+    this._crystalRoot = null;
+    this._crystalHost = null;
+
     this.orb?.dispose();
     this.bg?.dispose();
     this._moodUnlisten?.();
