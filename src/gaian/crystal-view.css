@@ -1,0 +1,294 @@
+/**
+ * crystal-view.css
+ * Styles for CrystalView long-press sheet + GaianOrb coherence ring overlay.
+ * Imports no external dependencies — pure CSS custom properties.
+ */
+
+/* ── Coherence ring overlay (positioned over the WebGL canvas) ─────────────── */
+
+.gaian-orb__ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+/* ── Backdrop ────────────────────────────────────────────────────────────────── */
+
+.crystal-view__backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0.08 0.01 220 / 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  animation: cv-backdrop-in 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cv-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Sheet ───────────────────────────────────────────────────────────────────── */
+
+.crystal-view {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, 100vw);
+  max-height: 82dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  background: var(--color-surface, #1c1b19);
+  border: 1px solid oklch(from var(--color-primary, #4f98a3) l c h / 0.18);
+  border-bottom: none;
+  border-radius: var(--radius-xl, 1rem) var(--radius-xl, 1rem) 0 0;
+  box-shadow: 0 -8px 40px oklch(0 0 0 / 0.5);
+
+  padding: var(--space-6, 1.5rem) var(--space-6, 1.5rem) calc(var(--space-6, 1.5rem) + env(safe-area-inset-bottom));
+  z-index: 201;
+
+  animation: cv-sheet-in 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cv-sheet-in {
+  from { transform: translateX(-50%) translateY(100%); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);   opacity: 1; }
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+
+.crystal-view__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.crystal-view__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+}
+
+.crystal-view__emoji {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.crystal-view__title {
+  font-size: var(--text-lg, 1.25rem);
+  font-weight: 600;
+  color: var(--color-text, #cdccca);
+  margin: 0;
+}
+
+.crystal-view__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full, 9999px);
+  color: var(--color-text-muted, #797876);
+  flex-shrink: 0;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.crystal-view__close:hover,
+.crystal-view__close:focus-visible {
+  background: var(--color-surface-offset, #1d1c1a);
+  color: var(--color-text, #cdccca);
+}
+
+/* ── Tone badge ──────────────────────────────────────────────────────────────── */
+
+.crystal-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2em 0.65em;
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.crystal-badge--radiant  { background: oklch(0.85 0.12 195 / 0.18); color: oklch(0.85 0.12 195); }
+.crystal-badge--warm     { background: oklch(0.78 0.14 65  / 0.18); color: oklch(0.78 0.14 65);  }
+.crystal-badge--grounded { background: oklch(0.72 0.10 155 / 0.18); color: oklch(0.72 0.10 155); }
+.crystal-badge--measured { background: oklch(0.70 0.08 250 / 0.18); color: oklch(0.70 0.08 250); }
+.crystal-badge--sparse   { background: oklch(0.65 0.06 30  / 0.18); color: oklch(0.65 0.06 30);  }
+
+/* ── Ψ score block ───────────────────────────────────────────────────────────── */
+
+.crystal-view__score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1, 0.25rem);
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.crystal-view__psi {
+  font-size: var(--text-lg, 1.25rem);
+  font-style: italic;
+  color: var(--color-primary, #4f98a3);
+  opacity: 0.7;
+  margin-right: var(--space-1, 0.25rem);
+}
+
+.crystal-view__pct {
+  font-size: var(--text-2xl, 2.5rem);
+  font-weight: 700;
+  color: var(--color-text, #cdccca);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.crystal-view__pct-unit {
+  font-size: var(--text-base, 1rem);
+  color: var(--color-text-muted, #797876);
+  margin-right: var(--space-2, 0.5rem);
+}
+
+.crystal-view__band {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-text-muted, #797876);
+  letter-spacing: 0.04em;
+}
+
+/* ── Ψ progress bar ─────────────────────────────────────────────────────────── */
+
+.crystal-view__psi-bar {
+  height: 4px;
+  background: var(--color-surface-offset, #1d1c1a);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+  margin-bottom: var(--space-6, 1.5rem);
+}
+
+.crystal-view__psi-fill {
+  height: 100%;
+  background: linear-gradient(90deg in oklch, var(--color-primary, #4f98a3), oklch(0.85 0.12 195));
+  border-radius: var(--radius-full, 9999px);
+  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Component bars ─────────────────────────────────────────────────────────── */
+
+.crystal-view__components {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  margin-bottom: var(--space-6, 1.5rem);
+}
+
+.crystal-component__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 0.5rem);
+  margin-bottom: var(--space-1, 0.25rem);
+}
+
+.crystal-component__label {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--color-text, #cdccca);
+  flex: 1;
+}
+
+.crystal-component__weight {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-faint, #5a5957);
+}
+
+.crystal-component__value {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--color-text-muted, #797876);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+.crystal-component__bar {
+  height: 3px;
+  background: var(--color-surface-offset, #1d1c1a);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+  margin-bottom: var(--space-1, 0.25rem);
+}
+
+.crystal-component__fill {
+  height: 100%;
+  border-radius: var(--radius-full, 9999px);
+  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Per-component fill colours */
+.crystal-component__fill--affect   { background: oklch(0.72 0.14 155); }
+.crystal-component__fill--stage    { background: oklch(0.72 0.12 195); }
+.crystal-component__fill--shadow   { background: oklch(0.65 0.10 280); }
+.crystal-component__fill--schumann { background: oklch(0.78 0.10 65);  }
+
+.crystal-component__desc {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-faint, #5a5957);
+  margin: 0;
+  max-width: none;
+}
+
+/* ── GAIA narrative ──────────────────────────────────────────────────────────── */
+
+.crystal-view__narrative {
+  padding: var(--space-4, 1rem);
+  background: oklch(from var(--color-primary, #4f98a3) l c h / 0.06);
+  border-left: 2px solid oklch(from var(--color-primary, #4f98a3) l c h / 0.35);
+  border-radius: 0 var(--radius-md, 0.5rem) var(--radius-md, 0.5rem) 0;
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.crystal-view__narrative-text {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-text-muted, #797876);
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0;
+  max-width: none;
+}
+
+/* ── Timestamp ───────────────────────────────────────────────────────────────── */
+
+.crystal-view__timestamp {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-faint, #5a5957);
+  text-align: center;
+  margin: 0;
+  max-width: none;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .crystal-view,
+  .crystal-view__backdrop {
+    animation: none;
+  }
+  .crystal-view__psi-fill,
+  .crystal-component__fill {
+    transition: none;
+  }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .crystal-view {
+    border-radius: var(--radius-lg, 0.75rem) var(--radius-lg, 0.75rem) 0 0;
+    padding-inline: var(--space-4, 1rem);
+  }
+}
