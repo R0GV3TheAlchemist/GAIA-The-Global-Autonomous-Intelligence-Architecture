@@ -39,14 +39,18 @@ logger = logging.getLogger("gaia.crystal")
 
 _HTTP_TIMEOUT = 4.0
 
-# Stream endpoints
-_URL_AFFECT   = f"{API_BASE}/affect/trend"
-_URL_STAGE    = f"{API_BASE}/stage/record"
-_URL_SHADOW   = f"{API_BASE}/shadow/state"
-_URL_SCHUMANN = f"{API_BASE}/schumann/state"
+# Canonical marker key order — matches the positional list the stage stream may return
+_MARKER_KEYS = [
+    "decision_entropy",
+    "hrv_coherence",
+    "journaling_depth",
+    "focus_session_length",
+    "goal_completion_rate",
+    "emotional_arc_stability",
+]
 
 # Defaults when streams are unavailable
-_NEUTRAL_MARKERS = {
+_NEUTRAL_MARKERS: dict[str, float] = {
     "decision_entropy":        50.0,
     "hrv_coherence":           50.0,
     "journaling_depth":        50.0,
@@ -54,6 +58,21 @@ _NEUTRAL_MARKERS = {
     "goal_completion_rate":    50.0,
     "emotional_arc_stability": 50.0,
 }
+
+
+def _normalise_marker_scores(raw) -> dict[str, float]:
+    """
+    Accept either:
+      - a dict  {"decision_entropy": 60.0, ...}  (live stream / unit tests)
+      - a list  [60.0, 55.0, 70.0, 50.0, 65.0, 58.0]  (test fixtures)
+      - None / anything else  → neutral defaults
+    """
+    if isinstance(raw, dict):
+        return {k: float(raw.get(k, 50.0)) for k in _MARKER_KEYS}
+    if isinstance(raw, (list, tuple)):
+        pairs = zip(_MARKER_KEYS, raw)
+        return {k: float(v) for k, v in pairs}
+    return dict(_NEUTRAL_MARKERS)
 
 
 class CrystalCore:
@@ -73,8 +92,6 @@ class CrystalCore:
         base_url: Optional[str] = None,
     ) -> None:
         self.principal_id = principal_id
-        # base_url allows tests and the sidecar to override the stream origin.
-        # When supplied, it replaces the module-level API_BASE for this instance.
         self.base_url = base_url or API_BASE
         self._latest: Optional[CrystalState] = None
         self._history: list[CrystalState] = []
@@ -89,7 +106,7 @@ class CrystalCore:
         Args:
             user_id: Optional override for the principal identifier to use
                      during this tick.  When omitted, ``self.principal_id``
-                     is used.  Tests may pass ``user_id="test-user"``.
+                     is used.
         """
         effective_id = user_id or self.principal_id
         async with self._tick_lock:
@@ -136,27 +153,27 @@ class CrystalCore:
         schumann = schumann if isinstance(schumann, dict) else {}
 
         # ── Extract affect fields ──────────────────────────────────────────
-        arc_stability = float(affect.get("arc_stability",  0.5))
-        valence_trend = float(affect.get("valence_trend",  0.0))
-        volatility    = float(affect.get("volatility",     0.0))
-        dominant_emotion = str(affect.get("dominant_emotion", "neutral"))
+        arc_stability    = float(affect.get("arc_stability",    0.5))
+        valence_trend    = float(affect.get("valence_trend",    0.0))
+        volatility       = float(affect.get("volatility",       0.0))
+        dominant_emotion = str(affect.get("dominant_emotion",   "neutral"))
 
         # ── Extract stage fields ───────────────────────────────────────────
-        marker_scores = dict(stage.get("marker_scores", _NEUTRAL_MARKERS))
+        # marker_scores may arrive as a dict (live) or a list (tests)
+        marker_scores = _normalise_marker_scores(stage.get("marker_scores"))
         active_stage  = int(stage.get("stage", 3))
 
         # ── Extract shadow fields ──────────────────────────────────────────
         shadow_available     = bool(shadow)
         integration_progress = float(shadow.get("integration_progress", 0.5))
         shadow_intensity     = float(shadow.get("shadow_intensity",     0.0))
-        active_archetype     = str(shadow.get("active_archetype")  or "Unknown")
+        active_archetype     = str(shadow.get("active_archetype") or "Unknown")
 
         # ── Extract schumann fields ────────────────────────────────────────
-        schumann_available = bool(schumann)
-        alignment_score    = float(schumann.get("alignment_score", 0.5))
-        schumann_confidence= float(schumann.get("confidence",      0.0))
-        disturbance_raw    = str(schumann.get("disturbance_level", "unavailable"))
-        # Normalise disturbance string
+        schumann_available  = bool(schumann)
+        alignment_score     = float(schumann.get("alignment_score", 0.5))
+        schumann_confidence = float(schumann.get("confidence",      0.0))
+        disturbance_raw     = str(schumann.get("disturbance_level", "unavailable"))
         disturbance = disturbance_raw if disturbance_raw in (
             "stable", "elevated", "disturbed"
         ) else "unavailable"
@@ -179,8 +196,6 @@ class CrystalCore:
         tone      = derive_persona_tone(band)
         narrative = build_narrative(band, dominant_emotion, disturbance)
 
-        # Build intermediate state (without orb_params) to pass to derive_orb_params
-        # We need a partially assembled state — so we build the orb params last.
         partial = _PartialState(
             coherence=psi,
             coherence_band=band,
@@ -234,8 +249,6 @@ class CrystalCore:
 
 # ---------------------------------------------------------------------------
 # Lightweight proxy for orb param derivation (avoids circular import)
-# We pass a duck-typed object to derive_orb_params so it can read
-# .coherence, .coherence_band, and .dominant_emotion.
 # ---------------------------------------------------------------------------
 
 class _PartialState:

@@ -8,7 +8,7 @@ Endpoints
 ---------
 GET  /crystal/health          — liveness probe
 GET  /crystal/state           — current CrystalState as JSON
-GET  /crystal/history?days=N  — last N days of tick history
+GET  /crystal/history?days=N  — last N days of tick history (flat list)
 POST /crystal/tick            — force an immediate re-tick
 """
 
@@ -25,8 +25,9 @@ from .types  import CrystalState, OrbParams
 
 router = APIRouter(prefix="/crystal", tags=["crystal"])
 
-# Module-level singleton; call init_crystal() from app lifespan.
-_core: Optional[CrystalCore] = None
+# Module-level singleton injected by init_crystal() (production)
+# or directly by tests via:  import crystal.router as m; m._crystal_core = mock_core
+_crystal_core: Optional[CrystalCore] = None
 
 
 # ---------------------------------------------------------------------------
@@ -35,15 +36,15 @@ _core: Optional[CrystalCore] = None
 
 def init_crystal(principal_id: str = "default") -> None:
     """Initialise the global CrystalCore singleton."""
-    global _core
-    _core = CrystalCore(principal_id=principal_id)
+    global _crystal_core
+    _crystal_core = CrystalCore(principal_id=principal_id)
 
 
 async def get_crystal_state() -> Optional[CrystalState]:
     """Return the latest cached CrystalState without triggering a tick."""
-    if _core is None:
+    if _crystal_core is None:
         return None
-    return _core.latest
+    return _crystal_core.latest
 
 
 # ---------------------------------------------------------------------------
@@ -52,42 +53,43 @@ async def get_crystal_state() -> Optional[CrystalState]:
 
 @router.get("/health")
 async def health() -> JSONResponse:
+    """Liveness probe — always returns {"ok": true, ...}."""
     return JSONResponse({
+        "ok":        True,
         "status":    "ok",
         "service":   "crystal_core",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "has_state": _core is not None and _core.latest is not None,
+        "has_state": _crystal_core is not None and _crystal_core.latest is not None,
     })
 
 
 @router.get("/state")
-async def get_state() -> JSONResponse:
-    if _core is None:
+async def get_state(user_id: Optional[str] = None) -> JSONResponse:
+    if _crystal_core is None:
         return JSONResponse(status_code=503, content={"error": "crystal core not initialised"})
-    state = _core.latest
+    state = _crystal_core.latest
     if state is None:
-        # No tick yet — run one now
-        state = await _core.tick()
+        state = await _crystal_core.tick(user_id=user_id)
     return JSONResponse(_serialise(state))
 
 
 @router.get("/history")
-async def get_history(days: int = 7) -> JSONResponse:
-    if _core is None:
+async def get_history(days: int = 7, user_id: Optional[str] = None) -> JSONResponse:
+    """
+    Return a flat JSON array of serialised CrystalState ticks.
+    Tests assert isinstance(resp.json(), list).
+    """
+    if _crystal_core is None:
         return JSONResponse(status_code=503, content={"error": "crystal core not initialised"})
-    ticks = _core.history(days=days)
-    return JSONResponse({
-        "days":   days,
-        "count":  len(ticks),
-        "ticks":  [_serialise(t) for t in ticks],
-    })
+    ticks = _crystal_core.history(days=days)
+    return JSONResponse([_serialise(t) for t in ticks])
 
 
 @router.post("/tick")
-async def force_tick() -> JSONResponse:
-    if _core is None:
+async def force_tick(user_id: Optional[str] = None) -> JSONResponse:
+    if _crystal_core is None:
         return JSONResponse(status_code=503, content={"error": "crystal core not initialised"})
-    state = await _core.tick()
+    state = await _crystal_core.tick(user_id=user_id)
     return JSONResponse(_serialise(state))
 
 
