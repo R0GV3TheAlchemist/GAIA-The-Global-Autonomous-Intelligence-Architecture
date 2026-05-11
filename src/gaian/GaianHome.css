@@ -1,10 +1,10 @@
 /*
- * GaianHome.css
+ * GaianHome.css — Issue #80
  * The Home screen — GAIA’s living room.
  * Dark, warm, spatial. Not a dashboard — a room.
  */
 
-/* ── Root container ───────────────────────────────────────────────── */
+/* ── Root container ───────────────────────────────────────────────────── */
 
 .gaian-home {
   position:        relative;
@@ -16,8 +16,10 @@
   height:          100%;
   overflow:        hidden;
   background:      #0a0b10;
-  padding:         2rem 1.5rem 1.5rem;
+  padding:         1.25rem 1.5rem 1.5rem;
   box-sizing:      border-box;
+  /* Expose dock-accent as a CSS var so all dock children can read it */
+  --dock-accent: #1a7a5e;
 }
 
 /* ── Room background ─────────────────────────────────────────────── */
@@ -49,11 +51,11 @@
 }
 
 .home-bg.has-room {
-  background-image: none; /* Let the room photo show */
+  background-image: none;
   background-size:  cover;
 }
 
-/* ── Vignette overlay ────────────────────────────────────────────── */
+/* ── Vignette overlay ──────────────────────────────────────────── */
 
 .home-vignette {
   position:   absolute;
@@ -68,6 +70,65 @@
   z-index:        1;
 }
 
+/* ── Profile card ──────────────────────────────────────────────────── */
+
+.home-profile-card {
+  position:    relative;
+  z-index:     2;
+  display:     flex;
+  flex-direction: column;
+  align-items: center;
+  gap:         0.25rem;
+  animation:   profile-in 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+@keyframes profile-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.profile-name {
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      clamp(1rem, 1.4vw + 0.5rem, 1.35rem);
+  font-weight:    600;
+  color:          rgba(220, 235, 230, 0.92);
+  letter-spacing: 0.02em;
+  line-height:    1.2;
+}
+
+.profile-meta {
+  display:     flex;
+  align-items: center;
+  gap:         0.4rem;
+}
+
+.profile-archetype {
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      0.72rem;
+  font-weight:    500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          rgba(var(--dock-accent-rgb, 26, 122, 94), 0.85);
+  /* Fallback when custom property doesn't resolve to RGB */
+  color:          color-mix(in oklch, var(--dock-accent, #1a7a5e) 85%, transparent);
+  border:         1px solid color-mix(in oklch, var(--dock-accent, #1a7a5e) 30%, transparent);
+  border-radius:  999px;
+  padding:        0.15rem 0.55rem;
+  background:     color-mix(in oklch, var(--dock-accent, #1a7a5e) 8%, transparent);
+}
+
+.profile-sep {
+  color: rgba(120, 140, 135, 0.4);
+  font-size: 0.8rem;
+}
+
+.profile-age {
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      0.72rem;
+  color:          rgba(120, 150, 145, 0.7);
+  letter-spacing: 0.03em;
+}
+
 /* ── Orb ──────────────────────────────────────────────────────────────── */
 
 .home-orb-wrap {
@@ -78,8 +139,7 @@
   align-items: center;
   justify-content: center;
   width:      100%;
-  max-width:  480px;
-  /* Soft ambient glow beneath the orb */
+  max-width:  420px;
   filter:     drop-shadow(0 0 40px rgba(0, 160, 120, 0.18))
               drop-shadow(0 0 80px rgba(0, 100, 80, 0.08));
 }
@@ -91,29 +151,132 @@
   display: block;
 }
 
-/* ── Greeting ──────────────────────────────────────────────────────────── */
+/* ── Mood label ───────────────────────────────────────────────────────── */
+
+.home-mood-label {
+  position:       relative;
+  z-index:        2;
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      0.72rem;
+  font-weight:    400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color:          color-mix(in oklch, var(--dock-accent, #1a7a5e) 70%, rgba(200,220,215,0.5));
+  text-align:     center;
+  margin:         -0.25rem 0 0.25rem;
+  min-height:     1em;
+  transition:     color 800ms ease, opacity 600ms ease;
+  opacity:        0.85;
+}
+
+/* ── Greeting ────────────────────────────────────────────────────────────── */
 
 .home-greeting {
   position:    relative;
   z-index:     2;
   font-family: 'Satoshi', 'Inter', sans-serif;
-  font-size:   clamp(0.95rem, 1.2vw + 0.6rem, 1.2rem);
+  font-size:   clamp(0.9rem, 1.1vw + 0.5rem, 1.1rem);
   font-weight: 400;
-  color:       rgba(200, 215, 210, 0.82);
+  color:       rgba(200, 215, 210, 0.8);
   text-align:  center;
-  max-width:   42ch;
-  line-height: 1.5;
+  max-width:   44ch;
+  line-height: 1.55;
   letter-spacing: 0.01em;
   padding:     0 1rem;
-  margin:      0.5rem 0 1rem;
-
-  /* Fade in on render */
+  margin:      0.25rem 0 0;
   animation: greeting-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes greeting-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Daily brief ─────────────────────────────────────────────────────────── */
+
+.home-brief {
+  position:       relative;
+  z-index:        2;
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      clamp(0.78rem, 0.9vw + 0.4rem, 0.9rem);
+  font-weight:    400;
+  font-style:     italic;
+  color:          rgba(140, 175, 165, 0.65);
+  text-align:     center;
+  max-width:      48ch;
+  line-height:    1.5;
+  letter-spacing: 0.01em;
+  padding:        0 1rem;
+  margin:         0.15rem 0 0;
+  min-height:     1.4em;
+  opacity:        0;
+  transform:      translateY(4px);
+  transition:     opacity 1s ease 0.3s, transform 0.8s ease 0.3s;
+}
+
+.home-brief.visible {
+  opacity:   1;
+  transform: translateY(0);
+}
+
+/* ── Recent memories ──────────────────────────────────────────────────── */
+
+.home-memories {
+  position:        relative;
+  z-index:         2;
+  display:         flex;
+  flex-wrap:       wrap;
+  gap:             0.4rem;
+  justify-content: center;
+  max-width:       560px;
+  padding:         0 0.75rem;
+  margin:          0.35rem 0 0;
+  min-height:      2rem;
+  animation:       memories-in 1s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+@keyframes memories-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.memory-chip {
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      0.72rem;
+  font-weight:    400;
+  color:          rgba(140, 175, 165, 0.75);
+  background:     rgba(255, 255, 255, 0.03);
+  border:         1px solid rgba(255, 255, 255, 0.06);
+  border-radius:  999px;
+  padding:        0.3rem 0.75rem;
+  cursor:         pointer;
+  transition:     color 180ms ease, background 180ms ease, border-color 180ms ease;
+  text-align:     left;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  max-width:      240px;
+}
+
+.memory-chip:hover {
+  color:        rgba(180, 220, 210, 0.95);
+  background:   rgba(0, 160, 120, 0.06);
+  border-color: rgba(0, 160, 120, 0.2);
+}
+
+.memory-chip:active {
+  transform: scale(0.97);
+}
+
+.memories-placeholder,
+.memories-empty {
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      0.72rem;
+  color:          rgba(100, 130, 125, 0.5);
+  font-style:     italic;
+  letter-spacing: 0.02em;
+  text-align:     center;
+  padding:        0.25rem 0;
 }
 
 /* ── Bottom dock ──────────────────────────────────────────────────────── */
@@ -132,10 +295,9 @@
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow:      0 8px 32px rgba(0, 0, 0, 0.4),
-                   0 0 0 1px rgba(0, 180, 140, 0.04) inset;
-
-  /* Slide up on render */
-  animation: dock-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+                   0 0 0 1px color-mix(in oklch, var(--dock-accent, #1a7a5e) 6%, transparent) inset;
+  transition:      box-shadow 800ms ease;
+  animation:       dock-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 }
 
 @keyframes dock-in {
@@ -172,19 +334,19 @@
   transform: translateY(0) scale(0.96);
 }
 
+/* Active state uses the archetype-driven dock accent */
 .home-dock-btn.active {
-  color:      rgba(80, 200, 160, 0.95);
-  background: rgba(0, 160, 120, 0.08);
+  color:      color-mix(in oklch, var(--dock-accent, #1a7a5e) 90%, rgba(220,240,235,0.9));
+  background: color-mix(in oklch, var(--dock-accent, #1a7a5e) 10%, transparent);
 }
 
-/* Active indicator dot */
 .home-dock-btn.active::after {
   content:       '';
   display:       block;
   width:         4px;
   height:        4px;
   border-radius: 50%;
-  background:    rgba(80, 200, 160, 0.9);
+  background:    color-mix(in oklch, var(--dock-accent, #1a7a5e) 90%, rgba(220,240,235,1));
   margin-top:    2px;
 }
 
@@ -195,15 +357,15 @@
 }
 
 .dock-label {
-  font-family: 'Satoshi', 'Inter', sans-serif;
-  font-size:   0.7rem;
-  font-weight: 500;
+  font-family:    'Satoshi', 'Inter', sans-serif;
+  font-size:      0.7rem;
+  font-weight:    500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  line-height: 1;
+  line-height:    1;
 }
 
-/* ── Loading badge ───────────────────────────────────────────────────── */
+/* ── Loading badge ────────────────────────────────────────────────────── */
 
 .home-loading-badge {
   position:    absolute;
@@ -219,23 +381,30 @@
   pointer-events: none;
 }
 
-/* ── Responsive ───────────────────────────────────────────────────────── */
+/* ── Responsive ────────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
-  .gaian-home          { padding: 1rem 0.75rem 1rem; }
-  .home-orb-wrap       { max-width: 280px; }
-  .home-dock-btn       { padding: 0.5rem 0.65rem; min-width: 52px; }
-  .dock-label          { font-size: 0.65rem; }
+  .gaian-home       { padding: 1rem 0.75rem 1rem; }
+  .home-orb-wrap    { max-width: 260px; }
+  .home-dock-btn    { padding: 0.5rem 0.65rem; min-width: 52px; }
+  .dock-label       { font-size: 0.65rem; }
+  .memory-chip      { max-width: 160px; }
+  .home-brief       { font-size: 0.75rem; }
 }
 
 @media (min-width: 1024px) {
-  .home-orb-wrap { max-width: 540px; }
+  .home-orb-wrap  { max-width: 480px; }
+  .home-memories  { max-width: 680px; }
 }
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .home-greeting,
-  .home-dock          { animation: none; }
-  .home-bg            { transition: none; }
+  .home-dock,
+  .home-profile-card,
+  .home-memories   { animation: none; }
+  .home-bg         { transition: none; }
   .home-dock-btn:hover { transform: none; }
+  .home-brief      { transition: none; }
+  .home-mood-label { transition: none; }
 }
