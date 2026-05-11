@@ -157,9 +157,6 @@ const TIER_LABELS: Record<Tier, string> = {
   gaian:  'Your Gaian',
 };
 
-// Which nav item maps to which view content
-const CHAT_ITEMS = new Set(['companion', 'ask', 'chat']);
-
 // ─────────────────────────────────────────────────────────────────────────────
 // useAuth hook
 // ─────────────────────────────────────────────────────────────────────────────
