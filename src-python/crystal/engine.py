@@ -20,7 +20,7 @@ from typing   import Optional
 
 import httpx
 
-from .coherence     import compute_coherence
+from .coherence     import compute_coherence_from_streams
 from .narrative     import build_narrative
 from .orb_params    import derive_orb_params
 from .persona_tone  import derive_persona_tone
@@ -60,19 +60,20 @@ _NEUTRAL_MARKERS: dict[str, float] = {
 }
 
 
-def _normalise_marker_scores(raw) -> dict[str, float]:
+def _normalise_marker_scores(raw) -> list[float]:
     """
     Accept either:
-      - a dict  {"decision_entropy": 60.0, ...}  (live stream / unit tests)
+      - a dict  {"decision_entropy": 60.0, ...}  (live stream)
       - a list  [60.0, 55.0, 70.0, 50.0, 65.0, 58.0]  (test fixtures)
       - None / anything else  → neutral defaults
+
+    Always returns a list[float] in _MARKER_KEYS order.
     """
     if isinstance(raw, dict):
-        return {k: float(raw.get(k, 50.0)) for k in _MARKER_KEYS}
+        return [float(raw.get(k, 50.0)) for k in _MARKER_KEYS]
     if isinstance(raw, (list, tuple)):
-        pairs = zip(_MARKER_KEYS, raw)
-        return {k: float(v) for k, v in pairs}
-    return dict(_NEUTRAL_MARKERS)
+        return [float(v) for v in raw]
+    return [50.0] * len(_MARKER_KEYS)
 
 
 class CrystalCore:
@@ -159,7 +160,8 @@ class CrystalCore:
         dominant_emotion = str(affect.get("dominant_emotion",   "neutral"))
 
         # ── Extract stage fields ───────────────────────────────────────────
-        # marker_scores may arrive as a dict (live) or a list (tests)
+        # marker_scores may arrive as a dict (live) or a list (tests);
+        # _normalise_marker_scores always returns list[float]
         marker_scores = _normalise_marker_scores(stage.get("marker_scores"))
         active_stage  = int(stage.get("stage", 3))
 
@@ -179,7 +181,7 @@ class CrystalCore:
         ) else "unavailable"
 
         # ── Compute coherence ──────────────────────────────────────────────
-        psi, A, S, E, H = compute_coherence(
+        psi, A, S, E, H = compute_coherence_from_streams(
             arc_stability=arc_stability,
             valence_trend=valence_trend,
             volatility=volatility,
