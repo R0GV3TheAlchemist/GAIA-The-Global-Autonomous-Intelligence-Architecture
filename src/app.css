@@ -1,77 +1,21 @@
-/* GAIA App — Top-level layout */
+/* GAIA-OS — top-level layout reset */
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 html, body {
   height: 100%;
   overflow: hidden;
-  background: #0F1117;
-  color: #fff;
+  background: #0b0c0e;
+  color: #cdccca;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
   height: 100%;
   overflow: hidden;
-}
-
-.gaia-app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* Tab bar */
-.tab-nav {
-  display: flex;
-  background: #1A1D27;
-  border-bottom: 1px solid #2A2D3A;
-  padding: 0 16px;
-  flex-shrink: 0;
-  height: 40px;
-  align-items: stretch;
-}
-
-.tab-btn {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: #6B7280;
-  font-family: 'JetBrains Mono', monospace, sans-serif;
-  font-size: 12px;
-  padding: 0 20px;
-  cursor: pointer;
-  letter-spacing: 0.05em;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-.tab-btn:hover  { color: #fff; }
-.tab-btn.active { color: #2D6A4F; border-bottom-color: #2D6A4F; }
-
-/* Noosphere tab uses its own deep-space violet accent (C43 theme) */
-.tab-btn[data-view="noosphere"].active {
-  color: #7C3AED;
-  border-bottom-color: #7C3AED;
-}
-.tab-btn[data-view="noosphere"]:hover {
-  color: #A78BFA;
-}
-
-/* View container fills remaining height */
-.view-container {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Every view fills the container absolutely */
-.view {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  display: none;
-  flex-direction: column;
-}
-.view.active {
-  display: flex;
 }

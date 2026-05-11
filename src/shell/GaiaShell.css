@@ -1,427 +1,556 @@
 /**
- * src/shell/GaiaShell.css — Sprint G-9
- * Issue #68 Phase 4: Crystal Design Language applied to shell chrome
- *
- * Changes from previous version:
- *   - Imports crystal.css for the full Crystal Design Language
- *   - Shell background upgraded to deep-space radial gradient with
- *     Schumann-teal nebula glow driven by --crystal-glow token
- *   - Auth box uses crystal-card organic radius + glassmorphism
- *   - Topbar uses crystal glassmorphism values
- *   - Rail uses crystal glassmorphism values
- *   - All hardcoded border-radius values migrated to --radius-* tokens
- *   - Auth inputs and submit button reference crystal utility classes
- *     via structural CSS (no class additions needed in TSX)
+ * src/shell/GaiaShell.css
+ * GAIA-OS Three-Tier Shell — Perplexity-evolved aesthetic
+ * Warm near-black surfaces · Teal accent · Plain-English nav
+ * Metaphysics stays in core/ — this file is pure UI
  */
 
-/* ── Import base shell tokens + Crystal Design Language ──────────── */
 @import './tokens.css';
-@import './crystal.css';
 
-/* ───────────────────────────────────────────────────────────────── */
-/* Auth                                                                  */
-/* ───────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   Waking screen
+───────────────────────────────────────────────────────────────────── */
 
-.gaia-auth {
+.gs-waking {
   display:         flex;
   align-items:     center;
   justify-content: center;
-  min-height:      100vh;
-  background:      radial-gradient(
-    ellipse at 50% 40%,
-    #0a0a1e 0%,
-    #06060f 55%,
-    #040408 100%
-  );
-  padding: 24px;
+  gap:             12px;
+  min-height:      100dvh;
+  background:      var(--color-bg, #0b0c0e);
+  color:           rgba(255,255,255,0.4);
+  font-family:     var(--font-body, 'Inter', sans-serif);
+  font-size:       0.8125rem;
+  letter-spacing:  0.04em;
 }
 
-.gaia-auth__box {
+@keyframes gs-spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+.gs-waking svg { animation: gs-spin 3s linear infinite; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Auth screen
+───────────────────────────────────────────────────────────────────── */
+
+.gs-auth {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  min-height:      100dvh;
+  background:      #0b0c0e;
+  padding:         24px;
+  font-family:     var(--font-body, 'Inter', sans-serif);
+}
+
+.gs-auth__box {
   width:           100%;
-  max-width:       400px;
-  /* Crystal glassmorphism */
-  background:      var(--glass-surface);
-  border:          1px solid var(--glass-border);
-  border-radius:   var(--radius-xl);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  box-shadow:      var(--glass-shadow-lg);
+  max-width:       380px;
+  background:      #0f1115;
+  border:          1px solid rgba(255,255,255,0.07);
+  border-radius:   14px;
+  box-shadow:      0 12px 48px rgba(0,0,0,0.5);
   padding:         36px 32px;
   display:         flex;
   flex-direction:  column;
   gap:             16px;
-  position:        relative;
-  overflow:        hidden;
 }
 
-/* Top-edge specular highlight on auth box */
-.gaia-auth__box::before {
-  content:       '';
-  position:      absolute;
-  inset:         0;
-  border-radius: inherit;
-  border-top:    1px solid var(--glass-edge-top);
-  pointer-events: none;
+.gs-auth__logo {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             10px;
+  margin-bottom:   4px;
 }
 
-.gaia-auth__logo {
-  text-align:   center;
-  margin-bottom: 4px;
+.gs-auth__wordmark {
+  font-size:      1.5rem;
+  font-weight:    800;
+  letter-spacing: 0.12em;
+  color:          #dddcd9;
 }
 
-.gaia-auth__logo-gaia {
-  font-size:   2.2rem;
-  font-weight: 900;
-  letter-spacing: 0.15em;
-  background:  linear-gradient(135deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.gs-auth__wordmark span {
+  color:       #4f98a3;
+  font-weight: 400;
 }
 
-.gaia-auth__tagline {
-  text-align:  center;
-  font-size:   0.7rem;
-  color:       rgba(255,255,255,0.35);
-  letter-spacing: 0.04em;
-  margin:      0;
+.gs-auth__tagline {
+  text-align:     center;
+  font-size:      0.75rem;
+  color:          rgba(255,255,255,0.3);
+  letter-spacing: 0.03em;
 }
 
-.gaia-auth__tabs {
+.gs-auth__tabs {
   display:       flex;
   background:    rgba(255,255,255,0.04);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   padding:       3px;
   gap:           3px;
 }
 
-.gaia-auth__tab {
+.gs-auth__tab {
   flex:          1;
   padding:       8px;
   background:    transparent;
   border:        none;
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   color:         rgba(255,255,255,0.45);
-  font-size:     0.82rem;
+  font-size:     0.8125rem;
   font-weight:   500;
   cursor:        pointer;
-  transition:    background 0.2s, color 0.2s;
+  transition:    background 160ms, color 160ms;
 }
 
-.gaia-auth__tab--active {
-  background: rgba(255,255,255,0.09);
-  color:      rgba(255,255,255,0.90);
+.gs-auth__tab--active {
+  background: rgba(255,255,255,0.08);
+  color:      #dddcd9;
 }
 
-.gaia-auth__form  { display: flex; flex-direction: column; gap: 12px; }
-.gaia-auth__field { display: flex; flex-direction: column; gap: 5px;  }
-
-.gaia-auth__label {
-  font-size:   0.75rem;
-  color:       rgba(255,255,255,0.55);
-  font-weight: 500;
-}
-
-/* Inputs inherit crystal-input styling */
-.gaia-auth__input {
-  background:    rgba(255,255,255,0.05);
-  border:        1px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius-md);
-  padding:       10px 14px;
-  color:         rgba(255,255,255,0.90);
-  font-size:     0.9rem;
-  outline:       none;
-  transition:    border-color 0.2s, box-shadow 0.2s;
-  width:         100%;
-  font-family:   var(--font-sans);
-}
-
-.gaia-auth__input:focus {
-  border-color: color-mix(in srgb, var(--crystal-primary, #a78bfa) 60%, transparent);
-  box-shadow:   0 0 0 3px var(--crystal-glow, rgba(167,139,250,0.20));
-}
-
-.gaia-auth__hint {
-  font-size: 0.68rem;
-  color:     rgba(255,255,255,0.25);
-}
-
-.gaia-auth__error {
-  background:    rgba(239,68,68,0.12);
-  border:        1px solid rgba(239,68,68,0.30);
-  border-radius: var(--radius-sm);
-  padding:       9px 12px;
-  font-size:     0.78rem;
-  color:         #fca5a5;
-}
-
-/* Submit button inherits crystal-btn styling */
-.gaia-auth__submit {
-  margin-top:    4px;
-  padding:       12px;
-  background:    linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--crystal-primary, #a78bfa) 75%, #000),
-    var(--crystal-primary, #a78bfa)
-  );
-  border:        none;
-  border-radius: var(--radius-md);
-  color:         #fff;
-  font-size:     0.9rem;
-  font-weight:   600;
-  cursor:        pointer;
-  font-family:   var(--font-sans);
-  transition:    opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-}
-
-.gaia-auth__submit:hover:not(:disabled) {
-  opacity:    0.88;
-  transform:  translateY(-1px);
-  box-shadow: 0 4px 20px var(--crystal-glow, rgba(167,139,250,0.30));
-}
-
-.gaia-auth__submit:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.gaia-auth__switch {
-  text-align: center;
-  font-size:  0.75rem;
-  color:      rgba(255,255,255,0.35);
-  margin:     0;
-}
-
-.gaia-auth__switch-link {
-  background:      none;
-  border:          none;
-  color:           var(--crystal-primary, #a78bfa);
-  font-size:       inherit;
-  cursor:          pointer;
-  padding:         0;
-  text-decoration: underline;
-}
-
-/* ───────────────────────────────────────────────────────────────── */
-/* Shell layout                                                          */
-/* ───────────────────────────────────────────────────────────────── */
-
-.gaia-shell {
+.gs-auth__form {
   display:        flex;
   flex-direction: column;
-  height:         100vh;
+  gap:            14px;
+}
+
+.gs-auth__field {
+  display:        flex;
+  flex-direction: column;
+  gap:            5px;
+}
+
+.gs-auth__field label {
+  font-size:      0.75rem;
+  font-weight:    500;
+  color:          rgba(255,255,255,0.5);
+  letter-spacing: 0.02em;
+}
+
+.gs-auth__field input {
+  background:    rgba(255,255,255,0.05);
+  border:        1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding:       10px 12px;
+  font-size:     0.9375rem;
+  color:         #dddcd9;
+  outline:       none;
+  transition:    border-color 160ms, background 160ms;
+  font-family:   inherit;
+  width:         100%;
+}
+
+.gs-auth__field input:focus {
+  border-color: #4f98a3;
+  background:   rgba(79,152,163,0.06);
+}
+
+.gs-auth__field input::placeholder { color: rgba(255,255,255,0.2); }
+.gs-auth__field input:disabled      { opacity: 0.5; cursor: not-allowed; }
+
+.gs-auth__error {
+  background:    rgba(194,72,93,0.12);
+  border:        1px solid rgba(194,72,93,0.3);
+  border-radius: 6px;
+  padding:       8px 12px;
+  font-size:     0.8125rem;
+  color:         #e8809a;
+}
+
+.gs-auth__submit {
+  background:     #4f98a3;
+  color:          #0b0c0e;
+  border:         none;
+  border-radius:  8px;
+  padding:        11px;
+  font-size:      0.9375rem;
+  font-weight:    600;
+  cursor:         pointer;
+  transition:     background 160ms, transform 80ms;
+  font-family:    inherit;
+  letter-spacing: 0.01em;
+}
+
+.gs-auth__submit:hover   { background: #3d8491; }
+.gs-auth__submit:active  { transform: scale(0.98); }
+.gs-auth__submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.gs-auth__switch {
+  text-align: center;
+  font-size:  0.8125rem;
+  color:      rgba(255,255,255,0.35);
+}
+
+.gs-auth__switch button {
+  background:  none;
+  border:      none;
+  color:       #4f98a3;
+  cursor:      pointer;
+  font-size:   inherit;
+  padding:     0;
+  font-family: inherit;
+}
+
+.gs-auth__switch button:hover { text-decoration: underline; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Shell root
+───────────────────────────────────────────────────────────────────── */
+
+.gs {
+  display:        flex;
+  flex-direction: column;
+  height:         100dvh;
   overflow:       hidden;
-  /*
-   * Deep-space background with a subtle Schumann-teal nebula glow.
-   * The ::after pseudo-element provides a tier-reactive ambient bloom
-   * driven by --crystal-glow, so the background itself shifts colour
-   * as alignment changes.
-   */
-  background: radial-gradient(
-    ellipse at 30% 20%,
-    rgba(10, 10, 40, 1)   0%,
-    rgba(6,  6,  20, 1)   45%,
-    rgba(3,  3,  10, 1)  100%
-  );
-  color:       rgba(255,255,255,0.87);
-  font-family: var(--font-sans, system-ui, sans-serif);
-  position:    relative;
+  font-family:    var(--font-body, 'Inter', sans-serif);
+  background:     #0b0c0e;
+  color:          #dddcd9;
+  position:       relative;
 }
 
-/* Ambient nebula bloom — tier-reactive via --crystal-glow */
-.gaia-shell::before {
-  content:       '';
-  position:      fixed;
-  top:           -20%;
-  left:          -10%;
-  width:         60%;
-  height:        60%;
-  background:    radial-gradient(
-    ellipse,
-    var(--crystal-glow, rgba(167,139,250,0.06)) 0%,
-    transparent 70%
-  );
-  pointer-events: none;
-  z-index:        0;
-  transition:     background 3s ease;
-}
+/* ─────────────────────────────────────────────────────────────────────
+   Top bar
+───────────────────────────────────────────────────────────────────── */
 
-/* ───────────────────────────────────────────────────────────────── */
-/* Top bar                                                               */
-/* ───────────────────────────────────────────────────────────────── */
-
-.gaia-shell__topbar {
+.gs__topbar {
   display:         flex;
   align-items:     center;
-  justify-content: space-between;
-  padding:         0 20px;
-  height:          52px;
-  /* Crystal glassmorphism topbar */
-  background:      rgba(255,255,255,0.025);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border-bottom:   1px solid var(--glass-border);
-  flex-shrink:     0;
   gap:             12px;
-  position:        relative;
+  height:          48px;
+  padding:         0 16px;
+  background:      #0f1115;
+  border-bottom:   1px solid rgba(255,255,255,0.07);
+  flex-shrink:     0;
   z-index:         10;
 }
 
-.gaia-shell__wordmark { display: flex; align-items: baseline; gap: 3px; }
-
-.gaia-shell__wordmark-gaia {
-  font-size:       1.1rem;
-  font-weight:     900;
-  letter-spacing:  0.12em;
-  background:      linear-gradient(135deg, #a78bfa, #60a5fa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  transition:      background-image calc(var(--animation-speed, 400ms) * 2) ease;
-}
-
-.gaia-shell__wordmark-os {
-  font-size:       0.65rem;
-  font-weight:     500;
-  color:           rgba(255,255,255,0.30);
-  letter-spacing:  0.06em;
-}
-
-.gaia-shell__mode-label {
+.gs__topbar-toggle {
   display:         flex;
   align-items:     center;
-  gap:             6px;
-  font-size:       0.78rem;
-  color:           rgba(255,255,255,0.55);
-  flex:            1;
   justify-content: center;
+  width:           32px;
+  height:          32px;
+  border-radius:   6px;
+  color:           rgba(255,255,255,0.4);
+  transition:      background 160ms, color 160ms;
+  flex-shrink:     0;
 }
 
-.gaia-shell__mode-desc {
-  font-size:  0.68rem;
-  color:      rgba(255,255,255,0.30);
-  font-style: italic;
+.gs__topbar-toggle:hover {
+  background: rgba(255,255,255,0.06);
+  color:      #dddcd9;
 }
 
-.gaia-shell__topbar-right {
+.gs__wordmark {
+  display:      flex;
+  align-items:  center;
+  gap:          7px;
+  flex-shrink:  0;
+  user-select:  none;
+}
+
+.gs__wordmark span {
+  font-size:      1rem;
+  font-weight:    800;
+  letter-spacing: 0.1em;
+  color:          #dddcd9;
+}
+
+.gs__wordmark em {
+  font-style:  normal;
+  font-weight: 400;
+  color:       #4f98a3;
+}
+
+.gs__topbar-center {
+  flex:        1;
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  min-width:   0;
+}
+
+.gs__active-label {
+  font-size:   0.9375rem;
+  font-weight: 500;
+  color:       #dddcd9;
+  white-space: nowrap;
+}
+
+.gs__active-tier {
+  font-size:     0.7rem;
+  font-weight:   500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding:        2px 7px;
+  border-radius:  99px;
+  border:         1px solid currentColor;
+  opacity:        0.55;
+  white-space:    nowrap;
+}
+
+.gs__active-tier[data-tier="human"]  { color: #6daa45; }
+.gs__active-tier[data-tier="gaia"]   { color: #4f98a3; }
+.gs__active-tier[data-tier="gaian"]  { color: #a86fdf; }
+
+.gs__topbar-right {
   display:     flex;
   align-items: center;
   gap:         10px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-.gaia-shell__username {
-  font-size: 0.75rem;
-  color:     rgba(255,255,255,0.45);
-}
-
-.gaia-shell__backend-dot {
-  width:         7px;
-  height:        7px;
+.gs__status-dot {
+  width:        7px;
+  height:       7px;
   border-radius: 50%;
-  transition:    box-shadow 0.6s ease;
-}
-.gaia-shell__backend-dot--checking { background: #f59e0b; animation: gaia-pulse 1.4s infinite; }
-.gaia-shell__backend-dot--online   { background: #22c55e; }
-.gaia-shell__backend-dot--offline  { background: #ef4444; }
-
-.gaia-shell__logout {
-  background:    transparent;
-  border:        1px solid rgba(255,255,255,0.10);
-  border-radius: var(--radius-sm);
-  color:         rgba(255,255,255,0.40);
-  font-size:     0.72rem;
-  padding:       4px 10px;
-  cursor:        pointer;
-  transition:    color 0.2s, border-color 0.2s;
-}
-.gaia-shell__logout:hover { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.25); }
-
-@keyframes gaia-pulse {
-  0%, 100% { opacity: 1;   }
-  50%       { opacity: 0.3; }
+  flex-shrink:  0;
 }
 
-/* ───────────────────────────────────────────────────────────────── */
-/* Body                                                                  */
-/* ───────────────────────────────────────────────────────────────── */
+.gs__status-dot--online   { background: #6daa45; box-shadow: 0 0 6px rgba(109,170,69,0.5); }
+.gs__status-dot--offline  { background: #c2485d; }
+.gs__status-dot--checking { background: #8a8a87; animation: gs-pulse 1.2s ease-in-out infinite; }
 
-.gaia-shell__body {
+@keyframes gs-pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+.gs__username {
+  font-size:  0.8125rem;
+  color:      rgba(255,255,255,0.45);
+  max-width:  120px;
+  overflow:   hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gs__logout {
+  font-size:     0.8rem;
+  color:         rgba(255,255,255,0.3);
+  padding:       4px 8px;
+  border-radius: 5px;
+  transition:    background 160ms, color 160ms;
+}
+
+.gs__logout:hover {
+  background: rgba(255,255,255,0.06);
+  color:      rgba(255,255,255,0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Body — sidebar + main
+───────────────────────────────────────────────────────────────────── */
+
+.gs__body {
   display:  flex;
   flex:     1;
-  overflow: hidden;
-  position: relative;
-  z-index:  1;
+  min-height: 0;
+  overflow:   hidden;
 }
 
-/* ───────────────────────────────────────────────────────────────── */
-/* Left rail                                                             */
-/* ───────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   Sidebar
+───────────────────────────────────────────────────────────────────── */
 
-.gaia-shell__rail {
+.gs__sidebar {
+  width:          220px;
+  flex-shrink:    0;
+  background:     #0f1115;
+  border-right:   1px solid rgba(255,255,255,0.06);
   display:        flex;
   flex-direction: column;
-  width:          88px;
-  padding:        12px 6px;
-  background:     rgba(255,255,255,0.02);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-right:   1px solid var(--glass-border);
-  flex-shrink:    0;
-  gap:            4px;
+  gap:            0;
   overflow-y:     auto;
   overflow-x:     hidden;
+  padding:        12px 0 24px;
+  transition:     width 200ms var(--ease-out, cubic-bezier(0.16,1,0.3,1));
 }
 
-.gaia-shell__rail-btn {
+.gs__sidebar--collapsed {
+  width: 52px;
+}
+
+.gs__sidebar--collapsed .gs__nav-tier-label,
+.gs__sidebar--collapsed .gs__nav-label {
+  opacity:    0;
+  width:      0;
+  overflow:   hidden;
+  white-space: nowrap;
+}
+
+.gs__sidebar--collapsed .gs__nav-item {
+  justify-content: center;
+  padding:         0 14px;
+}
+
+/* Nav sections */
+.gs__nav-section {
   display:        flex;
   flex-direction: column;
+  padding:        0 8px;
+  margin-bottom:  4px;
+}
+
+.gs__nav-section + .gs__nav-section {
+  margin-top:  8px;
+  padding-top: 8px;
+  border-top:  1px solid rgba(255,255,255,0.05);
+}
+
+.gs__nav-tier-label {
+  font-size:      0.65rem;
+  font-weight:    600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color:          rgba(255,255,255,0.22);
+  padding:        0 8px 4px;
+  white-space:    nowrap;
+  transition:     opacity 160ms, width 160ms;
+}
+
+/* Nav items */
+.gs__nav-item {
+  display:        flex;
   align-items:    center;
-  gap:            4px;
-  padding:        10px 4px;
-  background:     transparent;
-  border:         none;
-  border-radius:  var(--radius-md);
+  gap:            9px;
+  padding:        0 8px;
+  height:         36px;
+  border-radius:  8px;
+  color:          rgba(255,255,255,0.5);
+  font-size:      0.875rem;
+  font-weight:    400;
   cursor:         pointer;
-  color:          rgba(255,255,255,0.40);
-  transition:     background calc(var(--animation-speed, 400ms) * 0.45) ease,
-                  color      calc(var(--animation-speed, 400ms) * 0.45) ease;
+  transition:     background 140ms, color 140ms;
+  white-space:    nowrap;
+  overflow:       hidden;
   width:          100%;
+  text-align:     left;
 }
 
-.gaia-shell__rail-btn:hover {
+.gs__nav-item:hover {
   background: rgba(255,255,255,0.05);
-  color:      rgba(255,255,255,0.75);
+  color:      rgba(255,255,255,0.82);
 }
 
-.gaia-shell__rail-btn--active {
-  background: rgba(167,139,250,0.12);
-  color:      #a78bfa;
+/* Tier-aware active states */
+.gs__nav-item--active {
+  font-weight: 500;
 }
 
-.gaia-shell__rail-icon { font-size: 1.3rem; line-height: 1; }
-.gaia-shell__rail-name { font-size: 0.6rem; font-weight: 500; text-align: center; letter-spacing: 0.03em; }
-
-/* ── Viriditas alignment slot (bottom of rail) ──────────────────── */
-
-.gaia-shell__rail-alignment {
-  margin-top:   auto;
-  padding:      14px 0 8px;
-  border-top:   1px solid var(--glass-border);
-  display:      flex;
-  justify-content: center;
+.gs__nav-item--active[data-tier="human"] {
+  background: rgba(109,170,69,0.1);
+  color:      #6daa45;
 }
 
-/* Compact overrides for the rail slot */
-.gaia-shell__rail-alignment .viriditas-widget        { gap: 4px; }
-.gaia-shell__rail-alignment .viriditas-widget__orb-wrap { width: 64px; height: 64px; }
-.gaia-shell__rail-alignment .viriditas-widget__orb      { width: 36px; height: 36px; }
-.gaia-shell__rail-alignment .viriditas-widget__score    { font-size: 1.1rem; }
-.gaia-shell__rail-alignment .viriditas-widget__tier-label { font-size: 0.6rem; }
+.gs__nav-item--active[data-tier="gaia"] {
+  background: rgba(79,152,163,0.1);
+  color:      #4f98a3;
+}
 
-/* ───────────────────────────────────────────────────────────────── */
-/* Main content                                                          */
-/* ───────────────────────────────────────────────────────────────── */
+.gs__nav-item--active[data-tier="gaian"] {
+  background: rgba(168,111,223,0.1);
+  color:      #a86fdf;
+}
 
-.gaia-shell__content {
-  flex:      1;
-  overflow:  hidden;
-  display:   flex;
+.gs__nav-icon {
+  display:     flex;
+  align-items: center;
+  flex-shrink: 0;
+  width:       18px;
+  height:      18px;
+}
+
+.gs__nav-label {
+  transition: opacity 160ms;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Main content
+───────────────────────────────────────────────────────────────────── */
+
+.gs__main {
+  flex:       1;
+  min-width:  0;
+  min-height: 0;
+  display:    flex;
   flex-direction: column;
+  overflow:   hidden;
+  background: #0b0c0e;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Placeholder views (nav items not yet wired to components)
+───────────────────────────────────────────────────────────────────── */
+
+.gs-placeholder {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             12px;
+  padding:         48px 32px;
+  color:           rgba(255,255,255,0.25);
+  text-align:      center;
+}
+
+.gs-placeholder__icon {
+  width:         56px;
+  height:        56px;
+  border-radius: 14px;
+  background:    rgba(255,255,255,0.04);
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  color:         rgba(255,255,255,0.18);
+  margin-bottom: 4px;
+}
+
+.gs-placeholder h2 {
+  font-size:   1.0625rem;
+  font-weight: 600;
+  color:       rgba(255,255,255,0.6);
+  margin:      0;
+}
+
+.gs-placeholder p {
+  font-size: 0.875rem;
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+.gs-placeholder__tier {
+  font-size:     0.7rem;
+  font-weight:   500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding:        3px 9px;
+  border-radius:  99px;
+  border:         1px solid currentColor;
+  opacity:        0.45;
+  margin-top:     4px;
+}
+
+.gs-placeholder__tier[data-tier="human"]  { color: #6daa45; }
+.gs-placeholder__tier[data-tier="gaia"]   { color: #4f98a3; }
+.gs-placeholder__tier[data-tier="gaian"]  { color: #a86fdf; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Responsive — narrow viewports
+───────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .gs__sidebar {
+    width:    52px;
+  }
+  .gs__nav-tier-label,
+  .gs__nav-label {
+    display: none;
+  }
+  .gs__nav-item {
+    justify-content: center;
+    padding: 0 14px;
+  }
 }
