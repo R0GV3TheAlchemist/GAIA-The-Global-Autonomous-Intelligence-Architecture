@@ -26,20 +26,22 @@ export function Phase1Awakening() {
     }
   }, [lineIndex]);
 
+  const handleLineComplete = () => {
+    if (lineIndex < AWAKENING_LINES.length - 1) {
+      setTimeout(() => setLineIndex((i) => i + 1), 600);
+    }
+  };
+
   return (
     <section className="phase phase--awakening" aria-label="GAIA awakening">
       <div className="phase__content phase__content--centered">
         <GaiaSigil animate size={120} />
         <div className="awakening-lines" aria-live="polite">
           <TypewriterText
-            key={lineIndex}
+            key={AWAKENING_LINES[lineIndex]}
             text={AWAKENING_LINES[lineIndex]}
             speed={40}
-            onComplete={() => {
-              if (lineIndex < AWAKENING_LINES.length - 1) {
-                setTimeout(() => setLineIndex((i) => i + 1), 600);
-              }
-            }}
+            onComplete={handleLineComplete}
             tag="p"
             className="awakening-line"
           />

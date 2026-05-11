@@ -1,8 +1,10 @@
 // C-OB01 — TypewriterText Component
 // Renders text character by character at a given speed.
 // Respects prefers-reduced-motion by showing text immediately.
+// FIX: Wrapped in React.memo to prevent animation restart on parent re-renders.
+// FIX: onComplete called via ref to avoid stale-closure re-fire.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface TypewriterTextProps {
   text: string;
@@ -13,14 +15,14 @@ interface TypewriterTextProps {
   tag?: keyof JSX.IntrinsicElements;
 }
 
-export const TypewriterText: React.FC<TypewriterTextProps> = ({
+export const TypewriterText: React.FC<TypewriterTextProps> = React.memo(function TypewriterText({
   text,
   speed = 28,
   onComplete,
   className = '',
   reducedMotion = false,
   tag: Tag = 'p',
-}) => {
+}) {
   const prefersReduced =
     reducedMotion ||
     (typeof window !== 'undefined' &&
@@ -29,17 +31,18 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   const [displayed, setDisplayed] = useState(prefersReduced ? text : '');
   const [done, setDone] = useState(prefersReduced);
 
-  const finish = useCallback(() => {
-    setDisplayed(text);
-    setDone(true);
-    onComplete?.();
-  }, [text, onComplete]);
+  // Store onComplete in a ref so we never re-run the effect when it changes
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   useEffect(() => {
     if (prefersReduced) {
-      finish();
+      setDisplayed(text);
+      setDone(true);
+      onCompleteRef.current?.();
       return;
     }
+    // Reset for new text
     setDisplayed('');
     setDone(false);
     let i = 0;
@@ -49,14 +52,15 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
       if (i >= text.length) {
         clearInterval(interval);
         setDone(true);
-        onComplete?.();
+        onCompleteRef.current?.();
       }
     }, speed);
     return () => clearInterval(interval);
-  }, [text, speed, prefersReduced, finish, onComplete]);
+  // Only re-run when text or speed changes — NOT when onComplete changes
+  }, [text, speed, prefersReduced]);
 
   return (
-    // @ts-ignore — Tag is a valid intrinsic element; JSX transform narrows too aggressively here
+    // @ts-ignore — Tag is a valid intrinsic element
     <Tag
       className={`typewriter-text ${done ? 'typewriter-text--done' : ''} ${className}`}
       aria-live="polite"
@@ -66,4 +70,4 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
       {!done && <span className="typewriter-cursor" aria-hidden="true">▌</span>}
     </Tag>
   );
-};
+});

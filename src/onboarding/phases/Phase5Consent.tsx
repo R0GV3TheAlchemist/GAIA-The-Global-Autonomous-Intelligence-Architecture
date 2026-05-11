@@ -1,6 +1,8 @@
 // C-OB01 — Phase 5: Consent
 // Explicit, granular, reversible consent.
 // Not a wall of text. A real conversation about trust.
+// FIX: CSS class names aligned — TSX was using .consent-list/.consent-item
+// but CSS defined .consent-cards/.consent-card. Now both match.
 
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 import type { ConsentPreferences } from '../types';
@@ -50,9 +52,9 @@ const CONSENT_ITEMS: {
 ];
 
 export function Phase5Consent() {
-  const consent        = useOnboardingStore((s: OnboardingStore) => s.consent);
-  const toggleConsent  = useOnboardingStore((s: OnboardingStore) => s.toggleConsent);
-  const nextPhase      = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const consent       = useOnboardingStore((s: OnboardingStore) => s.consent);
+  const toggleConsent = useOnboardingStore((s: OnboardingStore) => s.toggleConsent);
+  const nextPhase     = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
 
   return (
     <section className="phase phase--consent" aria-label="Privacy and consent">
@@ -60,12 +62,13 @@ export function Phase5Consent() {
         <p className="gaia-aside">
           Here is what I'd like to remember and notice. You control all of it.
         </p>
-        <div className="consent-list" role="group" aria-label="Consent preferences">
+        {/* FIX: using .consent-cards/.consent-card to match CSS definitions */}
+        <div className="consent-cards" role="group" aria-label="Consent preferences">
           {CONSENT_ITEMS.map(({ key, label, description }) => (
-            <label key={key} className="consent-item">
-              <div className="consent-item__text">
-                <span className="consent-item__label">{label}</span>
-                <span className="consent-item__desc">{description}</span>
+            <label key={key} className="consent-card">
+              <div className="consent-card__info">
+                <span className="consent-card__what">{label}</span>
+                <span className="consent-card__why">{description}</span>
               </div>
               <button
                 role="switch"

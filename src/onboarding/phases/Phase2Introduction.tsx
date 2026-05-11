@@ -1,8 +1,9 @@
 // C-OB01 — Phase 2: GAIA's Introduction
 // GAIA introduces herself in her own words.
 // Not a feature list. A declaration of relationship.
+// FIX: key now uses text content (not index) to prevent stale-closure double-fire.
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 import { TypewriterText } from '../components/TypewriterText';
 
@@ -14,18 +15,23 @@ const INTRO_PARAGRAPHS = [
 ];
 
 export function Phase2Introduction() {
-  const nextPhase    = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const nextPhase       = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
   const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
-  const [paraIndex, setParaIndex]   = useState(0);
-  const [showContinue, setShowContinue] = useState(false);
+  const [paraIndex, setParaIndex]         = useState(0);
+  const [showContinue, setShowContinue]   = useState(false);
 
-  const handleParaComplete = () => {
-    if (paraIndex < INTRO_PARAGRAPHS.length - 1) {
-      setTimeout(() => setParaIndex((i) => i + 1), 500);
-    } else {
-      setTimeout(() => setShowContinue(true), 600);
-    }
-  };
+  // Stable callback — will not cause TypewriterText to re-run its effect
+  const handleParaComplete = useCallback(() => {
+    setParaIndex((current) => {
+      if (current < INTRO_PARAGRAPHS.length - 1) {
+        setTimeout(() => setParaIndex((i) => i + 1), 500);
+        return current; // keep current until timeout fires
+      } else {
+        setTimeout(() => setShowContinue(true), 600);
+        return current;
+      }
+    });
+  }, []);
 
   return (
     <section className="phase phase--introduction" aria-label="GAIA introduces herself">
@@ -33,7 +39,7 @@ export function Phase2Introduction() {
         <div className="intro-paragraphs" aria-live="polite">
           {INTRO_PARAGRAPHS.slice(0, paraIndex + 1).map((text, i) => (
             <TypewriterText
-              key={i}
+              key={text.slice(0, 20)}
               text={text}
               speed={22}
               onComplete={i === paraIndex ? handleParaComplete : undefined}

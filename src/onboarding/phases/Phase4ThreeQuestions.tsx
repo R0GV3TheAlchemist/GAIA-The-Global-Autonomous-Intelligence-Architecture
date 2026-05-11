@@ -1,8 +1,9 @@
 // C-OB01 — Phase 4: Three Questions
 // GAIA asks three things: intent, depth, sensitive topics.
 // These seed the Soul Mirror and permission model.
+// FIX: sensitive topics now use .choice-list/.choice-item to match CSS.
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 import type { UserIntent, DepthPreference, SensitiveTopic } from '../types';
 
@@ -21,7 +22,6 @@ const DEPTH_OPTIONS: { value: DepthPreference; label: string; description: strin
   { value: 'deep',        label: 'Deep',       description: 'Challenge me, go beneath the surface' },
 ];
 
-// Only values present on the SensitiveTopic union in types.ts
 const SENSITIVE_OPTIONS: { value: SensitiveTopic; label: string }[] = [
   { value: 'mental_health',  label: 'Mental health' },
   { value: 'relationships',  label: 'Relationships' },
@@ -31,28 +31,28 @@ const SENSITIVE_OPTIONS: { value: SensitiveTopic; label: string }[] = [
 ];
 
 export function Phase4ThreeQuestions() {
-  const nextPhase          = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
-  const setIntent          = useOnboardingStore((s: OnboardingStore) => s.setIntent);
+  const nextPhase           = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const setIntent           = useOnboardingStore((s: OnboardingStore) => s.setIntent);
   const storeSetIntentOther = useOnboardingStore((s: OnboardingStore) => s.setIntentOther);
-  const setDepthPreference = useOnboardingStore((s: OnboardingStore) => s.setDepthPreference);
-  const setSensitiveTopics = useOnboardingStore((s: OnboardingStore) => s.setSensitiveTopics);
-  const markInterrupted    = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
+  const setDepthPreference  = useOnboardingStore((s: OnboardingStore) => s.setDepthPreference);
+  const setSensitiveTopics  = useOnboardingStore((s: OnboardingStore) => s.setSensitiveTopics);
+  const markInterrupted     = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
 
-  const [step, setStep]                           = useState<0 | 1 | 2>(0);
-  const [selectedIntent, setSelectedIntent]       = useState<UserIntent[]>([]);
-  const [intentOtherText, setIntentOtherText]     = useState('');
-  const [selectedDepth, setSelectedDepth]         = useState<DepthPreference>('reflective');
-  const [selectedTopics, setSelectedTopics]       = useState<SensitiveTopic[]>([]);
+  const [step, setStep]                       = useState<0 | 1 | 2>(0);
+  const [selectedIntent, setSelectedIntent]   = useState<UserIntent[]>([]);
+  const [intentOtherText, setIntentOtherText] = useState('');
+  const [selectedDepth, setSelectedDepth]     = useState<DepthPreference>('reflective');
+  const [selectedTopics, setSelectedTopics]   = useState<SensitiveTopic[]>([]);
 
-  const toggleIntent = (v: UserIntent) =>
+  const toggleIntent = useCallback((v: UserIntent) =>
     setSelectedIntent((prev) =>
       prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-    );
+    ), []);
 
-  const toggleTopic = (v: SensitiveTopic) =>
+  const toggleTopic = useCallback((v: SensitiveTopic) =>
     setSelectedTopics((prev) =>
       prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-    );
+    ), []);
 
   const handleNext = () => {
     if (step === 0) {
@@ -67,6 +67,8 @@ export function Phase4ThreeQuestions() {
       nextPhase();
     }
   };
+
+  const canAdvance = step === 0 ? selectedIntent.length > 0 : true;
 
   return (
     <section className="phase phase--three-questions" aria-label="Three questions">
@@ -105,7 +107,7 @@ export function Phase4ThreeQuestions() {
                 value={intentOtherText}
                 onChange={(e) => setIntentOtherText(e.target.value)}
                 rows={3}
-                aria-label="Describe your intent in your own words"
+                maxLength={500}
               />
             )}
           </fieldset>
@@ -114,14 +116,15 @@ export function Phase4ThreeQuestions() {
         {step === 1 && (
           <fieldset className="question-group">
             <legend className="question-label">
-              How do you want GAIA to engage with you?
+              How do you like to think?
+              <span className="question-sub">How deep should GAIA go by default?</span>
             </legend>
-            <div className="depth-options">
+            <div className="depth-list" role="radiogroup">
               {DEPTH_OPTIONS.map(({ value, label, description }) => (
                 <label
                   key={value}
-                  className={`depth-card ${
-                    selectedDepth === value ? 'depth-card--selected' : ''
+                  className={`depth-item ${
+                    selectedDepth === value ? 'depth-item--selected' : ''
                   }`}
                 >
                   <input
@@ -132,8 +135,8 @@ export function Phase4ThreeQuestions() {
                     onChange={() => setSelectedDepth(value)}
                     className="sr-only"
                   />
-                  <span className="depth-card__label">{label}</span>
-                  <span className="depth-card__desc">{description}</span>
+                  <span className="depth-item__label">{label}</span>
+                  <span className="depth-item__desc">{description}</span>
                 </label>
               ))}
             </div>
@@ -143,15 +146,16 @@ export function Phase4ThreeQuestions() {
         {step === 2 && (
           <fieldset className="question-group">
             <legend className="question-label">
-              Are there topics you'd like GAIA to approach with extra care?
-              <span className="question-sub">Optional. You can change this any time.</span>
+              Are there topics you'd like me to approach carefully?
+              <span className="question-sub">GAIA will be more gentle in these areas. You can change this anytime.</span>
             </legend>
-            <div className="topic-grid">
+            {/* FIX: using .choice-list / .choice-item to match existing CSS */}
+            <div className="choice-list">
               {SENSITIVE_OPTIONS.map(({ value, label }) => (
                 <label
                   key={value}
-                  className={`topic-chip ${
-                    selectedTopics.includes(value) ? 'topic-chip--selected' : ''
+                  className={`choice-item ${
+                    selectedTopics.includes(value) ? 'choice-item--selected' : ''
                   }`}
                 >
                   <input
@@ -172,10 +176,10 @@ export function Phase4ThreeQuestions() {
           <button
             className="btn btn--primary"
             onClick={handleNext}
-            disabled={step === 0 && selectedIntent.length === 0}
+            disabled={!canAdvance}
             onKeyDown={(e) => { if (e.key === 'Escape') markInterrupted(); }}
           >
-            {step < 2 ? 'Next' : 'Continue'}
+            {step < 2 ? 'Continue' : 'These feel right'}
           </button>
         </div>
       </div>
