@@ -3,22 +3,23 @@
  * GAIA-OS App Shell — Sprint G-9
  * Canon: C90
  *
- * Full auth flow: Sign In + Create Account tabs
- * Shell: top bar + mode rail + chat pane
+ * Boot sequence (three-state guard):
+ *   1. !token                          → AuthScreen
+ *   2. token + !onboardingCompleted    → OnboardingRouter  ← C-OB01
+ *   3. token + onboardingCompleted     → Shell
  *
  * Sovereignty layer:
- *   <SovereignGuard /> — Axiom I always-visible control bar
- *   <ActionGateDialog /> — YELLOW/RED tier action confirmation modal
+ *   <SovereignGuard />    — Axiom I always-visible control bar
+ *   <ActionGateDialog />  — YELLOW/RED tier action confirmation modal
  *
  * Viriditas layer:
- *   <ViritasWidget />      — compact orb pinned to the bottom of the left rail
- *   useAlignmentTheme()    — Phase 2: injects alignment CSS tokens onto :root
- *                            and sets data-alignment-tier on the shell root
- *   <FieldVisualiser />    — Phase 6: Three.js ambient particle field
+ *   <ViritasWidget />     — compact orb pinned to the bottom of the left rail
+ *   useAlignmentTheme()   — Phase 2: injects alignment CSS tokens onto :root
+ *   <FieldVisualiser />   — Phase 6: Three.js ambient particle field
  */
 
 import React, { useEffect, useState } from 'react';
-import { GaiaChat } from '../chat/GaiaChat';
+import { GaiaChat }           from '../chat/GaiaChat';
 import {
   CrystalMode,
   CRYSTAL_ORDER,
@@ -26,15 +27,18 @@ import {
   CRYSTAL_LABELS,
   MODE_ICONS,
 } from '../store/crystalStore';
-import { SovereignGuard }     from '../shared/SovereignGuard';
-import { ActionGateDialog }   from '../shared/ActionGateDialog';
-import { ViritasWidget }      from '../shared/ViritasWidget';
-import { FieldVisualiser }    from '../shared/FieldVisualiser';
-import { useAlignmentTheme }  from '../hooks/useAlignmentTheme';
+import { SovereignGuard }    from '../shared/SovereignGuard';
+import { ActionGateDialog }  from '../shared/ActionGateDialog';
+import { ViritasWidget }     from '../shared/ViritasWidget';
+import { FieldVisualiser }   from '../shared/FieldVisualiser';
+import { useAlignmentTheme } from '../hooks/useAlignmentTheme';
+import { OnboardingRouter }  from '../onboarding/OnboardingRouter';
+import {
+  useOnboardingStore,
+  loadPersistedState,
+} from '../onboarding/store/onboardingStore';
 import './GaiaShell.css';
 
-// Relative paths — routed through the Vite proxy to :8008 in dev,
-// and through your reverse proxy in production.
 const API_BASE = '/api';
 
 // ------------------------------------------------------------------ //
@@ -107,7 +111,7 @@ function useAuth() {
 }
 
 // ------------------------------------------------------------------ //
-// Auth Screen (Sign In + Create Account)
+// Auth Screen
 // ------------------------------------------------------------------ //
 type AuthTab = 'signin' | 'signup';
 
@@ -247,14 +251,15 @@ const MODE_TO_SLUG: Record<CrystalMode, string> = {
 };
 
 // ------------------------------------------------------------------ //
-// Shell
+// Shell — main authenticated experience
 // ------------------------------------------------------------------ //
-export const GaiaShell: React.FC = () => {
-  const { token, username, loading, error, register, login, logout, clearError } = useAuth();
+const ShellMain: React.FC<{ token: string; username: string | null; onLogout: () => void }> = ({
+  token,
+  username,
+  onLogout,
+}) => {
   const [activeMode,    setActiveMode]    = useState<CrystalMode>(CrystalMode.SOVEREIGN_CORE);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
-
-  // ── Phase 2: Alignment theme ───────────────────────────────────────────────
   const { tier: alignmentTier } = useAlignmentTheme();
 
   useEffect(() => {
@@ -263,28 +268,14 @@ export const GaiaShell: React.FC = () => {
       .catch(() => setBackendOnline(false));
   }, []);
 
-  if (!token) {
-    return (
-      <AuthScreen
-        onLogin={login}
-        onRegister={register}
-        loading={loading}
-        error={error}
-        onClearError={clearError}
-      />
-    );
-  }
-
   return (
     <div
       className="gaia-shell"
       data-mode={activeMode}
       data-alignment-tier={alignmentTier}
     >
-      {/* ── Phase 6: Ambient particle field — renders behind everything ── */}
       <FieldVisualiser tier={alignmentTier} />
 
-      {/* TOP BAR */}
       <header className="gaia-shell__topbar">
         <div className="gaia-shell__wordmark">
           <span className="gaia-shell__wordmark-gaia">GAIA</span>
@@ -300,13 +291,12 @@ export const GaiaShell: React.FC = () => {
           <span className={`gaia-shell__backend-dot gaia-shell__backend-dot--${
             backendOnline === null ? 'checking' : backendOnline ? 'online' : 'offline'
           }`} />
-          <button className="gaia-shell__logout" onClick={logout} aria-label="Sign out">
+          <button className="gaia-shell__logout" onClick={onLogout} aria-label="Sign out">
             Sign out
           </button>
         </div>
       </header>
 
-      {/* BODY */}
       <div className="gaia-shell__body">
         <nav className="gaia-shell__rail" aria-label="Operating modes">
           {CRYSTAL_ORDER.map(mode => (
@@ -334,11 +324,97 @@ export const GaiaShell: React.FC = () => {
         </main>
       </div>
 
-      {/* SOVEREIGNTY LAYER */}
       <SovereignGuard />
       <ActionGateDialog />
-
     </div>
+  );
+};
+
+// ------------------------------------------------------------------ //
+// GaiaShell — three-state boot guard (C-OB01)
+// ------------------------------------------------------------------ //
+export const GaiaShell: React.FC = () => {
+  const { token, username, loading, error, register, login, logout, clearError } = useAuth();
+
+  // Onboarding state
+  const completed          = useOnboardingStore(s => s.completed);
+  const completeOnboarding = useOnboardingStore(s => s.completeOnboarding);
+  const resetToStore       = useOnboardingStore(s => s.resetOnboarding);
+
+  // While we hydrate persisted onboarding state we show nothing to avoid flicker.
+  const [onboardingReady, setOnboardingReady] = useState(false);
+
+  useEffect(() => {
+    if (!token) {
+      // Not authenticated yet — no need to load onboarding state.
+      setOnboardingReady(false);
+      return;
+    }
+    // Authenticated: hydrate persisted onboarding state from disk.
+    loadPersistedState().then(persisted => {
+      if (persisted) {
+        // Re-hydrate the store with what was on disk.
+        // We only need the `completed` flag here; the router handles the rest.
+        useOnboardingStore.setState(persisted);
+      }
+      setOnboardingReady(true);
+    });
+  }, [token]);
+
+  // ── State 1: Not authenticated ─────────────────────────────────────
+  if (!token) {
+    return (
+      <AuthScreen
+        onLogin={login}
+        onRegister={register}
+        loading={loading}
+        error={error}
+        onClearError={clearError}
+      />
+    );
+  }
+
+  // ── Hydration in progress ─────────────────────────────────────────
+  // Show a minimal dark screen while we read from disk — prevents
+  // the shell flashing before the onboarding check completes.
+  if (!onboardingReady) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100dvh',
+          background: '#0b0c0e',
+          color: '#4f98a3',
+          fontFamily: 'sans-serif',
+          fontSize: '0.875rem',
+          letterSpacing: '0.08em',
+        }}
+      >
+        GAIA is waking…
+      </div>
+    );
+  }
+
+  // ── State 2: Authenticated but onboarding not completed ───────────
+  if (!completed) {
+    return (
+      <OnboardingRouter
+        onFinish={() => {
+          completeOnboarding();
+        }}
+      />
+    );
+  }
+
+  // ── State 3: Authenticated + onboarding complete → Shell ─────────
+  return (
+    <ShellMain
+      token={token}
+      username={username}
+      onLogout={logout}
+    />
   );
 };
 
