@@ -21,13 +21,11 @@ export function Phase8Threshold({ onComplete }: Phase8ThresholdProps) {
   return (
     <section className="phase phase--threshold" aria-label="Entering GAIA">
       <div className="phase__content phase__content--centered">
-        <GaiaSigil pulse animate size={160} />
+        <GaiaSigil animate brightness="bright" size={160} />
         <h1 className="threshold-greeting">
           {name ? `Welcome, ${name}.` : 'Welcome.'}
         </h1>
-        <p className="threshold-line">
-          GAIA is ready.
-        </p>
+        <p className="threshold-line">GAIA is ready.</p>
         <button
           className="btn btn--primary btn--large"
           onClick={onComplete}

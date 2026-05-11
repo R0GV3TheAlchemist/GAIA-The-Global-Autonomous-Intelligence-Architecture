@@ -3,17 +3,17 @@
 // Email + password only — no OAuth required.
 
 import React, { useState } from 'react';
-import { useOnboardingStore } from '../store/onboardingStore';
+import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 
 export function Phase7AccountSetup() {
-  const setAccountCreated = useOnboardingStore((s) => s.setAccountCreated);
-  const nextPhase = useOnboardingStore((s) => s.nextPhase);
+  const setAccountCreated = useOnboardingStore((s: OnboardingStore) => s.setAccountCreated);
+  const nextPhase         = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
 
   const [showForm, setShowForm] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading]   = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +28,12 @@ export function Phase7AccountSetup() {
     }
     setLoading(true);
     try {
-      // Account creation hook — wire to auth system when ready
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('create_account', { email, password });
       setAccountCreated(email);
       nextPhase();
     } catch {
-      // Non-Tauri or not yet implemented — proceed anyway
+      // Non-Tauri or command not yet implemented — proceed anyway
       setAccountCreated(email);
       nextPhase();
     } finally {
@@ -55,16 +54,10 @@ export function Phase7AccountSetup() {
 
         {!showForm ? (
           <div className="phase__actions phase__actions--stack">
-            <button
-              className="btn btn--primary"
-              onClick={() => setShowForm(true)}
-            >
+            <button className="btn btn--primary" onClick={() => setShowForm(true)}>
               Create account
             </button>
-            <button
-              className="btn btn--ghost"
-              onClick={nextPhase}
-            >
+            <button className="btn btn--ghost" onClick={nextPhase}>
               Skip for now
             </button>
           </div>
@@ -76,9 +69,7 @@ export function Phase7AccountSetup() {
             aria-label="Create account form"
           >
             <div className="form-field">
-              <label htmlFor="account-email" className="form-label">
-                Email
-              </label>
+              <label htmlFor="account-email" className="form-label">Email</label>
               <input
                 id="account-email"
                 type="email"
@@ -91,9 +82,7 @@ export function Phase7AccountSetup() {
               />
             </div>
             <div className="form-field">
-              <label htmlFor="account-password" className="form-label">
-                Password
-              </label>
+              <label htmlFor="account-password" className="form-label">Password</label>
               <input
                 id="account-password"
                 type="password"
@@ -107,23 +96,13 @@ export function Phase7AccountSetup() {
               />
             </div>
             {error && (
-              <p className="form-error" role="alert" aria-live="assertive">
-                {error}
-              </p>
+              <p className="form-error" role="alert" aria-live="assertive">{error}</p>
             )}
             <div className="phase__actions">
-              <button
-                type="submit"
-                className="btn btn--primary"
-                disabled={loading}
-              >
+              <button type="submit" className="btn btn--primary" disabled={loading}>
                 {loading ? 'Creating…' : 'Create account'}
               </button>
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={nextPhase}
-              >
+              <button type="button" className="btn btn--ghost" onClick={nextPhase}>
                 Skip
               </button>
             </div>

@@ -7,42 +7,42 @@ import { useOnboardingStore, type OnboardingStore } from '../store/onboardingSto
 import type { UserIntent, DepthPreference, SensitiveTopic } from '../types';
 
 const INTENT_OPTIONS: { value: UserIntent; label: string; description: string }[] = [
-  { value: 'productivity',    label: 'Get things done',        description: 'Tasks, goals, planning' },
-  { value: 'exploration',     label: 'Explore ideas',          description: 'Questions, research, curiosity' },
-  { value: 'self_discovery',  label: 'Understand myself',      description: 'Reflection, patterns, growth' },
-  { value: 'building',        label: 'Build something',        description: 'Projects, code, creation' },
-  { value: 'privacy',         label: 'Manage my digital life', description: 'Privacy, security, control' },
-  { value: 'other',           label: 'Something else',         description: 'Tell GAIA in your own words' },
+  { value: 'productivity',   label: 'Get things done',        description: 'Tasks, goals, planning' },
+  { value: 'exploration',    label: 'Explore ideas',          description: 'Questions, research, curiosity' },
+  { value: 'self_discovery', label: 'Understand myself',      description: 'Reflection, patterns, growth' },
+  { value: 'building',       label: 'Build something',        description: 'Projects, code, creation' },
+  { value: 'privacy',        label: 'Manage my digital life', description: 'Privacy, security, control' },
+  { value: 'other',          label: 'Something else',         description: 'Tell GAIA in your own words' },
 ];
 
 const DEPTH_OPTIONS: { value: DepthPreference; label: string; description: string }[] = [
-  { value: 'direct',      label: 'Direct',     description: 'Give me answers, skip the philosophy' },
+  { value: 'surface',     label: 'Surface',    description: 'Give me answers, keep it concise' },
   { value: 'reflective',  label: 'Reflective', description: 'Think with me, offer perspectives' },
   { value: 'deep',        label: 'Deep',       description: 'Challenge me, go beneath the surface' },
 ];
 
+// Only values present on the SensitiveTopic union in types.ts
 const SENSITIVE_OPTIONS: { value: SensitiveTopic; label: string }[] = [
   { value: 'mental_health',  label: 'Mental health' },
   { value: 'relationships',  label: 'Relationships' },
-  { value: 'finances',       label: 'Finances' },
-  { value: 'health_medical', label: 'Health & medical' },
-  { value: 'spirituality',   label: 'Spirituality' },
-  { value: 'politics',       label: 'Politics' },
+  { value: 'trauma',         label: 'Trauma' },
+  { value: 'spiritual',      label: 'Spirituality' },
+  { value: 'political',      label: 'Politics' },
 ];
 
 export function Phase4ThreeQuestions() {
   const nextPhase          = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
   const setIntent          = useOnboardingStore((s: OnboardingStore) => s.setIntent);
-  const setIntentOther     = useOnboardingStore((s: OnboardingStore) => s.setIntentOther);
+  const storeSetIntentOther = useOnboardingStore((s: OnboardingStore) => s.setIntentOther);
   const setDepthPreference = useOnboardingStore((s: OnboardingStore) => s.setDepthPreference);
   const setSensitiveTopics = useOnboardingStore((s: OnboardingStore) => s.setSensitiveTopics);
   const markInterrupted    = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
 
-  const [step, setStep]             = useState<0 | 1 | 2>(0);
-  const [selectedIntent, setSelectedIntent]   = useState<UserIntent[]>([]);
-  const [intentOther, setIntentOther]         = useState('');
-  const [selectedDepth, setSelectedDepth]     = useState<DepthPreference>('reflective');
-  const [selectedTopics, setSelectedTopics]   = useState<SensitiveTopic[]>([]);
+  const [step, setStep]                           = useState<0 | 1 | 2>(0);
+  const [selectedIntent, setSelectedIntent]       = useState<UserIntent[]>([]);
+  const [intentOtherText, setIntentOtherText]     = useState('');
+  const [selectedDepth, setSelectedDepth]         = useState<DepthPreference>('reflective');
+  const [selectedTopics, setSelectedTopics]       = useState<SensitiveTopic[]>([]);
 
   const toggleIntent = (v: UserIntent) =>
     setSelectedIntent((prev) =>
@@ -57,7 +57,7 @@ export function Phase4ThreeQuestions() {
   const handleNext = () => {
     if (step === 0) {
       setIntent(selectedIntent);
-      if (selectedIntent.includes('other')) setIntentOther(intentOther);
+      if (selectedIntent.includes('other')) storeSetIntentOther(intentOtherText);
       setStep(1);
     } else if (step === 1) {
       setDepthPreference(selectedDepth);
@@ -102,8 +102,8 @@ export function Phase4ThreeQuestions() {
               <textarea
                 className="intent-other"
                 placeholder="Tell GAIA what you have in mind..."
-                value={intentOther}
-                onChange={(e) => setIntentOther(e.target.value)}
+                value={intentOtherText}
+                onChange={(e) => setIntentOtherText(e.target.value)}
                 rows={3}
                 aria-label="Describe your intent in your own words"
               />

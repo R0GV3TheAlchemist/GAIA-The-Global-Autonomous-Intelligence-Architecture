@@ -14,9 +14,9 @@ const AWAKENING_LINES = [
 ];
 
 export function Phase1Awakening() {
-  const nextPhase    = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const nextPhase       = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
   const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
-  const [lineIndex, setLineIndex] = useState(0);
+  const [lineIndex, setLineIndex]       = useState(0);
   const [showContinue, setShowContinue] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function Phase1Awakening() {
   return (
     <section className="phase phase--awakening" aria-label="GAIA awakening">
       <div className="phase__content phase__content--centered">
-        <GaiaSigil pulse animate size={120} />
+        <GaiaSigil animate size={120} />
         <div className="awakening-lines" aria-live="polite">
           <TypewriterText
             key={lineIndex}
