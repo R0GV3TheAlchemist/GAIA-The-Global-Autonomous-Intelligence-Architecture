@@ -11,7 +11,9 @@ from shadow_engine.archetypes import ShadowInputs
 
 
 def run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    # asyncio.run() creates a fresh event loop each call — safe on Python 3.10+
+    # where get_event_loop() no longer auto-creates a loop outside the main thread.
+    return asyncio.run(coro)
 
 
 def sadness_inputs() -> ShadowInputs:

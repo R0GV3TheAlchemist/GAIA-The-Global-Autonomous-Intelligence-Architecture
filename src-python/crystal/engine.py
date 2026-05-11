@@ -66,18 +66,34 @@ class CrystalCore:
 
     MAX_HISTORY = 672  # 7 days × 96 ticks/day (15-min cadence)
 
-    def __init__(self, principal_id: str = "default") -> None:
+    def __init__(
+        self,
+        principal_id: str = "default",
+        *,
+        base_url: Optional[str] = None,
+    ) -> None:
         self.principal_id = principal_id
+        # base_url allows tests and the sidecar to override the stream origin.
+        # When supplied, it replaces the module-level API_BASE for this instance.
+        self.base_url = base_url or API_BASE
         self._latest: Optional[CrystalState] = None
         self._history: list[CrystalState] = []
         self._tick_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------ public
 
-    async def tick(self) -> CrystalState:
-        """Run a full evaluation tick and return the updated CrystalState."""
+    async def tick(self, *, user_id: Optional[str] = None) -> CrystalState:
+        """
+        Run a full evaluation tick and return the updated CrystalState.
+
+        Args:
+            user_id: Optional override for the principal identifier to use
+                     during this tick.  When omitted, ``self.principal_id``
+                     is used.  Tests may pass ``user_id="test-user"``.
+        """
+        effective_id = user_id or self.principal_id
         async with self._tick_lock:
-            state = await self._build_state()
+            state = await self._build_state(effective_id)
             self._latest = state
             self._history.append(state)
             if len(self._history) > self.MAX_HISTORY:
@@ -103,7 +119,7 @@ class CrystalCore:
 
     # ----------------------------------------------------------------- private
 
-    async def _build_state(self) -> CrystalState:
+    async def _build_state(self, principal_id: str) -> CrystalState:
         """Fetch all streams, compute Ψ, and assemble a CrystalState."""
         affect, stage, shadow, schumann = await asyncio.gather(
             self._fetch_affect(),
@@ -193,25 +209,25 @@ class CrystalCore:
 
     async def _fetch_affect(self) -> dict:
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.get(f"{_URL_AFFECT}/{self.principal_id}")
+            r = await client.get(f"{self.base_url}/affect/trend/{self.principal_id}")
             r.raise_for_status()
             return r.json()
 
     async def _fetch_stage(self) -> dict:
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.get(f"{_URL_STAGE}/{self.principal_id}")
+            r = await client.get(f"{self.base_url}/stage/record/{self.principal_id}")
             r.raise_for_status()
             return r.json()
 
     async def _fetch_shadow(self) -> dict:
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.get(f"{_URL_SHADOW}/{self.principal_id}")
+            r = await client.get(f"{self.base_url}/shadow/state/{self.principal_id}")
             r.raise_for_status()
             return r.json()
 
     async def _fetch_schumann(self) -> dict:
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.get(_URL_SCHUMANN)
+            r = await client.get(f"{self.base_url}/schumann/state")
             r.raise_for_status()
             return r.json()
 
