@@ -13,6 +13,7 @@ All Issue #91 acceptance criteria owned by the engine/router are covered here.
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 import time
 from datetime import timezone
@@ -110,6 +111,21 @@ _FIRST_PERSON_RE = re.compile(
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _in_range(value: float, lo: float, hi: float, rel_tol: float = 1e-9) -> bool:
+    """Return True if lo <= value <= hi, with rel_tol tolerance on both boundaries.
+
+    Handles IEEE 754 ULP noise: a value like 0.12000000000000001 that should
+    equal 0.12 is treated as within range.
+    """
+    ge_lo = value >= lo or math.isclose(value, lo, rel_tol=rel_tol)
+    le_hi = value <= hi or math.isclose(value, hi, rel_tol=rel_tol)
+    return ge_lo and le_hi
+
+
+# ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
@@ -199,7 +215,7 @@ class TestPersonaToneMapping:
 class TestOrbParamsRanges:
     """
     derive_orb_params() — all 8 fields within spec ranges.
-    Acceptance criterion: Issue #91 — “derive_orb_params() — all fields within defined ranges”.
+    Acceptance criterion: Issue #91 — "derive_orb_params() — all fields within defined ranges".
     """
 
     _ORB_RANGES = {
@@ -231,8 +247,8 @@ class TestOrbParamsRanges:
         for field, (lo, hi) in self._ORB_RANGES.items():
             value = getattr(orb, field)
             assert isinstance(value, float), f"{label}/{field} must be float"
-            assert lo <= value <= hi, (
-                f"{label}/{field}={value:.4f} outside [{lo}, {hi}]"
+            assert _in_range(value, lo, hi), (
+                f"{label}/{field}={value!r} outside [{lo}, {hi}]"
             )
 
     def test_glow_color_is_lowercase_hex(self):
