@@ -1,6 +1,7 @@
 // GAIA App — Top-level layout with tab navigation
-// Views: SEARCH | GAIAN | CHAT | SHELL | MEMORY | NOOSPHERE | CANON | QUANTUM | DIMENSIONS | ARCHETYPES
+// Views: SEARCH | GAIAN | CHAT | SHELL | MEMORY | NOOSPHERE | CANON | QUANTUM | DIMENSIONS | ARCHETYPES | DEV SUITE
 // Canon Ref: C42, C43, C44
+// Issues: #78 (DevSuite wired), #79 (Onboarding first-launch guard)
 
 import './app.css';
 import './search/Search.css';
@@ -11,6 +12,8 @@ import './noosphere/NoosphereTab.css';
 import './canon/CanonTab.css';
 import './dimensions/DimensionalMonitor.css';
 import './gaian/GaianHome.css';
+import './dev-suite/DevSuite.css';
+import './onboarding/onboarding.css';
 import { mountSearch }             from './search/Search';
 import { mountShell }              from './shell/Shell';
 import { mountChat }               from './chat/Chat';
@@ -24,12 +27,16 @@ import { mountCanonTab }           from './canon/CanonTab';
 import { mountQuantumTab }         from './quantum/QuantumTab';
 import { mountDimensionalMonitor } from './dimensions/DimensionalMonitor';
 import { mountArchetypalTab }      from './archetypes/ArchetypalTab';
+import { initDevSuite, toggleDevSuite } from './dev-suite/DevSuite';
+import { OnboardingRouter, loadPersistedState, useOnboardingStore } from './onboarding';
 import { appDataDir, join, resolveResource } from '@tauri-apps/api/path';
 import { exists, mkdir, copyFile, readDir }  from '@tauri-apps/plugin-fs';
 import { listen }                  from '@tauri-apps/api/event';
 import { checkForUpdates }         from './updater';
 import { logInfo, logWarn, logError } from './diagnostics';
 import { API_BASE } from './config';
+import { createElement }           from 'react';
+import { createRoot }              from 'react-dom/client';
 
 export { API_BASE };
 
@@ -87,17 +94,10 @@ function switchView(view: string, _activeView: { current: string }): void {
   _activeView.current = view;
 }
 
-export class App {
-  constructor() {
-    logInfo('app', 'GAIA App initialising');
-    this.mount();
-    ensureAppDataDirs();
-    initUpdater();
-  }
-
-  private mount() {
-    const root = document.querySelector<HTMLDivElement>('#app')!;
-    root.innerHTML = `
+// ── Main app mount (called after onboarding is complete or skipped) ──────────
+function mountApp(): void {
+  const root = document.querySelector<HTMLDivElement>('#app')!;
+  root.innerHTML = `
 <div class="gaia-app">
   <nav class="tab-nav">
     <button class="tab-btn active" data-view="gaian">&#9632; Home</button>
@@ -110,6 +110,7 @@ export class App {
     <button class="tab-btn"        data-view="quantum">&#10731; Quantum</button>
     <button class="tab-btn"        data-view="dimensions">&#11042; Dimensions</button>
     <button class="tab-btn"        data-view="archetypes">&#9672; Archetypes</button>
+    <button class="tab-btn"        data-view="dev" id="tab-dev">&#128736; Dev Suite</button>
   </nav>
   <div class="view-container">
     <div id="view-gaian"       class="view active"></div>
@@ -122,83 +123,165 @@ export class App {
     <div id="view-quantum"     class="view"></div>
     <div id="view-dimensions"  class="view"></div>
     <div id="view-archetypes"  class="view"></div>
+    <div id="view-dev"         class="view"></div>
   </div>
 </div>
 `;
 
-    // Track active view
-    const activeView = { current: 'gaian' };
+  // Seed window.__gaiaUserName from onboarding store (#79)
+  try {
+    const name = useOnboardingStore.getState().name;
+    if (name) window.__gaiaUserName = name;
+  } catch { /* non-Tauri env */ }
 
-    // ── Mount Home (GaianHome replaces mountGaianChat) ──────────────────────
-    // The dock's onNavigate callback drives tab switching directly,
-    // so clicking Chat/Memory/Search/Shell in the orb screen navigates there.
-    let gaianHome: GaianHome | null = mountGaianHome(
-      document.getElementById('view-gaian')!,
-      (target) => {
-        if (target === activeView.current) return;
-        if (activeView.current === 'noosphere') unmountNoosphereTab();
-        teardowns[activeView.current]?.();
-        switchView(target, activeView);
-        handleLazyMount(target);
-      },
-    );
+  // Track active view
+  const activeView = { current: 'gaian' };
 
-    // ── Eager mounts ────────────────────────────────────────────────────────
-    mountSearch(document.getElementById('view-search')!);
-    mountChat(document.getElementById('view-chat')!);
-    mountShell(document.getElementById('view-shell')!);
-    mountMemory(document.getElementById('view-memory')!);
-    mountNoosphereTab({ root: document.getElementById('view-noosphere')!, apiBase: API_BASE });
+  // ── Mount Home ───────────────────────────────────────────────────────────
+  let gaianHome: GaianHome | null = mountGaianHome(
+    document.getElementById('view-gaian')!,
+    (target) => {
+      if (target === activeView.current) return;
+      if (activeView.current === 'noosphere') unmountNoosphereTab();
+      teardowns[activeView.current]?.();
+      switchView(target, activeView);
+      handleLazyMount(target);
+    },
+  );
 
-    // ── Lazy-mount flags ─────────────────────────────────────────────────────
-    let canonMounted      = false;
-    let quantumMounted    = false;
-    let dimensionsMounted = false;
-    let archetypesMounted = false;
+  // ── Eager mounts ─────────────────────────────────────────────────────────
+  mountSearch(document.getElementById('view-search')!);
+  mountChat(document.getElementById('view-chat')!);
+  mountShell(document.getElementById('view-shell')!);
+  mountMemory(document.getElementById('view-memory')!);
+  mountNoosphereTab({ root: document.getElementById('view-noosphere')!, apiBase: API_BASE });
 
-    // Teardown registry
-    const teardowns: Record<string, (() => void) | null> = {
-      gaian:      () => { gaianHome?.dispose(); gaianHome = null; },
-      dimensions: null,
-      archetypes: null,
-    };
+  // ── #78: Init Dev Suite keyboard shortcut (Ctrl+Shift+D) ─────────────────
+  initDevSuite();
 
-    function handleLazyMount(view: string): void {
-      if (view === 'noosphere') {
-        mountNoosphereTab({ root: document.getElementById('view-noosphere')!, apiBase: API_BASE });
-      }
-      if (view === 'canon' && !canonMounted) {
-        mountCanonTab(document.getElementById('view-canon')!);
-        canonMounted = true;
-      }
-      if (view === 'quantum' && !quantumMounted) {
-        mountQuantumTab(document.getElementById('view-quantum')!);
-        quantumMounted = true;
-      }
-      if (view === 'dimensions' && !dimensionsMounted) {
-        teardowns.dimensions = mountDimensionalMonitor(document.getElementById('view-dimensions')!);
-        dimensionsMounted = true;
-      }
-      if (view === 'archetypes' && !archetypesMounted) {
-        teardowns.archetypes = mountArchetypalTab(document.getElementById('view-archetypes')!);
-        archetypesMounted = true;
-      }
+  // ── Lazy-mount flags ──────────────────────────────────────────────────────
+  let canonMounted      = false;
+  let quantumMounted    = false;
+  let dimensionsMounted = false;
+  let archetypesMounted = false;
+
+  // Teardown registry
+  const teardowns: Record<string, (() => void) | null> = {
+    gaian:      () => { gaianHome?.dispose(); gaianHome = null; },
+    dimensions: null,
+    archetypes: null,
+  };
+
+  function handleLazyMount(view: string): void {
+    if (view === 'noosphere') {
+      mountNoosphereTab({ root: document.getElementById('view-noosphere')!, apiBase: API_BASE });
     }
+    if (view === 'canon' && !canonMounted) {
+      mountCanonTab(document.getElementById('view-canon')!);
+      canonMounted = true;
+    }
+    if (view === 'quantum' && !quantumMounted) {
+      mountQuantumTab(document.getElementById('view-quantum')!);
+      quantumMounted = true;
+    }
+    if (view === 'dimensions' && !dimensionsMounted) {
+      teardowns.dimensions = mountDimensionalMonitor(document.getElementById('view-dimensions')!);
+      dimensionsMounted = true;
+    }
+    if (view === 'archetypes' && !archetypesMounted) {
+      teardowns.archetypes = mountArchetypalTab(document.getElementById('view-archetypes')!);
+      archetypesMounted = true;
+    }
+    // #78: Dev Suite — toggle the full-screen overlay
+    if (view === 'dev') {
+      toggleDevSuite();
+    }
+  }
 
-    logInfo('app', 'All views mounted — Home is primary');
+  logInfo('app', 'All views mounted — Home is primary');
 
-    // ── Tab nav click handler ────────────────────────────────────────────────
-    document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const view = btn.dataset.view!;
-        if (view === activeView.current) return;
+  // ── Tab nav click handler ─────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view!;
+      if (view === activeView.current) return;
 
-        if (activeView.current === 'noosphere') unmountNoosphereTab();
-        teardowns[activeView.current]?.();
+      if (activeView.current === 'noosphere') unmountNoosphereTab();
+      teardowns[activeView.current]?.();
 
-        switchView(view, activeView);
-        handleLazyMount(view);
-      });
+      // Dev Suite tab: toggle overlay but don't change the active view tracker
+      // so the underlying view remains visible when Dev Suite is dismissed
+      if (view === 'dev') {
+        toggleDevSuite();
+        return;
+      }
+
+      switchView(view, activeView);
+      handleLazyMount(view);
+    });
+  });
+}
+
+// ── #79: Onboarding first-launch guard ───────────────────────────────────────
+// Reads persisted onboarding_state.json; if not completed, renders OnboardingRouter
+// in a full-viewport overlay BEFORE mounting the normal app UI.
+async function boot(): Promise<void> {
+  await ensureAppDataDirs();
+  initUpdater();
+
+  const saved = await loadPersistedState();
+  const alreadyComplete = saved?.completed === true;
+
+  if (alreadyComplete) {
+    logInfo('app', 'Onboarding already complete — mounting app directly');
+    mountApp();
+    return;
+  }
+
+  logInfo('app', 'First launch detected — mounting OnboardingRouter');
+
+  // Create a full-viewport overlay for the onboarding ceremony
+  const overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:9999',
+    'background:var(--color-bg, #0a0a0b)',
+    'display:flex', 'align-items:center', 'justify-content:center',
+  ].join(';');
+  document.body.appendChild(overlay);
+
+  // If there's a partially-completed onboarding, hydrate the store first
+  if (saved && saved.phase && saved.phase > 0) {
+    useOnboardingStore.getState().setPhase(saved.phase as any);
+  }
+
+  const reactRoot = createRoot(overlay);
+
+  function handleOnboardingFinish(): void {
+    logInfo('app', 'Onboarding complete — tearing down overlay, mounting app');
+
+    // Seed the global name from the store for GaianGreeting
+    try {
+      const name = useOnboardingStore.getState().name;
+      if (name) window.__gaiaUserName = name;
+    } catch { /* non-Tauri env */ }
+
+    reactRoot.unmount();
+    overlay.remove();
+    mountApp();
+  }
+
+  reactRoot.render(
+    createElement(OnboardingRouter, { onFinish: handleOnboardingFinish })
+  );
+}
+
+export class App {
+  constructor() {
+    logInfo('app', 'GAIA App initialising');
+    boot().catch((e) => {
+      logError('app', 'boot() failed — falling back to direct app mount', e);
+      mountApp();
     });
   }
 }
