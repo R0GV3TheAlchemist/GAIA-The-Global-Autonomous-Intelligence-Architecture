@@ -27,6 +27,14 @@
  * kept in sync with the latest CrystalState.  It is populated on mount
  * via a lightweight GET /crystal/state poll and updated after every
  * subsequent successful fetch triggered by the long-press open.
+ *
+ * Viriditas UI Layer (Issue #68):
+ * _pollSchumannAlignment() fetches GET /schumann/state on mount and then
+ * every SCHUMANN_POLL_MS (10 min).  Each successful response is passed to
+ * applyAlignmentTheme() — which writes data-viriditas + data-disturbance
+ * onto <html> — and to AlignmentIndicator.update() so the ambient pill
+ * reflects the live score.  Failures degrade silently; the last applied
+ * tier persists until the next successful fetch.
  */
 
 import { GaianOrb }          from './GaianOrb';
@@ -36,6 +44,12 @@ import { gaianMood, MOOD_PROFILES } from './GaianMood';
 import type { GaianMoodState } from './GaianMood';
 import { API_BASE }          from '../config';
 import type { CrystalState } from '../hooks/useCrystalCore';
+import {
+  classifyTier,
+  applyAlignmentTheme,
+  type AlignmentState,
+} from './ViriditasTheme';
+import { AlignmentIndicator } from './AlignmentIndicator';
 
 // React + ReactDOM are loaded as globals at runtime via CDN (same pattern
 // as THREE / gsap in GaianOrb.ts).
@@ -53,13 +67,19 @@ export interface GaianHomeOptions {
   onNavigate: (target: HomeNavTarget) => void;
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Hold duration before the CrystalView sheet opens (ms). */
 const LONG_PRESS_MS = 600;
 
 /** Sidecar endpoint for the latest CrystalState. */
 const CRYSTAL_STATE_URL = 'http://localhost:8008/crystal/state';
+
+/** Sidecar endpoint for the latest SchumannState. */
+const SCHUMANN_STATE_URL = 'http://localhost:8008/schumann/state';
+
+/** Schumann poll interval — 10 minutes, matching the sidecar emission cadence. */
+const SCHUMANN_POLL_MS = 10 * 60 * 1000;
 
 /** CoherenceBand → display label */
 const BAND_LABELS: Record<string, string> = {
@@ -73,7 +93,7 @@ const BAND_LABELS: Record<string, string> = {
 // Session-level daily brief cache — generated once per session
 let _sessionBrief: string | null = null;
 
-// ── Name / archetype / age helpers ──────────────────────────────────────────
+// ── Name / archetype / age helpers ───────────────────────────────────────────
 
 /** Read the user's name from the best available source (no fallback to stub) */
 function resolveNameSync(): string | undefined {
@@ -196,7 +216,7 @@ async function fetchDailyBrief(name?: string): Promise<string | null> {
   }
 }
 
-// ── GaianHome ────────────────────────────────────────────────────────────────
+// ── GaianHome ─────────────────────────────────────────────────────────────────
 
 export class GaianHome {
   private container:  HTMLElement;
@@ -207,26 +227,19 @@ export class GaianHome {
   private _moodUnlisten:    (() => void) | null = null;
 
   // ── Crystal / long-press state ──────────────────────────────────────────
-  /** Last successfully fetched CrystalState — used as fallback when offline. */
   private _crystalState: CrystalState | null = null;
-
-  /** React root for the CrystalView portal. Created once on first open. */
-  private _crystalRoot: ReturnType<typeof ReactDOM.createRoot> | null = null;
-
-  /** Host element that holds the CrystalView portal. */
-  private _crystalHost: HTMLDivElement | null = null;
-
-  /** Whether the sheet is currently open. */
+  private _crystalRoot:  ReturnType<typeof ReactDOM.createRoot> | null = null;
+  private _crystalHost:  HTMLDivElement | null = null;
   private _crystalOpen = false;
+  private _lpTimer:    number | null = null;
+  private _lpCleanup:  (() => void) | null = null;
+  private _bandLabel:  HTMLElement | null = null;
 
-  /** Long-press timer handle. */
-  private _lpTimer: number | null = null;
-
-  /** Cleanup refs for orb-level event listeners. */
-  private _lpCleanup: (() => void) | null = null;
-
-  /** Reference to the CoherenceBand label element (below mood label). */
-  private _bandLabel: HTMLElement | null = null;
+  // ── Viriditas state ────────────────────────────────────────────────────
+  /** AlignmentIndicator pill — created once, lives on document.body. */
+  private _alignmentIndicator: AlignmentIndicator | null = null;
+  /** setInterval handle for the 10-min Schumann poll. */
+  private _schumannPollHandle: number | null = null;
 
   constructor({ container, onNavigate }: GaianHomeOptions) {
     this.container  = container;
@@ -234,7 +247,7 @@ export class GaianHome {
     this._render();
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   private _render(): void {
     this.container.innerHTML = '';
@@ -260,7 +273,6 @@ export class GaianHome {
     // ── Orb wrapper + canvas
     const orbWrap = document.createElement('div');
     orbWrap.className = 'home-orb-wrap';
-    // Make focusable so keyboard users can trigger the long-press hint
     orbWrap.setAttribute('role', 'button');
     orbWrap.setAttribute('tabindex', '0');
     orbWrap.setAttribute('aria-label', 'GAIA orb — hold to view coherence state');
@@ -349,19 +361,25 @@ export class GaianHome {
     // ── Seed the CoherenceBand label from /crystal/state on mount
     this._pollCrystalBand();
 
+    // ── Viriditas: create indicator + kick off Schumann poll
+    this._alignmentIndicator = new AlignmentIndicator();
+    this._pollSchumannAlignment();
+    this._schumannPollHandle = window.setInterval(
+      () => this._pollSchumannAlignment(),
+      SCHUMANN_POLL_MS,
+    );
+
     // ── Init GaianOrb after DOM is painted
     requestAnimationFrame(() => {
       this.orb = new GaianOrb(canvas);
       this.orb.start();
 
-      // Sync orb with global gaianMood singleton
       this._moodUnlisten = gaianMood.onChange((mood) => {
         this.orb?.setMood(mood);
         this._updateMoodLabel(moodLabel, mood);
         this._applyDockAccent(dock, mood);
       });
 
-      // Wire long-press gesture
       this._wireLongPress(orbWrap);
     });
 
@@ -369,13 +387,37 @@ export class GaianHome {
     this._hydrateAsync(profileCard, greetingEl, briefEl, memoriesWrap, moodLabel, dock);
   }
 
-  // ── CoherenceBand label ─────────────────────────────────────────────────
+  // ── Viriditas: Schumann alignment poll ───────────────────────────────────
 
   /**
-   * Lightweight startup fetch: pulls /crystal/state once so the band label
-   * is populated as soon as the sidecar responds — without waiting for the
-   * user to trigger the long-press.
+   * Fetches GET /schumann/state (3 s timeout) and, on success:
+   *   1. Classifies the alignment tier via classifyTier()
+   *   2. Applies the tier to <html> via applyAlignmentTheme()
+   *   3. Updates the AlignmentIndicator pill
+   *
+   * Failures are silently swallowed — the last applied tier persists
+   * until the next successful tick.  On first mount the sidecar may not
+   * yet be warm; the indicator stays hidden (confidence guard in
+   * AlignmentIndicator.update()) until a valid response arrives.
    */
+  private async _pollSchumannAlignment(): Promise<void> {
+    try {
+      const res = await fetch(SCHUMANN_STATE_URL, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) return;
+
+      const state = (await res.json()) as AlignmentState;
+      const tier  = classifyTier(state.alignment_score, state.disturbance_level);
+      applyAlignmentTheme(tier, state.disturbance_level);
+      this._alignmentIndicator?.update(state);
+    } catch {
+      // Sidecar offline or timeout — degrade silently.
+    }
+  }
+
+  // ── CoherenceBand label ─────────────────────────────────────────────────
+
   private async _pollCrystalBand(): Promise<void> {
     try {
       const res = await fetch(CRYSTAL_STATE_URL, {
@@ -387,37 +429,22 @@ export class GaianHome {
         this._updateBandLabel(data.band);
         if (this.orb && data.orb_params) this.orb.setParams(data.orb_params);
       }
-    } catch {
-      // Sidecar offline at startup — band label stays blank, which is fine.
-    }
+    } catch { /* Sidecar offline at startup — band label stays blank. */ }
   }
 
-  /**
-   * Writes the current CoherenceBand to the .home-band-label element.
-   * Called after every successful crystal/state fetch.
-   */
   private _updateBandLabel(band: string | undefined): void {
     if (!this._bandLabel) return;
-    if (!band) {
-      this._bandLabel.textContent = '';
-      return;
-    }
+    if (!band) { this._bandLabel.textContent = ''; return; }
     this._bandLabel.textContent = BAND_LABELS[band] ?? band;
   }
 
-  // ── Long-press gesture ──────────────────────────────────────────────────
+  // ── Long-press gesture ────────────────────────────────────────────────────
 
-  /**
-   * Attaches pointer + touch listeners to `orbWrap`.
-   * After LONG_PRESS_MS of uninterrupted contact the CrystalView opens.
-   * A subtle ripple class is added to the canvas during the hold phase to
-   * give the user visual confirmation the gesture is registering.
-   */
   private _wireLongPress(orbWrap: HTMLElement): void {
     const canvas = orbWrap.querySelector<HTMLCanvasElement>('.home-orb-canvas');
 
     const startHold = () => {
-      if (this._lpTimer !== null) return; // already counting
+      if (this._lpTimer !== null) return;
       canvas?.classList.add('orb-long-press-active');
       this._lpTimer = window.setTimeout(() => {
         this._lpTimer = null;
@@ -434,32 +461,20 @@ export class GaianHome {
       canvas?.classList.remove('orb-long-press-active');
     };
 
-    // Pointer events (desktop + stylus + most modern mobile)
-    const onPointerDown = (e: PointerEvent) => {
-      // Only primary button / single touch
+    const onPointerDown  = (e: PointerEvent) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
       startHold();
     };
     const onPointerUp    = () => cancelHold();
     const onPointerMove  = (e: PointerEvent) => {
-      // Cancel if the pointer drifts more than 10px (scroll intent)
       if (Math.abs(e.movementX) > 10 || Math.abs(e.movementY) > 10) cancelHold();
     };
     const onPointerLeave = () => cancelHold();
-
-    // Touch events fallback (older iOS / Android WebView)
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) startHold();
-    };
-    const onTouchEnd    = () => cancelHold();
-    const onTouchMove   = () => cancelHold();
-
-    // Keyboard accessibility: Enter / Space triggers the sheet immediately
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        this._openCrystalView();
-      }
+    const onTouchStart   = (e: TouchEvent) => { if (e.touches.length === 1) startHold(); };
+    const onTouchEnd     = () => cancelHold();
+    const onTouchMove    = () => cancelHold();
+    const onKeyDown      = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._openCrystalView(); }
     };
 
     orbWrap.addEventListener('pointerdown',  onPointerDown);
@@ -470,9 +485,7 @@ export class GaianHome {
     orbWrap.addEventListener('touchend',     onTouchEnd);
     orbWrap.addEventListener('touchmove',    onTouchMove,   { passive: true });
     orbWrap.addEventListener('keydown',      onKeyDown);
-
-    // Prevent the context menu appearing on long-press on mobile
-    orbWrap.addEventListener('contextmenu', (e) => e.preventDefault());
+    orbWrap.addEventListener('contextmenu',  (e) => e.preventDefault());
 
     this._lpCleanup = () => {
       orbWrap.removeEventListener('pointerdown',  onPointerDown);
@@ -486,48 +499,29 @@ export class GaianHome {
     };
   }
 
-  // ── CrystalView portal ──────────────────────────────────────────────────
+  // ── CrystalView portal ────────────────────────────────────────────────────
 
-  /**
-   * Fetches the latest CrystalState (best-effort, 3 s timeout), then
-   * mounts the CrystalView React component into a portal host element
-   * appended to .gaian-home.  Falls back to the last cached state if
-   * the sidecar is unavailable.  Also updates the CoherenceBand label
-   * on the Home screen with the freshest band value.
-   */
   private async _openCrystalView(): Promise<void> {
     if (this._crystalOpen) return;
-
-    // Fetch latest state (non-blocking race — show whatever we have)
     try {
-      const res = await fetch(CRYSTAL_STATE_URL, {
-        signal: AbortSignal.timeout(3000),
-      });
+      const res = await fetch(CRYSTAL_STATE_URL, { signal: AbortSignal.timeout(3000) });
       if (res.ok) {
         const data = (await res.json()) as CrystalState;
         this._crystalState = data;
-        // Update the Home band label with the freshest value
         this._updateBandLabel(data.band);
-        // Also drive the orb with fresh params while we're here
         if (this.orb && data.orb_params) this.orb.setParams(data.orb_params);
       }
-    } catch {
-      // Offline — use last known state (or null → CrystalView handles it)
-    }
+    } catch { /* offline — use last known state */ }
 
-    // Create the host div the first time
     if (!this._crystalHost) {
       const host = document.createElement('div');
       host.className = 'crystal-view-portal';
       this.container.appendChild(host);
       this._crystalHost = host;
     }
-
-    // Create the React root the first time
     if (!this._crystalRoot) {
       this._crystalRoot = ReactDOM.createRoot(this._crystalHost);
     }
-
     this._crystalOpen = true;
     this._renderCrystalView();
   }
@@ -535,8 +529,6 @@ export class GaianHome {
   private _closeCrystalView(): void {
     if (!this._crystalOpen) return;
     this._crystalOpen = false;
-    // Render null to trigger CrystalView's exit animation (handled in CSS)
-    // then unmount after the transition completes (~320 ms)
     this._crystalRoot?.render(null);
     window.setTimeout(() => {
       if (!this._crystalOpen) {
@@ -558,9 +550,8 @@ export class GaianHome {
     );
   }
 
-  // ── Async hydration ─────────────────────────────────────────────────────
+  // ── Async hydration ──────────────────────────────────────────────────────────
 
-  /** All async data fetches happen here — failures degrade gracefully */
   private async _hydrateAsync(
     profileCard:  HTMLElement,
     greetingEl:   HTMLElement,
@@ -569,7 +560,6 @@ export class GaianHome {
     moodLabel:    HTMLElement,
     dock:         HTMLElement,
   ): Promise<void> {
-    // 1. Name (async — may read from /memory/list)
     const name = await resolveNameAsync();
     if (name) {
       greetingEl.textContent = buildGreeting(name);
@@ -578,24 +568,18 @@ export class GaianHome {
       profileCard.querySelector<HTMLElement>('.profile-name')!.textContent = 'Gaian';
     }
 
-    // 2. Memory hint appended to greeting
     fetchMemoryHint().then(hint => {
-      if (hint && greetingEl.textContent) {
-        greetingEl.textContent += ` ${hint}`;
-      }
+      if (hint && greetingEl.textContent) greetingEl.textContent += ` ${hint}`;
     });
 
-    // 3. Archetype
     resolveArchetype().then(archetype => {
       profileCard.querySelector<HTMLElement>('.profile-archetype')!.textContent = archetype;
     });
 
-    // 4. Relationship age
     const ageDays = resolveRelationshipAge();
     profileCard.querySelector<HTMLElement>('.profile-age')!.textContent =
       ageDays === 0 ? 'Just born' : `${ageDays} day${ageDays === 1 ? '' : 's'} together`;
 
-    // 5. Recent memories
     const memories = await fetchRecentMemories();
     memoriesWrap.innerHTML = '';
     if (memories.length === 0) {
@@ -605,17 +589,12 @@ export class GaianHome {
         const item = document.createElement('button');
         item.className = 'memory-chip';
         item.setAttribute('aria-label', `Memory: ${m.content.slice(0, 80)}`);
-        item.textContent = m.content.length > 72
-          ? m.content.slice(0, 69) + '…'
-          : m.content;
-        item.addEventListener('click', () => {
-          (this.onNavigate as any)('memory');
-        });
+        item.textContent = m.content.length > 72 ? m.content.slice(0, 69) + '…' : m.content;
+        item.addEventListener('click', () => { (this.onNavigate as any)('memory'); });
         memoriesWrap.appendChild(item);
       });
     }
 
-    // 6. Affect mood
     const mood = await fetchAffectMood();
     if (mood) {
       gaianMood.set(mood);
@@ -623,7 +602,6 @@ export class GaianHome {
       this._applyDockAccent(dock, mood);
     }
 
-    // 7. Daily brief (last — can take a few seconds)
     const brief = await fetchDailyBrief(name);
     if (brief) {
       briefEl.textContent = brief;
@@ -631,7 +609,7 @@ export class GaianHome {
     }
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   private _updateMoodLabel(el: HTMLElement, mood: GaianMoodState): void {
     const LABELS: Record<GaianMoodState, string> = {
@@ -663,9 +641,7 @@ export class GaianHome {
           gaianMood.set('calm');
           return;
         }
-        badge.textContent = data.error
-          ? `⦻ ${data.error}`
-          : 'GAIA is waking up…';
+        badge.textContent = data.error ? `⧫ ${data.error}` : 'GAIA is waking up…';
       } catch {
         badge.textContent = 'Waiting for backend…';
       }
@@ -682,25 +658,25 @@ export class GaianHome {
     });
   }
 
-  // ── Lifecycle ────────────────────────────────────────────────────────────
+  // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   dispose(): void {
-    // Cancel any in-flight long-press timer
-    if (this._lpTimer !== null) {
-      clearTimeout(this._lpTimer);
-      this._lpTimer = null;
-    }
-    // Remove orb gesture listeners
+    if (this._lpTimer !== null) { clearTimeout(this._lpTimer); this._lpTimer = null; }
     this._lpCleanup?.();
 
-    // Tear down the CrystalView portal
     this._crystalRoot?.unmount();
     this._crystalHost?.remove();
     this._crystalRoot = null;
     this._crystalHost = null;
+    this._bandLabel   = null;
 
-    // Clear band label ref
-    this._bandLabel = null;
+    // Viriditas teardown
+    if (this._schumannPollHandle !== null) {
+      clearInterval(this._schumannPollHandle);
+      this._schumannPollHandle = null;
+    }
+    this._alignmentIndicator?.dispose();
+    this._alignmentIndicator = null;
 
     this.orb?.dispose();
     this.bg?.dispose();
