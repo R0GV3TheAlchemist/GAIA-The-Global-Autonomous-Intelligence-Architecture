@@ -1,0 +1,354 @@
+/**
+ * ClarusLens Crystal Styles
+ * Scoped to .cl-panel — no global leakage.
+ */
+
+.cl-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+/* ── Section label ─────────────────────────────────────────────────────── */
+
+.cl-section-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+/* ── Clarity Meter ─────────────────────────────────────────────────────── */
+
+.cl-clarity-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cl-clarity-bar {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-dynamic);
+  overflow: hidden;
+}
+
+.cl-clarity-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 700ms cubic-bezier(0.16, 1, 0.3, 1),
+              background 400ms ease;
+}
+
+.cl-clarity-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.cl-clarity-label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  transition: color 400ms ease;
+}
+
+.cl-clarity-score {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cl-clarity-breakdown {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+/* ── Active Intention Card ─────────────────────────────────────────────── */
+
+.cl-intention-card {
+  background: var(--color-surface);
+  border: 1px solid oklch(from var(--color-text) l c h / 0.08);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+}
+
+.cl-intention-active {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.cl-intention-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+  transition: color 400ms ease;
+}
+
+.cl-intention-text {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.cl-intention-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: var(--text-sm);
+  text-align: center;
+  width: 100%;
+}
+
+.cl-complete-btn {
+  flex-shrink: 0;
+  background: var(--color-success);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-interactive), transform 120ms ease;
+}
+
+.cl-complete-btn:hover  { background: var(--color-success-hover); }
+.cl-complete-btn:active { transform: scale(0.96); }
+
+/* ── Set Intention Form ────────────────────────────────────────────────── */
+
+.cl-set-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.cl-set-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.cl-text-input {
+  flex: 1;
+  background: var(--color-surface);
+  border: 1px solid oklch(from var(--color-text) l c h / 0.1);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  outline: none;
+  transition: border-color var(--transition-interactive);
+}
+
+.cl-text-input::placeholder { color: var(--color-text-faint); }
+.cl-text-input:focus { border-color: var(--color-primary); }
+
+.cl-text-input--sm {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+}
+
+.cl-set-btn {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-interactive), transform 120ms ease;
+}
+
+.cl-set-btn:hover  { background: var(--color-primary-hover); }
+.cl-set-btn:active { transform: scale(0.97); }
+
+.cl-set-btn--sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+/* ── Area chips (in form) ──────────────────────────────────────────────── */
+
+.cl-area-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.cl-area-select-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-right: var(--space-1);
+}
+
+.cl-area-chip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid oklch(from var(--color-text) l c h / 0.12);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  transition: background var(--transition-interactive),
+              color var(--transition-interactive),
+              border-color var(--transition-interactive);
+}
+
+.cl-area-chip:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.cl-area-chip--selected {
+  background: var(--color-primary-highlight);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.cl-area-chip--add {
+  border-style: dashed;
+  color: var(--color-text-faint);
+}
+
+.cl-add-area-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  animation: cl-fadein 150ms ease;
+}
+
+@keyframes cl-fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Focus Areas Grid ──────────────────────────────────────────────────── */
+
+.cl-areas-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.cl-areas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cl-area-grid-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid oklch(from var(--color-text) l c h / 0.1);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: background var(--transition-interactive), opacity var(--transition-interactive);
+}
+
+.cl-area-grid-chip--active  { color: var(--color-primary); border-color: var(--color-primary); }
+.cl-area-grid-chip--paused  { opacity: 0.5; }
+.cl-area-grid-chip--completed { opacity: 0.35; text-decoration: line-through; }
+
+.cl-area-grid-chip:hover { background: var(--color-surface-2); }
+
+/* ── Intention History ─────────────────────────────────────────────────── */
+
+.cl-history {
+  display: flex;
+  flex-direction: column;
+}
+
+.cl-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.cl-history-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid oklch(from var(--color-text) l c h / 0.06);
+  transition: background var(--transition-interactive);
+}
+
+.cl-history-row:hover { background: var(--color-surface-2); }
+
+.cl-history-row--done {
+  opacity: 0.55;
+}
+
+.cl-history-dot {
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cl-history-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.cl-history-text {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.cl-history-meta {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+.cl-history-area {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.cl-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+/* ── Reduced Motion ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .cl-clarity-fill { transition: none; }
+  .cl-add-area-row { animation: none; }
+}
