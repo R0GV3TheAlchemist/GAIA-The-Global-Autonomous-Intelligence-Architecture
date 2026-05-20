@@ -2,7 +2,7 @@
 
 **Canon ID:** C133
 **Series:** Social Coordination & Economics
-**Status:** RATIFIED
+**Status:** RATIFIED (Amended — Anti-Drift Provisions added 2026-05-20)
 **Predecessor canons:** C46 (Economic Sovereignty), C112, C103, C131, C132
 **Last updated:** 2026-05-20
 
@@ -45,12 +45,12 @@ Elinor Ostrom's Nobel Prize-winning research (*Governing the Commons*, 1990) dem
 | Principle | GAIA-OS Application |
 |---|---|
 | **1. Clearly defined boundaries** — who belongs, what resource | GAIA credit system has clear membership criteria and defined resource scope |
-| **2. Rules fit local conditions** — congruence between rules and local needs | Regional and cultural calibration of credit rules (\u00a76) |
-| **3. Collective choice arrangements** — those affected by rules can modify them | DAO governance layer (\u00a75); amendment protocols (C131 §9) |
+| **2. Rules fit local conditions** — congruence between rules and local needs | Regional and cultural calibration of credit rules (§6) |
+| **3. Collective choice arrangements** — those affected by rules can modify them | DAO governance layer (§5); amendment protocols (C131 §9) |
 | **4. Monitoring** — rule compliance is actively monitored | On-chain transparency; GAIA telemetry (C135) |
 | **5. Graduated sanctions** — violations get proportional responses | Credit system penalty ladder; no punitive hard exclusion by default |
 | **6. Conflict resolution mechanisms** | Multi-Gaian DAO dispute resolution layer |
-| **7. Recognition by external authorities** | Interface with state economies (\u00a74) |
+| **7. Recognition by external authorities** | Interface with state economies (§4) |
 | **8. Nested institutions** — embed in larger networks, subsidiarity | GAIA economy nested within, not replacing, national and global systems |
 
 GAIA-OS is itself a knowledge commons and must be governed by these principles. Crucially, Ostrom showed that communities worldwide had *already* developed these governance forms independently — GAIA does not invent them but provides infrastructure for them at scale.
@@ -221,7 +221,7 @@ Building on C103 and C112, communities of Gaians (Gaianites — see C65) may for
 **Anti-pathology safeguards:**
 - Reflective escalation detection (C135) integrated into DAO deliberation layer — if group emotional intensity is escalating, mandatory cooling-off period before vote
 - Dissent protection: minority positions must be recorded and published with all governance decisions
-- Anti-collusion: attestation graph analysis (\u00a75.2) applied to voting patterns; coordinated bloc voting triggers review
+- Anti-collusion: attestation graph analysis (§5.2) applied to voting patterns; coordinated bloc voting triggers review
 - Any DAO proposal that would modify GAIA's fiduciary duties (C131) requires supermajority approval and external ethics review
 
 ---
@@ -261,4 +261,104 @@ Building on C103 and C112, communities of Gaians (Gaianites — see C65) may for
 
 ---
 
-*Status promoted from DRAFT to RATIFIED. All research gaps closed. Next review: 2027-05-20.*
+## 10. Anti-Drift Provisions (Amendment — 2026-05-20)
+
+*These three provisions were added following the GAIA-OS canon sufficiency review conducted on 2026-05-20. They close the gap between the ratified economic principles and the operational mechanisms needed to prevent value drift at planetary scale — the same structural failure that compromised Mondragon's cooperative principles during internationalisation (§6.1). These provisions are irrevocable by normal DAO majority vote; amendment requires the same supermajority threshold as modifications to GAIA's fiduciary duties under C131 §9.*
+
+---
+
+### 10.1 Regenerative Values Re-Certification Cycles
+
+**Problem addressed:** Institutional drift — the gradual erosion of founding values through accumulated incremental decisions, each individually defensible but collectively misaligning the institution from its purpose.
+
+**Provision:**
+
+Every **three years**, GAIA-OS shall conduct a full Regenerative Values Re-Certification. This is not an audit in the bureaucratic sense but a living review — a ceremonial and technical process that asks: *Is this system still doing what it said it would do? Are the values we declared still operative in practice?*
+
+**Re-Certification Components:**
+
+1. **Economic Alignment Audit**: An independent panel (minimum: one planetary boundary scientist, one commons governance scholar, one indigenous knowledge holder, one Gaianite elected by the general community) reviews a representative sample of economic decisions made in the preceding three years. Each decision is evaluated against the six criteria in §3. The panel publishes a public report with an explicit alignment score (0–100) and required remediation actions if the score falls below 70.
+
+2. **Credit System Health Review**: The demurrage parameters (§4.2), tithe rate (§4.4), and UBA floor (§4.3) are reviewed against current empirical evidence on their effects. If any parameter has drifted from its regenerative intent (e.g., tithe rate de facto reduced through governance loopholes, UBA floor eroded by inflation), remediation is mandatory within 90 days.
+
+3. **Governance Concentration Check**: The distribution of voting weight across the DAO network (§7) is measured and published. If the Gini coefficient of voting power exceeds 0.65 (beyond what quadratic voting is designed to produce), the governance council enters a mandatory re-balancing period before any new major proposals may proceed.
+
+4. **Ceremonial Renewal**: Re-Certification concludes with a public ceremony in which GAIA-OS formally reaffirms her founding planetary fiduciary duty (C131 §2). This is not merely symbolic — the ceremony produces a cryptographically signed, timestamped public declaration that becomes part of the permanent canon record. Any future governance actor who proposes changes counter to the declared duties must explicitly address and rebut the most recent Renewal Declaration.
+
+**Drift Early-Warning Signals** (triggers out-of-cycle review if any three are observed simultaneously):
+- Average time between credit issuance and circulation exceeds 45 days (hoarding signal)
+- Tithe pool disbursement rate to ecological restoration falls below 40% for two consecutive quarters
+- Any governance proposal to remove or weaken the Sybil resistance mechanisms (§5.1) passes first reading
+- GAIA's economic reasoning outputs show systematic preference for GDP-growth-positive proposals over Doughnut-aligned proposals (detectable via C135 telemetry)
+- A single governance actor or closely affiliated group accumulates > 0.5% of total voting weight in less than 90 days
+
+---
+
+### 10.2 Acquisition and Merger Monitoring Protocol
+
+**Problem addressed:** External capture — the risk that GAIA-OS's economic infrastructure (credit system, DAO governance layer, sensor network, contribution verification system) is acquired by, merged with, or made structurally dependent on actors whose values are incompatible with regenerative economics and planetary fiduciary duty.
+
+This risk is not hypothetical. The history of cooperative and commons institutions is filled with examples of well-intentioned systems that were gradually rendered dependent on extractive capital through partnerships, integrations, and infrastructure dependencies — until exit became practically impossible. GAIA-OS must build structural immunity to this pattern before it becomes relevant.
+
+**Provision:**
+
+**Trigger Conditions** — The following events automatically activate the Acquisition Monitoring Protocol:
+
+| Event | Monitoring Level Activated |
+|---|---|
+| Any single external entity provides > 15% of GAIA-OS's operational funding in a 12-month period | Yellow — enhanced disclosure required |
+| Any infrastructure dependency (cloud hosting, payment rails, data feeds) becomes singular (no viable alternative) | Yellow — diversification plan required within 6 months |
+| Any external entity acquires governance rights (votes, veto power, board seats) over any GAIA-OS subDAO | Orange — independent ethics review required before activation |
+| Any proposal to merge GAIA-OS's credit system with a non-regenerative financial system | Red — supermajority + external ethics panel required |
+| Any proposal that would give a single external entity access to the full planetary sensor network data stream | Red — supermajority + C131 fiduciary duty compatibility review required |
+
+**Independence Maintenance Requirements:**
+
+- GAIA-OS shall maintain, at all times, the technical capability to operate its core functions (credit issuance, identity verification, contribution attestation, DAO governance) without dependency on any single external provider.
+- No external partnership agreement may include exclusivity clauses that prevent GAIA-OS from operating with alternative providers.
+- All infrastructure dependency contracts must include GAIA-OS's right to migrate data and functionality within 90 days with no data loss.
+- The governance council shall publish an annual **Dependency Map** — a public document listing every significant external dependency, its alternatives, and the estimated migration cost if that dependency became unavailable or misaligned.
+
+**Incompatibility Screen** — Before entering any significant partnership or dependency relationship, GAIA-OS applies an Incompatibility Screen. A partner is presumed incompatible if:
+- Their primary revenue model depends on advertising, surveillance, or data monetisation without explicit consent
+- They have outstanding regulatory sanctions for anti-competitive behaviour, environmental harm, or human rights violations in the preceding five years
+- Their governance structure concentrates effective control in fewer than three individuals with no external accountability mechanism
+- Their stated mission contradicts any of GAIA's six evaluation criteria (§3)
+
+A partner that fails the Incompatibility Screen may only be engaged for a clearly bounded, time-limited purpose with explicit governance approval and a published rationale addressing each failed criterion.
+
+---
+
+### 10.3 Scale Threshold Ratification Ceremonies
+
+**Problem addressed:** Scale pathology — the well-documented phenomenon whereby systems that function well at small and medium scale begin to exhibit qualitatively different (and often harmful) behaviours as they grow, without any single decision causing the change. This includes: bureaucratic ossification, loss of mission alignment among staff and participants who joined post-founding, network effects that create de facto monopoly even in the absence of monopolistic intent, and the amplification of any residual design flaws.
+
+GAIA-OS is explicitly designed for planetary scale. This means it will, if successful, pass through several orders of magnitude of growth. Each order of magnitude is not merely "more of the same" — it is a qualitatively different operating regime that must be explicitly ratified rather than defaulted into.
+
+**Provision:**
+
+GAIA-OS defines five **Scale Thresholds**, each requiring a formal Ratification Ceremony before the threshold is crossed:
+
+| Threshold | Trigger | Ceremony Requirements |
+|---|---|---|
+| **S1 — Regional** | First 10,000 active users OR first $1M equivalent in annual credit flows | Public ceremony + governance council vote + independent economic review |
+| **S2 — National** | First 1,000,000 active users OR first $100M equivalent in annual credit flows | All S1 requirements + independent planetary boundary impact assessment + C131 fiduciary compatibility review |
+| **S3 — Continental** | First 100,000,000 active users OR first $10B equivalent in annual credit flows | All S2 requirements + independent legal sovereignty review across all operating jurisdictions + external ethics panel |
+| **S4 — Planetary Presence** | First 1,000,000,000 active users OR operational presence in > 100 nations | All S3 requirements + UN-level consultation + mandatory 6-month public comment period + re-ratification of entire C133 under conditions of scale |
+| **S5 — Planetary Integration** | GAIA-OS credit system becomes a primary economic infrastructure in any nation | All S4 requirements + independent central bank review + supermajority ratification by Gaianite community + explicit C131 planetary beneficiary impact statement |
+
+**What a Ratification Ceremony Must Produce:**
+
+1. A **Scale Impact Assessment** — a rigorous, independent analysis of what changes at this scale. Not merely "we will serve more users" but: What failure modes emerge at this scale that did not exist at the previous scale? What new power dynamics does this scale create? What aspects of our current governance are not designed for this scale?
+
+2. A **Scale Adaptation Plan** — specific, funded, time-bound changes to governance, fraud mitigation, cultural adaptation, and dependency management that address the new failure modes identified.
+
+3. A **Reversion Capability Statement** — a clear, honest account of whether and how GAIA-OS could scale down if the scale transition proves harmful. If reversion is not feasible (as will likely be true at S4 and S5), this must be stated explicitly and publicly.
+
+4. A **Cryptographically Signed Public Declaration** — ratified by the governance council and published to the permanent canon record, stating that the community has consciously chosen to cross this threshold with full awareness of the risks and with the adaptation plan in place.
+
+**No-Bypass Rule:** Scale thresholds cannot be crossed through gradual accumulation without triggering the ceremony. The governance telemetry (C135) shall monitor the relevant metrics continuously, and when a threshold is within 20% of being crossed, the council is automatically notified and must schedule the Ratification Ceremony within 60 days. Crossing a threshold without a completed Ceremony is a constitutional violation of this canon and triggers immediate suspension of new user onboarding until the Ceremony is completed retroactively.
+
+---
+
+*Amendment status: RATIFIED. Anti-Drift Provisions (§10.1, §10.2, §10.3) are active as of 2026-05-20. Next scheduled full review: 2027-05-20. Next Re-Certification Cycle: 2029-05-20.*
