@@ -5,12 +5,36 @@
 
 // ClarusLens
 export { ClarusLensView } from './ClarusLens/ClarusLensView';
-export { getClarus, setLens, logEntry, subscribe as subscribeClarusLens } from './ClarusLens/store';
-export type { ClarusLensState, CognitiveMode, EmotionalTone } from './ClarusLens/types';
+export {
+  getCurrentFocus,
+  getClarity,
+  setIntention,
+  completeIntention,
+  addFocusArea,
+  setFocusAreaStatus,
+  resetLens,
+  hydrateFromStorage as hydrateClarusLens,
+  subscribe as subscribeClarusLens,
+} from './ClarusLens/store';
+export type {
+  ClarusLensState,
+  FocusArea,
+  FocusStatus,
+  Intention,
+  ClarityBreakdown,
+} from './ClarusLens/types';
 
 // AnchorPrism
 export { AnchorPrismView } from './AnchorPrism/AnchorPrismView';
-export { getAnchors, addAnchor, reinforce, archiveAnchor, subscribe as subscribeAnchorPrism } from './AnchorPrism/store';
+export {
+  getAnchors,
+  addAnchor,
+  reinforceAnchor,
+  archiveAnchor,
+  resetPrism,
+  hydrateFromStorage as hydrateAnchorPrism,
+  subscribe as subscribeAnchorPrism,
+} from './AnchorPrism/store';
 export type { AnchorPrismState, Anchor, AnchorCategory } from './AnchorPrism/types';
 
 // SomnusVeil
