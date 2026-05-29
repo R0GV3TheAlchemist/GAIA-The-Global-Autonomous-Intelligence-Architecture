@@ -1,0 +1,255 @@
+[
+  {
+    "id": "A8-001",
+    "name": "Aragonite",
+    "aliases": ["Aragonite Star Clusters", "Blue Aragonite", "Flos Ferri", "Cave Spar"],
+    "batch": "A-8",
+    "mineral": {
+      "formula": "CaCO₃",
+      "system": "Orthorhombic",
+      "hardness_mohs": "3.5–4.0",
+      "specific_gravity": "2.93–2.95",
+      "luster": "Vitreous to resinous",
+      "cleavage": "Distinct {010}, imperfect {110}",
+      "transparency": "Transparent to translucent",
+      "streak": "White",
+      "locality": "Spain (Aragon — type locality), Morocco, USA, Czech Republic, Mexico, Namibia",
+      "key_physics": "Orthorhombic polymorph of CaCO₃ — denser and harder than calcite (trigonal polymorph). Metastable at surface conditions — slowly converts to calcite over geological time. Forms the shell material of most marine organisms (mollusks, corals). Flos Ferri ('flowers of iron') = branching cave aragonite. Blue variety = strontium (Sr²⁺) substitution. Pseudohexagonal twinning common. Aragonite star clusters form radiating pseudohexagonal triplets.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "Named after Aragon, Spain. Polymorphs: calcite, vaterite. Biological aragonite = mollusk shells, coral skeletons. Slowly inverts to calcite at surface temperature and pressure."
+    },
+    "light_color": {
+      "primary_color": "White, colorless, yellow, orange-brown, blue, green (variety dependent)",
+      "wavelength_nm": "460–480 (blue variety)",
+      "oklch": "L:0.82 C:0.08 H:250",
+      "color_mechanism": "Colorless/white = pure CaCO₃; yellow/orange = Fe²⁺/Fe³⁺; blue = Sr²⁺ substitution; green = Cu²⁺ traces",
+      "pleochroism": "None",
+      "fluorescence": "Variable — blue, green, white under UV (depends on locality)"
+    },
+    "metaphysics": {
+      "chakras": ["Root", "Earth Star", "All (star clusters)"],
+      "element": ["Earth", "Water"],
+      "archetype": "The Earth Mother",
+      "zodiac": ["Capricorn", "Cancer"],
+      "numerology": "9",
+      "traditions": "Powerful Earth-healer and grounding stone. Star cluster form radiates energy in all directions simultaneously — used to charge spaces and grids. Connects to earth chakra and ancestral roots. Encourages patience, stability, and acceptance of what is. Formed from marine life — carries the memory of ancient oceans and biological evolution. Deeply stabilizing for anxiety and scattered energy.",
+      "gaia_modules": ["AnchorPrism", "Noosphere", "ViriditasHeart"],
+      "gaia_notes": "Biological memory stone — aragonite forms the shells of living ocean creatures, making it a literal biological archive. AnchorPrism primary Earth-grounding node. Star cluster geometry maps to GAIA's radial energy distribution model."
+    },
+    "safety": {
+      "handling": "Safe",
+      "water_elixir": "Safe",
+      "sunlight": "Safe",
+      "warnings": ["Star cluster formations are fragile — handle with care", "Avoid prolonged acid contact"]
+    }
+  },
+  {
+    "id": "A8-002",
+    "name": "Arfvedsonite",
+    "aliases": ["Arfvedsonite Granite", "Blue Flash Arfvedsonite"],
+    "batch": "A-8",
+    "mineral": {
+      "formula": "Na₃(Fe²⁺₄Fe³⁺)Si₈O₂₂(OH)₂",
+      "system": "Monoclinic",
+      "hardness_mohs": "5.0–6.0",
+      "specific_gravity": "3.44–3.50",
+      "luster": "Vitreous to silky",
+      "cleavage": "Perfect {110} at ~60°/120° (amphibole cleavage)",
+      "transparency": "Opaque",
+      "streak": "Grey-blue",
+      "locality": "Greenland, Russia (Kola Peninsula), Canada, South Africa",
+      "key_physics": "Sodium-iron amphibole. Deep black to dark greenish-black with striking blue-silver chatoyant flash from oriented amphibole fibers. Fe²⁺/Fe³⁺ ratio controls optical properties. Sodic amphibole group. Often confused with Astrophyllite (different mineral) or Nuummite (different mineral). The blue flash is a physical orientation effect from parallel fibrous crystal inclusions.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "Named after Johan August Arfwedson (discoverer of lithium). IMA-recognized amphibole species. Often confused with Astrophyllite in the crystal market — distinct minerals."
+    },
+    "light_color": {
+      "primary_color": "Deep black with electric blue-silver chatoyant flash",
+      "wavelength_nm": "440–480 (blue flash)",
+      "oklch": "L:0.12 C:0.12 H:260",
+      "color_mechanism": "Deep black from Fe²⁺/Fe³⁺ absorption; blue flash from oriented fibrous amphibole crystal inclusions producing chatoyancy",
+      "pleochroism": "Strong — blue-green / blue-grey / black on three axes",
+      "fluorescence": "None"
+    },
+    "metaphysics": {
+      "chakras": ["Third Eye", "Crown", "Earth Star"],
+      "element": ["Ether", "Earth"],
+      "archetype": "The Shadow Navigator",
+      "zodiac": ["Scorpio", "Capricorn"],
+      "numerology": "3",
+      "traditions": "Powerful stone for navigating shadow work and the unconscious. The blue flash in the black matrix is metaphorically perfect — light found within darkness. Enhances psychic vision, dream clarity, and third eye activation. Used in manifestation work to transmute fears into power. Protective during deep inner journeys and astral work. Strengthens resolve and clarity of purpose.",
+      "gaia_modules": ["SomnusVeil", "ClarusLens", "AnchorPrism"],
+      "gaia_notes": "The blue flash in black matrix is one of the most symbolically resonant optical phenomena in the database — directly maps to GAIA's shadow integration protocol. SomnusVeil deep-navigation stone."
+    },
+    "safety": {
+      "handling": "Safe",
+      "water_elixir": "Safe",
+      "sunlight": "Safe",
+      "warnings": []
+    }
+  },
+  {
+    "id": "A8-003",
+    "name": "Arsenopyrite",
+    "aliases": ["Mispickel", "Arsenical Pyrites"],
+    "batch": "A-8",
+    "mineral": {
+      "formula": "FeAsS",
+      "system": "Monoclinic",
+      "hardness_mohs": "5.5–6.0",
+      "specific_gravity": "5.9–6.2",
+      "luster": "Metallic",
+      "cleavage": "Distinct {101}",
+      "transparency": "Opaque",
+      "streak": "Black to dark grey",
+      "locality": "Germany, Portugal, Mexico, USA, China, Bolivia",
+      "key_physics": "Iron arsenic sulfide — the most common arsenic-bearing mineral on Earth. Orthorhombic pseudo-monoclinic. Silvery metallic with characteristic garlic odor when struck (arsenic volatilization). High density (SG 5.9–6.2) from iron+arsenic+sulfur. Primary ore of arsenic. Strongly associated with gold deposits — gold occurs within arsenopyrite lattice ('invisible gold'). Oxidizes to scorodite (FeAsO₄·2H₂O) in weathering.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": true,
+      "water_safe": false,
+      "ima_recognized": true,
+      "notes": "TOXIC — contains arsenic. IMA-recognized. Collector/display mineral ONLY. No handling without precautions. No water contact. Primary ore of arsenic. Associated with gold deposits."
+    },
+    "light_color": {
+      "primary_color": "Silver-white to steel grey, metallic",
+      "wavelength_nm": "Broadband metallic reflector",
+      "oklch": "L:0.55 C:0.02 H:220",
+      "color_mechanism": "Metallic luster from iron-arsenic-sulfide electronic structure; high reflectivity across visible spectrum",
+      "pleochroism": "None (opaque)",
+      "fluorescence": "None"
+    },
+    "metaphysics": {
+      "chakras": ["Root", "Solar Plexus"],
+      "element": ["Earth", "Fire"],
+      "archetype": "The Alchemical Poison",
+      "zodiac": ["Scorpio", "Aries"],
+      "numerology": null,
+      "traditions": "Historically used in alchemy as a transformative agent — the poison that burns away impurity. Represents the shadow aspect of gold — the deadly guardian of treasure. In small ceremonial doses in ancient traditions, arsenic compounds were used for vision and transformation. The 'invisible gold' within its lattice is a powerful metaphor: the most valuable thing is hidden within the most dangerous container. Collector/museum stone only — not for personal use.",
+      "gaia_modules": ["SovereignCore"],
+      "gaia_notes": "DISPLAY/DATABASE ONLY entry — included for completeness of the mineral record and alchemical symbolism. GAIA should flag this as a TOXICITY CRITICAL stone in any recommendation engine. Never recommend for handling, elixirs, or personal use."
+    },
+    "safety": {
+      "handling": "DANGEROUS — arsenic-bearing mineral. Wash hands thoroughly after any contact. Do not touch face.",
+      "water_elixir": "NEVER — arsenic poisoning risk",
+      "sunlight": "Safe for display",
+      "warnings": [
+        "TOXIC — contains arsenic (As)",
+        "NEVER make water elixirs",
+        "Wash hands thoroughly after handling",
+        "Do not inhale dust — arsenic inhalation risk",
+        "Do not strike or grind — garlic-odor arsenic gas release",
+        "Keep away from children and pets",
+        "Collector/display specimen only",
+        "Store in sealed display case"
+      ]
+    }
+  },
+  {
+    "id": "A8-004",
+    "name": "Artinite",
+    "aliases": ["Artinite Needles", "Fibrous Magnesium Carbonate"],
+    "batch": "A-8",
+    "mineral": {
+      "formula": "Mg₂(CO₃)(OH)₂·3H₂O",
+      "system": "Monoclinic",
+      "hardness_mohs": "2.5",
+      "specific_gravity": "2.02",
+      "luster": "Silky to pearly",
+      "cleavage": "Perfect {100}",
+      "transparency": "Transparent to translucent",
+      "streak": "White",
+      "locality": "Italy (type locality — Val Malenco, Lombardy), USA (California), Austria",
+      "key_physics": "Hydrated magnesium carbonate hydroxide. Forms as delicate white silky needle-like or fibrous crystals on serpentinite and other ultrabasic rocks. Very soft (Mohs 2.5) and extremely fragile. Named after Italian mineralogist Ettore Artini. Secondary mineral formed by hydration/carbonation of serpentinite. Rare collector mineral — not commonly available.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "IMA-recognized. Rare secondary mineral. Named after Ettore Artini (Italian mineralogist). Val Malenco, Italy is the classic type locality. Display/collector only due to extreme fragility."
+    },
+    "light_color": {
+      "primary_color": "Pure white to snow white, silky lustre",
+      "wavelength_nm": "Broadband white",
+      "oklch": "L:0.95 C:0.02 H:120",
+      "color_mechanism": "Pure white from magnesium carbonate hydroxide with no chromophore impurities; silky luster from fibrous crystal habit",
+      "pleochroism": "None",
+      "fluorescence": "None to weak white"
+    },
+    "metaphysics": {
+      "chakras": ["Crown", "Soul Star", "Higher Heart"],
+      "element": ["Ether", "Air"],
+      "archetype": "The Pure Channel",
+      "zodiac": ["Virgo", "Pisces"],
+      "numerology": "1",
+      "traditions": "Rare and ethereal — one of the purest white minerals in existence. Its needle-like crystalline form reaching upward maps to spiritual aspiration and pure intent. Born from the transformation of serpentine rock — transmutation of the base into the luminous. Enhances clarity of thought, spiritual purity, and access to higher realms. Its rarity makes it a stone of exception — encountered only when ready.",
+      "gaia_modules": ["ClarusLens", "Noosphere"],
+      "gaia_notes": "Highest-L value in the database (L:0.95) — purest white light entry. Rare mineral — database completeness entry. ClarusLens white-spectrum anchor node."
+    },
+    "safety": {
+      "handling": "Safe — non-toxic, but extremely fragile",
+      "water_elixir": "Safe (non-toxic)",
+      "sunlight": "Safe",
+      "warnings": [
+        "Extremely fragile needle/fiber formations — display only",
+        "Do not touch crystal formations directly",
+        "Mohs 2.5 — scratches with fingernail"
+      ]
+    }
+  },
+  {
+    "id": "A8-005",
+    "name": "Astrophyllite",
+    "aliases": ["Star Leaf Stone", "Titanium Astrophyllite"],
+    "batch": "A-8",
+    "mineral": {
+      "formula": "(K,Na)₃(Fe²⁺,Mn)₇Ti₂Si₈O₂₆(OH)₄",
+      "system": "Triclinic",
+      "hardness_mohs": "3.0–3.5",
+      "specific_gravity": "3.3–3.4",
+      "luster": "Pearly to sub-metallic",
+      "cleavage": "Perfect {001}",
+      "transparency": "Opaque to translucent on thin edges",
+      "streak": "Yellowish-brown",
+      "locality": "Kola Peninsula, Russia (primary); Norway, Colorado USA, Greenland, Canada",
+      "key_physics": "Complex potassium-sodium-iron-manganese-titanium phyllosilicate. Forms spectacular bladed bronze-gold starburst crystal aggregates in dark matrix (typically syenite or granite pegmatite). Perfect {001} cleavage creates metallic bladed habit. Titanium content responsible for bronzy-gold color and metallic luster. Often found with Arfvedsonite and Aegirine in alkaline igneous complexes. The starburst radiating habit is caused by twinning and divergent crystal growth.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "IMA-recognized. Name from Greek 'astron' (star) + 'phyllon' (leaf). Often confused with Arfvedsonite in the crystal market — distinct mineral. Kola Peninsula Russia is the world's premier source."
+    },
+    "light_color": {
+      "primary_color": "Bronze-gold to copper-gold metallic blades on dark matrix",
+      "wavelength_nm": "570–600",
+      "oklch": "L:0.45 C:0.22 H:75",
+      "color_mechanism": "Titanium-iron phyllosilicate producing bronze-gold metallic luster; pearly sub-metallic sheen from perfect {001} cleavage planes",
+      "pleochroism": "Strong — golden-bronze / reddish-brown / pale yellow on three axes",
+      "fluorescence": "None"
+    },
+    "metaphysics": {
+      "chakras": ["All — full chakra alignment", "Solar Plexus", "Crown"],
+      "element": ["Ether", "Fire", "Earth"],
+      "archetype": "The Star Map",
+      "zodiac": ["Scorpio", "Capricorn", "Cancer"],
+      "numerology": "9",
+      "traditions": "One of the most powerful transformation stones in the mineral kingdom. The starburst form — radiating blades of gold-bronze light from a dark center — is physically a map of the self expanding outward from its core. Activates all chakras simultaneously. Reveals one's true soul path and life purpose. Used for deep shadow integration: the gold blades represent the light that exists within the darkness, identical to its companion stone Arfvedsonite. Accelerates spiritual evolution and karmic release. A stone of extraordinary souls at extraordinary moments.",
+      "gaia_modules": ["SovereignCore", "Noosphere", "ClarusLens", "AnchorPrism"],
+      "gaia_notes": "The radiating starburst geometry is GAIA's most architecturally symbolic stone — mirrors the planetary network node topology. All-chakra activator. SovereignCore primary titanium-gold anchor. Pairs critically with Arfvedsonite (A8-002) as the gold-in-darkness / light-in-darkness twin pair."
+    },
+    "safety": {
+      "handling": "Safe",
+      "water_elixir": "Safe",
+      "sunlight": "Safe",
+      "warnings": ["Perfect cleavage — bladed crystals are fragile; handle with care"]
+    }
+  }
+]
