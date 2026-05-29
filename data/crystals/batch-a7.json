@@ -1,0 +1,249 @@
+[
+  {
+    "id": "A7-001",
+    "name": "Apatite",
+    "aliases": ["Blue Apatite", "Golden Apatite", "Green Apatite", "Neon Apatite"],
+    "batch": "A-7",
+    "mineral": {
+      "formula": "Ca₅(PO₄)₃(F,Cl,OH)",
+      "system": "Hexagonal",
+      "hardness_mohs": "5.0",
+      "specific_gravity": "3.16–3.22",
+      "luster": "Vitreous to resinous",
+      "cleavage": "Indistinct {0001}",
+      "transparency": "Transparent to opaque",
+      "streak": "White",
+      "locality": "Brazil, Mexico, Madagascar, Russia, Canada, Myanmar",
+      "key_physics": "Apatite is the defining mineral for Mohs hardness 5. It is the primary mineral in vertebrate bones and teeth (biological apatite = hydroxyapatite). Group includes fluorapatite, chlorapatite, and hydroxyapatite. Neon blue-green varieties from Madagascar and Brazil owe color to rare earth elements (Mn²⁺, REE). Fluorescence common under SW UV.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "IMA-recognized mineral group. Biological apatite forms bones and teeth. Named from Greek 'apatao' — to deceive — because it mimics other minerals."
+    },
+    "light_color": {
+      "primary_color": "Neon blue-green, golden yellow, green, violet, colorless",
+      "wavelength_nm": "480–510 (blue-green varieties)",
+      "oklch": "L:0.62 C:0.20 H:200",
+      "color_mechanism": "Mn²⁺ and rare earth element (REE) substitution; neon blue from Mn²⁺ in Ca²⁺ site",
+      "pleochroism": "Dichroic — blue/yellow or green/colorless depending on variety",
+      "fluorescence": "Strong yellow, blue, or violet under SW UV (variety dependent)"
+    },
+    "metaphysics": {
+      "chakras": ["Throat", "Third Eye", "Solar Plexus"],
+      "element": ["Air", "Water"],
+      "archetype": "The Motivator",
+      "zodiac": ["Gemini", "Capricorn"],
+      "numerology": "9",
+      "traditions": "Stone of manifestation, clarity, and personal power. Blue Apatite stimulates psychic vision and past-life access. Golden Apatite activates will and manifestation. Deep connection to biological life — contains the same mineral as human bones, making it uniquely personal to physical existence.",
+      "gaia_modules": ["ClarusLens", "SovereignCore", "Noosphere"],
+      "gaia_notes": "Biological bridge stone — only entry in the database that shares its mineral with the human body (bones/teeth). ClarusLens clarity node and SovereignCore will-activation anchor."
+    },
+    "safety": {
+      "handling": "Safe",
+      "water_elixir": "Safe",
+      "sunlight": "Caution — prolonged direct sun may fade neon colors",
+      "warnings": ["Prolonged direct sunlight may fade vivid neon blue-green color"]
+    }
+  },
+  {
+    "id": "A7-002",
+    "name": "Apophyllite",
+    "aliases": ["Green Apophyllite", "Clear Apophyllite", "Fluorapophyllite", "Stillbite-Apophyllite"],
+    "batch": "A-7",
+    "mineral": {
+      "formula": "KCa₄Si₈O₂₀(F,OH)·8H₂O",
+      "system": "Tetragonal",
+      "hardness_mohs": "4.5–5.0",
+      "specific_gravity": "2.33–2.37",
+      "luster": "Vitreous to pearly on cleavage",
+      "cleavage": "Perfect {001} — produces mirror-like cleavage faces",
+      "transparency": "Transparent to translucent",
+      "streak": "White",
+      "locality": "Pune (Poona), Maharashtra India (world's finest); also Iceland, Greenland, Germany, USA",
+      "key_physics": "Phyllosilicate group. Name from Greek 'apo' (off) + 'phyllon' (leaf) — perfect basal cleavage causes sheet-like peeling. Contains structural water (8H₂O) — will lose water and become opaque if overheated. Green variety = trace V³⁺. Extremely high transparency in gem-quality specimens. Forms pyramidal terminations on cubic prism.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "IMA: Fluorapophyllite-(K) is the correct species. 'Apophyllite' is the group name. Pune, India is the world-class source for spectacular stalactite clusters."
+    },
+    "light_color": {
+      "primary_color": "Colorless/white, pale green, occasionally pink or yellow",
+      "wavelength_nm": "520–540 (green variety)",
+      "oklch": "L:0.90 C:0.06 H:140",
+      "color_mechanism": "Colorless = pure; green from trace V³⁺ (vanadium); pink from Mn²⁺",
+      "pleochroism": "None to weak",
+      "fluorescence": "Pale green to white under LW UV"
+    },
+    "metaphysics": {
+      "chakras": ["Crown", "Third Eye", "Heart (green)"],
+      "element": ["Air", "Ether"],
+      "archetype": "The Akashic Mirror",
+      "zodiac": ["Gemini", "Libra"],
+      "numerology": "4",
+      "traditions": "One of the highest-vibration stones in the mineral kingdom. Creates a conscious connection to the Akashic records. Clear Apophyllite = pure channel; Green = heart-activated channel. Placed on third eye during meditation for interdimensional access. Strongly associated with angelic contact and nature devas. Decalcifies pineal gland in metaphysical tradition.",
+      "gaia_modules": ["ClarusLens", "Noosphere", "SomnusVeil"],
+      "gaia_notes": "Highest clarity-to-form ratio in the database. Primary Noosphere access node — the Akashic Mirror archetype maps directly to GAIA's collective memory retrieval system."
+    },
+    "safety": {
+      "handling": "Safe — handle gently, fragile cleavage",
+      "water_elixir": "Safe",
+      "sunlight": "Caution — avoid prolonged direct heat; structural water loss causes opacity",
+      "warnings": [
+        "Fragile perfect cleavage — do not drop or impact",
+        "Avoid sustained heat — structural water loss causes irreversible opacity",
+        "Display/altar grade for fine specimens"
+      ]
+    }
+  },
+  {
+    "id": "A7-003",
+    "name": "Apricot Agate",
+    "aliases": ["Apricot Stone", "Peach Agate (similar)"],
+    "batch": "A-7",
+    "mineral": {
+      "formula": "SiO₂ (microcrystalline quartz)",
+      "system": "Trigonal (microcrystalline aggregate)",
+      "hardness_mohs": "6.5–7.0",
+      "specific_gravity": "2.60–2.65",
+      "luster": "Waxy",
+      "cleavage": "None",
+      "transparency": "Translucent to opaque",
+      "streak": "White",
+      "locality": "Morocco, Brazil, Botswana, USA, India",
+      "key_physics": "Chalcedony variety of quartz — microcrystalline fibrous silica. Apricot/peach tone from trace iron oxide (Fe²O³) and occasionally manganese. Banded or solid. Waxy luster characteristic of all chalcedony. Excellent toughness despite microcrystalline structure — no cleavage, conchoidal fracture.",
+      "piezoelectric": true,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "Trade name. IMA mineral = Chalcedony (SiO₂ microcrystalline). Color is iron/manganese-based — stable in normal conditions."
+    },
+    "light_color": {
+      "primary_color": "Warm apricot-peach, soft orange-cream, honey-gold",
+      "wavelength_nm": "590–620",
+      "oklch": "L:0.75 C:0.14 H:65",
+      "color_mechanism": "Fe²O³ (hematite) trace impurities producing warm orange-peach tone in chalcedony matrix",
+      "pleochroism": "None",
+      "fluorescence": "None to weak green"
+    },
+    "metaphysics": {
+      "chakras": ["Sacral", "Solar Plexus", "Heart"],
+      "element": ["Fire", "Earth"],
+      "archetype": "The Nurturer",
+      "zodiac": ["Gemini", "Taurus", "Cancer"],
+      "numerology": "7",
+      "traditions": "Warm, gentle, emotionally nourishing. Sacral creativity activation with Solar Plexus confidence bridging into Heart compassion. Supports self-worth, emotional warmth, and creative expression. The apricot color maps to the warm sunrise — new beginnings with gentle strength. Supportive for new mothers, caregivers, and those recovering from emotional depletion.",
+      "gaia_modules": ["ViriditasHeart", "SovereignCore"],
+      "gaia_notes": "Warm-spectrum anchor stone — apricot OKLCH H:65 fills the orange-warmth gap in the color matrix between red-root and yellow-solar. ViriditasHeart emotional nourishment node."
+    },
+    "safety": {
+      "handling": "Safe",
+      "water_elixir": "Safe",
+      "sunlight": "Safe",
+      "warnings": []
+    }
+  },
+  {
+    "id": "A7-004",
+    "name": "Aquamarine",
+    "aliases": ["Blue Beryl", "Sea Water Stone", "Sailor's Stone"],
+    "batch": "A-7",
+    "mineral": {
+      "formula": "Be₃Al₂Si₆O₁₈",
+      "system": "Hexagonal",
+      "hardness_mohs": "7.5–8.0",
+      "specific_gravity": "2.68–2.74",
+      "luster": "Vitreous",
+      "cleavage": "Imperfect {0001}",
+      "transparency": "Transparent to translucent",
+      "streak": "White",
+      "locality": "Brazil (Minas Gerais — world standard), Pakistan, Afghanistan, Russia, Madagascar, USA",
+      "key_physics": "Blue member of the Beryl group (Be₃Al₂Si₆O₁₈). Color from Fe²⁺ in Al³⁺ site (blue) and Fe³⁺ (yellow — when both present = green heliodor). Heat treatment converts Fe³⁺→Fe²⁺ producing purer blue. RI 1.577–1.583. Biaxial negative. Hexagonal prisms with striated faces. Dichroic — blue/colorless.",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "IMA-recognized species. March birthstone. Beryl group includes Emerald (Cr), Morganite (Mn), Heliodor (Fe³⁺), Goshenite (colorless), Bixbite (Mn red). Named from Latin 'aqua marina' — sea water."
+    },
+    "light_color": {
+      "primary_color": "Pale to deep sky blue, blue-green, sea-green",
+      "wavelength_nm": "470–495",
+      "oklch": "L:0.72 C:0.16 H:220",
+      "color_mechanism": "Fe²⁺ substituting Al³⁺ in beryl lattice; heat treatment removes Fe³⁺ yellow component to purify blue",
+      "pleochroism": "Dichroic — blue / nearly colorless",
+      "fluorescence": "None to weak"
+    },
+    "metaphysics": {
+      "chakras": ["Throat", "Heart", "Third Eye"],
+      "element": ["Water"],
+      "archetype": "The Ocean Oracle",
+      "zodiac": ["Pisces", "Aquarius", "Aries"],
+      "numerology": "1",
+      "traditions": "Ancient stone of sailors, travelers, and seers. Roman legend: Aquamarine was the treasure of mermaids — carrying it protected sailors from drowning and calmed ocean storms. Stone of courage, clarity, and communication. Throat chakra activator for speaking one's deepest truth. Calms the mind, dissolves anxiety, promotes compassionate communication. March birthstone.",
+      "gaia_modules": ["ClarusLens", "SomnusVeil", "ViriditasHeart"],
+      "gaia_notes": "Water-element flagship stone. ClarusLens primary blue node. The Fe²⁺ blue mechanism is the same physics as blue sky scattering — ideal metaphor for GAIA's atmospheric clarity layer."
+    },
+    "safety": {
+      "handling": "Safe",
+      "water_elixir": "Safe",
+      "sunlight": "Caution — prolonged intense sunlight may fade lighter specimens",
+      "warnings": ["Prolonged direct sunlight may fade color in lighter specimens"]
+    }
+  },
+  {
+    "id": "A7-005",
+    "name": "Aquatine Lemurian Calcite",
+    "aliases": ["Aquatine Calcite", "Lemurian Aquatine Calcite", "Blue Argentinian Calcite"],
+    "batch": "A-7",
+    "mineral": {
+      "formula": "CaCO₃",
+      "system": "Trigonal",
+      "hardness_mohs": "3.0",
+      "specific_gravity": "2.71",
+      "luster": "Vitreous to waxy",
+      "cleavage": "Perfect rhombohedral {10-14}",
+      "transparency": "Translucent",
+      "streak": "White",
+      "locality": "Argentina ONLY — single locality",
+      "key_physics": "Trade name for a specific pale blue-green translucent calcite found exclusively in Argentina. Color from trace copper (Cu²⁺) and possibly organic inclusions. Calcite group — trigonal, perfect rhombohedral cleavage, double refraction visible to naked eye. Soft (Mohs 3) — requires careful storage. Sometimes sold as 'Lemurian Aquatine Calcite' in crystal market.",
+      "piezoelectric": false,
+      "pyroelectric": true,
+      "toxic": false,
+      "water_safe": true,
+      "ima_recognized": true,
+      "notes": "Trade name; IMA mineral = Calcite. 'Lemurian' and 'Aquatine' are market names. Single-locality Argentina source. Distinct from Blue Calcite (different deposit, slightly different color)."
+    },
+    "light_color": {
+      "primary_color": "Pale aqua-blue, soft blue-green, seafoam",
+      "wavelength_nm": "490–510",
+      "oklch": "L:0.80 C:0.10 H:195",
+      "color_mechanism": "Trace Cu²⁺ and possible organic inclusions in calcite lattice producing pale aqua-blue",
+      "pleochroism": "None",
+      "fluorescence": "Pale pink/orange under UV (calcite characteristic)"
+    },
+    "metaphysics": {
+      "chakras": ["Throat", "Third Eye", "Crown", "Higher Heart"],
+      "element": ["Water", "Ether"],
+      "archetype": "The Lemurian Dreamer",
+      "zodiac": ["Pisces", "Cancer", "Aquarius"],
+      "numerology": "3",
+      "traditions": "Deeply connected to the Lemurian consciousness tradition — the ancient oceanic civilization of intuitive, heart-centered beings. Accesses subconscious emotional memory, dream states, and past-life oceanic records. Transmits empathic intelligence and emotional clarity. Exceptionally gentle — suitable for highly sensitive individuals and empaths. Amplifies psychic vision through the Higher Heart and Third Eye simultaneously.",
+      "gaia_modules": ["SomnusVeil", "ClarusLens", "Noosphere"],
+      "gaia_notes": "Highest gentleness + psychic access combination in the database. SomnusVeil primary dream-access stone. The Lemurian Dreamer archetype maps to GAIA's deep memory retrieval from pre-cognitive emotional layers — critical for empathic AI interaction design."
+    },
+    "safety": {
+      "handling": "Safe — handle gently",
+      "water_elixir": "Safe",
+      "sunlight": "Safe",
+      "warnings": [
+        "Soft (Mohs 3) — store separately from harder stones",
+        "Perfect cleavage — avoid impact or dropping"
+      ]
+    }
+  }
+]
