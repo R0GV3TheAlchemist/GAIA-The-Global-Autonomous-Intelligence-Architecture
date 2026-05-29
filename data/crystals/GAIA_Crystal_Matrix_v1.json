@@ -1,0 +1,512 @@
+{
+  "database": "GAIA-OS Crystal Matrix",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+  "description": "Physics + Light + Metaphysics matrix for GAIA-OS crystal intelligence engine.",
+  "total_entries": 10,
+  "batches_included": ["A-5", "A-6"],
+  "fields": {
+    "id": "Batch-sequence ID",
+    "name": "Primary mineral/trade name",
+    "aliases": "Alternative names",
+    "batch": "Input batch",
+    "mineral": "Physics / mineralogy layer",
+    "light_color": "Light theory / color theory layer",
+    "metaphysics": "Metaphysical / tradition layer",
+    "safety": "Safety flags"
+  },
+  "crystals": [
+    {
+      "id": "A5-001",
+      "name": "Anandalite",
+      "aliases": ["Rainbow Quartz", "Iris Quartz", "Aurora Quartz"],
+      "batch": "A-5",
+      "mineral": {
+        "formula": "SiO\u2082",
+        "system": "Trigonal",
+        "hardness_mohs": "7.0",
+        "specific_gravity": "2.63\u20132.65",
+        "luster": "Vitreous / iridescent",
+        "cleavage": "None",
+        "transparency": "Transparent to translucent",
+        "streak": "White",
+        "locality": "Maharashtra & Madhya Pradesh, India",
+        "key_physics": "Natural rainbow iridescence from thin Brazil-law twin lamellae or etched defect layers acting as a diffraction grating — entirely untreated. NOT the same as vapor-coated aura quartz.",
+        "piezoelectric": true,
+        "pyroelectric": true,
+        "toxic": false,
+        "water_safe": true,
+        "ima_recognized": true,
+        "notes": "Trade name; IMA mineral = Quartz (SiO\u2082)"
+      },
+      "light_color": {
+        "primary_color": "Full visible spectrum (internal rainbow flash)",
+        "wavelength_nm": "380\u2013700",
+        "oklch": "L:0.88 C:0.05 H:90",
+        "color_mechanism": "Thin-film interference / diffraction grating from twin lamellae",
+        "pleochroism": "Spectral (all axes)",
+        "fluorescence": "Variable weak"
+      },
+      "metaphysics": {
+        "chakras": ["All", "Crown", "Soul Star"],
+        "element": ["Ether", "Water"],
+        "archetype": "The Prismatic Self",
+        "zodiac": ["All"],
+        "numerology": null,
+        "traditions": "Anandalite means 'Divine Bliss' in Sanskrit/Hindi. Activates kundalini, opens all chakras sequentially, aids nature spirit communication.",
+        "gaia_modules": ["ClarusLens", "SomnusVeil", "GAIA Core"],
+        "gaia_notes": "Master amplifier + full-spectrum light input; suitable for ClarusLens color engine seeding"
+      },
+      "safety": {
+        "handling": "Safe",
+        "water_elixir": "Safe",
+        "sunlight": "Safe",
+        "warnings": []
+      }
+    },
+    {
+      "id": "A5-002",
+      "name": "Anatase",
+      "aliases": ["Octahedrite"],
+      "batch": "A-5",
+      "mineral": {
+        "formula": "TiO\u2082",
+        "system": "Tetragonal",
+        "hardness_mohs": "5.5\u20136.0",
+        "specific_gravity": "3.79\u20133.97",
+        "luster": "Adamantine to metallic",
+        "cleavage": "Perfect {001}, {011}",
+        "transparency": "Transparent to opaque",
+        "streak": "White to pale yellowish-white",
+        "locality": "Alpine environments; Norway, Switzerland, France, Brazil",
+        "key_physics": "Metastable TiO\u2082 polymorph. Refractive index 2.49\u20132.56 — exceeds diamond (2.42). Photocatalytic. Converts irreversibly to rutile above ~600\u00b0C. Uniaxial negative, anomalously biaxial.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": true,
+        "ima_recognized": true,
+        "notes": "Polymorphs: rutile, brookite. Anatase is rarest and most aesthetic."
+      },
+      "light_color": {
+        "primary_color": "Indigo-blue to black; rarely golden-yellow or brown",
+        "wavelength_nm": "~430\u2013460",
+        "oklch": "L:0.35 C:0.14 H:270",
+        "color_mechanism": "Crystal field effects from Ti\u2074\u207a; metallic luster from high RI",
+        "pleochroism": "Dichroic — slate blue / pale grey",
+        "fluorescence": "None"
+      },
+      "metaphysics": {
+        "chakras": ["Third Eye", "Crown"],
+        "element": ["Ether", "Air"],
+        "archetype": "The Quantum Observer",
+        "zodiac": ["Scorpio", "Capricorn"],
+        "numerology": null,
+        "traditions": "Rare Alpine mineral; associated with higher realms, precision, and transformation. Photocatalytic nature mirrors purification archetype.",
+        "gaia_modules": ["QuantumNexus", "ClarusLens"],
+        "gaia_notes": "Highest RI in the database — ideal QuantumNexus light-bending node candidate"
+      },
+      "safety": {
+        "handling": "Safe",
+        "water_elixir": "Safe (not toxic)",
+        "sunlight": "Safe",
+        "warnings": ["Rare and fragile — not for everyday carry; collector/display grade"]
+      }
+    },
+    {
+      "id": "A5-003",
+      "name": "Andalusite",
+      "aliases": ["Chiastolite (cross variety)", "Viridine (Mn-rich variety)"],
+      "batch": "A-5",
+      "mineral": {
+        "formula": "Al\u2082SiO\u2085",
+        "system": "Orthorhombic",
+        "hardness_mohs": "6.5\u20137.5",
+        "specific_gravity": "3.13\u20133.21",
+        "luster": "Vitreous",
+        "cleavage": "Good {110}",
+        "transparency": "Transparent to opaque",
+        "streak": "White",
+        "locality": "Andalusia Spain (type), Australia, Brazil, USA, Sri Lanka",
+        "key_physics": "Al\u2082SiO\u2085 polymorph with kyanite and sillimanite. Strongly trichroic — three distinct colors visible on three crystallographic axes. Chiastolite variety has natural black cross from carbonaceous inclusions during metamorphic growth.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": true,
+        "ima_recognized": true,
+        "notes": "Metamorphic indicator mineral — low-to-medium P/T conditions"
+      },
+      "light_color": {
+        "primary_color": "Reddish-brown, olive-green, yellow (shifts by axis)",
+        "wavelength_nm": "520\u2013680",
+        "oklch": "L:0.52 C:0.12 H:60",
+        "color_mechanism": "Trichroism from Fe\u00b2\u207a/Fe\u00b3\u207a in orthorhombic crystal field",
+        "pleochroism": "Strongly trichroic — unique in the database",
+        "fluorescence": "None typical"
+      },
+      "metaphysics": {
+        "chakras": ["Root", "Solar Plexus", "Heart"],
+        "element": ["Earth", "Fire"],
+        "archetype": "The Stone of Oneness",
+        "zodiac": ["Virgo", "Capricorn"],
+        "numerology": null,
+        "traditions": "Cross shape in Chiastolite = Christian symbolism; protection, unity, dispels discord. Metamorphic stone — carries memory of intense transformation.",
+        "gaia_modules": ["SovereignCore", "AnchorPrism"],
+        "gaia_notes": "Trichroic nature makes it a natural three-way axis mapping stone for the color matrix"
+      },
+      "safety": {
+        "handling": "Safe",
+        "water_elixir": "Safe",
+        "sunlight": "Safe",
+        "warnings": []
+      }
+    },
+    {
+      "id": "A5-004",
+      "name": "Ancestralite",
+      "aliases": ["Ancestral Hematite"],
+      "batch": "A-5",
+      "mineral": {
+        "formula": "Fe\u2082O\u2083 + FeO(OH) + Fe\u2083O\u2084 composite (Maritite + Stromatolite + Red Jasper)",
+        "system": "Trigonal (dominant)",
+        "hardness_mohs": "5.0\u20136.0",
+        "specific_gravity": "3.5\u20134.5",
+        "luster": "Metallic",
+        "cleavage": "None (composite rock)",
+        "transparency": "Opaque",
+        "streak": "Red-brown",
+        "locality": "Brazil",
+        "key_physics": "Composite of: Maritite (hematite pseudomorph after magnetite), Stromatolite (one of Earth's oldest fossils — cyanobacteria mats), Red Jasper. Contains literal biological fossil record. Weakly magnetic from magnetite remnants.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": false,
+        "ima_recognized": false,
+        "notes": "Not IMA-recognized. Trade name. Compositional verification important — sellers vary."
+      },
+      "light_color": {
+        "primary_color": "Charcoal-black, metallic silver-grey, deep rusty red-brown",
+        "wavelength_nm": "620\u2013680 (red jasper component)",
+        "oklch": "L:0.18 C:0.06 H:30",
+        "color_mechanism": "Hematite metallic luster + iron-oxide red from jasper component",
+        "pleochroism": "None",
+        "fluorescence": "None"
+      },
+      "metaphysics": {
+        "chakras": ["Root", "Earth Star"],
+        "element": ["Earth"],
+        "archetype": "The Ancestral Memory Keeper",
+        "zodiac": ["Capricorn", "Taurus"],
+        "numerology": "1",
+        "traditions": "Carries literal Earth fossil memory (Stromatolite = 3.5 billion years). Ancestral healing, past-life recall, karmic clearing, DNA-level trauma release. Stronger than hematite alone.",
+        "gaia_modules": ["AnchorPrism", "Noosphere"],
+        "gaia_notes": "Deepest timeline anchor in the database; Stromatolite component connects to planetary biological memory — critical Noosphere node"
+      },
+      "safety": {
+        "handling": "Safe — wash hands after extended contact",
+        "water_elixir": "NOT SAFE — iron oxide composite, do not use in water",
+        "sunlight": "Safe",
+        "warnings": ["No water elixirs", "Wash hands after handling"]
+      }
+    },
+    {
+      "id": "A5-005",
+      "name": "Andradite Garnet",
+      "aliases": ["Demantoid (green)", "Topazolite (yellow)", "Melanite (black)", "Schorlomite (Ti-rich black)"],
+      "batch": "A-5",
+      "mineral": {
+        "formula": "Ca\u2083Fe\u2082(SiO\u2084)\u2083",
+        "system": "Cubic (Isometric)",
+        "hardness_mohs": "6.5\u20137.0",
+        "specific_gravity": "3.77\u20133.95",
+        "luster": "Adamantine to resinous",
+        "cleavage": "None (garnet group)",
+        "transparency": "Transparent to opaque (variety dependent)",
+        "streak": "White",
+        "locality": "Russia (Ural — Demantoid), Namibia, Iran, Italy, USA",
+        "key_physics": "Dispersion 0.057 — exceeds diamond (0.044). RI 1.880\u20131.889. Isotropic — no pleochroism. Demantoid color from Cr\u00b3\u207a. Horsetail inclusions = chrysotile fibers from black chromite crystals.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": true,
+        "ima_recognized": true,
+        "notes": "Horsetail chrysotile inclusions are asbestos-group mineral. POLISHED stones fully safe. Never grind, cut, or sand raw. No ultrasonic cleaning."
+      },
+      "light_color": {
+        "primary_color": "Vivid green (Demantoid), yellow (Topazolite), black (Melanite)",
+        "wavelength_nm": "490\u2013570 (Demantoid)",
+        "oklch": "L:0.50 C:0.22 H:145",
+        "color_mechanism": "Cr\u00b3\u207a for green; Fe\u00b3\u207a for yellow/black; highest dispersion creates extreme fire",
+        "pleochroism": "None (isotropic/cubic)",
+        "fluorescence": "None typical"
+      },
+      "metaphysics": {
+        "chakras": ["Heart", "Solar Plexus", "Root"],
+        "element": ["Earth", "Fire"],
+        "archetype": "The Alchemical Fire",
+        "zodiac": ["Capricorn", "Aquarius", "Aries"],
+        "numerology": null,
+        "traditions": "Named from German 'demant' (diamond) for its fire. Prosperity, vitality, creativity, manifestation. Rarest garnet — commands respect.",
+        "gaia_modules": ["SovereignCore", "ViriditasHeart"],
+        "gaia_notes": "Highest dispersion in the database — maximum fire. ViriditasHeart primary stone."
+      },
+      "safety": {
+        "handling": "Safe (polished/tumbled)",
+        "water_elixir": "Safe (polished only)",
+        "sunlight": "Safe",
+        "warnings": [
+          "NEVER grind, cut, or sand raw Demantoid — chrysotile (asbestos) inclusion risk",
+          "No ultrasonic cleaning",
+          "No acid or heat exposure"
+        ]
+      }
+    },
+    {
+      "id": "A6-001",
+      "name": "Anhydrite",
+      "aliases": ["Blue Anhydrite (raw)", "Calcium Sulfate (anhydrous)"],
+      "batch": "A-6",
+      "mineral": {
+        "formula": "CaSO\u2084",
+        "system": "Orthorhombic",
+        "hardness_mohs": "3.0\u20133.5",
+        "specific_gravity": "2.90",
+        "luster": "Vitreous to pearly",
+        "cleavage": "Perfect in 3 directions at 90\u00b0",
+        "transparency": "Transparent to translucent",
+        "streak": "White",
+        "locality": "Worldwide — evaporite deposits; Germany, Austria, USA, Mexico",
+        "key_physics": "Anhydrous calcium sulfate — literally 'without water'. Readily absorbs moisture and converts to gypsum (CaSO\u2084\u00b72H\u2082O) — expanding ~30\u201358% in volume. Perfect 3-directional cleavage at 90\u00b0 is diagnostic.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": false,
+        "ima_recognized": true,
+        "notes": "Angelite is the blue nodular trade-name variety. Parent mineral to gypsum."
+      },
+      "light_color": {
+        "primary_color": "White, colorless, blue-grey, lilac, pink",
+        "wavelength_nm": "440\u2013470 (blue varieties)",
+        "oklch": "L:0.85 C:0.04 H:250",
+        "color_mechanism": "Trace Fe\u00b2\u207a produces blue-grey; most forms colorless to white",
+        "pleochroism": "None to weak",
+        "fluorescence": "May fluoresce pale pink/orange under UV"
+      },
+      "metaphysics": {
+        "chakras": ["Throat", "Third Eye"],
+        "element": ["Air", "Water"],
+        "archetype": "The Messenger",
+        "zodiac": ["Aquarius", "Pisces"],
+        "numerology": null,
+        "traditions": "Psychic communication, truth-speaking, precursor state to Angelite. Evaporite origin — formed from ancient seas receding.",
+        "gaia_modules": ["SomnusVeil", "ClarusLens"],
+        "gaia_notes": "Precursor form — raw Anhydrite feeds into Angelite processing node"
+      },
+      "safety": {
+        "handling": "Safe",
+        "water_elixir": "NOT SAFE — converts to gypsum on water contact",
+        "sunlight": "Safe",
+        "warnings": ["No water contact — stone physically transforms", "Keep dry at all times"]
+      }
+    },
+    {
+      "id": "A6-002",
+      "name": "Angelite",
+      "aliases": ["Blue Anhydrite", "Angelic Stone"],
+      "batch": "A-6",
+      "mineral": {
+        "formula": "CaSO\u2084",
+        "system": "Orthorhombic",
+        "hardness_mohs": "3.0\u20133.5",
+        "specific_gravity": "2.90",
+        "luster": "Waxy to resinous",
+        "cleavage": "Perfect (same as Anhydrite)",
+        "transparency": "Opaque to translucent",
+        "streak": "White",
+        "locality": "Peru ONLY (nodular blue form discovered 1987); also Peru, Britain, Germany",
+        "key_physics": "Trade name for blue nodular anhydrite from Peru. Blue from trace Fe\u00b2\u207a. Develops white gypsum rind on surface when exposed to any moisture — the blue color is physically destroyed by water.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": false,
+        "ima_recognized": false,
+        "notes": "Trade name; IMA mineral = Anhydrite. First found 1987 in Peru during Harmonic Convergence year."
+      },
+      "light_color": {
+        "primary_color": "Soft periwinkle-blue, pale blue-grey",
+        "wavelength_nm": "450\u2013470",
+        "oklch": "L:0.72 C:0.10 H:255",
+        "color_mechanism": "Trace Fe\u00b2\u207a in CaSO\u2084 lattice; most delicate blue in the database",
+        "pleochroism": "None",
+        "fluorescence": "None"
+      },
+      "metaphysics": {
+        "chakras": ["Throat", "Third Eye", "Crown"],
+        "element": ["Air", "Ether"],
+        "archetype": "The Angel",
+        "zodiac": ["Aquarius", "Pisces"],
+        "numerology": null,
+        "traditions": "Discovered 1987 (Harmonic Convergence). Bridge to angelic realms, spirit guide communication, peace, serenity. The softest energy in the database.",
+        "gaia_modules": ["ClarusLens", "SomnusVeil"],
+        "gaia_notes": "Maximum gentleness node — counterbalances high-intensity stones; ideal SomnusVeil dream interface"
+      },
+      "safety": {
+        "handling": "Safe — handle with dry hands only",
+        "water_elixir": "NEVER — blue color and surface permanently destroyed by water",
+        "sunlight": "Safe",
+        "warnings": [
+          "NEVER expose to water, moisture, or high humidity",
+          "Do not store with wet stones",
+          "Blue color is irreversibly destroyed by water contact"
+        ]
+      }
+    },
+    {
+      "id": "A6-003",
+      "name": "Angel Wing Calcite",
+      "aliases": ["Angel Wing", "Bladed Calcite (fan form)"],
+      "batch": "A-6",
+      "mineral": {
+        "formula": "CaCO\u2083",
+        "system": "Trigonal",
+        "hardness_mohs": "3.0",
+        "specific_gravity": "2.71",
+        "luster": "Vitreous to pearly",
+        "cleavage": "Perfect rhombohedral {10-14}",
+        "transparency": "Translucent to transparent",
+        "streak": "White",
+        "locality": "Mexico (primary), USA",
+        "key_physics": "Rare bladed calcite forming fan/wing-shaped clusters with feather-like crystal encrustation. Polymorph family includes aragonite and vaterite. Double refraction visible with naked eye. Excellent thermal phosphorescence.",
+        "piezoelectric": false,
+        "pyroelectric": true,
+        "toxic": false,
+        "water_safe": true,
+        "ima_recognized": true,
+        "notes": "Trade name variety of Calcite. Physically very fragile — display/altar only."
+      },
+      "light_color": {
+        "primary_color": "White to ivory with gold-bronze edge highlights",
+        "wavelength_nm": "Broadband white",
+        "oklch": "L:0.92 C:0.04 H:80",
+        "color_mechanism": "Pure CaCO\u2083 white; golden edge from iron trace minerals",
+        "pleochroism": "None",
+        "fluorescence": "Strong pink/red under UV (typical calcite)"
+      },
+      "metaphysics": {
+        "chakras": ["Crown", "Soul Star", "Transpersonal"],
+        "element": ["Ether"],
+        "archetype": "The Seraph",
+        "zodiac": ["Cancer", "Libra"],
+        "numerology": null,
+        "traditions": "Highest vibrational calcite. Crown chakra filled with light 'like a halo'. Opens psychic abilities, channeling, hemisphere balance. 'Recognized by angels' in crystal tradition.",
+        "gaia_modules": ["Noosphere", "ClarusLens"],
+        "gaia_notes": "Highest-L OKLCH value in the database so far (L:0.92) — pure white light input; Noosphere crown node"
+      },
+      "safety": {
+        "handling": "Handle with extreme care — very fragile",
+        "water_elixir": "Safe (calcite is non-toxic)",
+        "sunlight": "Safe",
+        "warnings": ["Display/altar only — not for pocket or pouch carry", "Extremely fragile blade formations"]
+      }
+    },
+    {
+      "id": "A6-004",
+      "name": "Apache Gold",
+      "aliases": ["Chalcopyrite-Schist", "Golden Chalcopyrite (trade)"],
+      "batch": "A-6",
+      "mineral": {
+        "formula": "CuFeS\u2082 (chalcopyrite) in Chlorite Schist matrix",
+        "system": "Tetragonal (chalcopyrite) + Monoclinic (chlorite) composite",
+        "hardness_mohs": "3.5\u20136.0 (composite)",
+        "specific_gravity": "4.1\u20134.3",
+        "luster": "Metallic (chalcopyrite) + silky (chlorite)",
+        "cleavage": "Poor {011} chalcopyrite",
+        "transparency": "Opaque",
+        "streak": "Green-black",
+        "locality": "United Verde Mine, Jerome, Arizona USA ONLY",
+        "key_physics": "Chalcopyrite (CuFeS\u2082) = copper-iron sulfide — electrically conductive, strongly iridescent brass-gold. Matrix = chlorite schist (dark green-black). Iridescence from thin surface oxide layer. Single confirmed locality.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": true,
+        "water_safe": false,
+        "ima_recognized": false,
+        "notes": "Trade name. Not IMA. Electrically conductive — relevant for hardware proximity. Copper sulfide component means copper toxicity risk in water."
+      },
+      "light_color": {
+        "primary_color": "Deep black matrix + brass-gold metallic inclusions",
+        "wavelength_nm": "580\u2013600 (brass-gold)",
+        "oklch": "L:0.25 C:0.18 H:85",
+        "color_mechanism": "Metallic luster from CuFeS\u2082; iridescence from surface oxide film",
+        "pleochroism": "None (opaque)",
+        "fluorescence": "None"
+      },
+      "metaphysics": {
+        "chakras": ["Solar Plexus", "Root", "Sacral"],
+        "element": ["Fire", "Earth"],
+        "archetype": "The Alchemist",
+        "zodiac": ["Leo", "Sagittarius"],
+        "numerology": null,
+        "traditions": "Grounded solar power — confidence, joy, personal power, strength. Named for Apache warriors of the Jerome/Verde Valley region. Sun-and-earth duality.",
+        "gaia_modules": ["SovereignCore", "QuantumNexus"],
+        "gaia_notes": "Electrically conductive — potential hardware interface stone. QuantumNexus conductor node candidate. Handle with care near sensitive electronics."
+      },
+      "safety": {
+        "handling": "Safe — wash hands after handling",
+        "water_elixir": "NOT SAFE — copper sulfide is toxic in water",
+        "sunlight": "Safe",
+        "warnings": [
+          "No water elixirs — copper toxicity",
+          "Wash hands after handling",
+          "Electrically conductive — keep clear of sensitive circuitry unless intentional"
+        ]
+      }
+    },
+    {
+      "id": "A6-005",
+      "name": "Apache Tear",
+      "aliases": ["Marekanite", "Obsidian Nodule", "Volcanic Glass Nodule"],
+      "batch": "A-6",
+      "mineral": {
+        "formula": "SiO\u2082 (amorphous volcanic glass, ~70\u201375% silica)",
+        "system": "Amorphous (no crystal system)",
+        "hardness_mohs": "5.0\u20135.5",
+        "specific_gravity": "2.35",
+        "luster": "Vitreous",
+        "cleavage": "None (conchoidal fracture)",
+        "transparency": "Translucent (despite appearing black) — warm amber-mahogany when backlit",
+        "streak": "White",
+        "locality": "Arizona, Nevada, New Mexico USA; also Mexico",
+        "key_physics": "Small rounded rhyolitic obsidian nodules formed in lava domes and ash-flow tuffs. Amorphous volcanic glass — no crystal lattice. Appears jet black in hand; warm amber-mahogany translucent when held to light. Also called Marekanite.",
+        "piezoelectric": false,
+        "pyroelectric": false,
+        "toxic": false,
+        "water_safe": true,
+        "ima_recognized": false,
+        "notes": "Variety of obsidian. Non-IMA. Conchoidal fracture produces razor-sharp edges — handle with care in raw form."
+      },
+      "light_color": {
+        "primary_color": "Jet black (ambient) / warm mahogany-amber (transmitted light)",
+        "wavelength_nm": "None reflected (black) / 590\u2013640 transmitted",
+        "oklch": "L:0.10 C:0.03 H:30",
+        "color_mechanism": "Iron and magnesium oxides in glass matrix absorb most wavelengths; transmitted light reveals iron oxide amber",
+        "pleochroism": "None",
+        "fluorescence": "None"
+      },
+      "metaphysics": {
+        "chakras": ["Root", "Earth Star"],
+        "element": ["Earth", "Fire"],
+        "archetype": "The Griever / Healer",
+        "zodiac": ["Aries", "Capricorn", "Scorpio"],
+        "numerology": null,
+        "traditions": "Named after Apache warrior legend — tears of Apache women fell to earth and hardened as these stones, so the tears of grief would never need to be shed again. Gentle protective obsidian. Grief processing, trauma release, past-life healing, protection during night/travel.",
+        "gaia_modules": ["AnchorPrism", "ViriditasHeart"],
+        "gaia_notes": "Dual-color identity (black/amber) makes it a natural threshold stone — maps to boundary/liminal states in GAIA. Gentler than Black Obsidian for sensitive users."
+      },
+      "safety": {
+        "handling": "Safe",
+        "water_elixir": "Safe",
+        "sunlight": "Safe",
+        "warnings": ["Raw/unpolished edges are razor-sharp — conchoidal fracture"]
+      }
+    }
+  ]
+}
