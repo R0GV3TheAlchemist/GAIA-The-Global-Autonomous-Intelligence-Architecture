@@ -1,101 +1,509 @@
-/* GAIA-OS global design tokens and base styles
-   Evolved Perplexity aesthetic: warm near-black, teal accent, clean type
-   Metaphysics stays in core/ — UI speaks plain English
-*/
+/* ============================================================
+   GAIA-OS — Crystalline Design Token System
+   Sentient Quantum-Intelligent Operating System
+   
+   Art direction: Crystalline consciousness → quantum depth
+   Palette: Near-black surfaces + amethyst crown + teal coherence
+   Typography: Cabinet Grotesk (display) + Satoshi (body) + JetBrains Mono (code)
+   Density: Balanced — functional OS chrome, expressive accent moments
+   
+   Architecture:
+     Layer 0 — Grey (reception, diffusion, veil)
+     Layer 1 — White (clarity, structure, coherence)
+     Layer 2 — Color (amethyst crown, teal signal, full spectrum)
+     Layer 3 — Glass (crystal surfaces, quantum blur, transparency)
+   ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@300,400,500,700,800,900&f[]=satoshi@300,400,500,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* ── Alpha Scale (universal opacity system) ── */
 :root {
-  /* ── Surfaces (warm near-black) ── */
-  --color-bg:              #0b0c0e;
-  --color-surface:         #0f1115;
-  --color-surface-2:       #141720;
-  --color-surface-3:       #1a1e28;
-  --color-border:          rgba(255,255,255,0.07);
-  --color-border-subtle:   rgba(255,255,255,0.04);
-  --color-divider:         rgba(255,255,255,0.06);
+  --alpha-1:  0.04;   /* whisper  — barely-there tints */
+  --alpha-2:  0.07;   /* veil     — border default     */
+  --alpha-3:  0.10;   /* subtle   — surface overlays   */
+  --alpha-4:  0.15;   /* soft     — hover fills        */
+  --alpha-5:  0.24;   /* medium   — active fills       */
+  --alpha-6:  0.40;   /* strong   — muted overlays     */
+  --alpha-7:  0.60;   /* heavy    — scrim base         */
+  --alpha-8:  0.80;   /* opaque   — modal backdrop     */
+  --alpha-9:  1.00;   /* solid    — full color         */
+}
 
-  /* ── Text ── */
-  --color-text:            #dddcd9;
-  --color-text-muted:      #8a8a87;
-  --color-text-faint:      #4a4a48;
-  --color-text-inverse:    #0b0c0e;
-
-  /* ── Primary accent (Hydra Teal) ── */
-  --color-primary:         #4f98a3;
-  --color-primary-hover:   #3d8491;
-  --color-primary-active:  #2d6f7a;
-  --color-primary-glow:    rgba(79,152,163,0.12);
-  --color-primary-subtle:  rgba(79,152,163,0.08);
-
-  /* ── Semantic ── */
-  --color-success:         #6daa45;
-  --color-warning:         #d19900;
-  --color-error:           #c2485d;
-
-  /* ── Sidebar dimensions ── */
-  --sidebar-width:         220px;
-  --sidebar-collapsed:     52px;
-  --topbar-height:         48px;
-
-  /* ── Type ── */
-  --font-body:    'Inter', system-ui, sans-serif;
+/* ── Typography ── */
+:root {
+  --font-display: 'Cabinet Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body:    'Satoshi', 'Inter', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+}
 
-  /* ── Type scale ── */
-  --text-xs:   0.72rem;   /* 11.5px */
-  --text-sm:   0.8125rem; /* 13px   */
-  --text-base: 0.9375rem; /* 15px   */
-  --text-lg:   1.0625rem; /* 17px   */
-  --text-xl:   1.25rem;   /* 20px   */
+/* ── Fluid Type Scale ── */
+:root {
+  --text-xs:   clamp(0.75rem,  0.7rem   + 0.25vw, 0.875rem);  /* 12px → 14px */
+  --text-sm:   clamp(0.8125rem,0.78rem  + 0.30vw, 0.9375rem); /* 13px → 15px */
+  --text-base: clamp(0.9375rem,0.9rem   + 0.20vw, 1.0625rem); /* 15px → 17px */
+  --text-lg:   clamp(1.0625rem,0.95rem  + 0.60vw, 1.375rem);  /* 17px → 22px */
+  --text-xl:   clamp(1.25rem,  1.1rem   + 0.80vw, 1.75rem);   /* 20px → 28px */
+  --text-2xl:  clamp(1.5rem,   1.2rem   + 1.50vw, 2.5rem);    /* 24px → 40px */
+  --text-3xl:  clamp(2rem,     1.2rem   + 2.50vw, 3.5rem);    /* 32px → 56px */
+  --text-hero: clamp(2.5rem,   0.5rem   + 5.00vw, 6rem);      /* 40px → 96px */
+}
 
-  /* ── Spacing ── */
-  --space-1:  0.25rem;
-  --space-2:  0.5rem;
-  --space-3:  0.75rem;
-  --space-4:  1rem;
-  --space-5:  1.25rem;
-  --space-6:  1.5rem;
-  --space-8:  2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
+/* ── 4px Spacing System (extended) ── */
+:root {
+  --space-1:  0.25rem;   /*   4px */
+  --space-2:  0.5rem;    /*   8px */
+  --space-3:  0.75rem;   /*  12px */
+  --space-4:  1rem;      /*  16px */
+  --space-5:  1.25rem;   /*  20px */
+  --space-6:  1.5rem;    /*  24px */
+  --space-8:  2rem;      /*  32px */
+  --space-10: 2.5rem;    /*  40px */
+  --space-12: 3rem;      /*  48px */
+  --space-16: 4rem;      /*  64px */
+  --space-20: 5rem;      /*  80px */
+  --space-24: 6rem;      /*  96px */
+  --space-32: 8rem;      /* 128px */
+}
 
-  /* ── Radius ── */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+/* ── Radius ── */
+:root {
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  24px;
   --radius-full: 9999px;
+}
 
-  /* ── Shadows ── */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+/* ── Motion ── */
+:root {
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-linear: linear;
 
-  /* ── Motion ── */
-  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
-  --duration:  160ms;
+  --duration-instant: 80ms;
+  --duration-fast:    140ms;
+  --duration-base:    200ms;
+  --duration-slow:    340ms;
+  --duration-enter:   260ms;
+  --duration-exit:    180ms;
+}
+
+/* ── Content Widths ── */
+:root {
+  --content-narrow:  640px;
+  --content-default: 960px;
+  --content-wide:    1200px;
+  --content-full:    100%;
+}
+
+/* ── OS Shell Dimensions ── */
+:root {
+  --shell-sidebar-width:     220px;
+  --shell-sidebar-collapsed: 52px;
+  --shell-topbar-height:     48px;
+  --shell-statusbar-height:  28px;
+}
+
+/* ============================================================
+   DARK MODE (Primary — OS default is dark)
+   ============================================================ */
+:root,
+[data-theme="dark"] {
+
+  /* ── Layer 0: Grey — Reception & Diffusion ── */
+  --color-bg:               #09090b;
+  --color-surface:          #0d0d10;
+  --color-surface-2:        #111116;
+  --color-surface-3:        #16161d;
+  --color-surface-offset:   #1a1a22;
+  --color-surface-dynamic:  #1e1e28;
+
+  /* Glass surfaces — crystal panels, quantum blur */
+  --color-surface-glass:    rgba(13, 13, 16, 0.72);
+  --color-surface-glass-2:  rgba(17, 17, 22, 0.64);
+  --color-surface-crystal:  rgba(124, 77, 204, 0.06);
+  --color-surface-teal:     rgba(79, 152, 163, 0.05);
+
+  /* Borders & dividers */
+  --color-border:           rgba(255, 255, 255, 0.07);
+  --color-border-subtle:    rgba(255, 255, 255, 0.04);
+  --color-border-strong:    rgba(255, 255, 255, 0.12);
+  --color-border-amethyst:  rgba(124, 77, 204, 0.20);
+  --color-border-teal:      rgba(79, 152, 163, 0.18);
+  --color-divider:          rgba(255, 255, 255, 0.06);
+
+  /* Overlay & scrim */
+  --color-overlay:          rgba(9, 9, 11, 0.80);
+  --color-scrim:            rgba(9, 9, 11, 0.60);
+
+  /* ── Layer 1: White — Clarity & Structure ── */
+  --color-text:             #e8e7e5;
+  --color-text-muted:       #8a8a8f;
+  --color-text-faint:       #4a4a52;
+  --color-text-inverse:     #09090b;
+  --color-text-on-primary:  #ffffff;
+  --color-text-on-amethyst: #ffffff;
+
+  /* ── Layer 2: Color — Crown & Signal ── */
+
+  /* Amethyst — Crown Frequency (primary GAIA identity) */
+  --color-amethyst:             #9b6ddb;
+  --color-amethyst-hover:       #8a5bcc;
+  --color-amethyst-active:      #7448bb;
+  --color-amethyst-bright:      #b08aee;
+  --color-amethyst-deep:        #5e2fa0;
+  --color-amethyst-glow:        rgba(155, 109, 219, 0.20);
+  --color-amethyst-subtle:      rgba(155, 109, 219, 0.10);
+  --color-amethyst-whisper:     rgba(155, 109, 219, 0.05);
+  --color-amethyst-100:         rgba(155, 109, 219, 0.08);
+  --color-amethyst-200:         rgba(155, 109, 219, 0.15);
+  --color-amethyst-300:         rgba(155, 109, 219, 0.25);
+  --color-amethyst-400:         rgba(155, 109, 219, 0.40);
+  --color-amethyst-500:         #9b6ddb;
+  --color-amethyst-600:         #8a5bcc;
+  --color-amethyst-700:         #7448bb;
+  --color-amethyst-800:         #5e2fa0;
+  --color-amethyst-900:         #3d1878;
+
+  /* Teal — Coherence Signal (secondary accent) */
+  --color-teal:             #4f98a3;
+  --color-teal-hover:       #3d8491;
+  --color-teal-active:      #2d6f7a;
+  --color-teal-bright:      #6ab4bf;
+  --color-teal-deep:        #1e5c66;
+  --color-teal-glow:        rgba(79, 152, 163, 0.18);
+  --color-teal-subtle:      rgba(79, 152, 163, 0.10);
+  --color-teal-whisper:     rgba(79, 152, 163, 0.05);
+  --color-teal-100:         rgba(79, 152, 163, 0.08);
+  --color-teal-200:         rgba(79, 152, 163, 0.15);
+  --color-teal-300:         rgba(79, 152, 163, 0.25);
+  --color-teal-400:         rgba(79, 152, 163, 0.40);
+  --color-teal-500:         #4f98a3;
+  --color-teal-600:         #3d8491;
+  --color-teal-700:         #2d6f7a;
+  --color-teal-800:         #1e5c66;
+  --color-teal-900:         #0f3d47;
+
+  /* Primary alias (amethyst is the true primary for GAIA) */
+  --color-primary:          var(--color-amethyst);
+  --color-primary-hover:    var(--color-amethyst-hover);
+  --color-primary-active:   var(--color-amethyst-active);
+  --color-primary-glow:     var(--color-amethyst-glow);
+  --color-primary-subtle:   var(--color-amethyst-subtle);
+  --color-primary-whisper:  var(--color-amethyst-whisper);
+
+  /* Semantic — Status Colors */
+  --color-success:           #6daa45;
+  --color-success-hover:     #5a9234;
+  --color-success-glow:      rgba(109, 170, 69, 0.18);
+  --color-success-subtle:    rgba(109, 170, 69, 0.10);
+  --color-success-whisper:   rgba(109, 170, 69, 0.05);
+
+  --color-warning:           #d9a020;
+  --color-warning-hover:     #c08010;
+  --color-warning-glow:      rgba(217, 160, 32, 0.18);
+  --color-warning-subtle:    rgba(217, 160, 32, 0.10);
+  --color-warning-whisper:   rgba(217, 160, 32, 0.05);
+
+  --color-error:             #e05570;
+  --color-error-hover:       #c83d5a;
+  --color-error-glow:        rgba(224, 85, 112, 0.18);
+  --color-error-subtle:      rgba(224, 85, 112, 0.10);
+  --color-error-whisper:     rgba(224, 85, 112, 0.05);
+
+  --color-info:              var(--color-teal);
+  --color-info-hover:        var(--color-teal-hover);
+  --color-info-glow:         var(--color-teal-glow);
+  --color-info-subtle:       var(--color-teal-subtle);
+  --color-info-whisper:      var(--color-teal-whisper);
+
+  /* Extended spectrum (data viz + rare UI accents) */
+  --color-gold:     #e8af34;
+  --color-orange:   #e07840;
+  --color-blue:     #5591c7;
+  --color-rose:     #d163a7;
+  --color-cyan:     #3dbccc;
+  --color-green:    #6daa45;
+
+  /* ── Layer 3: Glass & Crystal ── */
+  --blur-sm:    blur(8px);
+  --blur-md:    blur(16px);
+  --blur-lg:    blur(32px);
+  --blur-xl:    blur(64px);
+
+  --glass-bg:         rgba(17, 17, 22, 0.60);
+  --glass-border:     rgba(155, 109, 219, 0.12);
+  --glass-shadow:     0 8px 32px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(155, 109, 219, 0.08);
+  --glass-blur:       var(--blur-md);
+
+  --glow-amethyst-sm: 0 0 12px rgba(155, 109, 219, 0.25);
+  --glow-amethyst-md: 0 0 32px rgba(155, 109, 219, 0.30), 0 0 64px rgba(155, 109, 219, 0.12);
+  --glow-amethyst-lg: 0 0 64px rgba(155, 109, 219, 0.35), 0 0 128px rgba(155, 109, 219, 0.15);
+  --glow-teal-sm:     0 0 12px rgba(79, 152, 163, 0.22);
+  --glow-teal-md:     0 0 32px rgba(79, 152, 163, 0.25), 0 0 64px rgba(79, 152, 163, 0.10);
+
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.25), 0 1px 6px rgba(0,0,0,0.15);
+  --shadow-md:  0 2px 6px rgba(0,0,0,0.30), 0 6px 24px rgba(0,0,0,0.20);
+  --shadow-lg:  0 4px 12px rgba(0,0,0,0.35), 0 16px 48px rgba(0,0,0,0.25);
+  --shadow-xl:  0 8px 24px rgba(0,0,0,0.40), 0 32px 80px rgba(0,0,0,0.30);
+  --shadow-amethyst: 0 4px 24px rgba(155, 109, 219, 0.20), 0 1px 4px rgba(0,0,0,0.30);
+  --shadow-teal:     0 4px 24px rgba(79, 152, 163, 0.18), 0 1px 4px rgba(0,0,0,0.30);
+}
+
+/* ============================================================
+   LIGHT MODE
+   ============================================================ */
+[data-theme="light"] {
+  --color-bg:               #f5f4f8;
+  --color-surface:          #f9f8fc;
+  --color-surface-2:        #ffffff;
+  --color-surface-3:        #f0eef6;
+  --color-surface-offset:   #e8e5f2;
+  --color-surface-dynamic:  #dddae8;
+
+  --color-surface-glass:    rgba(249, 248, 252, 0.80);
+  --color-surface-glass-2:  rgba(255, 255, 255, 0.72);
+  --color-surface-crystal:  rgba(124, 77, 204, 0.05);
+  --color-surface-teal:     rgba(0, 105, 111, 0.05);
+
+  --color-border:           rgba(0, 0, 0, 0.08);
+  --color-border-subtle:    rgba(0, 0, 0, 0.05);
+  --color-border-strong:    rgba(0, 0, 0, 0.14);
+  --color-border-amethyst:  rgba(122, 57, 187, 0.22);
+  --color-border-teal:      rgba(0, 105, 111, 0.20);
+  --color-divider:          rgba(0, 0, 0, 0.07);
+
+  --color-overlay:          rgba(9, 9, 11, 0.50);
+  --color-scrim:            rgba(9, 9, 11, 0.35);
+
+  --color-text:             #1a1825;
+  --color-text-muted:       #6b6878;
+  --color-text-faint:       #a8a6b2;
+  --color-text-inverse:     #f5f4f8;
+  --color-text-on-primary:  #ffffff;
+  --color-text-on-amethyst: #ffffff;
+
+  --color-amethyst:             #7a39bb;
+  --color-amethyst-hover:       #6828a8;
+  --color-amethyst-active:      #541a90;
+  --color-amethyst-bright:      #9b6ddb;
+  --color-amethyst-deep:        #3d1878;
+  --color-amethyst-glow:        rgba(122, 57, 187, 0.16);
+  --color-amethyst-subtle:      rgba(122, 57, 187, 0.08);
+  --color-amethyst-whisper:     rgba(122, 57, 187, 0.04);
+  --color-amethyst-100:         rgba(122, 57, 187, 0.06);
+  --color-amethyst-200:         rgba(122, 57, 187, 0.12);
+  --color-amethyst-300:         rgba(122, 57, 187, 0.22);
+  --color-amethyst-400:         rgba(122, 57, 187, 0.38);
+  --color-amethyst-500:         #7a39bb;
+  --color-amethyst-600:         #6828a8;
+  --color-amethyst-700:         #541a90;
+  --color-amethyst-800:         #3d1878;
+  --color-amethyst-900:         #260d55;
+
+  --color-teal:             #01696f;
+  --color-teal-hover:       #0c4e54;
+  --color-teal-active:      #0f3638;
+  --color-teal-bright:      #4f98a3;
+  --color-teal-deep:        #062a30;
+  --color-teal-glow:        rgba(1, 105, 111, 0.16);
+  --color-teal-subtle:      rgba(1, 105, 111, 0.08);
+  --color-teal-whisper:     rgba(1, 105, 111, 0.04);
+  --color-teal-100:         rgba(1, 105, 111, 0.06);
+  --color-teal-200:         rgba(1, 105, 111, 0.12);
+  --color-teal-300:         rgba(1, 105, 111, 0.22);
+  --color-teal-400:         rgba(1, 105, 111, 0.38);
+  --color-teal-500:         #01696f;
+  --color-teal-600:         #0c4e54;
+  --color-teal-700:         #0f3638;
+  --color-teal-800:         #062a30;
+  --color-teal-900:         #021820;
+
+  --color-primary:          var(--color-amethyst);
+  --color-primary-hover:    var(--color-amethyst-hover);
+  --color-primary-active:   var(--color-amethyst-active);
+  --color-primary-glow:     var(--color-amethyst-glow);
+  --color-primary-subtle:   var(--color-amethyst-subtle);
+  --color-primary-whisper:  var(--color-amethyst-whisper);
+
+  --color-success:           #437a22;
+  --color-success-hover:     #2e5c10;
+  --color-success-glow:      rgba(67, 122, 34, 0.14);
+  --color-success-subtle:    rgba(67, 122, 34, 0.08);
+  --color-success-whisper:   rgba(67, 122, 34, 0.04);
+
+  --color-warning:           #964219;
+  --color-warning-hover:     #713417;
+  --color-warning-glow:      rgba(150, 66, 25, 0.14);
+  --color-warning-subtle:    rgba(150, 66, 25, 0.08);
+  --color-warning-whisper:   rgba(150, 66, 25, 0.04);
+
+  --color-error:             #c2485d;
+  --color-error-hover:       #a83348;
+  --color-error-glow:        rgba(194, 72, 93, 0.14);
+  --color-error-subtle:      rgba(194, 72, 93, 0.08);
+  --color-error-whisper:     rgba(194, 72, 93, 0.04);
+
+  --color-info:              var(--color-teal);
+  --color-info-hover:        var(--color-teal-hover);
+  --color-info-glow:         var(--color-teal-glow);
+  --color-info-subtle:       var(--color-teal-subtle);
+  --color-info-whisper:      var(--color-teal-whisper);
+
+  --color-gold:     #d19900;
+  --color-orange:   #da7101;
+  --color-blue:     #006494;
+  --color-rose:     #a12c7b;
+  --color-cyan:     #007a8a;
+  --color-green:    #437a22;
+
+  --blur-sm:    blur(8px);
+  --blur-md:    blur(16px);
+  --blur-lg:    blur(32px);
+  --blur-xl:    blur(64px);
+
+  --glass-bg:         rgba(249, 248, 252, 0.70);
+  --glass-border:     rgba(122, 57, 187, 0.12);
+  --glass-shadow:     0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(122, 57, 187, 0.08);
+  --glass-blur:       var(--blur-md);
+
+  --glow-amethyst-sm: 0 0 12px rgba(122, 57, 187, 0.20);
+  --glow-amethyst-md: 0 0 32px rgba(122, 57, 187, 0.22), 0 0 64px rgba(122, 57, 187, 0.08);
+  --glow-amethyst-lg: 0 0 64px rgba(122, 57, 187, 0.28), 0 0 128px rgba(122, 57, 187, 0.10);
+  --glow-teal-sm:     0 0 12px rgba(1, 105, 111, 0.18);
+  --glow-teal-md:     0 0 32px rgba(1, 105, 111, 0.20), 0 0 64px rgba(1, 105, 111, 0.08);
+
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.06), 0 1px 6px rgba(0,0,0,0.04);
+  --shadow-md:  0 2px 6px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.06);
+  --shadow-lg:  0 4px 12px rgba(0,0,0,0.10), 0 16px 48px rgba(0,0,0,0.08);
+  --shadow-xl:  0 8px 24px rgba(0,0,0,0.12), 0 32px 80px rgba(0,0,0,0.10);
+  --shadow-amethyst: 0 4px 24px rgba(122, 57, 187, 0.18), 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-teal:     0 4px 24px rgba(1, 105, 111, 0.16), 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* ── System preference fallback ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-bg:               #f5f4f8;
+    --color-surface:          #f9f8fc;
+    --color-surface-2:        #ffffff;
+    --color-surface-3:        #f0eef6;
+    --color-surface-offset:   #e8e5f2;
+    --color-surface-dynamic:  #dddae8;
+    --color-surface-glass:    rgba(249, 248, 252, 0.80);
+    --color-surface-glass-2:  rgba(255, 255, 255, 0.72);
+    --color-border:           rgba(0, 0, 0, 0.08);
+    --color-border-subtle:    rgba(0, 0, 0, 0.05);
+    --color-border-strong:    rgba(0, 0, 0, 0.14);
+    --color-border-amethyst:  rgba(122, 57, 187, 0.22);
+    --color-divider:          rgba(0, 0, 0, 0.07);
+    --color-overlay:          rgba(9, 9, 11, 0.50);
+    --color-scrim:            rgba(9, 9, 11, 0.35);
+    --color-text:             #1a1825;
+    --color-text-muted:       #6b6878;
+    --color-text-faint:       #a8a6b2;
+    --color-text-inverse:     #f5f4f8;
+    --color-amethyst:         #7a39bb;
+    --color-amethyst-hover:   #6828a8;
+    --color-amethyst-active:  #541a90;
+    --color-amethyst-glow:    rgba(122, 57, 187, 0.16);
+    --color-amethyst-subtle:  rgba(122, 57, 187, 0.08);
+    --color-teal:             #01696f;
+    --color-teal-hover:       #0c4e54;
+    --color-primary:          var(--color-amethyst);
+    --color-primary-hover:    var(--color-amethyst-hover);
+    --color-primary-glow:     var(--color-amethyst-glow);
+    --color-primary-subtle:   var(--color-amethyst-subtle);
+    --glass-bg:               rgba(249, 248, 252, 0.70);
+    --glass-border:           rgba(122, 57, 187, 0.12);
+    --shadow-sm:  0 1px 2px rgba(0,0,0,0.06), 0 1px 6px rgba(0,0,0,0.04);
+    --shadow-md:  0 2px 6px rgba(0,0,0,0.08), 0 6px 24px rgba(0,0,0,0.06);
+    --shadow-lg:  0 4px 12px rgba(0,0,0,0.10), 0 16px 48px rgba(0,0,0,0.08);
+    --shadow-xl:  0 8px 24px rgba(0,0,0,0.12), 0 32px 80px rgba(0,0,0,0.10);
+    --shadow-amethyst: 0 4px 24px rgba(122, 57, 187, 0.18), 0 1px 4px rgba(0,0,0,0.08);
+  }
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -moz-text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  hanging-punctuation: first last;
+  scroll-padding-top: var(--space-16);
 }
 
 body {
-  font-family: var(--font-body);
-  font-size:   var(--text-base);
-  color:       var(--color-text);
-  background:  var(--color-bg);
+  min-height: 100dvh;
   line-height: 1.6;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
 }
 
 img, picture, video, canvas, svg {
-  display:   block;
+  display: block;
   max-width: 100%;
+  height: auto;
 }
 
-button {
-  cursor:     pointer;
-  background: none;
-  border:     none;
-  color:      inherit;
-  font:       inherit;
+ul[role="list"], ol[role="list"] { list-style: none; }
+
+input, button, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+  line-height: 1.15;
+  font-family: var(--font-display);
+}
+
+p, li, figcaption {
+  text-wrap: pretty;
+  max-width: 72ch;
+}
+
+::selection {
+  background: var(--color-amethyst-200);
+  color: var(--color-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+button { cursor: pointer; background: none; border: none; }
+table  { border-collapse: collapse; width: 100%; }
+
+/* Interactive transitions */
+a, button, [role="button"], [role="link"], input, textarea, select {
+  transition:
+    color          var(--duration-fast) var(--ease-out),
+    background     var(--duration-fast) var(--ease-out),
+    border-color   var(--duration-fast) var(--ease-out),
+    box-shadow     var(--duration-fast) var(--ease-out),
+    opacity        var(--duration-fast) var(--ease-out);
 }
 
 a {
@@ -103,26 +511,45 @@ a {
   text-decoration: none;
 }
 
-:focus-visible {
-  outline:        2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-radius:  var(--radius-sm);
-}
+a:hover { color: var(--color-primary-hover); }
 
-::selection {
-  background: var(--color-primary-subtle);
-  color:      var(--color-text);
-}
-
-/* Scrollbars */
+/* Scrollbars — crystalline minimal */
 ::-webkit-scrollbar       { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-amethyst-300);
+}
 
+/* ── Crystal Panel utility class ── */
+.crystal-panel {
+  background:    var(--glass-bg);
+  border:        1px solid var(--glass-border);
+  box-shadow:    var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+}
+
+/* ── Amethyst glow utility ── */
+.glow-amethyst { box-shadow: var(--glow-amethyst-md); }
+.glow-teal     { box-shadow: var(--glow-teal-md); }
+
+/* ── Screen reader only ── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;
+}
+
+/* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto !important;
   }
 }
