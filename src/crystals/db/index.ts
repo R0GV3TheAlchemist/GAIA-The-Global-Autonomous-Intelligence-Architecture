@@ -18,6 +18,7 @@ export type {
   OpticalRecord,
   ColorRecord,
   MetaphysicalRecord,
+  MetaphysicalProfile,
   RefractiveIndexValues,
   WavelengthRange,
   OKLCHValue,
@@ -29,19 +30,34 @@ export type {
   OpticalType,
   IMAStatus,
   GAIAModule,
+  ColorLayer,
 } from './crystal.schema';
 
+// ─── Batch exports ────────────────────────────────────────────────────────────
+export { BATCH_A3 } from './batch-a3.data';
 export { BATCH_A4 } from './batch-a4.data';
+export { BATCH_A5 } from './batch-a5.data';
+export { BATCH_A6 } from './batch-a6.data';
+export { BATCH_A7 } from './batch-a7.data';
+
+// ─── Master registry ─────────────────────────────────────────────────────────
+import { BATCH_A3 } from './batch-a3.data';
+import { BATCH_A4 } from './batch-a4.data';
+import { BATCH_A5 } from './batch-a5.data';
+import { BATCH_A6 } from './batch-a6.data';
+import { BATCH_A7 } from './batch-a7.data';
+import type { CrystalRecord, CrystalQuery } from './crystal.schema';
 
 /**
  * Master crystal registry — all batches merged.
  * Import this for full-database queries.
  */
-import { BATCH_A4 } from './batch-a4.data';
-import type { CrystalRecord, CrystalQuery } from './crystal.schema';
-
 export const CRYSTAL_REGISTRY: CrystalRecord[] = [
+  ...BATCH_A3,
   ...BATCH_A4,
+  ...BATCH_A5,
+  ...BATCH_A6,
+  ...BATCH_A7,
   // future batches appended here
 ];
 
@@ -91,15 +107,35 @@ export function queryCrystals(
       if ((p.hardness_min ?? 99) > query.max_hardness) return false;
     }
 
-    // Safety — hardware use (no asbestos, no toxic dust, no soluble toxins)
-    if (query.safe_for_hardware === true) {
-      if (m.safety_warning !== null) return false;
+    // Piezoelectric filter
+    if (query.piezoelectric != null) {
+      if (p.piezoelectric !== query.piezoelectric) return false;
     }
 
-    // Safety — water elixir use
-    if (query.safe_for_water === true) {
-      const w = m.safety_warning?.toLowerCase() ?? '';
-      if (w.includes('water') || w.includes('toxic') || w.includes('soluble') || w.includes('asbestos')) return false;
+    // Safe for hardware filter
+    if (query.safe_for_hardware != null) {
+      if (p.safe_for_hardware !== query.safe_for_hardware) return false;
+    }
+
+    // Safe for water filter
+    if (query.safe_for_water != null) {
+      if (p.safe_for_water !== query.safe_for_water) return false;
+    }
+
+    // Trade name filter
+    if (query.trade_name != null) {
+      if (crystal.trade_name !== query.trade_name) return false;
+    }
+
+    // Color layer filter
+    if (query.color_layer != null) {
+      if (crystal.color_layer !== query.color_layer) return false;
+    }
+
+    // Has yin-yang pair filter
+    if (query.has_yin_yang_pair != null) {
+      const hasPair = crystal.yin_yang_pair !== null;
+      if (hasPair !== query.has_yin_yang_pair) return false;
     }
 
     // Wavelength filter
