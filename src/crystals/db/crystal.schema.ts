@@ -18,6 +18,8 @@
  *                        — Added piezoelectric, safe_for_water, safe_for_hardware to PhysicalRecord
  *                        — These were previously only in CrystalQuery (query-time) — moved to
  *                          record-level so GAIA can filter without annotation passes.
+ *   2026-05-29 (v1.2)   — Added MetaphysicalProfile alias, MindatMineral, RruffSpectrum wire types
+ *                        — Added 'Isometric' to crystal_system union (synonym for Cubic, legacy data)
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,6 +112,7 @@ export interface PhysicalRecord {
     | 'Trigonal'
     | 'Hexagonal'
     | 'Cubic'
+    | 'Isometric'
     | 'Amorphous'
     | 'Pseudohexagonal';
 
@@ -380,4 +383,83 @@ export interface CrystalMatrixResult {
   matches:   CrystalRecord[];
   timestamp: string;
   note?:     string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVICE WIRE TYPES
+// Used by mindat.service.ts and rruff.service.ts — intentionally loose-typed
+// to match the external API response shape before normalisation into our schema.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * MetaphysicalProfile — alias for MetaphysicalRecord.
+ * metaphysical.data.ts imports this name; both refer to the same structure.
+ */
+export type MetaphysicalProfile = MetaphysicalRecord;
+
+/**
+ * MindatMineral — loose wire-format type for the Mindat REST API response.
+ * Fields match the Mindat /v1/minerals/ endpoint exactly.
+ * Strings are deliberately not narrowed to union types here — the API returns
+ * raw strings that we validate / normalise when mapping to PhysicalRecord.
+ *
+ * Docs: https://api.mindat.org/schema/redoc/#operation/minerals_list
+ */
+export interface MindatMineral {
+  id:                   number;
+  longid:               string;
+  guid:                 string;
+  name:                 string;
+  ima_formula:          string | null;
+  mindat_formula:       string | null;
+  ima_status:           string | null;
+  ima_year:             number | null;
+  strunzten:            string | null;
+  dana8ed:              string | null;
+  /** Raw crystal system string from Mindat — not narrowed to our union */
+  crystal_system:       string | null;
+  hardness_min:         number | null;
+  hardness_max:         number | null;
+  specific_gravity_min: number | null;
+  specific_gravity_max: number | null;
+  cleavage:             string | null;
+  fracture:             string | null;
+  tenacity:             string | null;
+  luster:               string | null;
+  diaphaneity:          string | null;
+  colour:               string | null;
+  streak:               string | null;
+  fluorescence:         string | null;
+  ri_min:               number | null;
+  ri_max:               number | null;
+  birefringence:        number | null;
+  /** Raw optical type string from Mindat — 'U', 'B', 'Isotropic', 'I', or null */
+  optical_type:         string | null;
+  shortdesc:            string | null;
+  updttime:             string | null;
+}
+
+/**
+ * RruffSpectrum — a single spectral record from the RRUFF Project database.
+ * Used by rruff.service.ts buildSpectra() and normaliseSearchResponse().
+ *
+ * Source: https://rruff.info
+ */
+export interface RruffSpectrum {
+  /** RRUFF sample identifier, e.g. "R040031" */
+  rruff_id:            string;
+  /** Mineral name as recorded in RRUFF */
+  name:                string;
+  /** Spectrum type — Raman, Infrared, or X-ray powder diffraction */
+  spectrum_type:       'Raman' | 'Infrared' | 'XRD';
+  /** Laser excitation wavelength in nm (Raman only; undefined for IR/XRD) */
+  laser_wavelength_nm?: number;
+  /** Direct URL to the spectrum data file (.txt) */
+  data_url:            string;
+  /** URL to the sample photograph (may be null) */
+  photo_url:           string | null;
+  /** Collection locality string (may be null) */
+  locality:            string | null;
+  /** Source / donor information (may be null) */
+  source:              string | null;
 }
