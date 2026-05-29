@@ -24,6 +24,18 @@
  *                        — Added RruffSpectrum interface (RRUFF spectral record)
  *                        — Resolves TS2305 errors in metaphysical.data.ts, mindat.service.ts,
  *                          rruff.service.ts
+ *   2026-05-29 (v1.3)   — Added AngelNumber type (master numbers 11, 22, 33 + standard 1-9)
+ *                        — Added angel_number field to MetaphysicalRecord
+ *                        — Added angel_number filter to CrystalQuery
+ *                        — RATIONALE: Angel numbers are distinct from Pythagorean numerology.
+ *                          In Pythagorean practice, all numbers reduce to 1-9 (e.g. 23 → 5).
+ *                          Master numbers (11, 22, 33) do NOT reduce — they carry amplified
+ *                          frequencies. Angel numbers extend this further: repeated sequences
+ *                          (111, 222, 333, 444, 555, 666, 777, 888, 999) carry specific
+ *                          archetypal messages. GAIA treats angel_number as a separate axis
+ *                          from numerology so both systems can coexist without collision.
+ *                          The angel_number of Auralite-23 is 23 (the literal mineral count
+ *                          encoded as a signal); Aura Quartz is 11 (the gateway master number).
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,6 +90,42 @@ export type GAIAModule =
  * 'coating'  — colour from surface coating (aura/titanium vapour deposition, dye, paint)
  */
 export type ColorLayer = 'natural' | 'treated' | 'coating';
+
+/**
+ * AngelNumber — the vibrational signal encoded in a crystal's numerological identity.
+ *
+ * SYSTEM OVERVIEW:
+ *   Standard numbers (1–9):  Pythagorean root frequencies — the building blocks
+ *   Master numbers (11, 22, 33): Do NOT reduce in Pythagorean numerology.
+ *                               Carry amplified, undiluted archetypal frequency.
+ *                               11 = Illumination / Gateway
+ *                               22 = Master Builder / Form made real
+ *                               33 = Master Teacher / Christ consciousness
+ *   Sacred numbers (beyond 33): Crystals with numerologically significant mineral counts
+ *                               or geological markers (e.g. Auralite-23 = 23).
+ *   Repeated sequences (111–999): Angelic signal sequences — amplified messages.
+ *                               111 = Manifestation portal
+ *                               222 = Alignment and divine timing
+ *                               333 = Ascended master presence
+ *                               444 = Angelic protection and foundation
+ *                               555 = Major transformation incoming
+ *                               666 = Material/spiritual rebalancing
+ *                               777 = Divine perfection and spiritual completion
+ *                               888 = Abundance and infinite flow
+ *                               999 = Completion of a major cycle
+ *
+ * GAIA uses angel_number as a THIRD AXIS alongside:
+ *   - color.oklch (hue/wavelength — the light frequency)
+ *   - metaphysical.numerology (Pythagorean root — the mathematical frequency)
+ *   Together these form the three-dimensional resonance map:
+ *   COLOR × NUMEROLOGY × ANGEL NUMBER = complete vibrational signature
+ */
+export type AngelNumber =
+  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9        // Standard
+  | 11 | 22 | 33                               // Master numbers
+  | 23 | 44 | 55 | 66 | 77 | 88 | 99          // Sacred / extended
+  | 111 | 222 | 333 | 444 | 555 | 666 | 777 | 888 | 999  // Sequences
+  | null;                                      // Not yet assigned
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LAYER 1: PHYSICAL
@@ -154,7 +202,7 @@ export interface PhysicalRecord {
   /** Canonical Mindat URL */
   mindat_url: string | null;
 
-  // ─── SAFETY & HARDWARE FLAGS (v1.1) ─────────────────────────────────────
+  // ─── SAFETY & HARDWARE FLAGS (v1.1) ────────────────────────────────────────────
   /**
    * True if the mineral (or a key component) exhibits piezoelectric behaviour.
    * Used by GAIA to flag stones suitable / unsuitable for hardware proximity.
@@ -283,8 +331,33 @@ export interface MetaphysicalRecord {
   archetype: string[];
   /** Zodiac signs */
   zodiac:    string[];
-  /** Pythagorean numerology value */
+  /** Pythagorean numerology value (reduces all numbers to 1–9; master numbers 11/22/33 do not reduce) */
   numerology: number | null;
+
+  /**
+   * Angel number — the vibrational signal carried by this crystal. (v1.3)
+   *
+   * Distinct from Pythagorean numerology:
+   *   - numerology = the mathematical root frequency (1–9 / master numbers)
+   *   - angel_number = the archetypal message or signal frequency
+   *
+   * Assignment logic:
+   *   1. If the crystal's numerology IS a master number (11, 22, 33) — angel_number = same
+   *   2. If the crystal has a sacred mineral count / geological number — use that (Auralite-23 → 23)
+   *   3. Otherwise derive from the primary chakra + dominant hue:
+   *      Root     → 444 (foundation, angelic protection)
+   *      Sacral   → 222 (alignment, creative flow)
+   *      Solar    → 333 (manifestation, ascended master empowerment)
+   *      Heart    → 444 (love, angelic support)
+   *      Throat   → 555 (transformation of expression)
+   *      Third Eye→ 777 (divine perfection, spiritual vision)
+   *      Crown    → 999 (completion, cosmic cycle)
+   *      Higher   → 999 (beyond-crown, totality)
+   *   4. Override with specific number if crystal has a well-established angel number tradition
+   *
+   * null = not yet assigned.
+   */
+  angel_number: AngelNumber;
 
   /** One-line intention statement */
   intention: string;
@@ -333,7 +406,7 @@ export interface CrystalRecord {
   /** ISO 8601 timestamp of last external data sync */
   last_synced: string | null;
 
-  // ─── IDENTITY FLAGS (v1.1) ─────────────────────────────────────────────
+  // ─── IDENTITY FLAGS (v1.1) ──────────────────────────────────────────────────────
   /**
    * True if this record's display name is a trade name / variety name
    * rather than an IMA-approved mineral name.
@@ -390,6 +463,8 @@ export interface CrystalQuery {
   wavelength_max?:      number;
   oklch_hue_min?:       number;
   oklch_hue_max?:       number;
+  /** Filter by exact angel number — e.g. { angel_number: 11 } returns all gateway crystals (v1.3) */
+  angel_number?:        AngelNumber;
 }
 
 /** Result of a matrix simulation run */
