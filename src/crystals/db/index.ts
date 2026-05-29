@@ -44,16 +44,13 @@ import BATCH_A5 from './batch-a5.data';
 import BATCH_A6 from './batch-a6.data';
 import BATCH_A7 from './batch-a7.data';
 import BATCH_A8 from './batch-a8.data';
+import BATCH_B1 from './batch-b1.data';
 import type { CrystalRecord, CrystalQuery } from './crystal.schema';
 
 // ─── Re-export batches as named exports ────────────────────────────────────────
-export { BATCH_A3, BATCH_A4, BATCH_A5, BATCH_A6, BATCH_A7, BATCH_A8 };
+export { BATCH_A3, BATCH_A4, BATCH_A5, BATCH_A6, BATCH_A7, BATCH_A8, BATCH_B1 };
 
 // ─── Master registry ─────────────────────────────────────────────────────────
-/**
- * Master crystal registry — all batches merged.
- * Import this for full-database queries.
- */
 export const CRYSTAL_REGISTRY: CrystalRecord[] = [
   ...BATCH_A3,
   ...BATCH_A4,
@@ -61,13 +58,11 @@ export const CRYSTAL_REGISTRY: CrystalRecord[] = [
   ...BATCH_A6,
   ...BATCH_A7,
   ...BATCH_A8,
+  ...BATCH_B1,
   // future batches appended here
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// QUERY ENGINE — basic multi-dimensional filter
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─── Query engine ─────────────────────────────────────────────────────────────
 export function queryCrystals(
   query: CrystalQuery,
   registry: CrystalRecord[] = CRYSTAL_REGISTRY
