@@ -12,7 +12,12 @@
  *     It is separated from physics so GAIA can reason across both
  *     without conflating them.
  *
- * Updated: 2026-05-29
+ * Changelog:
+ *   2026-05-29 (initial) — Base schema
+ *   2026-05-29 (v1.1)   — Added trade_name, color_layer, yin_yang_pair to CrystalRecord
+ *                        — Added piezoelectric, safe_for_water, safe_for_hardware to PhysicalRecord
+ *                        — These were previously only in CrystalQuery (query-time) — moved to
+ *                          record-level so GAIA can filter without annotation passes.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,6 +64,14 @@ export type GAIAModule =
   | 'ViriditasHeart'
   | 'Noosphere'
   | 'QuantumNexus';
+
+/**
+ * Color authenticity layer.
+ * 'natural'  — colour is entirely geological / chemical — no treatment
+ * 'treated'  — colour enhanced by heat, irradiation, acid, or other process
+ * 'coating'  — colour from surface coating (aura/titanium vapour deposition, dye, paint)
+ */
+export type ColorLayer = 'natural' | 'treated' | 'coating';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LAYER 1: PHYSICAL
@@ -129,6 +142,31 @@ export interface PhysicalRecord {
   updttime: string | null;
   /** Canonical Mindat URL */
   mindat_url: string | null;
+
+  // ─── SAFETY & HARDWARE FLAGS (v1.1) ─────────────────────────────────────
+  /**
+   * True if the mineral (or a key component) exhibits piezoelectric behaviour.
+   * Used by GAIA to flag stones suitable / unsuitable for hardware proximity.
+   * Piezoelectric stones generate electrical charge under mechanical stress.
+   */
+  piezoelectric: boolean;
+
+  /**
+   * True if safe to use in direct water contact (drinking elixirs, baths).
+   * False for: sulfates (anhydrite/angelite — converts to gypsum),
+   * sulfides (copper/iron sulfide leaching), soft stones prone to dissolution,
+   * stones with toxic mineral components.
+   */
+  safe_for_water: boolean;
+
+  /**
+   * True if safe to use in proximity to electronic/quantum hardware.
+   * False for: piezoelectric stones (charge generation),
+   * electrically conductive stones (chalcopyrite, native metals),
+   * strongly magnetic stones (magnetite, lodestone),
+   * radioactive minerals.
+   */
+  safe_for_hardware: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -277,6 +315,35 @@ export interface CrystalRecord {
   /** ISO 8601 timestamp of last external data sync */
   last_synced: string | null;
 
+  // ─── IDENTITY FLAGS (v1.1) ─────────────────────────────────────────────
+  /**
+   * True if this record's display name is a trade name / variety name
+   * rather than an IMA-approved mineral name.
+   * Examples: Angelite (true), Ancestralite (true), Andradite (false)
+   * GAIA uses this to avoid conflating trade names with IMA species
+   * in scientific reasoning — the physical.name field holds the real IMA name.
+   */
+  trade_name: boolean;
+
+  /**
+   * Color authenticity classification.
+   * 'natural'  — all colour is geological / intrinsic chemistry
+   * 'treated'  — colour enhanced by heat, irradiation, acid wash, etc.
+   * 'coating'  — colour from surface coating (aura titanium, dye, etc.)
+   * Critical for GAIA to correctly represent stones in the metaphysical layer —
+   * the energetic properties of a coated stone differ from a natural one.
+   */
+  color_layer: ColorLayer;
+
+  /**
+   * The structural opposite of this crystal in the database — its yin-yang pair.
+   * Encodes intentional polarity relationships for matrix queries and
+   * GAIA configuration recommendations.
+   * Examples: Angelite ↔ Apache Tear, Anandalite ↔ Ancestralite
+   * null = no pair assigned yet.
+   */
+  yin_yang_pair: string | null;
+
   physical:     PhysicalRecord;
   optical:      OpticalRecord;
   color:        ColorRecord;
@@ -290,18 +357,21 @@ export interface CrystalRecord {
 
 /** Query filter for multi-dimensional crystal matrix lookups */
 export interface CrystalQuery {
-  chakra?:          Chakra[];
-  element?:         Element[];
-  gaia_module?:     GAIAModule[];
-  min_hardness?:    number;
-  max_hardness?:    number;
-  piezoelectric?:   boolean;
-  safe_for_water?:  boolean;
-  safe_for_hardware?: boolean;
-  wavelength_min?:  number;
-  wavelength_max?:  number;
-  oklch_hue_min?:   number;
-  oklch_hue_max?:   number;
+  chakra?:              Chakra[];
+  element?:             Element[];
+  gaia_module?:         GAIAModule[];
+  min_hardness?:        number;
+  max_hardness?:        number;
+  piezoelectric?:       boolean;
+  safe_for_water?:      boolean;
+  safe_for_hardware?:   boolean;
+  trade_name?:          boolean;
+  color_layer?:         ColorLayer;
+  has_yin_yang_pair?:   boolean;
+  wavelength_min?:      number;
+  wavelength_max?:      number;
+  oklch_hue_min?:       number;
+  oklch_hue_max?:       number;
 }
 
 /** Result of a matrix simulation run */
