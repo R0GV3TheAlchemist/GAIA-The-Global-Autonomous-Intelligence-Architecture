@@ -10,6 +10,9 @@
  * Usage:
  *   import { CRYSTAL_REGISTRY, CrystalRecord } from '@/crystals/db';
  *   import { queryCrystals } from '@/crystals/db';
+ *
+ * NOTE: Batch files use `export default` — we import as default and
+ * re-export as named so consumers can import by batch name if needed.
  */
 
 export type {
@@ -33,21 +36,18 @@ export type {
   ColorLayer,
 } from './crystal.schema';
 
-// ─── Batch exports ────────────────────────────────────────────────────────────
-export { BATCH_A3 } from './batch-a3.data';
-export { BATCH_A4 } from './batch-a4.data';
-export { BATCH_A5 } from './batch-a5.data';
-export { BATCH_A6 } from './batch-a6.data';
-export { BATCH_A7 } from './batch-a7.data';
-
-// ─── Master registry ─────────────────────────────────────────────────────────
-import { BATCH_A3 } from './batch-a3.data';
-import { BATCH_A4 } from './batch-a4.data';
-import { BATCH_A5 } from './batch-a5.data';
-import { BATCH_A6 } from './batch-a6.data';
-import { BATCH_A7 } from './batch-a7.data';
+// ─── Batch imports (default) ──────────────────────────────────────────────────
+import BATCH_A3 from './batch-a3.data';
+import BATCH_A4 from './batch-a4.data';
+import BATCH_A5 from './batch-a5.data';
+import BATCH_A6 from './batch-a6.data';
+import BATCH_A7 from './batch-a7.data';
 import type { CrystalRecord, CrystalQuery } from './crystal.schema';
 
+// ─── Re-export batches as named exports ────────────────────────────────────────
+export { BATCH_A3, BATCH_A4, BATCH_A5, BATCH_A6, BATCH_A7 };
+
+// ─── Master registry ─────────────────────────────────────────────────────────
 /**
  * Master crystal registry — all batches merged.
  * Import this for full-database queries.
