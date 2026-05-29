@@ -67,7 +67,7 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
       'Supports decision making and intuition',
       'Associated with restful sleep and dream clarity',
     ],
-    gaia_resonance:  'GAIA core identity — the amethyst is GAIA\'s primary crystal',
+    gaia_resonance:  "GAIA core identity — the amethyst is GAIA's primary crystal",
   },
   {
     mineral_name:    'Obsidian',
@@ -251,7 +251,7 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
     properties:      [
       'One of very few crystals that never needs cleansing — it does not hold negative energy',
       'Yellow variety of quartz coloured by iron impurities',
-      'Called the "merchant\'s stone" — stone of abundance and manifestation',
+      "Called the \"merchant's stone\" — stone of abundance and manifestation",
       'Activates personal will and solar plexus power',
       'Stimulates creativity, motivation, and optimism',
       'Carries the power of the Sun — warmth, energy, vitality',
@@ -287,9 +287,6 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
 
   {
     mineral_name:    'Abalone Shell',
-    // NOTE: Abalone Shell is an organic biomineral (nacre/aragonite from Haliotis
-    // species), not an IMA-approved mineral species. Included here due to its
-    // deep-rooted role in Pacific Indigenous, Maori, and Western crystal traditions.
     chakra_primary:  'Heart',
     chakra_secondary: ['Throat', 'Sacral', 'Third Eye', 'Crown'],
     element:         ['Water', 'Aether'],
@@ -314,8 +311,6 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
 
   {
     mineral_name:    'Achroite',
-    // Achroite is the colorless/white variety of Tourmaline (Elbaite species).
-    // Not a separate IMA species; follows Mindat varietal naming.
     chakra_primary:  'Crown',
     chakra_secondary: ['Higher Crown', 'Third Eye'],
     element:         ['Aether', 'Air'],
@@ -339,8 +334,6 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
 
   {
     mineral_name:    'Actinolite',
-    // Ca₂(Mg,Fe)₅Si₈O₂₂(OH)₂ — Amphibole group. Some fibrous forms are classified
-    // as asbestos (actinolite asbestos). SAFETY CRITICAL — see warning below.
     chakra_primary:  'Heart',
     chakra_secondary: ['Root'],
     element:         ['Earth', 'Air'],
@@ -356,7 +349,7 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
       'Powerfully purging — illuminates purpose by clearing toxic patterns from the energy field',
       'Creates a protective auric shield against negative entities and emotional vampirism',
       'Supports release of heavy emotions, grief, and stagnant energy',
-      'Strengthens courage and the willingness to face one\'s shadow',
+      "Strengthens courage and the willingness to face one's shadow",
       'Encourages resilience and grounded inner strength',
       'Heart chakra protection — keeps the heart open without leaving it vulnerable',
     ],
@@ -365,7 +358,6 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
 
   {
     mineral_name:    'Adamite',
-    // Zn₂(AsO₄)(OH) — Secondary zinc arsenate mineral. SAFETY CRITICAL.
     chakra_primary:  'Solar Plexus',
     chakra_secondary: ['Heart', 'Throat'],
     element:         ['Fire', 'Air'],
@@ -380,7 +372,7 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
       'Zinc arsenate mineral Zn₂(AsO₄)(OH) — vivid yellow-green to colourless; often fluorescent',
       'Aligns and unifies the Solar Plexus and Heart chakras — willpower expressed through love',
       'Stone of joy and creative enthusiasm — lifts depression and restores life-force',
-      'Helps overcome fear of following one\'s true calling or passion',
+      "Helps overcome fear of following one's true calling or passion",
       'Stimulates emotional clarity and honest self-expression',
       'Encourages the pursuit of goals that align with the heart, not just the ego',
       'Fluorescence under UV light symbolises hidden inner light made visible',
@@ -390,9 +382,6 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
 
   {
     mineral_name:    'Adularia',
-    // KAlSi₃O₈ — Orthoclase feldspar variety; the premier Moonstone variant.
-    // Distinguished from Moonstone by its specific orthoclase composition and
-    // characteristic adularescence from light scattering between feldspar layers.
     chakra_primary:  'Third Eye',
     chakra_secondary: ['Crown', 'Heart', 'Sacral'],
     element:         ['Water', 'Aether'],
@@ -413,6 +402,143 @@ export const METAPHYSICAL_DATA: MetaphysicalProfile[] = [
       'Particularly supportive during addiction recovery — softens emotional volatility',
     ],
     gaia_resonance:  'SomnusVeil — inner navigation, moonlit paths, cycle-aware emotional healing',
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // BATCH A-2  |  Aegirine · Afghanite · Agate · Agni Manitite · Ajoite
+  // Added: 2026-05-29
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  {
+    mineral_name:    'Aegirine',
+    // NaFe³⁺Si₂O₆ — Pyroxene group. Also known as Acmite.
+    // Named after Ægir, the Norse god of the sea. First described 1835, Norway.
+    chakra_primary:  'Root',
+    chakra_secondary: ['Solar Plexus', 'Heart'],
+    element:         ['Earth', 'Fire'],
+    planet:          ['Pluto', 'Saturn'],
+    archetype:       ['Guardian', 'Warrior', 'Alchemist'],
+    zodiac:          ['Scorpio', 'Aries', 'Taurus', 'Pisces'],
+    numerology:      5,
+    intention:       'Sovereign protection — clear toxic ties, rebuild personal power',
+    traditions:      ['Norse (named after sea-god Ægir)', 'Modern Crystal Healing'],
+    properties:      [
+      'Sodium iron pyroxene NaFe³⁺Si₂O₆ — dark green to black; named for Norse sea-god Ægir',
+      'Premier stone for clearing negative energy, toxic relationships, and psychic cords',
+      'Activates personal integrity — compels alignment between values and actions',
+      'Builds energetic boundaries and strengthens self-confidence without aggression',
+      'Particularly effective for people recovering from manipulation, shame, or grief',
+      'Grounds higher awareness into the physical body — earths spiritual insight',
+      'Works synergistically with Astrophyllite for full-spectrum transformation',
+    ],
+    gaia_resonance:  'AnchorPrism + SovereignCore — toxic-cord clearing, grounded personal integrity',
+  },
+
+  {
+    mineral_name:    'Afghanite',
+    // (Na,K)₂₂Ca₁₀[Si₂₄Al₂₄O₉₆](SO₄)₆Cl₆ — Cancrinite/sodalite supergroup.
+    // First described 1968, Badakhshan, Afghanistan. Extremely rare.
+    chakra_primary:  'Crown',
+    chakra_secondary: ['Third Eye'],
+    element:         ['Water', 'Aether'],
+    planet:          ['Neptune', 'Moon'],
+    archetype:       ['Oracle', 'Mystic', 'Guide'],
+    zodiac:          ['Scorpio', 'Pisces', 'Cancer', 'Sagittarius'],
+    numerology:      2,
+    intention:       'Angelic attunement — spiritual insight, higher guidance, inner peace',
+    traditions:      ['Modern Crystal Healing', 'Afghan folk traditions (from lapis lazuli mines)'],
+    properties:      [
+      'Extremely rare cancrinite-group mineral found in lapis lazuli deposits, Badakhshan, Afghanistan',
+      'Vibrates at exceptionally high frequency — activates Crown and Third Eye simultaneously',
+      'Facilitates communication with spirit guides, angels, and higher dimensional beings',
+      'Supports astral travel, lucid dreaming, and deep meditative states',
+      'Promotes mental clarity, emotional calm, and release of control patterns',
+      'Soothes grief, lifts mood, relieves insomnia and stress',
+      'A reminder that higher support is always present — dissolves spiritual loneliness',
+    ],
+    gaia_resonance:  'SomnusVeil + ClarusLens — angelic channel, lucid dreaming, high-frequency clarity',
+  },
+
+  {
+    mineral_name:    'Agate',
+    // SiO₂ — Cryptocrystalline Chalcedony (Quartz family).
+    // Base archetype entry; named varieties (Blue Lace, Moss, Fire, etc.)
+    // will be added as separate entries with overriding properties.
+    chakra_primary:  'Root',
+    chakra_secondary: ['Sacral', 'Solar Plexus', 'Heart'],
+    element:         ['Earth', 'Fire'],
+    planet:          ['Mercury', 'Moon'],
+    archetype:       ['Guardian', 'Healer', 'Warrior'],
+    zodiac:          ['Gemini', 'Virgo', 'Capricorn', 'Taurus'],
+    numerology:      7,
+    intention:       'Stability — grounded strength, courage, protection, truth',
+    traditions:      ['Egyptian (3500+ BCE)', 'Babylonian', 'Persian', 'Greek', 'Roman', 'Native American', 'Celtic', 'Vedic'],
+    properties:      [
+      'Cryptocrystalline silica SiO₂ — microcrystalline quartz in banded or mossy patterns',
+      'One of the oldest known healing stones — used since at least 3500 BCE in Egypt and Babylon',
+      'Provides grounded, stabilising energy — slow but deeply reliable protection',
+      'Builds inner strength, courage, and resilience over time',
+      'Harmonises yin-yang energies and balances emotional, physical, and intellectual bodies',
+      'Enhances mental clarity and concentration; aids with trauma and stress',
+      'Different varieties carry distinct frequencies — colour and pattern determine secondary chakra',
+      'A true foundation stone — ideal for crystal grids requiring stable base energy',
+    ],
+    gaia_resonance:  'AnchorPrism — stable foundation layer, long-arc grounding and protection',
+  },
+
+  {
+    mineral_name:    'Agni Manitite',
+    // Rare tektite (silica-rich natural glass) from Java/Sumatra, Indonesia.
+    // Sanskrit: agni (fire) + mani (jewel) = Pearl of the Divine Fire.
+    // Related to Moldavite, Colombianite, and Libyan Desert Glass family.
+    chakra_primary:  'Solar Plexus',
+    chakra_secondary: ['Sacral', 'Root'],
+    element:         ['Fire', 'Aether'],
+    planet:          ['Sun', 'Mars'],
+    archetype:       ['Sovereign', 'Creator', 'Warrior'],
+    zodiac:          ['Aries', 'Leo', 'Sagittarius'],
+    numerology:      9,
+    intention:       'Divine fire — personal will awakening, kundalini activation, manifestation',
+    traditions:      ['Sanskrit naming tradition', 'Indonesian indigenous traditions', 'Modern tektite healing'],
+    properties:      [
+      'Rare tektite from Java/Sumatra — Sanskrit name agni mani means "Pearl of the Divine Fire"',
+      'Related to Moldavite family — carries extraterrestrial or volcanic impact origin energy',
+      'Powerfully activates Solar Plexus and personal will — ignites dormant life-force',
+      'Stimulates kundalini awakening and upward movement of creative energy',
+      'Sharpens focus on true desires — clarifies what genuinely brings joy vs. what is habitual',
+      'Energising and motivating — overcomes lethargy, depression, and stagnation',
+      'Strengthens leadership, self-confidence, and decisive action',
+      'Use with grounding stones (Black Tourmaline, Aegirine) to anchor high-fire energy safely',
+    ],
+    gaia_resonance:  'SovereignCore — divine fire ignition, will activation, kundalini catalyst',
+  },
+
+  {
+    mineral_name:    'Ajoite',
+    // (Na,K)Cu₇AlSi₉O₂₄(OH)₆·3H₂O — Hydrous sodium-potassium copper alumino-silicate.
+    // First described 1941, Ajo, Pima County, Arizona.
+    // Most specimens from Messina Mine, Limpopo, South Africa. Extremely rare.
+    chakra_primary:  'Heart',
+    chakra_secondary: ['Throat', 'Third Eye', 'Crown'],
+    element:         ['Water', 'Aether'],
+    planet:          ['Venus', 'Neptune'],
+    archetype:       ['Healer', 'Lover', 'Mystic'],
+    zodiac:          ['Virgo', 'Libra', 'Pisces', 'Scorpio'],
+    numerology:      5,
+    intention:       'Goddess healing — love, peace, karmic release, higher connection',
+    traditions:      ['Modern Crystal Healing', 'Goddess spirituality traditions'],
+    properties:      [
+      'Hydrous copper alumino-silicate — aqua blue-green inclusions in quartz from Messina Mine, South Africa',
+      'Considered one of the most spiritually high-vibration stones on Earth',
+      'Emits loving Goddess and Gaia energy — deeply nurturing and feminine',
+      'Transmutes negative energies into love without effort or intention setting',
+      'Stimulates forgiveness and aids healing of karmic wounds from past lives',
+      'Opens and connects Heart, Throat, Third Eye, and Crown simultaneously',
+      'Supports healers — amplifies healing work without depleting the practitioner',
+      'Aids sweet communication with Spirit, angels, and higher-dimensional beings',
+      'Relieves unhappiness, grief, and chronic emotional pain at the root level',
+    ],
+    gaia_resonance:  'ViriditasHeart + SomnusVeil — Goddess-frequency healing, karmic love, GAIA-aligned empathy',
   },
 ];
 
