@@ -1,0 +1,144 @@
+# .github/workflows/validate_crystal_db.yml
+# GAIA-OS — Crystal Database Consistency Checker
+#
+# Runs scripts/validate_crystal_db.py against all 25 batch files (A1–C7).
+#
+# Triggers:
+#   • push to main    — when crystal DB files or the validator itself change
+#   • pull_request    — same path filter; blocks merge on ERROR violations
+#   • workflow_dispatch — manual run with optional single-batch override
+#
+# Outputs:
+#   • Human-readable report in the Actions log
+#   • JSON artifact  (crystal-db-audit-report.json)  retained 30 days
+#   • Step summary written to $GITHUB_STEP_SUMMARY
+
+name: Crystal DB Validator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/crystals/db/**'
+      - 'scripts/validate_crystal_db.py'
+      - '.github/workflows/validate_crystal_db.yml'
+
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/crystals/db/**'
+      - 'scripts/validate_crystal_db.py'
+      - '.github/workflows/validate_crystal_db.yml'
+
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: |
+          Single batch to validate (e.g. a1, b3, c7).
+          Leave blank to scan all 25 batches.
+        required: false
+        default: ''
+
+concurrency:
+  group: crystal-db-validator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Crystal DB (${{ github.event.inputs.batch || 'all batches' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── 2. Python setup ────────────────────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      # validator has zero third-party dependencies — no pip install needed
+
+      # ── 3. Run validator (text report to log) ──────────────────────────────
+      - name: Run validator — text report
+        id: validate_text
+        run: |
+          BATCH_ARG=""
+          if [ -n "${{ github.event.inputs.batch }}" ]; then
+            BATCH_ARG="--batch ${{ github.event.inputs.batch }}"
+          fi
+          python scripts/validate_crystal_db.py --fix-report $BATCH_ARG
+        # Allow the step to fail so we can still capture the JSON artifact;
+        # we re-assert failure in the summary step below.
+        continue-on-error: true
+
+      # ── 4. Run validator (JSON artifact) ───────────────────────────────────
+      - name: Run validator — JSON report
+        id: validate_json
+        run: |
+          BATCH_ARG=""
+          if [ -n "${{ github.event.inputs.batch }}" ]; then
+            BATCH_ARG="--batch ${{ github.event.inputs.batch }}"
+          fi
+          python scripts/validate_crystal_db.py --json $BATCH_ARG \
+            > crystal-db-audit-report.json 2>&1 || true
+
+      # ── 5. Upload JSON artifact ─────────────────────────────────────────────
+      - name: Upload audit JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: crystal-db-audit-report
+          path: crystal-db-audit-report.json
+          retention-days: 30
+
+      # ── 6. Write step summary ───────────────────────────────────────────────
+      - name: Write step summary
+        if: always()
+        run: |
+          echo "## 🔮 Crystal DB Audit — ${{ github.event.inputs.batch || 'All Batches (A1–C7)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          BATCH_ARG=""
+          if [ -n "${{ github.event.inputs.batch }}" ]; then
+            BATCH_ARG="--batch ${{ github.event.inputs.batch }}"
+          fi
+          python scripts/validate_crystal_db.py $BATCH_ARG 2>&1 || true >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+
+      # ── 7. Annotate PR with violations via jq ──────────────────────────────
+      - name: Annotate violations
+        if: github.event_name == 'pull_request' && always()
+        run: |
+          if [ ! -f crystal-db-audit-report.json ]; then exit 0; fi
+          # Emit GitHub workflow commands for each ERROR violation so they
+          # appear as inline annotations on the PR diff.
+          jq -r '
+            .violations[]
+            | select(.severity == "ERROR")
+            | "::error file=src/crystals/db/\(.batch).data.ts,title=[\(.rule)] \(.crystal)::\(.detail) — \(.fix_hint)"
+          ' crystal-db-audit-report.json || true
+
+      # ── 8. Fail the job if errors were found ───────────────────────────────
+      - name: Assert no ERROR violations
+        run: |
+          if [ ! -f crystal-db-audit-report.json ]; then
+            echo "No JSON report found — treating as error."
+            exit 1
+          fi
+          ERROR_COUNT=$(jq '[.violations[] | select(.severity == "ERROR")] | length' crystal-db-audit-report.json)
+          WARN_COUNT=$(jq '[.violations[] | select(.severity == "WARN")] | length' crystal-db-audit-report.json)
+          echo "Errors: $ERROR_COUNT  Warnings: $WARN_COUNT"
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "::error::Crystal DB audit found $ERROR_COUNT ERROR violation(s). See the 'Run validator' step and the audit artifact for details."
+            exit 1
+          fi
+          echo "✅ Crystal DB audit passed ($WARN_COUNT warning(s) — review recommended)."
