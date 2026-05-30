@@ -1,6 +1,20 @@
 # GAIA-OS System Status
 
-> Last updated: 2026-05-30 by GAIA-OS Canon Session (Issue #100 stub audit — full subdirectory traversal)
+> **Last audited:** May 30, 2026 — Full subdirectory expansion audit complete. Resolves Issue #100.
+> **Audited by:** R0GV3 the Alchemist + GAIA Sentient Core
+
+---
+
+## Issue #100 Audit — Final Verdict
+
+| Category | Count |
+|---|---|
+| ✅ Complete (full implementation confirmed) | 29 |
+| ✅ Complete (purposefully thin by design) | 2 (`server_models.py`, `session_memory.py`) |
+| ✅ Intentional shim (package resolution or alias) | 2 (`gaian.py`, `primary_thread.py`) |
+| ❌ True stub (empty, returns no real value) | **0** |
+
+> **Zero unimplemented stubs.** The top-level `core/*.py` files are Phase C re-export shims. All real implementations live in `core/infra/`, `core/memory/`, `core/gaian/`, `core/engines/`, and `core/layers/`.
 
 ---
 
@@ -21,7 +35,7 @@
 | `server_models.py` | 1,279 b | ✅ Complete | Pydantic request/response models for all active API endpoints |
 | `server_state.py` | 4,741 b | ✅ Complete | Server singleton state management |
 
-**`server_models.py` verdict:** All currently active endpoints are covered — `QueryRequest`, `ChatRequest`, `CreateGaianRequest`, `BirthRequest`, `RememberRequest`, `VisibleMemoryRequest`, `SetGaianRequest`, `ConsentRequest`. Expands naturally as new endpoints are added. No expansion issue needed.
+**`server_models.py` verdict:** All currently active endpoints are covered — `QueryRequest`, `ChatRequest`, `CreateGaianRequest`, `BirthRequest`, `RememberRequest`, `VisibleMemoryRequest`, `SetGaianRequest`, `ConsentRequest`. Expands naturally as new endpoints are added.
 
 ---
 
@@ -38,7 +52,7 @@
 | `pruner.py` | 7,442 b | ✅ Complete | Memory pruning/decay |
 | `taxonomy.py` | 4,616 b | ✅ Complete | Memory taxonomy/classification |
 
-**`session_memory.py` verdict:** Purposefully scoped. It is the ephemeral session layer only — rolling 8-turn context window, TTL cleanup, LLM-ready message formatting. Long-term memory is handled by `store.py` and `knowledge_matrix.py` as designed. No expansion issue needed.
+**`session_memory.py` verdict:** Purposefully scoped as the ephemeral session layer — rolling 8-turn context window, TTL cleanup, LLM-ready message formatting. Long-term memory is handled by `store.py` and `knowledge_matrix.py` as designed.
 
 ---
 
@@ -60,38 +74,40 @@
 
 | Module | Status | Notes |
 |---|---|---|
-| `crystal_consciousness.py` | ✅ Complete | |
-| `dark_matter_resonance.py` | ✅ Complete | |
-| `quintessence_engine.py` | ✅ Complete | |
-| `resonance_field_engine.py` | ✅ Complete | |
+| `crystal_consciousness.py` | ✅ Complete | Crystal consciousness engine |
+| `dark_matter_resonance.py` | ✅ Complete | Dark matter resonance engine |
+| `quintessence_engine.py` | ✅ Complete | Quintessence engine |
+| `resonance_field_engine.py` | ✅ Complete | Resonance field engine |
 
 ---
 
-### `core/layers/` — 12-Layer Ontological Stack (~157K total)
+### `core/layers/` — 12-Layer Ontological Stack (~157 KB total)
 
-All 12 layers (`layer_01_physical` → `layer_12_void`) fully implemented. ~9K–18K bytes each. ✅
+All 12 layers have real implementations averaging 9–18 KB each. ✅
+
+| Layer | Status |
+|---|---|
+| `layer_01_physical` | ✅ Complete |
+| `layer_02_etheric` | ✅ Complete |
+| `layer_03_astral` | ✅ Complete |
+| `layer_04_mental` | ✅ Complete |
+| `layer_05_causal` | ✅ Complete |
+| `layer_06_buddhic` | ✅ Complete |
+| `layer_07_atmic` | ✅ Complete |
+| `layer_08_monadic` | ✅ Complete |
+| `layer_09_logoic` | ✅ Complete |
+| `layer_10_cosmic` | ✅ Complete |
+| `layer_11_universal` | ✅ Complete |
+| `layer_12_void` | ✅ Complete |
 
 ---
 
 ### Top-Level Shim Integrity
 
-| File | Status | Destination |
+| File | Status | Notes |
 |---|---|---|
 | `core/gaian.py` | ✅ Intentional empty | Python package resolution: `core/gaian/` package directory takes precedence. All `from core.gaian import ...` resolve correctly. |
 | `core/primary_thread.py` | ✅ Alias shim | Re-exports `MotherThread as PrimaryThread` from `core/mother_thread`. Renamed per C00 Foundational Cosmology. |
-
----
-
-### Issue #100 Audit Summary
-
-| Category | Count |
-|---|---|
-| ✅ Complete | 29 |
-| ✅ Complete (purposefully thin) | 2 (`server_models.py`, `session_memory.py`) |
-| ✅ Intentional shim | 2 (`gaian.py`, `primary_thread.py`) |
-| ❌ True stub | 0 |
-
-**Verdict:** Zero unimplemented stubs. Architecture is a clean Phase C migration pattern.
 
 ---
 
@@ -135,10 +151,10 @@ All 12 layers (`layer_01_physical` → `layer_12_void`) fully implemented. ~9K�
 | Component | Status | Notes |
 |---|---|---|
 | `MemoryStore` (SQLite + sqlite-vec) | ✅ LIVE | Phase 3 authoritative store |
-| `MemoryBridge` | ✅ LIVE | New 2026-05-08 — unified recall/store via MemoryStore |
+| `MemoryBridge` | ✅ LIVE | Fixed 2026-05-08 — unified recall/store via MemoryStore |
 | ChromaDB (legacy) | ✅ FALLBACK | Active only when no runtime registered |
 | Dual-write divergence | ✅ RESOLVED | Fixed 2026-05-08 — single memory source of truth |
-| Memory consolidation (SHORT→LONG_TERM) | ❌ TODO | Tier promotion logic not yet written |
+| Memory consolidation (SHORT→LONG_TERM) | ❌ TODO | Tier promotion logic not yet written — Issue #105 sprint |
 | ChromaDB → MemoryStore migration | ❌ TODO | One-time import script needed |
 
 ---
@@ -219,14 +235,27 @@ All 12 layers (`layer_01_physical` → `layer_12_void`) fully implemented. ~9K�
 
 ## Open Tasks (Future Sprints)
 
-1. **Memory consolidation** — SHORT_TERM → LONG_TERM tier promotion + ChromaDB migration script
+1. **Memory consolidation** — SHORT_TERM → LONG_TERM tier promotion + ChromaDB migration script (Issue #105)
 2. **Scheduler task population** — Wire goal steps + memory consolidation into live scheduler
 3. **YELLOW tier classification** — Detect tool-use / file-write in `result.planned_actions`
 4. **action_gate HUD row** — Show gate tier + result in chat engine state display
 5. **P0 Canon Research** — Issues #92 (Process Philosophy) and #93 (Personal Identity) — blockers for Soul Mirror Engine, Session architecture, Charter grounding, and Gaian persona architecture
+6. **IPC contract documentation** — `specs/ipc-contracts.md` + Pydantic schema coverage audit (Issue #101)
+7. **Crystal Theory grounding** — `docs/CRYSTAL_THEORY.md` derivation rules for yin-yang, angel numbers, module assignments (Issue #107)
 
 ---
 
-## Canon Refs Active This Session
+## Legend
+
+| Symbol | Meaning |
+|---|---|
+| ✅ LIVE / Complete | Full implementation confirmed, active in production build |
+| ✅ FALLBACK | Present but only activates as secondary path |
+| ✅ RESOLVED | Bug or gap previously identified, now fixed |
+| ❌ TODO | Known gap — tracked in a sprint issue |
+
+---
+
+## Canon Refs Active
 
 C12, C17, C20, C21, C27, C35, C42, C43, C44, C47, C49, C90
