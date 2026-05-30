@@ -363,7 +363,7 @@ const BATCH_A1: CrystalRecord[] = [
         'The stone of the new beginning — like the new moon, it holds potential before manifestation',
       ],
       gaia_resonance: 'SomnusVeil + ClarusLens',
-      safety_warning: null,
+      safety_warning: 'Generally safe to handle. Feldspar dust can irritate lungs — avoid prolonged inhalation of powdered material. Safe for water-based cleansing; not recommended for water elixirs as a general precaution with all feldspars.',
     },
   },
 
@@ -473,7 +473,7 @@ const BATCH_A1: CrystalRecord[] = [
         'A stone of the seeker — rewards those willing to look past the surface',
       ],
       gaia_resonance: 'ClarusLens + Noosphere',
-      safety_warning: null,
+      safety_warning: 'Contains chloride and sulfate components — avoid prolonged water immersion as surface may slowly dissolve. Not recommended for water elixirs. Generally safe to handle; wash hands after extended contact.',
     },
   },
 
@@ -587,7 +587,7 @@ const BATCH_A1: CrystalRecord[] = [
         'Its pale, airy blue frequency is among the most universally soothing in the crystal kingdom',
       ],
       gaia_resonance: 'ClarusLens + ViriditasHeart',
-      safety_warning: null,
+      safety_warning: 'Safe to handle. Chalcedony is generally inert. Note: commercially sold Blue Lace Agate is sometimes dyed — avoid water elixirs with dyed specimens. Piezoelectric — handle with care around sensitive electronics.',
     },
   },
 
