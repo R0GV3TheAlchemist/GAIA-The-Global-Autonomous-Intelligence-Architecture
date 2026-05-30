@@ -3,18 +3,18 @@
  * GAIA-OS Crystal Database — Batch C-1
  *
  * Entries:
- *   1. Bustamite          — rare Mn-Ca inosilicate; deferred from B-8
- *   2. Cacoxenite         — iron aluminium phosphate in quartz; Stone of Ascension
- *   3. Calcite            — CaCO₃; master amplifier; all colour varieties
- *   4. Callaghanite       — rare Cu₂Mg₂ carbonate hydroxide; vivid blue
- *   5. Calligraphy Stone  — fossil marl/coquina; trade name; Arabic script patterns
+ *   1. Cacoxenite        — iron aluminium phosphate; Stone of Ascension; Super Seven
+ *   2. Calcite           — CaCO₃; master amplifier; all colour varieties
+ *   3. Callaghanite      — rare Cu₂Mg₂ carbonate hydroxide; vivid blue; toxic
+ *   4. Calligraphy Stone — fossil marl/coquina; trade name; Arabic script patterns
+ *   5. Candle Quartz     — pineapple/candle formation quartz; Elestial family
  *
  * Schema: CrystalRecord v1.3
  * Author: GAIA-OS Crystal Intelligence Engine
  * Date:   2026-05-30
  *
- * NOTE: Bustamite was deferred from B-8 as the natural bridge stone into
- * the C-series. Callaghanite is one of the rarest minerals in this database.
+ * NOTE: Bustamite moved to batch-b9.data.ts as the B-series close.
+ * Callaghanite is one of the rarest minerals in this database.
  * Calligraphy Stone is a trade name — flagged accordingly.
  */
 
@@ -23,131 +23,7 @@ import type { CrystalRecord } from './crystal.schema';
 const BATCH_C1: CrystalRecord[] = [
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 1. BUSTAMITE
-  // Rare manganese calcium inosilicate — CaMn(Si₂O₆) series
-  // Named after General Anastasio Bustamante (1780–1853), President of Mexico
-  // IMA 1827 — classic localities: Franklin NJ and Broken Hill NSW
-  // ─────────────────────────────────────────────────────────────────────────
-  {
-    name:         'Bustamite',
-    mindat_id:    870,
-    rruff_ids:    ['R060849'],
-    last_synced:  '2026-05-30T00:00:00Z',
-    trade_name:   false,
-    color_layer:  'natural',
-    yin_yang_pair: 'Rhodonite',
-
-    physical: {
-      id:           870,
-      longid:       'bustamite',
-      guid:         '',
-      name:         'Bustamite',
-      ima_formula:  'CaMn²⁺(Si₂O₆)',
-      mindat_formula: 'CaMn(Si2O6)',
-      ima_status:   'A',
-      ima_year:     1827,
-      strunzten:    '9.DA.15',
-      dana8ed:      '65.1.2.1',
-      crystal_system: 'Triclinic',
-      hardness_min: 5.5,
-      hardness_max: 6.5,
-      specific_gravity_min: 3.26,
-      specific_gravity_max: 3.43,
-      cleavage:    'Perfect on {110}, good on {110}',
-      fracture:    'Uneven to conchoidal',
-      tenacity:    'Brittle',
-      luster:      ['Vitreous', 'Silky (fibrous varieties)'],
-      diaphaneity: ['Translucent', 'Opaque'],
-      colour:      'Pale rose-pink to deep brownish-pink, flesh-pink, pale beige-pink — softer and warmer than rhodonite; colour from Mn²⁺',
-      streak:      'White',
-      fluorescence: 'Orange to salmon-pink under LW UV (Franklin specimens especially vivid)',
-      ri_min:      1.664,
-      ri_max:      1.709,
-      birefringence: 0.014,
-      optical_type: 'B',
-      shortdesc:   'Bustamite — CaMn(Si₂O₆), triclinic manganese calcium inosilicate. Named after General Anastasio Bustamante. IMA 1827. Pale rose-pink to brownish-pink; softer hue than rhodonite. Classic localities: Franklin (NJ, USA) and Broken Hill (NSW, Australia). Fluoresces orange-salmon under LW UV.',
-      updttime:    '2026-05-30T00:00:00Z',
-      mindat_url:  'https://www.mindat.org/min-870.html',
-      piezoelectric:     false,
-      safe_for_water:    true,
-      safe_for_hardware: false,
-    },
-
-    optical: {
-      mineral_name:    'Bustamite',
-      refractive_index: { n_alpha: 1.664, n_beta: 1.690, n_gamma: 1.709 },
-      birefringence:   0.014,
-      optical_sign:    '+',
-      dispersion:      'r > v, weak',
-      pleochroism:     'Weak: pale pink / pale brownish-pink / pale rose',
-      fluorescence_lw: 'Orange to salmon-pink (especially Franklin, NJ specimens)',
-      fluorescence_sw: 'Weak to none',
-      phosphorescence: null,
-      visible_wavelength_nm: { min: 580, max: 640 },
-      spectra: ['R060849'],
-    },
-
-    color: {
-      primary_color:         'Pale rose-pink to warm brownish-pink — softer and more muted than rhodonite',
-      color_variants: [
-        'Pale flesh-pink (most common — gentle, warm, skin-tone adjacent)',
-        'Deeper brownish-rose (higher Mn content)',
-        'Pale beige-pink with white calcite matrix (Franklin specimens)',
-        'Salmon-pink with orange fluorescence (UV-active Franklin material)',
-        'Near-white with faint pink blush (Ca-dominant end member)',
-      ],
-      dominant_wavelength_nm: 610,
-      oklch:   { l: 0.70, c: 0.08, h: 15 },
-      hex:     '#d4a0a0',
-      munsell: '5R 7/4',
-      color_temperature_k: null,
-      psychological_effects: [
-        'Softer and less saturated than rhodonite — where rhodonite commands attention, bustamite invites quiet intimacy',
-        'Flesh-pink palette is one of the most skin-adjacent in the mineral kingdom — immediately bodily, warm, and human',
-        'The fluorescence revelation — turning orange under UV — adds a hidden depth to an apparently simple stone',
-        'Franklin NJ provenance connects to the most famous fluorescent mineral locality on Earth — a lineage of hidden light',
-        'Pale brownish-pink is the colour of old roses, weathered terracotta, and the inside of a held hand',
-      ],
-      harmonics: {
-        complementary_hue: 195,
-        triadic_hues:      [135, 255],
-        analogous_range:   [355, 35],
-      },
-    },
-
-    metaphysical: {
-      mineral_name:     'Bustamite',
-      chakra_primary:   'Heart',
-      chakra_secondary: ['Root', 'Higher Heart (Thymus)'],
-      element:   ['Earth', 'Water'],
-      planet:    ['Venus', 'Moon'],
-      archetype: ['The Quiet Heart', 'The Gentle Witness', 'The Rose of Remembrance'],
-      zodiac:    ['Taurus', 'Cancer', 'Libra'],
-      numerology: 4,
-      angel_number: 444,
-      intention: 'I hold love gently, without demand. My heart is a quiet room where all are welcome.',
-      traditions: [
-        'Named after General Anastasio Bustamante (1780–1853), three-time President of Mexico and patron of mineralogy',
-        'Franklin, NJ — part of the world-famous Franklin-Sterling Hill fluorescent mineral complex; Mn-silicate family includes rhodonite, bustamite, and franklinite',
-        'Broken Hill, NSW, Australia — major Pb-Zn-Ag orebody with remarkable associated mineral diversity including bustamite',
-        'Modern crystal healing — soft pink manganese silicates used for Heart chakra work, grief processing, and gentle self-love',
-      ],
-      properties: [
-        'IMA 1827 — formula CaMn(Si₂O₆); triclinic inosilicate (pyroxenoid group)',
-        'Part of the wollastonite-bustamite-rhodonite series — all Mn/Ca inosilicates with varying Mn:Ca ratios',
-        'Distinguished from rhodonite by higher Ca content and softer pink colour; rhodonite is deeper rose with black manganese oxide veining',
-        'Vivid orange-salmon fluorescence under LW UV (especially Franklin, NJ specimens) — one of the more surprising fluorescent responses in the mineral kingdom',
-        'Classic localities: Franklin and Sterling Hill, NJ (USA); Broken Hill (NSW, Australia); Långban (Sweden); Harstig Mine (Sweden)',
-        'H5.5–6.5 — durable enough for display and meditation; protect from harder minerals in storage',
-        'Safe for water — silicate mineral; no toxic components. Franklin NJ specimens: verify provenance for potential uranium association.',
-      ],
-      gaia_resonance: 'ViriditasHeart + ClarusLens',
-      safety_warning:  'Safe for water. H5.5–6.5 — moderate hardness; store away from harder minerals. No toxic elements. Franklin NJ specimens may be mildly radioactive if associated with uranium-bearing minerals — verify provenance.',
-    },
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 2. CACOXENITE
+  // 1. CACOXENITE
   // Iron aluminium phosphate — Fe²⁴³⁺Al(OH)₁₂(PO₄)₁₇·17H₂O
   // Named from Greek: kakos (bad) + xenos (stranger) — impurity in iron ore
   // Now revered as the Stone of Ascension — one of the Super Seven minerals
@@ -252,7 +128,7 @@ const BATCH_C1: CrystalRecord[] = [
       intention: 'What was called an impurity is my greatest gift. I rise through what others overlooked.',
       traditions: [
         'Named 1825 by Wilhelm Karl von Haidinger — from Greek kakos (bad) + xenos (stranger) because it lowered iron ore quality',
-        'Super Seven (Melody Stone) — cacoxenite is one of the seven minerals in the famous Super Seven quartz from Espirito Santo, Brazil (amethyst, smoky quartz, clear quartz, rutile, goethite, lepidocrocite, cacoxenite)',
+        'Super Seven (Melody Stone) — cacoxenite is one of the seven minerals in the famous Super Seven quartz from Espirito Santo, Brazil',
         'Modern crystal healing — the "Stone of Ascension"; used for raising collective and personal consciousness',
         'Found as golden inclusions in amethyst from Brazil, France (Haut-Vienne), and Scotland; as standalone crystals in limonite-phosphate matrix',
       ],
@@ -271,7 +147,7 @@ const BATCH_C1: CrystalRecord[] = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 3. CALCITE
+  // 2. CALCITE
   // CaCO₃ — calcium carbonate; one of the most abundant minerals on Earth
   // The master amplifier — occurs in every colour of the spectrum
   // IMA recognised — trigonal; perfect rhombohedral cleavage
@@ -385,7 +261,7 @@ const BATCH_C1: CrystalRecord[] = [
         'Viking sunstone — Iceland spar (optical calcite) used as a navigational aid; polarises skylight to locate the sun through cloud cover',
         'Roman and Greek — limestone (calcite) the primary building stone of classical civilisation; marble (metamorphic calcite) for sculpture',
         'Modern crystal healing — calcite as the universal amplifier; each colour variety corresponds to a specific chakra and intention',
-        'Acid test (fizzes in HCl) — the standard field identification test for carbonate minerals; one of the first tests taught in mineralogy',
+        'Acid test (fizzes in HCl) — the standard field identification test for carbonate minerals',
       ],
       properties: [
         'Formula CaCO₃ — trigonal calcium carbonate; polymorphic with aragonite (orthorhombic) and vaterite (hexagonal)',
@@ -398,12 +274,12 @@ const BATCH_C1: CrystalRecord[] = [
         'H3 — scratches easily; keep away from harder minerals in storage',
       ],
       gaia_resonance: 'ClarusLens + ViriditasHeart + AnchorPrism',
-      safety_warning:  '⚠️ DO NOT use in acidic water or salt water — calcite dissolves slowly. Safe for brief water contact but avoid prolonged soaking. H3 — very soft; store separately. No toxic elements in pure calcite; coloured varieties with impurities (e.g. Cobalto Calcite, Bumblebee Calcite) have separate safety profiles.',
+      safety_warning:  '⚠️ DO NOT use in acidic water or salt water — calcite dissolves slowly. Safe for brief water contact but avoid prolonged soaking. H3 — very soft; store separately. No toxic elements in pure calcite; coloured varieties with impurities have separate safety profiles.',
     },
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 4. CALLAGHANITE
+  // 3. CALLAGHANITE
   // Rare magnesium copper carbonate hydroxide — Cu₂Mg₂(CO₃)(OH)₆·2H₂O
   // Named after Eugene Callaghan (1899–1963), American mineralogist
   // IMA 1954 — one of the rarest minerals in the crystal healing canon
@@ -507,7 +383,7 @@ const BATCH_C1: CrystalRecord[] = [
       traditions: [
         'Named after Eugene Callaghan (1899–1963), American economic geologist who described the Gabbs magnesite deposit',
         'Type locality: Gabbs magnesite-brucite deposit, Nye County, Nevada, USA — one of the largest magnesite deposits in North America',
-        'Copper carbonate tradition — the family of copper carbonate hydroxide minerals (malachite, azurite, rosasite) used in Heart and Throat chakra work across many traditions',
+        'Copper carbonate tradition — the family of copper carbonate hydroxide minerals used in Heart and Throat chakra work across many traditions',
         'Extremely rare in the crystal healing market — most practitioners have never encountered a specimen',
       ],
       properties: [
@@ -525,7 +401,7 @@ const BATCH_C1: CrystalRecord[] = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 5. CALLIGRAPHY STONE
+  // 4. CALLIGRAPHY STONE
   // Coquina / Marl fossil matrix — trade name
   // Arabic/Devanagari script-like patterns from fossilised shell/vegetation
   // Primary locality: Narmada River region, Madhya Pradesh, India
@@ -629,23 +505,147 @@ const BATCH_C1: CrystalRecord[] = [
       angel_number: 888,
       intention: 'The Earth has written my name in stone. I read the ancient text within myself and know what has always been true.',
       traditions: [
-        'Narmada River tradition — the Narmada (one of India\'s seven sacred rivers) is associated with Shaivite tradition; Shiva lingas are found naturally in the riverbed',
+        'Narmada River tradition — one of India\'s seven sacred rivers; associated with Shaivite tradition; Shiva lingas found naturally in the riverbed',
         'Named "Calligraphy Stone" for patterns resembling Arabic, Devanagari, or Chinese script — cross-cultural naming reflects universal script quality',
-        'Also known as "Arabic Stone", "Elephant Skin Jasper", "Miriam Stone" (when from Egypt/Israel region), and "Script Stone"',
-        'Fossil tradition — the dark patterns are often Crinoid, Gastropod, or plant fossil fragments — connecting to the Palaeozoic ocean that covered central India',
-        'Akashic records tradition — stones that appear to carry text are used for accessing past-life memory and the Akashic record',
+        'Also known as "Arabic Stone", "Elephant Skin Jasper", "Miriam Stone" (Egypt/Israel), and "Script Stone"',
+        'Fossil tradition — dark patterns are often Crinoid, Gastropod, or plant fossil fragments — connecting to the Palaeozoic ocean that covered central India',
+        'Akashic records tradition — stones that appear to carry text used for accessing past-life memory and the Akashic record',
       ],
       properties: [
         'Trade name: "Calligraphy Stone" — fossil-bearing coquina/marl from the Narmada River valley, Madhya Pradesh, India',
         'Dark patterns: fossilised shell fragments (crinoids, gastropods, bivalves), plant material, or iron oxide precipitation in calcite-rich matrix',
-        'Narmada River valley — one of India\'s most geologically significant regions; Cretaceous and Jurassic sediments yield both fossils and Shiva lingas',
+        'Narmada River valley — one of India\'s most geologically significant regions; Cretaceous and Jurassic sediments',
         'Calcite-dominant matrix — reacts with HCl; avoid prolonged water contact',
         'H3–4 — relatively soft; suitable for display and meditation; less ideal for everyday jewellery',
         'Each piece is unique — the "script" patterns are never repeated; highly individual stones',
         'Also sold as "Arabic Stone" (Egypt, Israel, Jordan origin) and "Miriam Stone" — different localities, similar appearance',
       ],
       gaia_resonance: 'Noosphere + ClarusLens + AnchorPrism',
-      safety_warning:  '⚠️ DO NOT use in acidic water or salt water — calcite matrix dissolves slowly. Safe for brief handling. H3–4 — relatively soft; protect surface. Fossil matrix — some specimens may contain pyrite which can oxidise and stain with prolonged moisture exposure.',
+      safety_warning:  '⚠️ DO NOT use in acidic water or salt water — calcite matrix dissolves slowly. Safe for brief handling. H3–4 — relatively soft; protect surface. Some specimens may contain pyrite which can oxidise with prolonged moisture exposure.',
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 5. CANDLE QUARTZ
+  // Pineapple / Candle formation quartz — trade name
+  // Small secondary terminations covering the main prism faces
+  // Elestial family — Madagascar and Brazil primary localities
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    name:         'Candle Quartz',
+    mindat_id:    3337,
+    rruff_ids:    ['R040031'],
+    last_synced:  '2026-05-30T00:00:00Z',
+    trade_name:   true,
+    color_layer:  'natural',
+    yin_yang_pair: 'Elestial Quartz',
+
+    physical: {
+      id:           3337,
+      longid:       'candle-quartz',
+      guid:         '',
+      name:         'Quartz ("Candle Quartz" / "Pineapple Quartz" — secondary termination growth habit)',
+      ima_formula:  'SiO₂',
+      mindat_formula: 'SiO2',
+      ima_status:   'A',
+      ima_year:     null,
+      strunzten:    '4.DA.05',
+      dana8ed:      '75.1.3.1',
+      crystal_system: 'Trigonal',
+      hardness_min: 7,
+      hardness_max: 7,
+      specific_gravity_min: 2.65,
+      specific_gravity_max: 2.65,
+      cleavage:    'None',
+      fracture:    'Conchoidal',
+      tenacity:    'Brittle',
+      luster:      ['Vitreous'],
+      diaphaneity: ['Transparent', 'Translucent'],
+      colour:      'Colourless to white, pale grey, pale smoky — the secondary terminations are typically the same colour as the host crystal; sometimes with pale phantom inclusions',
+      streak:      'White',
+      fluorescence: 'None to very weak',
+      ri_min:      1.544,
+      ri_max:      1.553,
+      birefringence: 0.009,
+      optical_type: 'U',
+      shortdesc:   'Candle Quartz — trade name for quartz crystals displaying densely packed small secondary terminations covering the prism faces, creating a candle-drip or pineapple texture. Related to Elestial Quartz. Primary localities: Madagascar, Brazil. Also called "Pineapple Quartz" or "Atlantean Lovestar."',
+      updttime:    '2026-05-30T00:00:00Z',
+      mindat_url:  'https://www.mindat.org/min-3337.html',
+      piezoelectric:     true,
+      safe_for_water:    true,
+      safe_for_hardware: true,
+    },
+
+    optical: {
+      mineral_name:    'Candle Quartz (Secondary-Termination Quartz)',
+      refractive_index: { n_omega: 1.553, n_epsilon: 1.544 },
+      birefringence:   0.009,
+      optical_sign:    '+',
+      dispersion:      '0.013',
+      pleochroism:     'None',
+      fluorescence_lw: 'None to very weak',
+      fluorescence_sw: 'None',
+      phosphorescence: null,
+      visible_wavelength_nm: null,
+      spectra: ['R040031'],
+    },
+
+    color: {
+      primary_color:         'Colourless to pale white or smoky — light itself, structured into points',
+      color_variants: [
+        'Clear / colourless (most common — pure light)',
+        'Pale milky white (included water/gas bubbles)',
+        'Pale smoky grey (trace Al + irradiation)',
+        'Pale lavender (trace Fe³⁺ or Mn)',
+        'Pale citrine-yellow (uncommon — trace Fe)',
+      ],
+      dominant_wavelength_nm: null,
+      oklch:   { l: 0.95, c: 0.01, h: 180 },
+      hex:     '#f8f8f8',
+      munsell: 'N 9.5/',
+      color_temperature_k: null,
+      psychological_effects: [
+        'Hundreds of tiny terminations covering a single crystal create a visual experience of multiplied light — one stone that broadcasts in all directions',
+        'The candle-drip texture is immediately tactile — the bumpy surface invites running fingers across it slowly',
+        'Pineapple association connects to sweetness, abundance, and welcome — the pineapple as the universal symbol of hospitality',
+        'The Elestial family quality — layered, complex, ancient-feeling growth — communicates accumulated wisdom and deep time',
+        'Clear or pale colour means the form does all the work — pure geometry and light without colour interference',
+      ],
+      harmonics: {
+        complementary_hue: null,
+        triadic_hues:      null,
+        analogous_range:   null,
+      },
+    },
+
+    metaphysical: {
+      mineral_name:     'Candle Quartz',
+      chakra_primary:   'Crown',
+      chakra_secondary: ['Third Eye', 'Soul Star', 'All chakras'],
+      element:   ['Akasha', 'Air', 'Light'],
+      planet:    ['Moon', 'Sun', 'Uranus'],
+      archetype: ['The Lighthouse', 'The Many-Pointed One', 'The Ancient Light Keeper'],
+      zodiac:    ['Cancer', 'Aquarius', 'All signs'],
+      numerology: 11,
+      angel_number: 1111,
+      intention: 'I broadcast light in every direction at once. Every facet of my being is a gateway. I am a lighthouse for the lost.',
+      traditions: [
+        'Madagascar tradition — the most celebrated locality for Candle Quartz; large specimens from the Antsirabe region',
+        'Also called "Pineapple Quartz" (pineapple-scale texture), "Atlantean Lovestar", and "Cathedral Quartz" (related formation)',
+        'Elestial family — Elestial (Skeletal) Quartz, Candle Quartz, and Cathedral Quartz share the quality of complex secondary growth within or on a primary crystal',
+        'Modern crystal healing — used for broadcasting intentions, lightwork, and group ceremony; the multiple terminations symbolise sending energy in all directions simultaneously',
+      ],
+      properties: [
+        'Trade name: "Candle Quartz" or "Pineapple Quartz" — quartz with densely packed secondary terminations on prism faces',
+        'Formation: secondary terminations grow during a second phase of crystal growth, often with changing fluid chemistry or temperature',
+        'Related formations: Elestial Quartz (internal/surface etchings), Cathedral Quartz (stepped/layered faces), Barnacle Quartz (small crystals on large host)',
+        'H7 — excellent durability; safe for everyday use and water',
+        'Piezoelectric — keep away from hard drives and sensitive electronics',
+        'Primary localities: Madagascar (Antsirabe region), Brazil (Minas Gerais), Arkansas (USA)',
+        'No toxic elements — pure SiO₂; one of the safest crystals for all uses including children',
+      ],
+      gaia_resonance: 'QuantumNexus + ClarusLens + Noosphere',
+      safety_warning:  '⚠️ PIEZOELECTRIC — keep away from hard drives and sensitive electronics. Safe for water. H7 — durable. No toxic elements. Safe for all uses including children.',
     },
   },
 
