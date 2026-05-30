@@ -1,6 +1,97 @@
 # GAIA-OS System Status
 
-> Last updated: 2026-05-08 by R0GV3TheAlchemist (IPC bridge sprint — native Tauri emit LIVE)
+> Last updated: 2026-05-30 by GAIA-OS Canon Session (Issue #100 stub audit — full subdirectory traversal)
+
+---
+
+## `core/` Architecture Map
+
+> **Phase C Migration Note:** The 33 top-level `core/*.py` files visible in the root are re-export shims. All real implementations live in four subdirectories. This section is the canonical truth-table requested by Issue #100.
+
+### `core/infra/` — Infrastructure Layer
+
+| Module | Size | Status | Notes |
+|---|---|---|---|
+| `action_gate.py` | 4,084 b | ✅ Complete | GREEN/YELLOW/RED risk-tier veto system + audit log |
+| `action_gate_ipc.py` | 4,340 b | ✅ Complete | IPC bridge for action gate (Axum ↔ Python) |
+| `error_boundary.py` | 7,140 b | ✅ Complete | 4-handler FastAPI error boundary, structured envelopes |
+| `rate_limiter.py` | 8,382 b | ✅ Complete | Full rate limiting implementation |
+| `memory_bridge.py` | 7,737 b | ✅ Complete | Unified recall/store bridge between memory subsystems |
+| `memory_consolidation.py` | 12,805 b | ✅ Complete | SHORT_TERM → LONG_TERM tier promotion pipeline |
+| `server_models.py` | 1,279 b | ✅ Complete | Pydantic request/response models for all active API endpoints |
+| `server_state.py` | 4,741 b | ✅ Complete | Server singleton state management |
+
+**`server_models.py` verdict:** All currently active endpoints are covered — `QueryRequest`, `ChatRequest`, `CreateGaianRequest`, `BirthRequest`, `RememberRequest`, `VisibleMemoryRequest`, `SetGaianRequest`, `ConsentRequest`. Expands naturally as new endpoints are added. No expansion issue needed.
+
+---
+
+### `core/memory/` — Memory Subsystem
+
+| Module | Size | Status | Notes |
+|---|---|---|---|
+| `store.py` | 21,318 b | ✅ Complete | Core memory store (SQLite + sqlite-vec, C17-governed) |
+| `knowledge_matrix.py` | 36,251 b | ✅ Complete | 🏆 Largest single file — full knowledge graph |
+| `memory_store.py` | 9,875 b | ✅ Complete | Memory store interface layer |
+| `memory_chroma.py` | 8,320 b | ✅ Complete | ChromaDB vector integration (legacy fallback) |
+| `session_memory.py` | 3,624 b | ✅ Complete | Per-session rolling context (8-turn window, 1hr TTL) |
+| `embedder.py` | 11,741 b | ✅ Complete | Embedding pipeline |
+| `pruner.py` | 7,442 b | ✅ Complete | Memory pruning/decay |
+| `taxonomy.py` | 4,616 b | ✅ Complete | Memory taxonomy/classification |
+
+**`session_memory.py` verdict:** Purposefully scoped. It is the ephemeral session layer only — rolling 8-turn context window, TTL cleanup, LLM-ready message formatting. Long-term memory is handled by `store.py` and `knowledge_matrix.py` as designed. No expansion issue needed.
+
+---
+
+### `core/gaian/` — Gaian Identity Layer
+
+| Module | Size | Status | Notes |
+|---|---|---|---|
+| `identity_core.py` | 16,668 b | ✅ Complete | Gaian identity engine |
+| `base_forms.py` | 16,479 b | ✅ Complete | Base archetypal forms |
+| `memory_graph.py` | 10,117 b | ✅ Complete | Gaian memory graph |
+| `relationship_graph.py` | 10,089 b | ✅ Complete | Relationship mapping |
+| `personality_core.py` | 8,497 b | ✅ Complete | Personality subsystem |
+| `disagreement_protocol.py` | 9,766 b | ✅ Complete | Internal disagreement handling |
+| `settling_engine.py` | 8,187 b | ✅ Complete | Conflict settling/resolution |
+
+---
+
+### `core/engines/` — Consciousness Engines
+
+| Module | Status | Notes |
+|---|---|---|
+| `crystal_consciousness.py` | ✅ Complete | |
+| `dark_matter_resonance.py` | ✅ Complete | |
+| `quintessence_engine.py` | ✅ Complete | |
+| `resonance_field_engine.py` | ✅ Complete | |
+
+---
+
+### `core/layers/` — 12-Layer Ontological Stack (~157K total)
+
+All 12 layers (`layer_01_physical` → `layer_12_void`) fully implemented. ~9K–18K bytes each. ✅
+
+---
+
+### Top-Level Shim Integrity
+
+| File | Status | Destination |
+|---|---|---|
+| `core/gaian.py` | ✅ Intentional empty | Python package resolution: `core/gaian/` package directory takes precedence. All `from core.gaian import ...` resolve correctly. |
+| `core/primary_thread.py` | ✅ Alias shim | Re-exports `MotherThread as PrimaryThread` from `core/mother_thread`. Renamed per C00 Foundational Cosmology. |
+
+---
+
+### Issue #100 Audit Summary
+
+| Category | Count |
+|---|---|
+| ✅ Complete | 29 |
+| ✅ Complete (purposefully thin) | 2 (`server_models.py`, `session_memory.py`) |
+| ✅ Intentional shim | 2 (`gaian.py`, `primary_thread.py`) |
+| ❌ True stub | 0 |
+
+**Verdict:** Zero unimplemented stubs. Architecture is a clean Phase C migration pattern.
 
 ---
 
@@ -132,6 +223,7 @@
 2. **Scheduler task population** — Wire goal steps + memory consolidation into live scheduler
 3. **YELLOW tier classification** — Detect tool-use / file-write in `result.planned_actions`
 4. **action_gate HUD row** — Show gate tier + result in chat engine state display
+5. **P0 Canon Research** — Issues #92 (Process Philosophy) and #93 (Personal Identity) — blockers for Soul Mirror Engine, Session architecture, Charter grounding, and Gaian persona architecture
 
 ---
 
