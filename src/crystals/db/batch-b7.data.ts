@@ -3,25 +3,20 @@
  * GAIA-OS Crystal Database — Batch B-7
  *
  * Entries:
- *   1. Boji Stones (Kansas Pop Rocks)      — trademarked pyrite/marcasite concretions
- *   2. Bornite (Peacock Ore)               — Cu₅FeS₄, iridescent copper sulphide
- *   3. Botallackite                        — rare secondary copper hydroxychloride
- *   4. Botswana Agate                      — banded agate, Kaollong Formation, Botswana
- *   5. Brandberg Amethyst                  — phantom quartz from Brandberg massif, Namibia
+ *   1. Botallackite                        — rare secondary copper hydroxychloride
+ *   2. Botswana Agate                      — banded agate, Kaollong Formation, Botswana
+ *   3. Brandberg Amethyst                  — phantom quartz from Brandberg massif, Namibia
+ *   4. Brazilianite                        — rare yellow-green phosphate gemstone
+ *   5. Bronzite                            — enstatite variety with schiller effect
  *
  * Schema: CrystalRecord v1.3
  * Author: GAIA-OS Crystal Intelligence Engine
  * Date:   2026-05-29
  *
- * NOTE: A batch of extraordinary geographic and mineralogical range.
- * Boji Stones and Bornite carry over from the B-6 list as confirmed entries.
- * Botallackite is one of the rarest secondary copper minerals — named after
- * the historic Botallack Mine in Cornwall, England. Botswana Agate is
- * arguably the finest banded agate in the world — its parallel banding and
- * warm palette are unmatched. Brandberg Amethyst from Namibia is one of the
- * most metaphysically revered quartzes on Earth — the combination of amethyst,
- * smoky quartz, and phantom inclusions in a single crystal from a single
- * sacred locality (Brandberg Mountain) makes it irreplaceable.
+ * NOTE: Botallackite, Botswana Agate, and Brandberg Amethyst carried over from
+ * original B-7 list after deduplication correction (Boji Stones and Bornite
+ * correctly remain in B-6). Brazilianite and Bronzite added to complete to 5.
+ * Bustamite deferred to B-8 as first entry.
  */
 
 import type { CrystalRecord } from './crystal.schema';
@@ -29,249 +24,7 @@ import type { CrystalRecord } from './crystal.schema';
 const BATCH_B7: CrystalRecord[] = [
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 1. BOJI STONES (KANSAS POP ROCKS)
-  // Pyrite/marcasite concretions — Smoky Hill Chalk, Niobrara Formation, Kansas
-  // LEGALLY TRADEMARKED — important consumer disclosure
-  // ─────────────────────────────────────────────────────────────────────────
-  {
-    name:        'Boji Stones',
-    mindat_id:   3314,
-    rruff_ids:   ['R050209'],
-    last_synced: '2026-05-29T00:00:00Z',
-    trade_name:  true,
-    color_layer: 'natural',
-    yin_yang_pair: 'Shungite',
-
-    physical: {
-      id:           3314,
-      longid:       'boji-stones',
-      guid:         '',
-      name:         'Pyrite / Marcasite concretion ("Boji Stones" — trademarked; Kansas Pop Rocks)',
-      ima_formula:  'FeS₂',
-      mindat_formula: 'FeS2',
-      ima_status:   'A',
-      ima_year:     1845,
-      strunzten:    '2.EB.05a',
-      dana8ed:      '2.12.1.1',
-      crystal_system: 'Cubic (pyrite) / Orthorhombic (marcasite)',
-      hardness_min: 6,
-      hardness_max: 6.5,
-      specific_gravity_min: 4.90,
-      specific_gravity_max: 5.20,
-      cleavage:    'Indistinct on {100} (pyrite); poor on {110} (marcasite)',
-      fracture:    'Conchoidal to uneven',
-      tenacity:    'Brittle',
-      luster:      ['Metallic', 'Sub-metallic'],
-      diaphaneity: ['Opaque'],
-      colour:      'Pale brass-yellow to dark brown-grey — smooth ("female") and rough/protuberance-covered ("male") forms',
-      streak:      'Black to dark brown',
-      fluorescence: 'None',
-      ri_min:      null,
-      ri_max:      null,
-      birefringence: null,
-      optical_type: null,
-      shortdesc:   'Boji Stones — LEGALLY TRADEMARKED name for pyrite/marcasite-dominant concretions from the Smoky Hill Chalk Member, Niobrara Formation, Kansas, USA. Sold as smooth ("female") and rough/spiky ("male") pairs. Generic term: "Kansas Pop Rocks" or septarian concretion.',
-      updttime:    '2026-05-29T00:00:00Z',
-      mindat_url:  'https://www.mindat.org/min-3314.html',
-      piezoelectric:    false,
-      safe_for_water:   false,
-      safe_for_hardware: false,
-    },
-
-    optical: {
-      mineral_name:     'Boji Stones (Pyrite/Marcasite concretion)',
-      refractive_index: null,
-      birefringence:    null,
-      optical_sign:     null,
-      dispersion:       null,
-      pleochroism:      null,
-      fluorescence_lw:  'None',
-      fluorescence_sw:  'None',
-      phosphorescence:  null,
-      visible_wavelength_nm: null,
-      spectra: ['R050209'],
-    },
-
-    color: {
-      primary_color:          'Pale brass to dark brown-grey — metallic, earthy, ancient',
-      color_variants:         [
-        'Smooth pale brass-tan ("female" — smooth surface)',
-        'Rough dark grey-brown with crystalline protuberances ("male" — spiky surface)',
-        'Partially oxidised with iridescent tarnish',
-        'Dark metallic with visible golden pyrite crystal faces',
-      ],
-      dominant_wavelength_nm: null,
-      oklch:   { l: 0.35, c: 0.05, h: 70 },
-      hex:     '#6b5e3a',
-      munsell: '2.5Y 4/2',
-      color_temperature_k:    null,
-      psychological_effects:  [
-        'The weight-to-size ratio (SG 4.9–5.2) creates immediate surprise — far heavier than expected for a palm stone',
-        'The smooth/rough pair dynamic creates a tangible sense of complementarity — two opposites, one unified system',
-        'The metallic, ancient appearance suggests deep geological time and alchemical transformation',
-        'Holding both simultaneously, one in each hand, creates a grounding bilateral circuit',
-        'The unpolished, raw surface communicates authenticity — this stone makes no attempt at prettiness',
-      ],
-      harmonics: {
-        complementary_hue: null,
-        triadic_hues:      null,
-        analogous_range:   null,
-      },
-    },
-
-    metaphysical: {
-      mineral_name:     'Boji Stones',
-      chakra_primary:   'Root',
-      chakra_secondary: ['Earth Star', 'Sacral', 'Solar Plexus'],
-      element:   ['Earth', 'Storm', 'Fire'],
-      planet:    ['Saturn', 'Mars', 'Earth'],
-      archetype: ['The Alchemical Pair', 'The Ancient Earth', 'The Balancer of Opposites'],
-      zodiac:    ['Scorpio', 'Aquarius', 'Taurus'],
-      numerology: 2,
-      angel_number: 222,
-      intention: 'I balance the masculine and feminine within me. I am anchored to the Earth\'s deepest wisdom.',
-      traditions: [
-        'Modern Western crystal healing — the paired male/female stone system is the core of Boji Stone tradition',
-        'Kansas, USA origin — Smoky Hill Chalk Member, Niobrara Formation; Late Cretaceous (~87 Ma)',
-        '"Boji Stone" trademarked in the 1980s by Karen Gillespie; generic equivalents: "Kansas Pop Rocks", "Shaman Stones"',
-      ],
-      properties: [
-        '⚠️ LEGALLY TRADEMARKED — "Boji Stone" is a registered trademark; authentic specimens come from one Kansas locality',
-        'Composed primarily of pyrite and/or marcasite formed as concretions in Late Cretaceous chalk',
-        'Sold in smooth ("female") / rough ("male") pairs — rough surface features are pyrite crystal clusters',
-        'Exceptionally heavy for size — SG 4.9–5.2; the weight is the first lesson',
-        'Supply is finite — the formation is protected and eroding specimens are collected under permit',
-        'Do NOT use in water — pyrite + water produces sulphuric acid (pyrite disease)',
-      ],
-      gaia_resonance: 'AnchoredRoot + SovereignCore',
-      safety_warning: '⚠️ DO NOT USE IN WATER — pyrite/marcasite oxidise in water producing sulphuric acid. Damages the stone and produces a toxic acid solution. Keep dry. No elixirs. Metallic/conductive — keep from electronics.',
-    },
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 2. BORNITE (PEACOCK ORE)
-  // Copper iron sulphide Cu₅FeS₄ — thin-film interference peacock tarnish
-  // Named after Ignaz von Born (1742–1791) — alchemical cauda pavonis
-  // ─────────────────────────────────────────────────────────────────────────
-  {
-    name:        'Bornite',
-    mindat_id:   762,
-    rruff_ids:   ['R060018'],
-    last_synced: '2026-05-29T00:00:00Z',
-    trade_name:  false,
-    color_layer: 'natural',
-    yin_yang_pair: 'Chalcopyrite',
-
-    physical: {
-      id:           762,
-      longid:       'bornite',
-      guid:         '',
-      name:         'Bornite',
-      ima_formula:  'Cu₅FeS₄',
-      mindat_formula: 'Cu5FeS4',
-      ima_status:   'A',
-      ima_year:     1845,
-      strunzten:    '2.BA.15',
-      dana8ed:      '2.9.1.1',
-      crystal_system: 'Orthorhombic (low-T) / Cubic (high-T)',
-      hardness_min: 3,
-      hardness_max: 3,
-      specific_gravity_min: 4.90,
-      specific_gravity_max: 5.30,
-      cleavage:    'Poor on {111}',
-      fracture:    'Conchoidal to uneven',
-      tenacity:    'Brittle',
-      luster:      ['Metallic'],
-      diaphaneity: ['Opaque'],
-      colour:      'Fresh: copper-red to bronze. Tarnished: vivid iridescent purple/blue/red/green/yellow ("peacock") from thin-film interference',
-      streak:      'Greyish black',
-      fluorescence: 'None',
-      ri_min:      null,
-      ri_max:      null,
-      birefringence: null,
-      optical_type: null,
-      shortdesc:   'Bornite — Cu₅FeS₄, copper iron sulphide. Important copper ore. Named after Ignaz von Born (1742–1791). Iridescent peacock tarnish via thin-film interference. ⚠️ Acid-treated chalcopyrite is widely mislabelled as Bornite / Peacock Ore.',
-      updttime:    '2026-05-29T00:00:00Z',
-      mindat_url:  'https://www.mindat.org/min-762.html',
-      piezoelectric:    false,
-      safe_for_water:   false,
-      safe_for_hardware: false,
-    },
-
-    optical: {
-      mineral_name:    'Bornite',
-      refractive_index: null,
-      birefringence:   null,
-      optical_sign:    null,
-      dispersion:      null,
-      pleochroism:     'Weak in polished section (anisotropic, low-T orthorhombic form)',
-      fluorescence_lw: 'None',
-      fluorescence_sw: 'None',
-      phosphorescence: null,
-      visible_wavelength_nm: null,
-      spectra: ['R060018'],
-    },
-
-    color: {
-      primary_color:          'Iridescent peacock — purple, blue, red, green, yellow over bronze-copper base',
-      color_variants:         [
-        'Full peacock iridescence — all spectral colours in the tarnish film',
-        'Fresh copper-red / bronze (unoxidised, freshly broken surface)',
-        'Purple-dominant tarnish (most common)',
-        'Blue-green dominant tarnish',
-        'Garish uniform artificial iridescence (acid-treated chalcopyrite fraud)',
-      ],
-      dominant_wavelength_nm: null,
-      oklch:   { l: 0.35, c: 0.20, h: 310 },
-      hex:     '#7a4b8a',
-      munsell: '5P 4/6',
-      color_temperature_k:    null,
-      psychological_effects:  [
-        'One of the most visually spectacular effects in the mineral kingdom — a single stone contains the entire visible spectrum',
-        'Shifting colours at different viewing angles create infinite depth and a sense of living transformation',
-        'The contrast between humble copper-bronze base and spectacular tarnish is the fundamental alchemical teaching',
-        'Peacock symbolism — the full display of the authentic self — resonates across Hindu, Greek, and Western traditions',
-        'Knowing the rainbow is physics without pigment (thin-film interference) deepens rather than diminishes the wonder',
-      ],
-      harmonics: {
-        complementary_hue: 130,
-        triadic_hues:      [70, 190],
-        analogous_range:   [290, 330],
-      },
-    },
-
-    metaphysical: {
-      mineral_name:     'Bornite',
-      chakra_primary:   'Solar Plexus',
-      chakra_secondary: ['Sacral', 'Crown', 'All chakras (full-spectrum iridescence)'],
-      element:   ['Fire', 'Earth', 'Storm'],
-      planet:    ['Venus', 'Sun', 'Uranus'],
-      archetype: ['The Peacock', 'The Alchemist', 'The Full Spectrum Self'],
-      zodiac:    ['Cancer', 'Leo', 'Taurus'],
-      numerology: 8,
-      angel_number: 888,
-      intention: 'I display the full spectrum of my authentic self without apology or diminishment.',
-      traditions: [
-        'Western crystal healing — Peacock Ore as joy, happiness, and authentic self-display',
-        'Named after Ignaz von Born (1742–1791), Austrian mineralogist and Freemason',
-        'Copper = Venus principle across Egyptian, Roman, Greek, and Ayurvedic traditions',
-        'Alchemy — cauda pavonis (peacock\'s tail) marks the critical iridescent stage of the Great Work between nigredo and albedo',
-      ],
-      properties: [
-        'IMA-recognised 1845 — formula Cu₅FeS₄',
-        'Iridescent tarnish = thin-film interference; copper sulphate/carbonate layers of varying thickness produce structural colour',
-        '⚠️ FRAUD ALERT: acid-treated chalcopyrite (CuFeS₂) widely sold as Peacock Ore / Bornite — the fake has more garish, uniform colour; natural bornite tarnish is subtler and graduated',
-        'Alchemical cauda pavonis — rainbow iridescence signals transition between nigredo (blackening) and albedo (whitening)',
-        'Soft H3, heavy SG 4.9–5.3 — scratches easily; store separately',
-        'Copper sulphide — TOXIC in elixirs; DO NOT use in water',
-      ],
-      gaia_resonance: 'QuantumNexus + SovereignCore + ViriditasHeart',
-      safety_warning: '⚠️ TOXIC — copper iron sulphide. DO NOT use in water elixirs or gem water. Copper compounds toxic if ingested. Avoid prolonged skin contact with wet specimens. Metallic/conductive — keep from electronics. H3 — scratches easily.',
-    },
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 3. BOTALLACKITE
+  // 1. BOTALLACKITE
   // Rare secondary copper(II) hydroxychloride — named after Botallack Mine, Cornwall
   // One of the rarest and most geographically specific named minerals in crystal healing
   // ─────────────────────────────────────────────────────────────────────────
@@ -385,7 +138,7 @@ const BATCH_B7: CrystalRecord[] = [
         'Forms as a secondary mineral on oxidised copper ore surfaces in coastal / near-marine environments where chloride ions are abundant (sea spray, marine sediments)',
         'Named for one of the most romantically situated mines in England — Botallack\'s engine houses perch on granite cliffs above the Atlantic, its tunnels extending under the seabed',
         'Also found: Chile (Atacama Desert — same Cu chloride chemistry, different aridity context), Namibia, Australia, New South Wales',
-        'Collectors\'  note: botallackite is metastable and may slowly convert to atacamite or clinoatacamite over time; keep dry and stable',
+        'Collectors\' note: botallackite is metastable and may slowly convert to atacamite or clinoatacamite over time; keep dry and stable',
         'Soft (H3) — handle gently; do not tumble. Copper content — TOXIC in elixirs.',
       ],
       gaia_resonance: 'ClarusLens + ViriditasHeart',
@@ -394,7 +147,7 @@ const BATCH_B7: CrystalRecord[] = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 4. BOTSWANA AGATE
+  // 2. BOTSWANA AGATE
   // Banded chalcedony — Kaollong Formation, Botswana — arguably the world's
   // finest banded agate for its parallel banding precision and warm palette
   // ─────────────────────────────────────────────────────────────────────────
@@ -473,11 +226,11 @@ const BATCH_B7: CrystalRecord[] = [
       munsell: '5YR 8/3',
       color_temperature_k:    null,
       psychological_effects:  [
-        'The warm peachy-pink palette is one of the most universally soothing colour combinations in the mineral kingdom — simultaneously stimulating and calming',
-        'The precision of the parallel banding — millimetre-perfect concentric rings — creates a profound sense of natural order and the reliability of pattern',
-        'Each band represents a discrete silica deposition event — time made visible in a way that invites reflection on patience and incremental growth',
-        'The translucency with backlight creates an inner glow that makes the stone feel like it is lit from within',
-        'The warm, maternal palette psychologically registers as safe, nourishing, and stabilising — the opposite of threatening',
+        'The warm peachy-pink palette is one of the most universally soothing colour combinations in the mineral kingdom',
+        'The precision of the parallel banding — millimetre-perfect concentric rings — creates a profound sense of natural order',
+        'Each band represents a discrete silica deposition event — time made visible in a way that invites reflection on patience',
+        'The translucency with backlight creates an inner glow that makes the stone feel lit from within',
+        'The warm, maternal palette psychologically registers as safe, nourishing, and stabilising',
       ],
       harmonics: {
         complementary_hue: 210,
@@ -501,29 +254,25 @@ const BATCH_B7: CrystalRecord[] = [
         'Western crystal healing — Botswana Agate as the premier comfort and stability stone',
         'African origin — Botswana, southern Africa; the Kaollong Formation yields the world\'s largest, finest banded agate nodules',
         'Agate tradition reaching back to ancient Mesopotamia, Egypt, and Rome — used in seals, amulets, and jewellery since at least 3000 BCE',
-        'The name references both the stone type (agate) and the country of origin (Botswana) — one of the clearest geographic crystal names',
       ],
       properties: [
-        'Trade name: "Botswana Agate" — specific to banded chalcedony nodules from the Kaollong Formation, Botswana, southern Africa',
-        'Botswana is the world\'s primary source of premium banded agate — the formation yields nodules up to 30cm+ in diameter with exceptional banding regularity',
-        'Banding forms by periodic silica gel deposition in vugs (cavities) in basalt — each band = one deposition event; banding reflects changes in silica concentration, trace elements, and fluid chemistry over geological time',
-        'The warm pink/apricot palette comes from trace iron oxides (haematite, goethite) distributed differentially between bands',
-        'Some bands fluoresce pale green or white under LW UV — useful for identifying natural specimens vs. dyed material',
-        'H6.5–7, tough, conchoidal fracture — one of the most durable crystals for everyday use and jewellery',
-        'Piezoelectric as all quartz-group minerals — keep away from hard drives and sensitive electronics',
-        'Botswana is the October birthstone zodiac stone for Scorpio in many modern traditions',
-        'Yin pair with Blue Lace Agate: warm/cool, earth/sky, grounding/elevating — the two most beloved agates in crystal healing',
+        'Trade name: "Botswana Agate" — specific to banded chalcedony nodules from the Kaollong Formation, Botswana',
+        'World\'s primary source of premium banded agate — nodules up to 30cm+ in diameter with exceptional banding regularity',
+        'Each band = one silica deposition event; banding reflects changes in silica concentration, trace elements, and fluid chemistry over geological time',
+        'Warm pink/apricot palette from trace iron oxides (haematite, goethite) distributed differentially between bands',
+        'Some bands fluoresce pale green or white under LW UV — useful for identifying natural vs. dyed material',
+        'H6.5–7 — one of the most durable crystals for everyday use and jewellery',
+        'Piezoelectric — keep away from hard drives and sensitive electronics',
       ],
       gaia_resonance: 'AnchoredRoot + ViriditasHeart',
-      safety_warning: '⚠️ PIEZOELECTRIC — keep away from hard drives and sensitive electronics. Safe for water. Durable for everyday use. Dyed specimens exist in the market — natural Botswana Agate has warm, subtle tones; dyed material has unnaturally vivid pinks, purples, or blues.',
+      safety_warning: '⚠️ PIEZOELECTRIC — keep away from hard drives and sensitive electronics. Safe for water. Dyed specimens exist — natural Botswana Agate has warm, subtle tones; dyed material has unnaturally vivid pinks, purples, or blues.',
     },
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 5. BRANDBERG AMETHYST
+  // 3. BRANDBERG AMETHYST
   // Phantom quartz from Brandberg Mountain, Namibia
-  // The single most metaphysically revered quartz locality on Earth
-  // Amethyst + smoky + phantom inclusions + enhydros — all in one crystal
+  // Amethyst + smoky + phantom + enhydro — all in one crystal
   // ─────────────────────────────────────────────────────────────────────────
   {
     name:        'Brandberg Amethyst',
@@ -555,14 +304,14 @@ const BATCH_B7: CrystalRecord[] = [
       tenacity:    'Brittle',
       luster:      ['Vitreous'],
       diaphaneity: ['Transparent', 'Translucent'],
-      colour:      'Complex: zones of amethyst purple, smoky grey-brown, clear/colourless, often with phantoms (earlier growth stages visible as ghost crystals within), enhydros (water inclusions), and lepidocrocite (red/orange inclusions). No two are identical.',
+      colour:      'Complex: zones of amethyst purple, smoky grey-brown, clear/colourless, phantoms, enhydros, and lepidocrocite (red/orange) inclusions. No two are identical.',
       streak:      'White',
       fluorescence: 'None to very weak blue-white under LW UV',
       ri_min:      1.544,
       ri_max:      1.553,
       birefringence: 0.009,
       optical_type: 'U',
-      shortdesc:   'Brandberg Amethyst — quartz from Brandberg Mountain (Königstein), Erongo Region, Namibia. Combines amethyst (Fe³⁺ colour centres), smoky quartz (irradiation colour centres), phantoms, enhydros, and other inclusions in a single crystal. The most complex and revered quartz locality on Earth. Each crystal is unique.',
+      shortdesc:   'Brandberg Amethyst — quartz from Brandberg Mountain (Königstein), Erongo Region, Namibia. Combines amethyst, smoky quartz, phantom layers, enhydros, and other inclusions in a single crystal. The most complex and revered quartz locality on Earth. Each crystal is unique.',
       updttime:    '2026-05-29T00:00:00Z',
       mindat_url:  'https://www.mindat.org/min-3337.html',
       piezoelectric:    true,
@@ -589,11 +338,10 @@ const BATCH_B7: CrystalRecord[] = [
       color_variants:         [
         'Amethyst-dominant with smoky phantom interior',
         'Smoky-dominant with amethyst tip zone',
-        'Clear with multiple phantom layers (successive growth stages)',
+        'Clear with multiple phantom layers',
         'Amethyst with red/orange lepidocrocite inclusions (rare, highly prized)',
-        'Enhydro — water bubble trapped in a cavity visible through the crystal',
-        'Window crystal — flat faces on the side of the prism showing interior phantom structure',
-        'Fully clear with deep phantom interior (subtle but profound)',
+        'Enhydro — water bubble trapped in visible cavity',
+        'Window crystal — flat side faces revealing interior phantom structure',
       ],
       dominant_wavelength_nm: 405,
       oklch:   { l: 0.48, c: 0.14, h: 315 },
@@ -601,11 +349,11 @@ const BATCH_B7: CrystalRecord[] = [
       munsell: '5P 5/6',
       color_temperature_k:    null,
       psychological_effects:  [
-        'The phantom layers — ghost crystals within the crystal — create a layered, archaeological sense of time and personal history',
-        'The combination of amethyst purple and smoky grey in a single crystal produces an integrated sense of spiritual clarity and grounded wisdom simultaneously',
-        'The knowledge that each crystal is unique to a single mountain in Namibia creates profound specificity — this is not a generic crystal, it is from HERE',
-        'Enhydros (ancient water inclusions) invoke the most primal connection to the water of deep geological time — the primordial ocean',
-        'The Brandberg Mountain itself is Africa\'s largest intrusive granite massif, home to the world\'s most ancient rock paintings — the crystal carries that cultural weight',
+        'Phantom layers — ghost crystals within the crystal — create a layered, archaeological sense of time and personal history',
+        'Amethyst purple + smoky grey in one crystal produces integrated spiritual clarity and grounded wisdom simultaneously',
+        'Each crystal is unique to a single mountain in Namibia — profound specificity that no other quartz locality offers',
+        'Enhydros invoke the most primal connection to ancient geological water — the primordial ocean',
+        'Brandberg Mountain carries 50,000+ ancient San rock paintings — the crystal holds that cultural weight',
       ],
       harmonics: {
         complementary_hue: 135,
@@ -627,24 +375,272 @@ const BATCH_B7: CrystalRecord[] = [
       intention: 'I carry the full spectrum of my becoming within me — every stage, every shadow, every light. I am complete.',
       traditions: [
         'Namibian origin — Brandberg Mountain (Königstein), Erongo Region, Namibia; Africa\'s largest intrusive granite massif, 2573m',
-        'The Brandberg is a UNESCO World Heritage Site candidate and home to over 50,000 ancient rock paintings including the famous "White Lady" painting (~2000 years old)',
-        'San (Bushmen) tradition — the Brandberg is a sacred mountain (Dâures in Damara/Nama language); the crystals are considered to carry the mountain\'s consciousness',
-        'Modern Western crystal healing — Brandberg Amethyst is widely regarded as the highest-vibration quartz on Earth by the crystal healing community',
-        'Piezoelectric tradition — all quartz crystals share the physical property of generating voltage under pressure; the Brandberg variety is valued for its complexity of layers',
+        'UNESCO World Heritage Site candidate — home to over 50,000 ancient San rock paintings including the "White Lady" (~2000 years old)',
+        'San (Bushmen) tradition — the Brandberg (Dâures in Damara/Nama) is a sacred mountain; crystals carry the mountain\'s consciousness',
+        'Modern Western crystal healing — widely regarded as the highest-vibration quartz on Earth',
       ],
       properties: [
         'Trade name: "Brandberg Amethyst" — specific to quartz from Brandberg Mountain (Königstein), Erongo Region, Namibia',
-        'The combination of multiple quartz varieties in a single crystal is the defining characteristic: amethyst (Fe³⁺ colour centres) + smoky quartz (irradiation-created colour centres) + phantom layers (earlier growth stages) + enhydros (ancient water inclusions) + optional lepidocrocite (FeO(OH)) inclusions',
-        'Phantoms form when crystal growth pauses, a different mineral coats the crystal face, then quartz growth resumes — encapsulating the earlier form as a "ghost" visible within',
-        'Enhydros are genuine ancient water inclusions — some may be millions of years old — visible as a moving bubble within a cavity',
-        'Lepidocrocite inclusions give some specimens orange/red internal colouring — these are the most prized and expensive Brandberg specimens',
-        'Brandberg Mountain is Africa\'s largest intrusive granite massif (2573m / 8442ft) — the magmatic complexity of the intrusion created the extraordinarily varied mineralogy of the quartz deposits',
-        'No two Brandberg crystals are identical — the variation of phantom, colour zone, inclusion type, and habit is effectively infinite',
-        'Piezoelectric — all quartz; keep away from hard drives and sensitive electronics',
-        'H7, tough, conchoidal fracture — durable for meditation and display; handle terminations with care',
+        'Unique combination: amethyst (Fe³⁺ colour centres) + smoky quartz (irradiation colour centres) + phantom layers + enhydros + optional lepidocrocite inclusions',
+        'Phantoms form when crystal growth pauses, a coating forms, then growth resumes — encapsulating the earlier form as a visible "ghost"',
+        'Enhydros are genuine ancient water inclusions — visible as a moving bubble — some potentially millions of years old',
+        'Brandberg Mountain — Africa\'s largest intrusive granite massif (2573m) — magmatic complexity created extraordinarily varied quartz mineralogy',
+        'No two Brandberg crystals are identical — variation of phantom, colour zone, inclusion type, and habit is effectively infinite',
+        'Piezoelectric — keep away from hard drives and sensitive electronics',
+        'H7 — durable for meditation and display; protect terminations',
       ],
       gaia_resonance: 'QuantumNexus + ClarusLens + AnchoredRoot + Noosphere + ViriditasHeart + SovereignCore',
-      safety_warning: '⚠️ PIEZOELECTRIC — keep away from hard drives and sensitive electronics. Safe for water. H7 — durable but protect terminations. Phantom layers may create unexpected emotional resonance in sensitive practitioners — approach with grounded intention. Enhydros: do not subject to rapid temperature changes.',
+      safety_warning: '⚠️ PIEZOELECTRIC — keep away from hard drives and sensitive electronics. Safe for water. H7 — protect terminations. Enhydros: avoid rapid temperature changes. Phantom layers may create unexpected emotional resonance in sensitive practitioners — approach with grounded intention.',
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 4. BRAZILIANITE
+  // Rare yellow-green phosphate gem — NaAl₃(PO₄)₂(OH)₄
+  // Named for Brazil, its only significant locality
+  // IMA-recognised 1945 — discovered accidentally during WWII
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    name:        'Brazilianite',
+    mindat_id:   790,
+    rruff_ids:   ['R060518'],
+    last_synced: '2026-05-29T00:00:00Z',
+    trade_name:  false,
+    color_layer: 'natural',
+    yin_yang_pair: 'Peridot',
+
+    physical: {
+      id:           790,
+      longid:       'brazilianite',
+      guid:         '',
+      name:         'Brazilianite',
+      ima_formula:  'NaAl₃(PO₄)₂(OH)₄',
+      mindat_formula: 'NaAl3(PO4)2(OH)4',
+      ima_status:   'A',
+      ima_year:     1945,
+      strunzten:    '8.BH.10',
+      dana8ed:      '42.9.1.1',
+      crystal_system: 'Monoclinic',
+      hardness_min: 5.5,
+      hardness_max: 5.5,
+      specific_gravity_min: 2.94,
+      specific_gravity_max: 2.99,
+      cleavage:    'Good on {010}, fair on {110}',
+      fracture:    'Conchoidal',
+      tenacity:    'Brittle',
+      luster:      ['Vitreous'],
+      diaphaneity: ['Transparent', 'Translucent'],
+      colour:      'Chartreuse yellow-green to pale yellow — the colour of fresh spring growth; a clean, bright, acid-free yellow-green unique among phosphate gemstones',
+      streak:      'White',
+      fluorescence: 'None',
+      ri_min:      1.602,
+      ri_max:      1.621,
+      birefringence: 0.019,
+      optical_type: 'B',
+      shortdesc:   'Brazilianite — NaAl₃(PO₄)₂(OH)₄, rare sodium aluminium phosphate. Named for Brazil (type locality: Conselheiro Pena, Minas Gerais). IMA 1945. One of the few phosphate minerals used as a faceted gemstone. Vivid chartreuse yellow-green colour.',
+      updttime:    '2026-05-29T00:00:00Z',
+      mindat_url:  'https://www.mindat.org/min-790.html',
+      piezoelectric:    false,
+      safe_for_water:   true,
+      safe_for_hardware: false,
+    },
+
+    optical: {
+      mineral_name:    'Brazilianite',
+      refractive_index: { n_alpha: 1.602, n_beta: 1.609, n_gamma: 1.621 },
+      birefringence:   0.019,
+      optical_sign:    '+',
+      dispersion:      '0.014',
+      pleochroism:     'Weak: colourless / pale yellow / pale yellow-green',
+      fluorescence_lw: 'None',
+      fluorescence_sw: 'None',
+      phosphorescence: null,
+      visible_wavelength_nm: { min: 550, max: 580 },
+      spectra: ['R060518'],
+    },
+
+    color: {
+      primary_color:          'Chartreuse yellow-green — vivid, clean, spring-growth yellow-green',
+      color_variants:         [
+        'Classic chartreuse yellow-green (most typical)',
+        'Pale lemon yellow (lower colour saturation)',
+        'Deeper yellow-green approaching peridot territory',
+        'Near-colourless (rare, heavily included specimens)',
+      ],
+      dominant_wavelength_nm: 565,
+      oklch:   { l: 0.78, c: 0.18, h: 115 },
+      hex:     '#c8d93a',
+      munsell: '5GY 8/8',
+      color_temperature_k:    null,
+      psychological_effects:  [
+        'The chartreuse yellow-green sits at the precise intersection of yellow (intellect, clarity) and green (growth, heart) — a colour of synthesised intelligence',
+        'The brightness and clarity of gem-quality crystals creates an immediate sensation of mental sharpness and fresh perspective',
+        'Rarity awareness — knowing this colour exists almost nowhere else in the mineral kingdom creates heightened attention and appreciation',
+        'The spring-leaf colour is one of the most biophilic in the mineral world — the colour of new growth after winter',
+        'Faceted brazilianite has extraordinary brilliance for a soft phosphate — the light play creates genuine delight',
+      ],
+      harmonics: {
+        complementary_hue: 295,
+        triadic_hues:      [235, 355],
+        analogous_range:   [95, 135],
+      },
+    },
+
+    metaphysical: {
+      mineral_name:     'Brazilianite',
+      chakra_primary:   'Solar Plexus',
+      chakra_secondary: ['Heart', 'Crown'],
+      element:   ['Fire', 'Air'],
+      planet:    ['Sun', 'Mercury'],
+      archetype: ['The Solar Mind', 'The Bright Intellect', 'The Spring Force'],
+      zodiac:    ['Leo', 'Gemini', 'Aries'],
+      numerology: 1,
+      angel_number: 111,
+      intention: 'My mind is a clear lens through which the light of pure intelligence shines. I am the first thought of spring.',
+      traditions: [
+        'Brazilian origin — Conselheiro Pena and Linópolis (Divino das Laranjeiras), Minas Gerais, Brazil; also New Hampshire, USA (minor)',
+        'IMA 1945 — described by Frederick H. Pough and Edward P. Henderson from Brazilian specimens sent to the American Museum of Natural History',
+        'Named after Brazil — unusually direct geographic naming for a mineral (most are named after persons)',
+        'Modern Western crystal healing — yellow-green stones used for Solar Plexus and Heart chakra integration',
+      ],
+      properties: [
+        'IMA-recognised 1945 — formula NaAl₃(PO₄)₂(OH)₄; sodium aluminium phosphate hydroxide',
+        'Named for Brazil — primary locality is Conselheiro Pena pegmatite district, Minas Gerais; one of the few minerals named for a country rather than a person',
+        'Discovered during WWII when Brazilian minerals were being systematically catalogued for strategic resources — originally mistaken for chrysoberyl or tourmaline',
+        'One of the very few phosphate minerals used as a faceted gemstone — most phosphates are too soft or poorly crystallised',
+        'H5.5 — softer than most gemstones; protect from scratching; use only in pendants/earrings rather than rings',
+        'Monoclinic crystals — elongated prismatic habit; sometimes in groups of parallel crystals forming dramatic clusters',
+        'Good cleavage on {010} — faceting requires care; collectors\' specimens should be handled gently',
+        'Safe for water — no toxic elements; clean with mild soap and water only',
+      ],
+      gaia_resonance: 'QuantumNexus + SovereignCore',
+      safety_warning: 'H5.5 — soft for a gemstone; protect from harder minerals. Good cleavage — avoid impact. Safe for water. Keep away from ultrasonic cleaners. Store separately from harder stones.',
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 5. BRONZITE
+  // Enstatite variety with schiller effect — (Mg,Fe)SiO₃
+  // Named for its bronze-like metallic schiller
+  // The "armour stone" of crystal healing tradition
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    name:        'Bronzite',
+    mindat_id:   797,
+    rruff_ids:   ['R040137'],
+    last_synced: '2026-05-29T00:00:00Z',
+    trade_name:  false,
+    color_layer: 'natural',
+    yin_yang_pair: 'Black Tourmaline',
+
+    physical: {
+      id:           797,
+      longid:       'bronzite',
+      guid:         '',
+      name:         'Bronzite (ferroan enstatite variety — schiller enstatite)',
+      ima_formula:  '(Mg,Fe)SiO₃',
+      mindat_formula: '(Mg,Fe)SiO3',
+      ima_status:   'A',
+      ima_year:     1807,
+      strunzten:    '9.DA.10',
+      dana8ed:      '65.1.1.2',
+      crystal_system: 'Orthorhombic',
+      hardness_min: 5,
+      hardness_max: 6,
+      specific_gravity_min: 3.20,
+      specific_gravity_max: 3.40,
+      cleavage:    'Good on {210}, poor on {100}',
+      fracture:    'Uneven to conchoidal',
+      tenacity:    'Brittle',
+      luster:      ['Sub-metallic', 'Metallic (schiller)', 'Pearly on cleavage'],
+      diaphaneity: ['Opaque', 'Subtranslucent'],
+      colour:      'Bronze-brown to dark brown with distinctive golden-bronze metallic sheen (schiller/aventurescence) caused by oriented hematite/goethite inclusions — like polished antique armour',
+      streak:      'Greyish white to pale brown',
+      fluorescence: 'None',
+      ri_min:      1.665,
+      ri_max:      1.688,
+      birefringence: 0.011,
+      optical_type: 'B',
+      shortdesc:   'Bronzite — (Mg,Fe)SiO₃, ferroan enstatite variety. The golden-bronze metallic schiller is caused by oriented iron oxide (hematite/goethite) inclusions. A common mineral in igneous and metamorphic rocks and in iron meteorites. Named for its bronze-like appearance.',
+      updttime:    '2026-05-29T00:00:00Z',
+      mindat_url:  'https://www.mindat.org/min-797.html',
+      piezoelectric:    false,
+      safe_for_water:   true,
+      safe_for_hardware: false,
+    },
+
+    optical: {
+      mineral_name:    'Bronzite (Enstatite variety)',
+      refractive_index: { n_alpha: 1.665, n_beta: 1.672, n_gamma: 1.688 },
+      birefringence:   0.011,
+      optical_sign:    '+',
+      dispersion:      '0.010',
+      pleochroism:     'Weak: pale yellow-brown / pale green-brown / brown',
+      fluorescence_lw: 'None',
+      fluorescence_sw: 'None',
+      phosphorescence: null,
+      visible_wavelength_nm: { min: 580, max: 620 },
+      spectra: ['R040137'],
+    },
+
+    color: {
+      primary_color:          'Bronze-brown with golden metallic schiller — the colour of antique armour',
+      color_variants:         [
+        'Classic golden-bronze schiller on warm brown matrix (most common)',
+        'Deep reddish-brown with coppery schiller',
+        'Olive-brown with subtle silver-bronze schiller',
+        'Dark chocolate-brown, high iron content, strong schiller',
+        'Pale greyish-brown (low iron, less schiller)',
+      ],
+      dominant_wavelength_nm: 595,
+      oklch:   { l: 0.38, c: 0.07, h: 65 },
+      hex:     '#7a5c2e',
+      munsell: '5YR 4/4',
+      color_temperature_k:    null,
+      psychological_effects:  [
+        'The metallic schiller creates a visual depth that draws the eye inward — the stone appears to contain its own light source',
+        'The warm bronze-brown palette is one of the most grounding colour combinations in the mineral kingdom — earthy, stable, ancient',
+        'The armour-like appearance has been consistently associated with protection across cultures that encountered it independently',
+        'The weight (SG 3.2–3.4) and density communicate solidity and reliability in the hand',
+        'The contrast between opaque matrix and flashing metallic schiller teaches the lesson of hidden brilliance',
+      ],
+      harmonics: {
+        complementary_hue: 245,
+        triadic_hues:      [185, 305],
+        analogous_range:   [45, 85],
+      },
+    },
+
+    metaphysical: {
+      mineral_name:     'Bronzite',
+      chakra_primary:   'Root',
+      chakra_secondary: ['Sacral', 'Solar Plexus'],
+      element:   ['Earth', 'Fire'],
+      planet:    ['Mars', 'Saturn'],
+      archetype: ['The Armoured Knight', 'The Protector', 'The Discerning Shield'],
+      zodiac:    ['Leo', 'Scorpio', 'Aries'],
+      numerology: 1,
+      angel_number: 111,
+      intention: 'I am armoured by my own integrity. What is not mine cannot enter; what is mine cannot be taken.',
+      traditions: [
+        'European mineralogy — named by A.G. Werner in 1807 for its bronze-like schiller effect',
+        'Found in iron meteorites (including the famous Steinbach meteorite, Germany) — connects the stone to extraterrestrial origins',
+        'Western crystal healing — "the courtesy stone" (returns negative energy with courtesy and clarity) and protection stone',
+        'Roman and Norse tradition — the schiller effect visually resembles burnished bronze armour; warriors prized such stones as amulets',
+        'Found in peridotite, dunite, and gabbro intrusions worldwide; also in chondrite and achondrite meteorites',
+      ],
+      properties: [
+        'IMA-recognised 1807 — formula (Mg,Fe)SiO₃; an iron-bearing enstatite variety (the name "bronzite" is still widely used in the trade though technically an enstatite sub-variety)',
+        'Schiller effect caused by oriented platelets of hematite and/or goethite within the enstatite matrix — thin-film and scattering effects produce the metallic bronze flash',
+        'Occurs in ultramafic igneous rocks (peridotite, pyroxenite, harzburgite) and in iron-nickel meteorites — one of the few minerals found in both terrestrial and extraterrestrial settings',
+        'Found in meteorites — the Steinbach meteorite (Germany), various pallasites and H-chondrites contain bronzite xenoliths',
+        'H5–6 — moderate hardness; suitable for tumbled stones, spheres, carvings, and pendants; less ideal for rings',
+        'India (Orissa), Austria (Styria), Norway, South Africa, Brazil, USA (Pennsylvania) — widely distributed',
+        'Safe for water — no toxic elements; clean with warm soapy water',
+        'Yin pair with Black Tourmaline: bronzite deflects/returns, tourmaline absorbs/transmutes — complementary protection modalities',
+      ],
+      gaia_resonance: 'AnchoredRoot + SovereignCore',
+      safety_warning: 'Safe for water. H5–6 — moderate hardness; keep away from harder minerals in storage. The schiller can be scratched off on cleavage surfaces — store and handle with care. No toxic elements.',
     },
   },
 
