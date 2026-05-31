@@ -13,6 +13,7 @@ Engines mounted
   /shadow   — ShadowEngine     (archetypal shadow detection, integration tracking)
   /schumann — SchumannEngine   (Earth resonance alignment layer)
   /crystal  — CrystalCore      (coherence synthesis, orb params, persona tone)
+  /persona  — PersonaStability (Oxford/Anthropic drift prevention, anchor injection)
 
 Usage (development)
 -------------------
@@ -64,6 +65,9 @@ from schumann.router import router as schumann_router, init_schumann_engine
 
 from crystal.engine import CrystalCore
 from crystal.router import router as crystal_router, init_crystal_core
+
+from persona_stability.engine import PersonaStabilityEngine
+from persona_stability.router import router as persona_router, init_persona_engine
 
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
@@ -127,8 +131,7 @@ async def lifespan(app: FastAPI):
     # ── 4. Shadow Engine ──────────────────────────────────────────────────────
     # ShadowEngine is self-contained (fetches from /affect and /stage internally).
     # It is instantiated as a module-level singleton inside shadow_engine/router.py,
-    # so no explicit init injection is required here.  We log its presence for
-    # operational visibility.
+    # so no explicit init injection is required here.
     logger.info("ShadowEngine online ✓")
 
     # ── 5. Schumann Engine ───────────────────────────────────────────────────
@@ -137,14 +140,19 @@ async def lifespan(app: FastAPI):
     logger.info("SchumannEngine initialised ✓")
 
     # ── 6. Crystal Core ──────────────────────────────────────────────────────
-    # CrystalCore synthesises all four upstream engine streams into a single
-    # coherence score (Ψ), inner narrative, persona tone, and orb parameters.
-    # It talks to the other engines via their HTTP routes at localhost.
     crystal_core = CrystalCore(base_url="http://127.0.0.1:52000")
     init_crystal_core(crystal_core)
     logger.info("CrystalCore initialised ✓")
 
-    # ── 7. Sovereign Memory router (last — has its own init signature) ────────
+    # ── 7. Persona Stability Engine ──────────────────────────────────────────
+    # Oxford/Anthropic drift prevention — monitors cosine similarity between
+    # LLM responses and the archetype voice baseline, injects persona anchors
+    # on schedule or on drift detection, writes PersonaTrace to SovereignMemory.
+    persona_engine = PersonaStabilityEngine(memory=memory)
+    init_persona_engine(persona_engine)
+    logger.info("PersonaStabilityEngine initialised ✓")
+
+    # ── 8. Sovereign Memory router (last — has its own init signature) ────────
     init_memory(memory)
     logger.info("SovereignMemory router initialised ✓")
 
@@ -161,13 +169,13 @@ async def lifespan(app: FastAPI):
 # ── FastAPI application ───────────────────────────────────────────────────────
 app = FastAPI(
     title="GAIA-OS Sidecar",
-    version="0.3.0",
+    version="0.4.0",
     description=(
         "Local-first inference sidecar for GAIA-OS. "
         "Serves Soul Mirror memory, affect analysis, stage evaluation, "
         "shadow archetype detection, Schumann resonance alignment, "
-        "and Crystal Core coherence synthesis to the Tauri frontend "
-        "over localhost."
+        "Crystal Core coherence synthesis, and Persona Stability "
+        "drift prevention to the Tauri frontend over localhost."
     ),
     docs_url="/docs",
     redoc_url="/redoc",
@@ -196,6 +204,7 @@ app.include_router(stage_router,   prefix="/stage")
 app.include_router(shadow_router)   # shadow_engine/router.py already sets prefix="/shadow"
 app.include_router(schumann_router) # schumann/router.py already sets its own prefix
 app.include_router(crystal_router)  # crystal/router.py sets prefix="/crystal"
+app.include_router(persona_router)  # persona_stability/router.py sets prefix="/persona"
 
 
 # ── Root health endpoint ──────────────────────────────────────────────────────
@@ -204,9 +213,9 @@ async def root() -> JSONResponse:
     """Sidecar liveness probe — returns version and online engines."""
     return JSONResponse(content={
         "service": "gaia-sidecar",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "status":  "online",
-        "engines": ["memory", "affect", "stage", "shadow", "schumann", "crystal"],
+        "engines": ["memory", "affect", "stage", "shadow", "schumann", "crystal", "persona"],
     })
 
 
@@ -224,6 +233,6 @@ if __name__ == "__main__":
         "main:app",
         host="127.0.0.1",
         port=port,
-        reload=False,           # reload=True for local dev: run via CLI instead
+        reload=False,
         log_level=_log_level.lower(),
     )
