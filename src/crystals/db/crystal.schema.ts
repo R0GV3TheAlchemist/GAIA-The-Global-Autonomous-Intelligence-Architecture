@@ -54,6 +54,8 @@
  *                          - ColorHarmonicsOKLCH — { complementary, triadic, analogous } (full OKLCH)
  *                          - ColorHarmonics      — union alias for either form
  *                          ColorRecord.harmonics now accepts ColorHarmonicsHue | ColorHarmonicsOKLCH | null
+ *   2026-06-01 (v2.1)   — ColorHarmonicsHue: added analogous_range as optional alias for analogous_hues
+ *                          (batch pipeline emits this field name; both are accepted)
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -332,11 +334,14 @@ export interface OKLCHValue {
  *   complementary_hue — the hue directly opposite the primary (primary_h + 180) % 360
  *   triadic_hues      — two hues forming an equilateral triangle (±120°), or null
  *   analogous_hues    — two hues adjacent to the primary (±30°), or null
+ *   analogous_range   — alias for analogous_hues emitted by the batch pipeline
  */
 export interface ColorHarmonicsHue {
   complementary_hue: number | null;
-  triadic_hues:      [number, number] | null;
+  triadic_hues?:     [number, number] | null;
   analogous_hues?:   [number, number] | null;
+  /** Alias for analogous_hues — accepted from batch pipeline output. */
+  analogous_range?:  [number, number] | null;
 }
 
 /**
