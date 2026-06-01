@@ -64,11 +64,6 @@ export interface SafetyProfile {
 // MODULE KEYWORD MAP
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Keywords associated with each GAIAModule.
- * resolveGAIAResonance scans the gaia_resonance string for these tokens
- * and accumulates a weight score per module.
- */
 const MODULE_KEYWORDS: Record<GAIAModule, string[]> = {
   AnchorPrism:    ['anchor', 'grounding', 'stability', 'root', 'earth', 'foundation', 'protection', 'shield'],
   ViriditasHeart: ['heart', 'healing', 'love', 'growth', 'viriditas', 'nature', 'compassion', 'harmony', 'green'],
@@ -84,20 +79,6 @@ const MODULE_KEYWORDS: Record<GAIAModule, string[]> = {
 // resolveGAIAResonance
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * resolveGAIAResonance
- *
- * Analyses a CrystalRecord's gaia_resonance string and returns a weighted
- * list of matching GAIAModules, sorted by relevance.
- *
- * The algorithm:
- *   1. Tokenise the gaia_resonance string (lowercase, split on word boundaries)
- *   2. For each token, check it against MODULE_KEYWORDS
- *   3. Accumulate a weight counter per module (each keyword hit = +10)
- *   4. Track tokens that didn't match any module as unknown_tokens
- *   5. Normalise weights to 0–100 range
- *   6. Return sorted ResonanceResolution
- */
 export function resolveGAIAResonance(
   record: CrystalRecord,
   _ctx?: IntentionContext,
@@ -108,7 +89,6 @@ export function resolveGAIAResonance(
   const scores = new Map<GAIAModule, number>();
   const matchedTokens = new Set<string>();
 
-  // Score each module based on keyword hits
   for (const [mod, keywords] of Object.entries(MODULE_KEYWORDS) as [GAIAModule, string[]][]) {
     let score = 0;
     for (const kw of keywords) {
@@ -120,14 +100,12 @@ export function resolveGAIAResonance(
     if (score > 0) scores.set(mod, score);
   }
 
-  // Detect unknown tokens — words in the string not covered by any keyword
   const words = lower.split(/[\s,;.\-–—/|]+/).filter(Boolean);
   const allKeywords = new Set(Object.values(MODULE_KEYWORDS).flat());
   const unknown_tokens = words.filter(
     w => w.length > 3 && !allKeywords.has(w) && !matchedTokens.has(w)
   );
 
-  // Normalise to 0–100
   const maxScore = Math.max(...scores.values(), 1);
   const modules: ResonanceWeight[] = [...scores.entries()]
     .map(([module, weight]) => ({ module, weight: Math.round((weight / maxScore) * 100) }))
@@ -146,23 +124,16 @@ export function resolveGAIAResonance(
 // getSafetyProfile
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * getSafetyProfile
- *
- * Builds a composite SafetyProfile for a CrystalRecord by combining:
- *   - The record's declared risk_tier
- *   - safe_for_water and safe_for_hardware flags
- *   - safety_notes and safety_warning text
- *
- * The profile is used by crystal.validator.ts (Domain C) and by the
- * GAIA-OS UI to surface appropriate safety messaging.
- */
 export function getSafetyProfile(record: CrystalRecord): SafetyProfile {
   const m = record.metaphysical;
   const p = record.physical;
 
-  // Escalate tier if physical flags indicate hazard but tier is too low
-  let effectiveTier = m.risk_tier;
+  // risk_tier and safety_notes are optional in the schema (populated incrementally);
+  // fall back to safe defaults so getSafetyProfile is always callable.
+  const declaredTier:  RiskTier      = m.risk_tier    ?? RiskTier.NONE;
+  const safetyNotes:   string | null = m.safety_notes ?? null;
+
+  let effectiveTier = declaredTier;
   if (
     (!p.safe_for_water || !p.safe_for_hardware) &&
     (effectiveTier === RiskTier.NONE || effectiveTier === RiskTier.LOW)
@@ -174,7 +145,7 @@ export function getSafetyProfile(record: CrystalRecord): SafetyProfile {
     risk_tier:         effectiveTier,
     safe_for_water:    p.safe_for_water,
     safe_for_hardware: p.safe_for_hardware,
-    safety_notes:      m.safety_notes,
+    safety_notes:      safetyNotes,
     safety_warning:    m.safety_warning,
     flags: {
       water_hazard:    !p.safe_for_water,

@@ -7,9 +7,9 @@
  *   2. OpticalRecord    — Optical / gemological properties (objective)
  *   3. MetaphysicalRecord — Healing / esoteric / vibrational data (interpretive)
  *
- * ─────────────────────────────────────────────────────────────────────────────
+ * ────────────────────────────────────────────────────────────────────────────
  * CHANGELOG
- * ─────────────────────────────────────────────────────────────────────────────
+ * ────────────────────────────────────────────────────────────────────────────
  *   2026-05-01 (v1.0)   — Initial schema
  *   2026-05-15 (v1.1)   — Added RiskTier, SafetyFlags
  *   2026-05-22 (v1.2)   — Added piezoelectric, safe_for_water, safe_for_hardware to PhysicalRecord
@@ -41,8 +41,11 @@
  *                        — OpticalRecord: added spectra (string[]) for RRUFF spectrum IDs
  *                        — MetaphysicalRecord: color_info, risk_tier, safety_notes,
  *                          companion_stones, yin_yang_polarity marked optional
- *                          (batch data files are populated incrementally; required once
- *                          a batch is marked complete)
+ *   2026-06-01 (v1.8)   — Element: added 'Ice' (used in batch-c9b)
+ *                        — CrystalRecord: added top-level color_layer (ColorLayer | null)
+ *                        — Added OKLCHValue, ColorRecord, MetaphysicalProfile type alias
+ *                        — Added CrystalQuery, CrystalMatrixResult, RruffSpectrum
+ *                        — Added ColorHarmonics interface
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,8 +54,6 @@
 
 /**
  * Chakra system names used across all traditions.
- * Includes the seven classical chakras, extended energy centres,
- * and compound / contextual values used in batch data.
  */
 export type Chakra =
   | 'Root'
@@ -65,7 +66,6 @@ export type Chakra =
   | 'Higher Crown'
   | 'Earth Star'
   | 'Soul Star'
-  // Extended / compound values used in batch data
   | 'Higher Heart'
   | 'Higher Heart (Thymus)'
   | 'Base'
@@ -81,8 +81,6 @@ export type Chakra =
 
 /**
  * ChakraPoint — canonical single-point chakra identifiers for lookup maps.
- * Distinct from the broader Chakra union (which includes compound / contextual values).
- * Exported as a const object so runtime code can use Object.values(ChakraPoint).
  */
 export const ChakraPoint = {
   Root:        'Root',
@@ -101,10 +99,6 @@ export type ChakraPoint = typeof ChakraPoint[keyof typeof ChakraPoint];
 
 /**
  * Classical + expanded elements.
- * Includes Aether (fifth element / quintessence in Western esoteric tradition),
- * Akasha (fifth element / spirit in Vedic / Theosophical tradition),
- * Light (radiant / photonic), Metal (alchemical / Chinese five-element system),
- * and 'All elements' for omnispectral stones.
  */
 export type Element =
   | 'Fire'
@@ -116,11 +110,11 @@ export type Element =
   | 'Akasha'
   | 'Light'
   | 'Metal'
+  | 'Ice'
   | 'All elements';
 
 /**
- * IMA approval status codes + descriptive variants for trade-name,
- * variety, and rock records that don't have a formal IMA entry.
+ * IMA approval status codes + descriptive variants.
  */
 export type IMAStatus =
   | 'A'
@@ -128,7 +122,6 @@ export type IMAStatus =
   | 'Rn'
   | 'Q'
   | 'G'
-  // Descriptive variants used for trade-name / variety / rock records
   | 'A (variety of calcite)'
   | 'A (both components IMA-recognised CaCO₃ polymorphs)'
   | 'A (variety name — IMA mineral is Quartz)'
@@ -148,24 +141,20 @@ export type IMAStatus =
   | null;
 
 /**
- * AngelNumber — the vibrational signal encoded in a crystal's numerological identity.
- * Includes standard single-digit numbers, master numbers, sacred sequences,
- * compound angelic sequences, and the void/new-cycle sequence '000'.
+ * AngelNumber — vibrational signal encoded in a crystal's numerological identity.
  */
 export type AngelNumber =
-  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9        // Standard
-  | 11 | 22 | 33                               // Master numbers
-  | 23 | 44 | 55 | 66 | 77 | 88 | 99          // Sacred / extended
-  | 111 | 222 | 333 | 444 | 555 | 666 | 777 | 888 | 999  // Sequences
-  | 1111                                       // Gateway portal sequence
-  | 404 | 707 | 808                            // Compound angelic sequences
-  | '000'                                      // Void / new cycle sequence
+  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+  | 11 | 22 | 33
+  | 23 | 44 | 55 | 66 | 77 | 88 | 99
+  | 111 | 222 | 333 | 444 | 555 | 666 | 777 | 888 | 999
+  | 1111
+  | 404 | 707 | 808
+  | '000'
   | null;
 
 /**
  * RiskTier — ordered severity tiers for safety classification.
- * Exported as a const object so runtime code can use Object.values(RiskTier)
- * without needing TypeScript enums.
  */
 export const RiskTier = {
   NONE:     'NONE',
@@ -178,8 +167,7 @@ export const RiskTier = {
 export type RiskTier = typeof RiskTier[keyof typeof RiskTier];
 
 /**
- * GAIAModule — the named intelligence modules within the GAIA-OS ecosystem.
- * Each module represents a distinct facet of GAIA's sentient architecture.
+ * GAIAModule — named intelligence modules within the GAIA-OS ecosystem.
  */
 export type GAIAModule =
   | 'AnchorPrism'
@@ -192,8 +180,7 @@ export type GAIAModule =
   | 'ChronoWeave';
 
 /**
- * OpticalType — the optical character of a crystal.
- * 'U' = uniaxial, 'B' = biaxial, 'I' = isotropic (cubic / amorphous).
+ * OpticalType — optical character of a crystal.
  */
 export type OpticalType = 'U' | 'B' | 'I' | null;
 
@@ -214,38 +201,16 @@ export type ColorLayer =
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PhysicalRecord {
-  /** Internal numeric ID (Mindat-compatible; 0 = not yet synced; null = non-mineral trade record) */
   id: number | null;
-  /** Mindat longid string */
   longid: string;
-  /** Mindat GUID */
   guid: string;
-
-  /** IMA-approved mineral name */
   name: string;
-  /** IMA chemical formula (Unicode subscripts/superscripts OK; null for non-mineral trade records) */
   ima_formula: string | null;
-  /** Mindat-normalised ASCII formula (null for non-mineral trade records) */
   mindat_formula: string | null;
-  /** IMA approval status */
   ima_status: IMAStatus;
-  /** Year of IMA approval */
   ima_year: number | null;
-
-  /** Strunz 10th edition classification */
   strunzten: string | null;
-  /** Dana 8th edition classification */
   dana8ed: string | null;
-
-  /**
-   * Crystal system.
-   * The narrow union covers the seven crystal systems plus Amorphous,
-   * Pseudohexagonal, and Isometric (legacy synonym for Cubic).
-   * The broad string fallback (string & {}) accommodates qualified compound
-   * values used in trade-name / rock records (e.g. 'Trigonal (cryptocrystalline)',
-   * 'Mixed (monoclinic serpentine + trigonal stichtite)', 'Not applicable (rock)').
-   * Use the narrow values for all IMA-approved mineral records.
-   */
   crystal_system:
     | 'Triclinic'
     | 'Monoclinic'
@@ -257,16 +222,11 @@ export interface PhysicalRecord {
     | 'Isometric'
     | 'Amorphous'
     | 'Pseudohexagonal'
-    | (string & {});  // Qualified variants for legacy / trade-name records
-
-  /** Mohs hardness range */
+    | (string & {});
   hardness_min: number | null;
   hardness_max: number | null;
-
-  /** Specific gravity range */
   specific_gravity_min: number | null;
   specific_gravity_max: number | null;
-
   cleavage:    string | null;
   fracture:    string | null;
   tenacity:    string | null;
@@ -275,17 +235,13 @@ export interface PhysicalRecord {
   colour:      string;
   streak:      string | null;
   fluorescence: string | null;
-
   ri_min:        number | null;
   ri_max:        number | null;
   birefringence: number | null;
   optical_type:  OpticalType;
-
   shortdesc:    string;
   updttime:     string;
   mindat_url:   string | null;
-
-  /** Safety flags */
   piezoelectric:     boolean;
   safe_for_water:    boolean;
   safe_for_hardware: boolean;
@@ -295,39 +251,18 @@ export interface PhysicalRecord {
 // OPTICAL RECORD
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * RefractiveIndexValues — named RI components for all crystal systems.
- * Use the appropriate field(s) for the crystal system:
- *   - Uniaxial:  n_omega, n_epsilon  (or n_o, n_e as shorthand)
- *   - Biaxial:   n_alpha, n_beta, n_gamma  (or n_min / n_max for range)
- *   - Isotropic: n  (or n_iso)
- *   - Mean/average: n_mean
- */
 export interface RefractiveIndexValues {
-  /** Uniaxial ordinary */
   n_omega?:   number;
-  /** Uniaxial extraordinary */
   n_epsilon?: number;
-  /** Biaxial alpha */
   n_alpha?:   number;
-  /** Biaxial beta */
   n_beta?:    number | null;
-  /** Biaxial gamma */
   n_gamma?:   number;
-  /** Single isotropic value */
   n?:         number;
-  // Extended RI field names appearing in some optical records
-  /** Minimum refractive index (alternative notation) */
   n_min?:     number;
-  /** Maximum refractive index (alternative biaxial notation) */
   n_max?:     number;
-  /** Mean / average refractive index */
   n_mean?:    number;
-  /** Isotropic index (alternative notation for single-crystal isotropic materials) */
   n_iso?:     number;
-  /** Extraordinary index (alternative shorthand) */
   n_e?:       number;
-  /** Ordinary index (uniaxial alternative notation) */
   n_o?:       number;
 }
 
@@ -345,18 +280,51 @@ export interface OpticalRecord {
   pleochroism:      string | null;
   fluorescence_lw:  string | null;
   fluorescence_sw:  string | null;
-  /** Phosphorescent emission after removal of excitation source (null if none / unknown) */
   phosphorescence:  string | null;
-  /**
-   * Approximate visible wavelength range absorbed / transmitted by the stone (nm).
-   * null = not determined or not applicable (e.g. colourless / opaque stones).
-   */
   visible_wavelength_nm: WavelengthRange | null;
-  /**
-   * RRUFF spectrum IDs associated with this mineral.
-   * Empty array = no RRUFF data linked yet.
-   */
   spectra: string[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COLOR RECORD
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * OKLCHValue — a colour expressed in the OKLCH perceptual colour space.
+ */
+export interface OKLCHValue {
+  /** Lightness: 0–1 */
+  l: number;
+  /** Chroma: 0–0.4 (typical) */
+  c: number;
+  /** Hue: 0–360 */
+  h: number;
+  /** Alpha: 0–1 (optional, defaults to 1) */
+  a?: number;
+}
+
+/**
+ * ColorHarmonics — related hues derived from a stone's dominant colour.
+ */
+export interface ColorHarmonics {
+  complementary: OKLCHValue | null;
+  analogous:     [OKLCHValue, OKLCHValue] | null;
+  triadic:       [OKLCHValue, OKLCHValue] | null;
+}
+
+/**
+ * ColorRecord — full colour intelligence profile for a crystal.
+ * Top-level field on CrystalRecord (parallel to physical / optical / metaphysical).
+ */
+export interface ColorRecord {
+  /** Primary colour origin type */
+  color_layer:       ColorLayer;
+  /** Primary colour in OKLCH */
+  oklch:             OKLCHValue;
+  /** Colour temperature in Kelvin (null if not applicable) */
+  color_temperature_k: number | null;
+  /** Derived colour harmonics (null until computed) */
+  harmonics?:        ColorHarmonics | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -370,12 +338,7 @@ export interface ColorInfo {
 }
 
 export interface MetaphysicalRecord {
-  /** Common / trade mineral name used in metaphysical and healing contexts */
   mineral_name:      string;
-  /**
-   * Color information for the stone.
-   * Optional during incremental batch population — required once a batch is marked complete.
-   */
   color_info?:       ColorInfo;
   chakra_primary:    Chakra;
   chakra_secondary:  Chakra[];
@@ -389,28 +352,70 @@ export interface MetaphysicalRecord {
   traditions:        string[];
   properties:        string[];
   gaia_resonance:    string | null;
-  /**
-   * Safety risk tier for this stone.
-   * Optional during incremental batch population — required once a batch is marked complete.
-   */
   risk_tier?:        RiskTier;
-  /**
-   * Detailed safety notes for GAIA reasoning engine.
-   * Optional during incremental batch population — required once a batch is marked complete.
-   */
   safety_notes?:     string | null;
-  /** Specific safety warning text for display in GAIA UI (null if none) */
   safety_warning:    string | null;
-  /**
-   * Recommended companion stones for pairing / grid work.
-   * Optional during incremental batch population — required once a batch is marked complete.
-   */
   companion_stones?: string[];
-  /**
-   * Yin / yang / neutral polarity classification.
-   * Optional during incremental batch population — required once a batch is marked complete.
-   */
   yin_yang_polarity?: 'yin' | 'yang' | 'neutral' | null;
+}
+
+/**
+ * MetaphysicalProfile — alias for MetaphysicalRecord.
+ * Used in some external consumers that import by this name.
+ */
+export type MetaphysicalProfile = MetaphysicalRecord;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUERY TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * CrystalQuery — filter object for queryCrystals() in index.ts.
+ * All fields are optional; supplied fields are ANDed together.
+ */
+export interface CrystalQuery {
+  chakra?:            Chakra[];
+  element?:           Element[];
+  gaia_module?:       GAIAModule[];
+  min_hardness?:      number | null;
+  max_hardness?:      number | null;
+  piezoelectric?:     boolean | null;
+  safe_for_water?:    boolean | null;
+  safe_for_hardware?: boolean | null;
+  trade_name?:        boolean | null;
+  color_layer?:       ColorLayer | null;
+  has_yin_yang_pair?: boolean | null;
+  angel_number?:      AngelNumber;
+  wavelength_min?:    number | null;
+  wavelength_max?:    number | null;
+  oklch_hue_min?:     number | null;
+  oklch_hue_max?:     number | null;
+}
+
+/**
+ * CrystalMatrixResult — a crystal record paired with a relevance score,
+ * returned by matrix / recommendation queries.
+ */
+export interface CrystalMatrixResult {
+  crystal:   CrystalRecord;
+  score:     number;
+  reasons:   string[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RRUFF / SPECTRAL TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * RruffSpectrum — a single RRUFF spectroscopy record linked to a crystal.
+ */
+export interface RruffSpectrum {
+  id:           string;
+  mineral_name: string;
+  url:          string;
+  type:         'Raman' | 'IR' | 'XRD' | string;
+  locality?:    string | null;
+  description?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,9 +427,18 @@ export interface CrystalRecord {
   trade_name:    boolean;
   mindat_id:     number | null;
 
+  /**
+   * Top-level colour layer classification.
+   * Mirrors optical.color_layer for fast query-engine access without
+   * navigating into the optical sub-record.
+   */
+  color_layer:   ColorLayer;
+
   physical:      PhysicalRecord;
   optical:       OpticalRecord;
   metaphysical:  MetaphysicalRecord;
+  /** Full colour intelligence profile (null until colour pass is run) */
+  color?:        ColorRecord;
 
   yin_yang_pair: string | null;
   rruff_ids:     string[];
