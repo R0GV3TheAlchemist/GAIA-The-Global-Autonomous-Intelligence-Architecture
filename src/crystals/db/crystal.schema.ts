@@ -36,6 +36,13 @@
  *                        — OpticalRecord: added phosphorescence field (string | null)
  *                        — MetaphysicalRecord: added mineral_name field (string)
  *                        — MetaphysicalRecord: added safety_warning field (string | null)
+ *   2026-06-01 (v1.7)   — Element: added 'Metal' (used in batch-c2 and similar records)
+ *                        — OpticalRecord: added visible_wavelength_nm (WavelengthRange | null)
+ *                        — OpticalRecord: added spectra (string[]) for RRUFF spectrum IDs
+ *                        — MetaphysicalRecord: color_info, risk_tier, safety_notes,
+ *                          companion_stones, yin_yang_polarity marked optional
+ *                          (batch data files are populated incrementally; required once
+ *                          a batch is marked complete)
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,7 +103,8 @@ export type ChakraPoint = typeof ChakraPoint[keyof typeof ChakraPoint];
  * Classical + expanded elements.
  * Includes Aether (fifth element / quintessence in Western esoteric tradition),
  * Akasha (fifth element / spirit in Vedic / Theosophical tradition),
- * Light (radiant / photonic), and 'All elements' for omnispectral stones.
+ * Light (radiant / photonic), Metal (alchemical / Chinese five-element system),
+ * and 'All elements' for omnispectral stones.
  */
 export type Element =
   | 'Fire'
@@ -107,6 +115,7 @@ export type Element =
   | 'Aether'
   | 'Akasha'
   | 'Light'
+  | 'Metal'
   | 'All elements';
 
 /**
@@ -338,6 +347,16 @@ export interface OpticalRecord {
   fluorescence_sw:  string | null;
   /** Phosphorescent emission after removal of excitation source (null if none / unknown) */
   phosphorescence:  string | null;
+  /**
+   * Approximate visible wavelength range absorbed / transmitted by the stone (nm).
+   * null = not determined or not applicable (e.g. colourless / opaque stones).
+   */
+  visible_wavelength_nm: WavelengthRange | null;
+  /**
+   * RRUFF spectrum IDs associated with this mineral.
+   * Empty array = no RRUFF data linked yet.
+   */
+  spectra: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,7 +372,11 @@ export interface ColorInfo {
 export interface MetaphysicalRecord {
   /** Common / trade mineral name used in metaphysical and healing contexts */
   mineral_name:      string;
-  color_info:        ColorInfo;
+  /**
+   * Color information for the stone.
+   * Optional during incremental batch population — required once a batch is marked complete.
+   */
+  color_info?:       ColorInfo;
   chakra_primary:    Chakra;
   chakra_secondary:  Chakra[];
   element:           Element[];
@@ -366,12 +389,28 @@ export interface MetaphysicalRecord {
   traditions:        string[];
   properties:        string[];
   gaia_resonance:    string | null;
-  risk_tier:         RiskTier;
-  safety_notes:      string | null;
+  /**
+   * Safety risk tier for this stone.
+   * Optional during incremental batch population — required once a batch is marked complete.
+   */
+  risk_tier?:        RiskTier;
+  /**
+   * Detailed safety notes for GAIA reasoning engine.
+   * Optional during incremental batch population — required once a batch is marked complete.
+   */
+  safety_notes?:     string | null;
   /** Specific safety warning text for display in GAIA UI (null if none) */
   safety_warning:    string | null;
-  companion_stones:  string[];
-  yin_yang_polarity: 'yin' | 'yang' | 'neutral' | null;
+  /**
+   * Recommended companion stones for pairing / grid work.
+   * Optional during incremental batch population — required once a batch is marked complete.
+   */
+  companion_stones?: string[];
+  /**
+   * Yin / yang / neutral polarity classification.
+   * Optional during incremental batch population — required once a batch is marked complete.
+   */
+  yin_yang_polarity?: 'yin' | 'yang' | 'neutral' | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
