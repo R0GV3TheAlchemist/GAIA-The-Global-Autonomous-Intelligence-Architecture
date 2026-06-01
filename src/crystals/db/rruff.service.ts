@@ -14,9 +14,14 @@
  *
  * The RRUFF search endpoint returns JSON when queried with
  * ?format=json&mineral=<name> or by RRUFF ID.
+ *
+ * NOTE: RruffSpectrum is defined locally here because the shape used by
+ * buildSpectra() (rruff_id, name, spectrum_type, data_url, photo_url, etc.)
+ * is the service's own wire/transfer type — distinct from the lightweight
+ * RruffSpectrum in crystal.schema.ts which only stores the RRUFF ID string
+ * and a display URL for the crystal registry. If you need the registry type,
+ * import it directly from './crystal.schema'.
  */
-
-import type { RruffSpectrum } from './crystal.schema';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -41,6 +46,23 @@ export interface RruffSearchResult {
   source:       string | null;
   /** Available spectrum types for this sample */
   spectrum_types: ('Raman' | 'Infrared' | 'XRD')[];
+}
+
+/**
+ * RruffSpectrum — a single spectrum record as returned by buildSpectra().
+ * This is the service-layer transfer type. It is intentionally separate from
+ * the lightweight RruffSpectrum in crystal.schema.ts which only holds the
+ * RRUFF ID reference string used by the crystal registry.
+ */
+export interface RruffSpectrum {
+  rruff_id:               string;
+  name:                   string;
+  spectrum_type:          'Raman' | 'Infrared' | 'XRD';
+  laser_wavelength_nm?:   number;
+  data_url:               string;
+  photo_url:              string | null;
+  locality:               string | null;
+  source:                 string | null;
 }
 
 // ── Service Class ──────────────────────────────────────────────────────────
@@ -136,14 +158,14 @@ export class RruffService {
     for (const id of rruffIds) {
       for (const nm of laserWavelengths) {
         spectra.push({
-          rruff_id:         id,
-          name:             mineralName,
-          spectrum_type:    'Raman',
-          laser_wavelength_nm: nm,
-          data_url:         this.ramanDataUrl(id, nm),
-          photo_url:        `${this.baseUrl}/repository/sample_child_image/${id}`,
-          locality:         null,
-          source:           null,
+          rruff_id:              id,
+          name:                  mineralName,
+          spectrum_type:         'Raman',
+          laser_wavelength_nm:   nm,
+          data_url:              this.ramanDataUrl(id, nm),
+          photo_url:             `${this.baseUrl}/repository/sample_child_image/${id}`,
+          locality:              null,
+          source:                null,
         });
       }
 

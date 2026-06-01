@@ -216,6 +216,8 @@ function checkAngelNumberDomain(record: CrystalRecord): ValidationIssue[] {
   }
 
   if (angelNumber != null && LEGAL_ANGEL_NUMBERS.has(angelNumber)) {
+    // Cast is safe: angelNumber has already passed LEGAL_ANGEL_NUMBERS.has() guard,
+    // meaning it is a valid member of the AngelNumber union.
     const angelDef      = ANGEL_NUMBER_MAP.get(angelNumber as AngelNumber);
     const resonance     = resolveGAIAResonance(record);
     const primaryModule = resonance.primary_module;

@@ -15,6 +15,10 @@
  *   2026-06-01 (v1.3)  — Added ALL_CRYSTALS alias for crystal.index.ts compatibility
  *                      — Imported remaining B-series and C-series batches
  *                      — Exported RiskTier, ChakraPoint const objects
+ *   2026-06-01 (v1.4)  — Fixed duplicate import (caused phantom TS2353 color_layer errors)
+ *                      — Added optional-chaining guards on crystal.color (optional field)
+ *                      — Added gaia_resonance null guard in gaia_module filter
+ *                      — Added explicit arrow-fn param types to fix TS7006
  */
 
 export type {
@@ -37,6 +41,7 @@ export type {
   GAIAModule,
   ColorLayer,
   AngelNumber,
+  RruffSpectrum,
 } from './crystal.schema';
 
 export { RiskTier, ChakraPoint } from './crystal.schema';
@@ -86,7 +91,17 @@ import BATCH_C8A from './batch-c8a.data';
 import BATCH_C8B from './batch-c8b.data';
 import BATCH_C9A from './batch-c9a.data';
 import BATCH_C9B from './batch-c9b.data';
-import type { CrystalRecord, CrystalQuery } from './crystal.schema';
+
+// NOTE: CrystalRecord and CrystalQuery are already re-exported via `export type`
+// above — do NOT add a second `import type` here or TypeScript will lose the
+// v1.8 schema binding and produce phantom TS2353 errors across all batch files.
+import type {
+  CrystalRecord,
+  CrystalQuery,
+  Chakra,
+  Element,
+  GAIAModule,
+} from './crystal.schema';
 
 // ─── Re-export batches as named exports ───────────────────────────────────────
 export {
@@ -158,17 +173,20 @@ export function queryCrystals(
     const m = crystal.metaphysical;
     const p = crystal.physical;
     const o = crystal.optical;
+    // crystal.color is optional (ColorRecord | undefined) — always use ?. when accessing it
     const c = crystal.color;
 
     if (query.chakra?.length) {
       const allChakras = [m.chakra_primary, ...m.chakra_secondary];
-      if (!query.chakra.some(ch => allChakras.includes(ch))) return false;
+      if (!query.chakra.some((ch: Chakra) => allChakras.includes(ch))) return false;
     }
     if (query.element?.length) {
-      if (!query.element.some(e => m.element.includes(e))) return false;
+      if (!query.element.some((e: Element) => m.element.includes(e))) return false;
     }
     if (query.gaia_module?.length) {
-      if (!query.gaia_module.some(mod => m.gaia_resonance.includes(mod))) return false;
+      // gaia_resonance is string | null — guard before calling .includes()
+      if (m.gaia_resonance == null) return false;
+      if (!query.gaia_module.some((mod: GAIAModule) => m.gaia_resonance!.includes(mod))) return false;
     }
     if (query.min_hardness != null) {
       if ((p.hardness_max ?? 0) < query.min_hardness) return false;
@@ -205,23 +223,25 @@ export function queryCrystals(
       if (query.wavelength_max != null && wl.min > query.wavelength_max) return false;
     }
     if (query.oklch_hue_min != null || query.oklch_hue_max != null) {
-      const h = crystal.color.oklch.h;
+      // crystal.color is optional — skip records where the colour pass hasn't run yet
+      const h = c?.oklch?.h;
+      if (h == null) return false;
       if (query.oklch_hue_min != null && h < query.oklch_hue_min) return false;
       if (query.oklch_hue_max != null && h > query.oklch_hue_max) return false;
     }
     if (query.color_temperature_min != null) {
-      if (c.color_temperature_k == null) return false;
+      if (c?.color_temperature_k == null) return false;
       if (c.color_temperature_k < query.color_temperature_min) return false;
     }
     if (query.color_temperature_max != null) {
-      if (c.color_temperature_k == null) return false;
+      if (c?.color_temperature_k == null) return false;
       if (c.color_temperature_k > query.color_temperature_max) return false;
     }
     if (query.numerology != null) {
       if (m.numerology !== query.numerology) return false;
     }
     if (query.zodiac?.length) {
-      if (!query.zodiac.some(z => m.zodiac.includes(z))) return false;
+      if (!query.zodiac.some((z: string) => m.zodiac.includes(z))) return false;
     }
 
     return true;
@@ -239,10 +259,13 @@ export function getCrystalByName(
 }
 
 export function getCrystalsByModule(
-  module: import('./crystal.schema').GAIAModule,
+  module: GAIAModule,
   registry: CrystalRecord[] = CRYSTAL_REGISTRY
 ): CrystalRecord[] {
-  return registry.filter(c => c.metaphysical.gaia_resonance.includes(module));
+  return registry.filter(c =>
+    c.metaphysical.gaia_resonance != null &&
+    c.metaphysical.gaia_resonance.includes(module)
+  );
 }
 
 export function getToxicCrystals(
