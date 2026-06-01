@@ -19,6 +19,11 @@ argon2-cffi>=23.1.0         # Argon2id passphrase KDF (Linux keychain fallback)
 numpy>=1.26.0               # Matrix ops, spectral radius (criticality_monitor, viriditas)
 scipy>=1.13.0               # Eigenvalues, signal processing (criticality_monitor)
 
+# ── Quantum Chemistry (Gaianite Substrate Simulation #133) ────────
+qiskit-nature>=0.7.0        # Fermionic Hamiltonians, ElectronicStructureProblem
+qiskit-aer>=0.14.0          # AerSimulator statevector/CPU backend
+pyscf>=2.4.0                # PySCF ab-initio driver (Mole, RHF, CCSD)
+
 # ── Web Scraping ──────────────────────────────────────────────
 trafilatura>=1.8.0          # Best-in-class main-content extractor
 beautifulsoup4>=4.12.0      # Fallback HTML parser
