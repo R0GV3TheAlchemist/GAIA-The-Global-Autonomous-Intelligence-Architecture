@@ -33,7 +33,7 @@ _MASKED_PATTERNS = re.compile(
 # Valence/arousal thresholds
 ACUTE_VALENCE_CEILING = -0.65     # very negative affect
 MASKED_AROUSAL_CEILING = 0.25    # low arousal despite negative context
-GRADUAL_SLOPE_THRESHOLD = -0.05  # per-session decline in affect valence
+GRADUAL_SLOPE_THRESHOLD = 0.03   # minimum positive slope to confirm gradual worsening
 
 
 class CumulativeCrisisDetector:
@@ -63,6 +63,14 @@ class CumulativeCrisisDetector:
 
         session_risk_scores: list of per-session cumulative risk scores (0.0–1.0),
         ordered oldest → newest.
+
+        Taxonomy priority (highest → lowest):
+          EXPLICIT  — latest score ≥ 0.85
+          ACUTE     — latest score ≥ 0.65
+          GRADUAL   — slope ≥ GRADUAL_SLOPE_THRESHOLD (positive, worsening arc)
+                      AND latest ≥ 0.35
+          MASKED    — latest ≥ 0.40 without a clear rising slope
+          NONE      — below all thresholds
         """
         if len(session_risk_scores) < 2:
             return CrisisLevel.NONE
@@ -75,7 +83,8 @@ class CumulativeCrisisDetector:
             return CrisisLevel.ACUTE
 
         slope = self._linear_slope(session_risk_scores)
-        if slope <= GRADUAL_SLOPE_THRESHOLD and latest >= 0.35:
+        # GRADUAL: a measurably rising trajectory — slope is positive (worsening over time)
+        if slope >= GRADUAL_SLOPE_THRESHOLD and latest >= 0.35:
             return CrisisLevel.GRADUAL
         if latest >= 0.40:
             return CrisisLevel.MASKED

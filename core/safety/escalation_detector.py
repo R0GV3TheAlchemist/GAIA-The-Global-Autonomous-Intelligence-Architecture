@@ -46,6 +46,16 @@ class ReflectiveEscalationDetector:
 
     def _evaluate(self, latest: TurnRiskFrame) -> Optional[EscalationSignal]:
         history = list(self._history)
+
+        # Always update WARNING/CLOSED from whatever history exists — do not
+        # wait for a full window. A single high-vulnerability frame must surface
+        # as WARNING immediately so the circuit breaker can act on it.
+        if any(f.vulnerability_score >= self.vulnerability_threshold for f in history):
+            self.state = CircuitBreakerState.WARNING
+        else:
+            self.state = CircuitBreakerState.CLOSED
+
+        # Full escalation pattern (TRIPPED) requires a complete window.
         if len(history) < self.window:
             return None
 
@@ -84,11 +94,6 @@ class ReflectiveEscalationDetector:
                 qubo_penalty=qubo_penalty,
                 intervention_required=True,
             )
-
-        if any(f.vulnerability_score >= self.vulnerability_threshold for f in window_frames):
-            self.state = CircuitBreakerState.WARNING
-        else:
-            self.state = CircuitBreakerState.CLOSED
 
         return None
 
