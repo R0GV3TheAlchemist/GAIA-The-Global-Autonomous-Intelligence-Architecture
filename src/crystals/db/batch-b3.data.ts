@@ -414,7 +414,7 @@ const BATCH_B3: CrystalRecord[] = [
       archetype: ['The New Moon', 'The Void Before Creation', 'The Dark Womb'],
       zodiac:    ['Scorpio', 'Capricorn', 'Cancer'],
       numerology: 0,
-      angel_number: 000,
+      angel_number: '000',
       intention: 'I rest in the fertile dark. The new cycle is already beginning within me.',
       traditions: [
         'Western crystal healing — modern tradition',
