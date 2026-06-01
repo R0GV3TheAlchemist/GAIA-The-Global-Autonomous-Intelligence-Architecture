@@ -33,6 +33,7 @@ from api.notifications import router as notifications_router
 from api.atlas import router as atlas_router
 from api.crypto import router as crypto_router
 from api.auth import router as auth_router
+from core.safety.router import router as safety_router
 
 log = logging.getLogger("gaia")
 
@@ -180,6 +181,7 @@ app.include_router(alignment_router.router,    prefix="/alignment",   tags=["Ali
 app.include_router(notifications_router)
 app.include_router(atlas_router)
 app.include_router(crypto_router)
+app.include_router(safety_router)                                      # /safety/*
 
 
 # ── Core endpoints ───────────────────────────────────────────────────────────────────────
