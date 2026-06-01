@@ -56,6 +56,11 @@
  *                          ColorRecord.harmonics now accepts ColorHarmonicsHue | ColorHarmonicsOKLCH | null
  *   2026-06-01 (v2.1)   — ColorHarmonicsHue: added analogous_range as optional alias for analogous_hues
  *                          (batch pipeline emits this field name; both are accepted)
+ *   2026-06-01 (v2.2)   — ColorRecord: added batch-pipeline fields as optional:
+ *                          primary_color, color_variants, dominant_wavelength_nm,
+ *                          hex, munsell, psychological_effects
+ *                          These are emitted by the crystal curation pipeline and were
+ *                          previously missing from the schema, causing TS2353 across all batches.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -371,16 +376,32 @@ export type ColorHarmonics = ColorHarmonicsHue | ColorHarmonicsOKLCH;
 /**
  * ColorRecord — full colour intelligence profile for a crystal.
  * Top-level field on CrystalRecord (parallel to physical / optical / metaphysical).
+ *
+ * Fields marked optional (?) are emitted by the batch curation pipeline but
+ * may be absent from programmatically-constructed records (e.g. records built
+ * from Mindat API data before the colour-enrichment pass is run).
  */
 export interface ColorRecord {
+  /** Primary colour description string (e.g. 'Deep violet-blue') */
+  primary_color?:          string;
+  /** List of colour variant labels for multi-colour stones */
+  color_variants?:         string[];
   /** Primary colour origin type */
-  color_layer:       ColorLayer;
+  color_layer?:            ColorLayer;
+  /** Dominant wavelength of the primary colour in nanometres */
+  dominant_wavelength_nm?: number | null;
   /** Primary colour in OKLCH */
-  oklch:             OKLCHValue;
+  oklch?:                  OKLCHValue;
+  /** Hex representation of the primary colour (e.g. '#7c4daf') */
+  hex?:                    string | null;
+  /** Munsell notation for the primary colour (e.g. '5P 4/8') */
+  munsell?:                string | null;
   /** Colour temperature in Kelvin (null if not applicable) */
-  color_temperature_k: number | null;
+  color_temperature_k?:    number | null;
+  /** Human-readable psychological / energetic effects of the colour */
+  psychological_effects?:  string[];
   /** Derived colour harmonics — hue-number form from batch data, or full OKLCH after computation */
-  harmonics?:        ColorHarmonics | null;
+  harmonics?:              ColorHarmonics | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

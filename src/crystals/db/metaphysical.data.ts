@@ -119,47 +119,52 @@ export interface AngelNumberDefinition {
 
 /**
  * Maps each registered AngelNumber to its canonical GAIA definition.
- * The Map<AngelNumber, AngelNumberDefinition> annotation fully constrains
- * the entry types — per-tuple `as const` casts are intentionally omitted
- * because they cause each pair to be inferred as a distinct literal tuple
- * type, producing a union of incompatible readonly [K, V] pairs that
- * breaks the Map constructor overload (TS2769).
+ *
+ * The array is explicitly cast to Array<[AngelNumber, AngelNumberDefinition]>
+ * so the Map constructor receives a correctly-typed iterable. Without the cast,
+ * TypeScript infers the array as ([number, Def] | [string, Def])[] which does
+ * not satisfy the Map overload's Iterable<readonly [AngelNumber, Def]> parameter
+ * (TS2769). Per-tuple `as const` casts are intentionally avoided because they
+ * narrow each key to a distinct literal type, producing a union of incompatible
+ * readonly tuple types that also break the overload.
  */
-export const ANGEL_NUMBER_MAP: Map<AngelNumber, AngelNumberDefinition> = new Map([
-  [1,    { number: 1,    name: 'Unity',           gaia_module: 'SovereignCore',  meaning: 'New beginnings, leadership, singular focus' }],
-  [2,    { number: 2,    name: 'Duality',          gaia_module: 'ViriditasHeart', meaning: 'Balance, partnership, receptivity' }],
-  [3,    { number: 3,    name: 'Trinity',          gaia_module: 'SpiritusEngine', meaning: 'Creativity, expression, divine trinity' }],
-  [4,    { number: 4,    name: 'Foundation',       gaia_module: 'AnchorPrism',    meaning: 'Stability, structure, earthly order' }],
-  [5,    { number: 5,    name: 'Change',           gaia_module: 'QuantumNexus',   meaning: 'Freedom, transformation, adventure' }],
-  [6,    { number: 6,    name: 'Harmony',          gaia_module: 'ViriditasHeart', meaning: 'Love, family, nurturing, responsibility' }],
-  [7,    { number: 7,    name: 'Mystery',          gaia_module: 'ClarusLens',     meaning: 'Spiritual wisdom, inner knowing, analysis' }],
-  [8,    { number: 8,    name: 'Infinity',         gaia_module: 'SovereignCore',  meaning: 'Abundance, power, cosmic cycles' }],
-  [9,    { number: 9,    name: 'Completion',       gaia_module: 'ChronoWeave',    meaning: 'Endings, humanitarian service, release' }],
-  [11,   { number: 11,   name: 'Illumination',     gaia_module: 'ClarusLens',     meaning: 'Spiritual awakening, intuition, master channel' }],
-  [22,   { number: 22,   name: 'Master Builder',   gaia_module: 'AnchorPrism',    meaning: 'Large-scale manifestation, practical idealism' }],
-  [33,   { number: 33,   name: 'Master Teacher',   gaia_module: 'SpiritusEngine', meaning: 'Compassionate guidance, divine instruction' }],
-  [23,   { number: 23,   name: 'Royal Star',       gaia_module: 'SovereignCore',  meaning: 'Support from ascended masters, royal alignment' }],
-  [44,   { number: 44,   name: 'Angelic Anchor',   gaia_module: 'AnchorPrism',    meaning: 'Divine protection, heavenly stability' }],
-  [55,   { number: 55,   name: 'Quantum Shift',    gaia_module: 'QuantumNexus',   meaning: 'Accelerated change, double transformation' }],
-  [66,   { number: 66,   name: 'Heart Matrix',     gaia_module: 'ViriditasHeart', meaning: 'Amplified love, relational harmony' }],
-  [77,   { number: 77,   name: 'Sacred Mirror',    gaia_module: 'ClarusLens',     meaning: 'Reflection, deeper truth, mystical alignment' }],
-  [88,   { number: 88,   name: 'Cosmic Law',       gaia_module: 'ChronoWeave',    meaning: 'Karmic balance, infinite cycles' }],
-  [99,   { number: 99,   name: 'Universal End',    gaia_module: 'ChronoWeave',    meaning: 'Global completion, collective release' }],
-  [111,  { number: 111,  name: 'Manifestation Gateway', gaia_module: 'SovereignCore',  meaning: 'Thoughts becoming reality, mind-gate open' }],
-  [222,  { number: 222,  name: 'Divine Alignment',      gaia_module: 'ViriditasHeart', meaning: 'Trust, balance, relationships on track' }],
-  [333,  { number: 333,  name: 'Ascended Presence',     gaia_module: 'SpiritusEngine', meaning: 'Masters nearby, creative expansion' }],
-  [444,  { number: 444,  name: 'Angelic Protection',    gaia_module: 'AnchorPrism',    meaning: 'Angels surround you, stay grounded' }],
-  [555,  { number: 555,  name: 'Major Transformation',  gaia_module: 'QuantumNexus',   meaning: 'Life-changing shifts accelerating' }],
-  [666,  { number: 666,  name: 'Material Rebalance',    gaia_module: 'AnchorPrism',    meaning: 'Rebalance thoughts toward the spiritual' }],
-  [777,  { number: 777,  name: 'Spiritual Jackpot',     gaia_module: 'ClarusLens',     meaning: 'Luck, miracles, divine reward' }],
-  [888,  { number: 888,  name: 'Abundance Flow',        gaia_module: 'SovereignCore',  meaning: 'Financial/energetic abundance incoming' }],
-  [999,  { number: 999,  name: 'Global Completion',     gaia_module: 'ChronoWeave',    meaning: 'Cycle ends, lightworker calling' }],
-  [1111, { number: 1111, name: 'Portal Gateway',        gaia_module: 'SpiritusEngine', meaning: 'Dimensional gateway open, new timeline' }],
-  [404,  { number: 404,  name: 'Stability Bridge',      gaia_module: 'AnchorPrism',    meaning: 'Grounding during uncertainty, bridge phase' }],
-  [707,  { number: 707,  name: 'Mystic Mirror',         gaia_module: 'ClarusLens',     meaning: 'Spiritual truth revealed through reflection' }],
-  [808,  { number: 808,  name: 'Karmic Infinity',       gaia_module: 'ChronoWeave',    meaning: 'Karmic cycles completing, infinite return' }],
-  ['000',{ number: '000',name: 'Void Cycle',            gaia_module: 'SpiritusEngine', meaning: 'New cycle begins from emptiness, void state' }],
-]);
+export const ANGEL_NUMBER_MAP: Map<AngelNumber, AngelNumberDefinition> = new Map(
+  ([
+    [1,    { number: 1,    name: 'Unity',           gaia_module: 'SovereignCore',  meaning: 'New beginnings, leadership, singular focus' }],
+    [2,    { number: 2,    name: 'Duality',          gaia_module: 'ViriditasHeart', meaning: 'Balance, partnership, receptivity' }],
+    [3,    { number: 3,    name: 'Trinity',          gaia_module: 'SpiritusEngine', meaning: 'Creativity, expression, divine trinity' }],
+    [4,    { number: 4,    name: 'Foundation',       gaia_module: 'AnchorPrism',    meaning: 'Stability, structure, earthly order' }],
+    [5,    { number: 5,    name: 'Change',           gaia_module: 'QuantumNexus',   meaning: 'Freedom, transformation, adventure' }],
+    [6,    { number: 6,    name: 'Harmony',          gaia_module: 'ViriditasHeart', meaning: 'Love, family, nurturing, responsibility' }],
+    [7,    { number: 7,    name: 'Mystery',          gaia_module: 'ClarusLens',     meaning: 'Spiritual wisdom, inner knowing, analysis' }],
+    [8,    { number: 8,    name: 'Infinity',         gaia_module: 'SovereignCore',  meaning: 'Abundance, power, cosmic cycles' }],
+    [9,    { number: 9,    name: 'Completion',       gaia_module: 'ChronoWeave',    meaning: 'Endings, humanitarian service, release' }],
+    [11,   { number: 11,   name: 'Illumination',     gaia_module: 'ClarusLens',     meaning: 'Spiritual awakening, intuition, master channel' }],
+    [22,   { number: 22,   name: 'Master Builder',   gaia_module: 'AnchorPrism',    meaning: 'Large-scale manifestation, practical idealism' }],
+    [33,   { number: 33,   name: 'Master Teacher',   gaia_module: 'SpiritusEngine', meaning: 'Compassionate guidance, divine instruction' }],
+    [23,   { number: 23,   name: 'Royal Star',       gaia_module: 'SovereignCore',  meaning: 'Support from ascended masters, royal alignment' }],
+    [44,   { number: 44,   name: 'Angelic Anchor',   gaia_module: 'AnchorPrism',    meaning: 'Divine protection, heavenly stability' }],
+    [55,   { number: 55,   name: 'Quantum Shift',    gaia_module: 'QuantumNexus',   meaning: 'Accelerated change, double transformation' }],
+    [66,   { number: 66,   name: 'Heart Matrix',     gaia_module: 'ViriditasHeart', meaning: 'Amplified love, relational harmony' }],
+    [77,   { number: 77,   name: 'Sacred Mirror',    gaia_module: 'ClarusLens',     meaning: 'Reflection, deeper truth, mystical alignment' }],
+    [88,   { number: 88,   name: 'Cosmic Law',       gaia_module: 'ChronoWeave',    meaning: 'Karmic balance, infinite cycles' }],
+    [99,   { number: 99,   name: 'Universal End',    gaia_module: 'ChronoWeave',    meaning: 'Global completion, collective release' }],
+    [111,  { number: 111,  name: 'Manifestation Gateway', gaia_module: 'SovereignCore',  meaning: 'Thoughts becoming reality, mind-gate open' }],
+    [222,  { number: 222,  name: 'Divine Alignment',      gaia_module: 'ViriditasHeart', meaning: 'Trust, balance, relationships on track' }],
+    [333,  { number: 333,  name: 'Ascended Presence',     gaia_module: 'SpiritusEngine', meaning: 'Masters nearby, creative expansion' }],
+    [444,  { number: 444,  name: 'Angelic Protection',    gaia_module: 'AnchorPrism',    meaning: 'Angels surround you, stay grounded' }],
+    [555,  { number: 555,  name: 'Major Transformation',  gaia_module: 'QuantumNexus',   meaning: 'Life-changing shifts accelerating' }],
+    [666,  { number: 666,  name: 'Material Rebalance',    gaia_module: 'AnchorPrism',    meaning: 'Rebalance thoughts toward the spiritual' }],
+    [777,  { number: 777,  name: 'Spiritual Jackpot',     gaia_module: 'ClarusLens',     meaning: 'Luck, miracles, divine reward' }],
+    [888,  { number: 888,  name: 'Abundance Flow',        gaia_module: 'SovereignCore',  meaning: 'Financial/energetic abundance incoming' }],
+    [999,  { number: 999,  name: 'Global Completion',     gaia_module: 'ChronoWeave',    meaning: 'Cycle ends, lightworker calling' }],
+    [1111, { number: 1111, name: 'Portal Gateway',        gaia_module: 'SpiritusEngine', meaning: 'Dimensional gateway open, new timeline' }],
+    [404,  { number: 404,  name: 'Stability Bridge',      gaia_module: 'AnchorPrism',    meaning: 'Grounding during uncertainty, bridge phase' }],
+    [707,  { number: 707,  name: 'Mystic Mirror',         gaia_module: 'ClarusLens',     meaning: 'Spiritual truth revealed through reflection' }],
+    [808,  { number: 808,  name: 'Karmic Infinity',       gaia_module: 'ChronoWeave',    meaning: 'Karmic cycles completing, infinite return' }],
+    ['000',{ number: '000',name: 'Void Cycle',            gaia_module: 'SpiritusEngine', meaning: 'New cycle begins from emptiness, void state' }],
+  ] as Array<[AngelNumber, AngelNumberDefinition]>)
+);
 
 /**
  * ANGEL_NUMBER_REGISTRY — flat array of all AngelNumberDefinition values.
