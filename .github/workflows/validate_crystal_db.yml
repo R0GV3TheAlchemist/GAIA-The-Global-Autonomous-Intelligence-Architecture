@@ -57,13 +57,12 @@ jobs:
           fetch-depth: 1
 
       # ── 2. Python setup ────────────────────────────────────────────────────
+      # No cache: validator uses stdlib only — pip is never invoked,
+      # so ~/.cache/pip never exists and cache: 'pip' would error on cleanup.
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
-
-      # validator has zero third-party dependencies — no pip install needed
 
       # ── 3. Run validator (text report to log) ──────────────────────────────
       - name: Run validator — text report
@@ -79,8 +78,7 @@ jobs:
         continue-on-error: true
 
       # ── 4. Run validator (JSON artifact) ───────────────────────────────────
-      # FIX: use --json-out <file> flag (not --json), which writes valid JSON
-      # directly to the file rather than redirecting mixed text+JSON stdout.
+      # Use --json-out <file>, which writes valid JSON directly to the file.
       - name: Run validator — JSON report
         id: validate_json
         run: |
@@ -120,8 +118,6 @@ jobs:
         if: github.event_name == 'pull_request' && always()
         run: |
           if [ ! -f crystal-db-audit-report.json ]; then exit 0; fi
-          # Emit GitHub workflow commands for each ERROR violation so they
-          # appear as inline annotations on the PR diff.
           jq -r '
             .violations[]
             | select(.severity == "ERROR")
