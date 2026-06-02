@@ -11,6 +11,7 @@ Canon Ref: C01 (Sovereignty — no silent spec drift)
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from enum import Enum
@@ -20,12 +21,26 @@ from typing import Iterator
 import networkx as nx  # type: ignore[import]
 import yaml  # PyYAML
 
+__all__ = [
+    "CanonStatus",
+    "CanonNode",
+    "CanonGraph",
+]
+
+_log = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Canon status
 # ---------------------------------------------------------------------------
 
 class CanonStatus(str, Enum):
+    """Lifecycle status of a GAIA canon entry.
+
+    Re-exported at module level so callers (e.g. ``memory/hierarchy.py``)
+    can do ``from core.canon_graph import CanonStatus`` without importing
+    the full graph instance.
+    """
     ACTIVE     = "active"
     DEPRECATED = "deprecated"
     DRAFT      = "draft"
@@ -73,6 +88,10 @@ class CanonGraph:
 
     Files without front-matter are silently skipped — this allows incremental
     migration of the canon without blocking the graph.
+
+    Duplicate node IDs (two files with the same ``id:`` field) emit a
+    WARNING and use the *last-seen* file, ensuring the graph never silently
+    drops canon entries (Canon C30).
     """
 
     _FRONTMATTER_RE = re.compile(r"^---\n(.+?)\n---", re.DOTALL)
@@ -103,16 +122,37 @@ class CanonGraph:
             node = self._parse_node(md_file)
             if node is None:
                 continue
+            if node.id in self._nodes:
+                _log.warning(
+                    "CanonGraph: duplicate node id %r — "
+                    "overwriting %s with %s",
+                    node.id,
+                    self._nodes[node.id].path,
+                    md_file,
+                )
             self._nodes[node.id] = node
-            self._graph.add_node(node.id, **{k: v for k, v in vars(node).items() if k != "path"})
+            self._graph.add_node(
+                node.id,
+                **{k: v for k, v in vars(node).items() if k != "path"},
+            )
 
         for node in self._nodes.values():
             for dep in node.requires:
                 if dep in self._nodes:
                     self._graph.add_edge(dep, node.id, relation="requires")
+                else:
+                    _log.warning(
+                        "CanonGraph: %r requires unknown canon %r — edge skipped",
+                        node.id, dep,
+                    )
             for sup in node.supersedes:
                 if sup in self._nodes:
                     self._graph.add_edge(node.id, sup, relation="supersedes")
+                else:
+                    _log.warning(
+                        "CanonGraph: %r supersedes unknown canon %r — edge skipped",
+                        node.id, sup,
+                    )
 
     @classmethod
     def _parse_node(cls, path: Path) -> CanonNode | None:
@@ -167,10 +207,7 @@ class CanonGraph:
         return sorted(self._nodes.values(), key=lambda n: n.id)
 
     def dependents(self, node_id: str) -> list[str]:
-        """Return all canon IDs that directly or transitively depend on *node_id*.
-
-        A "dependent" requires *node_id* somewhere in its ancestry.
-        """
+        """Return all canon IDs that directly or transitively depend on *node_id*."""
         if node_id not in self._graph:
             return []
         return sorted(nx.descendants(self._graph, node_id))
@@ -257,10 +294,12 @@ class CanonGraph:
         }
 
     def validate_refs(self, refs: list[str]) -> list[str]:
-        """Given a list of canon IDs (e.g. from a trace), return any that are unknown.
+        """Given a list of canon IDs (e.g. from a ``TraceRecord.canon_refs``),
+        return any that are unknown in this graph.
 
-        Used by GAIATrace to validate canon_refs before writing.
-        Returns the list of unrecognised IDs; empty list means all refs are valid.
+        Returns the list of unrecognised IDs; an empty list means all refs
+        are valid.  This is the primary integration point between
+        ``GAIATrace`` and ``CanonGraph``.
         """
         return [r for r in refs if r not in self._nodes]
 

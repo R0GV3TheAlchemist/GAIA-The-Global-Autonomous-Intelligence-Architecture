@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 import time
 import uuid
@@ -23,6 +24,18 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+__all__ = [
+    "TraceEventType",
+    "TraceRecord",
+    "GAIATrace",
+    "AsyncGAIATrace",
+    "correlation_id_ctx",
+    "set_correlation_id",
+    "new_correlation_id",
+]
+
+_log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Correlation ID context — propagated across async boundaries
@@ -57,13 +70,18 @@ _AUDIT_DIR = Path("core/audit")
 class TraceEventType(str, Enum):
     """All recognised GAIA trace event types.
 
-    Extending str allows instances to serialise directly to JSON as strings.
-    Using Enum gives exhaustive matching, iteration, and mypy safety.
+    Extending ``str`` allows instances to serialise directly to JSON as
+    strings without a custom encoder.  Using ``Enum`` gives exhaustive
+    matching, iteration, and mypy safety.
+
+    Memory events (MEMORY_RECALL, MEMORY_WRITE) are imported by
+    ``memory/hierarchy.py`` — they are listed here rather than in that
+    module to avoid circular imports.
     """
     SYNERGY_COMPUTE      = "synergy_compute"
     LLM_INFERENCE        = "llm_inference"
-    MEMORY_RECALL        = "memory_recall"
-    MEMORY_WRITE         = "memory_write"
+    MEMORY_RECALL        = "memory_recall"   # used by MemoryRouter.search
+    MEMORY_WRITE         = "memory_write"    # used by MemoryRouter write paths
     ACTION_GATE_DECISION = "action_gate_decision"
     TASK_NODE_EXEC       = "task_node_exec"
     CANON_LOAD           = "canon_load"
@@ -81,8 +99,8 @@ class TraceRecord:
     event:          str
     gaian_id:       str | None
     correlation_id: str
-    canon_refs:     list[str]
-    started_at:     str            # ISO-8601 UTC
+    canon_refs:     list[str]        # validated against CanonGraph.validate_refs
+    started_at:     str              # ISO-8601 UTC
     ended_at:       str | None
     latency_ms:     float | None
     inputs:         dict[str, Any]
@@ -113,6 +131,11 @@ class GAIATrace:
     The trace record is flushed to ``core/audit/traces_YYYYMMDD.jsonl`` on
     ``__exit__``, whether or not an exception was raised.  Exceptions are
     **never** suppressed — they propagate normally after being recorded.
+
+    Flush errors (e.g. disk-full) are caught, logged via ``logging``, and
+    silently swallowed so that a tracing failure never crashes GAIA itself
+    (Canon C30: no silent failures for *inference*, but the tracer itself
+    must be fault-tolerant).
     """
 
     def __init__(
@@ -148,15 +171,17 @@ class GAIATrace:
         self._record.outputs.update(data)
 
     def record_meta(self, data: dict[str, Any]) -> None:
-        """Merge ``data`` into the meta dict (e.g. model version, tokens)."""
+        """Merge ``data`` into the meta dict (e.g. model version, token counts)."""
         self._record.meta.update(data)
 
     @property
     def trace_id(self) -> str:
+        """The UUID4 trace ID for this specific inference step."""
         return self._record.trace_id
 
     @property
     def correlation_id(self) -> str:
+        """The ambient correlation ID inherited from the current async context."""
         return self._record.correlation_id
 
     # ------------------------------------------------------------------
@@ -169,7 +194,7 @@ class GAIATrace:
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         self._record.ended_at = datetime.now(timezone.utc).isoformat()
         self._record.latency_ms = (time.monotonic() - self._t0) * 1000
-        if exc_val:
+        if exc_val is not None:
             self._record.error = f"{type(exc_val).__name__}: {exc_val}"
         self._flush()
         return False  # never suppress exceptions
@@ -179,12 +204,19 @@ class GAIATrace:
     # ------------------------------------------------------------------
 
     def _flush(self) -> None:
-        """Append the trace record as a JSON Line to the daily audit file."""
-        _AUDIT_DIR.mkdir(parents=True, exist_ok=True)
-        log_file = _AUDIT_DIR / f"traces_{datetime.now(timezone.utc).strftime('%Y%m%d')}.jsonl"
-        line = json.dumps(asdict(self._record), default=str)
-        with log_file.open("a", encoding="utf-8") as fh:
-            fh.write(line + "\n")
+        """Append the trace record as a JSON Line to the daily audit file.
+
+        Any I/O errors (disk-full, permissions) are caught and logged so that
+        a tracing failure never propagates into the calling code.
+        """
+        try:
+            _AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+            log_file = _AUDIT_DIR / f"traces_{datetime.now(timezone.utc).strftime('%Y%m%d')}.jsonl"
+            line = json.dumps(asdict(self._record), default=str)
+            with log_file.open("a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except OSError as exc:
+            _log.error("GAIATrace._flush failed (trace_id=%s): %s", self._record.trace_id, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -204,12 +236,19 @@ class AsyncGAIATrace(GAIATrace):
         ) as trace:
             response = await llm.complete(prompt)
             trace.record_output({"response_tokens": len(response.tokens)})
+
+    The flush is delegated to the synchronous ``__exit__`` so both paths
+    share a single implementation.
     """
 
     async def __aenter__(self) -> "AsyncGAIATrace":
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> bool:
+        # Delegate to sync __exit__ — _flush is pure I/O and fast enough
+        # that blocking the event loop momentarily is acceptable.  If
+        # high-throughput async scenarios require it, swap _flush for an
+        # asyncio.to_thread call here.
         return self.__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -279,8 +318,12 @@ def _cmd_stats(args: argparse.Namespace) -> None:
     errors = sum(1 for r in records if r.get("error"))
     latencies = [r["latency_ms"] for r in records if r.get("latency_ms") is not None]
     avg_ms = sum(latencies) / len(latencies) if latencies else 0.0
-    p99_ms = sorted(latencies)[int(len(latencies) * 0.99)] if len(latencies) >= 100 else (max(latencies) if latencies else 0.0)
-    print(f"Event filter : {args.event or '(all)'}") 
+    p99_ms = (
+        sorted(latencies)[int(len(latencies) * 0.99)]
+        if len(latencies) >= 100
+        else (max(latencies) if latencies else 0.0)
+    )
+    print(f"Event filter : {args.event or '(all)'}")
     print(f"Total traces : {count}")
     print(f"Errors       : {errors}")
     print(f"Avg latency  : {avg_ms:.1f}ms")
