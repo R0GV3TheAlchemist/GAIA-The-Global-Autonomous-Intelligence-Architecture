@@ -64,15 +64,17 @@ class SafetyEngine:
 
         cb_state = self._circuit_breaker.tick()
 
-        # Cross-session: cumulative crisis synthesis
+        # Cross-session: cumulative crisis synthesis.
+        # Use past_profiles only — the current session has not yet accumulated
+        # enough signal to inform trajectory classification, and appending it
+        # would drive the latest_score down to the opening frame's low score,
+        # masking alarming historical risk.
         crisis_signal: Optional[CrisisSignal] = None
         if past_profiles:
-            current_profile = self._build_current_profile()
-            all_profiles = past_profiles + [current_profile]
             crisis_signal = self._synthesizer.synthesize(
                 user_id=self.user_id,
                 current_session_id=self.session_id,
-                profiles=all_profiles,
+                profiles=past_profiles,
             )
 
         return {
