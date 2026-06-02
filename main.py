@@ -29,6 +29,7 @@ from api.routers import llm as llm_router
 from api.routers import gaian as gaian_router
 from api.routers import memory as memory_router
 from api.routers import alignment as alignment_router
+from api.routers import pair_programmer as pair_programmer_router
 from api.notifications import router as notifications_router
 from api.atlas import router as atlas_router
 from api.crypto import router as crypto_router
@@ -173,11 +174,12 @@ app.add_middleware(
 # ── Routers ────────────────────────────────────────────────────────────────────────────
 
 app.include_router(auth_router)                                        # /auth/*
-app.include_router(zodiac.router,              prefix="/api/zodiac",  tags=["Zodiac"])
-app.include_router(llm_router.router,          prefix="/api")
-app.include_router(gaian_router.router,        prefix="/api")
-app.include_router(memory_router.router,       prefix="/api/memory",  tags=["Memory"])
-app.include_router(alignment_router.router,    prefix="/alignment",   tags=["Alignment"])
+app.include_router(zodiac.router,                   prefix="/api/zodiac",          tags=["Zodiac"])
+app.include_router(llm_router.router,               prefix="/api")
+app.include_router(gaian_router.router,             prefix="/api")
+app.include_router(memory_router.router,            prefix="/api/memory",          tags=["Memory"])
+app.include_router(alignment_router.router,         prefix="/alignment",           tags=["Alignment"])
+app.include_router(pair_programmer_router.router,   prefix="/api",                 tags=["Pair Programmer"])
 app.include_router(notifications_router)
 app.include_router(atlas_router)
 app.include_router(crypto_router)
