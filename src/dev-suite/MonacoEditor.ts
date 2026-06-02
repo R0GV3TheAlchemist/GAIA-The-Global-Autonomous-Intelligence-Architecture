@@ -116,3 +116,81 @@ export function openInEditor(path: string, content: string): void {
 export function markEditorClean(): void {
   _editorInstance?.getModel()?.setEOL(0);
 }
+
+/** Returns the text currently selected in the editor, or null if nothing is selected. */
+export function getSelectedCode(): string | null {
+  if (!_editorInstance) return null;
+  const selection = _editorInstance.getSelection();
+  if (!selection || _editorInstance.getModel()?.getValueInRange(selection).trim() === '') return null;
+  return _editorInstance.getModel()?.getValueInRange(selection) ?? null;
+}
+
+/** Returns the full source text of the currently open file. */
+export function getEditorContent(): string {
+  return _editorInstance?.getValue() ?? '';
+}
+
+/** Returns the file path of the currently open file, or null if no file is open. */
+export function getCurrentFilePath(): string | null {
+  return _currentPath;
+}
+
+/**
+ * Inserts text at the current cursor position (or replaces the current selection).
+ * Used by the AI Pair Programmer to apply refactor/fix suggestions inline.
+ */
+export function insertAtCursor(text: string): void {
+  if (!_editorInstance) return;
+  const selection = _editorInstance.getSelection();
+  const op = { range: selection, text, forceMoveMarkers: true };
+  _editorInstance.executeEdits('gaia-pair-programmer', [op]);
+  _editorInstance.focus();
+}
+
+/**
+ * Registers GAIA ghost-text inline completions provider.
+ * Called once during mountRightSidebar — safe to call multiple times (no-ops if already registered).
+ */
+let _inlineProviderRegistered = false;
+export function registerGaiaInlineCompletions(gaiaEndpoint: string): void {
+  if (_inlineProviderRegistered || typeof window.monaco === 'undefined') return;
+  _inlineProviderRegistered = true;
+
+  window.monaco.languages.registerInlineCompletionsProvider('*', {
+    async provideInlineCompletions(model: MonacoInstance, position: MonacoInstance) {
+      const lineContent = model.getLineContent(position.lineNumber);
+      if (lineContent.trim().length < 4) return { items: [] };
+
+      try {
+        const res = await fetch(gaiaEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'complete',
+            code: model.getValue(),
+            cursor_line: position.lineNumber,
+            cursor_col: position.column,
+            file_path: _currentPath,
+          }),
+        });
+        if (!res.ok) return { items: [] };
+        const data = await res.json() as { completion?: string };
+        if (!data.completion) return { items: [] };
+        return {
+          items: [{
+            insertText: data.completion,
+            range: {
+              startLineNumber: position.lineNumber,
+              startColumn: position.column,
+              endLineNumber: position.lineNumber,
+              endColumn: position.column,
+            },
+          }],
+        };
+      } catch {
+        return { items: [] };
+      }
+    },
+    freeInlineCompletions() { /* no-op */ },
+  });
+}
