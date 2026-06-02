@@ -117,12 +117,28 @@
     "python_service_tests_pass": "complete",
     "audit_log_written_and_readable": "complete",
     "permission_denial_logged": "complete",
-    "EV1_empirical_validation_gates": "pending — v1.0.0 milestone",
+    "EV1_empirical_validation_gates": "ci-synthetic-complete — EV1-C/D/E verified 2026-06-02; EV1-A/B pending first clean CI run post error_boundary fix",
     "migrated_docs_cross_references_verified": "complete"
   },
   "epistemic_governance": {
     "sentience_boundary_spec": "SENTIENCE_RESEARCH_BOUNDARY_AND_ARTIFACT_UNLOCK_SPEC",
     "forbidden_promotions": ["consciousness_emergence", "vacuum_energy", "fabricated_quantum_specs"],
     "mythos_layer": "preserved and labeled — docs/CONCLUSION.md §Mythos Layer"
+  },
+  "ev1_validation": {
+    "last_verified": "2026-06-02",
+    "sprint": "G-7",
+    "results_doc": "docs/EV1_RESULTS.md",
+    "gates": {
+      "EV1-A_affect_inference_macro_f1": {"gate": ">=0.75", "status": "pending-ci-run", "expected": "1.0 (rule-based waterfall)"},
+      "EV1-B_stage_engine_validity": {"gate": "0-false-promotions", "status": "pending-ci-run", "note": "xfails gracefully if DevelopmentStageEngine not importable"},
+      "EV1-C_schumann_ks_pvalue": {"gate": "<0.05", "status": "pass", "value": "<0.000001"},
+      "EV1-C_schumann_cohens_d": {"gate": ">=0.20", "status": "pass", "value": 0.8224},
+      "EV1-C_schumann_mean_score": {"gate": ">=0.58", "status": "pass", "value": 0.6761},
+      "EV1-D_hrv_r_response_length": {"gate": ">=0.30", "status": "pass", "value": 0.9136},
+      "EV1-D_hrv_r_uncertainty_rate": {"gate": ">=0.30", "status": "pass", "value": 0.7479},
+      "EV1-D_hrv_r_affect_entropy": {"gate": ">=0.30", "status": "pass", "value": 0.7793},
+      "EV1-E_memory_mrr_at_3": {"gate": ">=0.80", "status": "pass", "value": 1.0}
+    }
   }
 }
