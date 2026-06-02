@@ -15,9 +15,6 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    # Imported at type-check time only to avoid circular imports at runtime.
-    # MemoryRouter uses TraceEventType values as string literals when
-    # TYPE_CHECKING is False, which is safe because TraceEventType extends str.
     from core.trace import TraceEventType  # noqa: F401
 
 __all__ = [
@@ -250,12 +247,11 @@ class MemoryRouter:
         if not results:
             return results
 
-        # Normalise timestamps to [0, 1]
         timestamps = [r.get("_ts", 0.0) for r in results]
         ts_min, ts_max = min(timestamps), max(timestamps)
-        ts_range = ts_max - ts_min or 1.0  # guard div-by-zero when all identical
+        ts_range = ts_max - ts_min or 1.0
 
-        rw = max(0.0, min(1.0, query.recency_weight))  # clamp to [0, 1]
+        rw = max(0.0, min(1.0, query.recency_weight))
         rel_w = 1.0 - rw
 
         for r in results:
