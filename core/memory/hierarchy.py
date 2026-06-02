@@ -243,8 +243,10 @@ class MemoryRouter:
         tiers = query.tiers or self._INTENT_MAP.get(query.intent, list(MemoryTier))
 
         if _TRACE_AVAILABLE:
+            # TraceEventType.MEMORY_RECALL is the correct event for a read/search
+            # operation. RETRIEVAL does not exist in core/trace.TraceEventType.
             async with AsyncGAIATrace(
-                event=TraceEventType.RETRIEVAL,
+                event=TraceEventType.MEMORY_RECALL,
                 gaian_id=query.gaian_id,
                 canon_refs=query.canon_refs,
                 inputs={"intent": query.intent, "tiers": [t.name for t in tiers],
