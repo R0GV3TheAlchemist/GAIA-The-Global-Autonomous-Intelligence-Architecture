@@ -2,43 +2,49 @@
 core/memory/hierarchy.py
 GAIA Memory Hierarchy — Sprint G-8
 
-Formalizes five cognitive memory tiers and a routing layer that directs
+Formalizes five cognitive memory tiers and a MemoryRouter that directs
 retrieval queries to the correct tier(s) rather than searching everything.
 This makes memory retrieval cost-predictable and retrieval logic testable.
 
-Canon Ref: C34 (Presence — GAIA knows what tier of memory a moment belongs to)
-           C01 (Sovereignty — memory routing is explicit, not opaque)
+Canon Refs:
+  C34  Presence — GAIA knows what tier of memory a moment belongs to.
+  C01  Sovereignty — memory routing is explicit and auditable.
+
+Design principles:
+  1. NO call site outside this package may choose tiers ad-hoc.
+     All routing goes through MemoryRouter.search() or MemoryRouter.write().
+  2. MemoryStore implementations are injected (never instantiated here).
+     This keeps the routing layer pure and independently testable.
+  3. Ranking is deterministic given fixed recency_weight.
+     The scoring formula is specified in _rank() and in the spec.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from core.trace import TraceEventType  # noqa: F401
+log = logging.getLogger(__name__)
 
-__all__ = [
-    "MemoryTier",
-    "MemoryQuery",
-    "MemoryStore",
-    "MemoryRouter",
-]
+# ── Optional GAIATrace integration ─────────────────────────────────────── #
+try:
+    from core.trace import AsyncGAIATrace, TraceEventType
+    _TRACE_AVAILABLE = True
+except ImportError:
+    _TRACE_AVAILABLE = False
 
 
-# ---------------------------------------------------------------------------
-# Memory tiers
-# ---------------------------------------------------------------------------
+# ── MemoryTier ────────────────────────────────────────────────────────────── #
 
 class MemoryTier(Enum):
-    """The five cognitive memory tiers in GAIA-OS.
+    """The five cognitive memory tiers, ordered from most-volatile to least.
 
-    Each tier has a different storage backend, TTL, and retrieval cost:
-
-    WORKING    — Current turn context; evicts at turn end (in-memory dict).
-    SHORT_TERM — Last N turns; 24-72 hr TTL (SQLite/Redis).
-    EPISODIC   — Session moments; weeks-months TTL (ArcadeDB / graph DB).
-    SEMANTIC   — Crystal Knowledge Graph facts; permanent.
-    LONG_TERM  — Gaian identity and settled personality arcs; permanent.
+    WORKING    → Current turn; evicts at turn end. Zero persistence.
+    SHORT_TERM → Last N turns; 24–72 hr TTL. Recent context.
+    EPISODIC   → Session moments; weeks–months TTL. Life events.
+    SEMANTIC   → Crystal DB + canon facts; permanent.
+    LONG_TERM  → Gaian identity + settled arcs; permanent.
     """
     WORKING    = auto()
     SHORT_TERM = auto()
@@ -46,46 +52,41 @@ class MemoryTier(Enum):
     SEMANTIC   = auto()
     LONG_TERM  = auto()
 
-    def to_trace_event(self, *, write: bool = False) -> str:
-        """Return the ``TraceEventType`` string value appropriate for this tier.
+    @property
+    def is_permanent(self) -> bool:
+        """True for tiers that never auto-expire."""
+        return self in (MemoryTier.SEMANTIC, MemoryTier.LONG_TERM)
 
-        Using the string value directly (rather than importing TraceEventType
-        at module level) avoids a circular import while remaining mypy-safe
-        under ``TYPE_CHECKING``.
+    @property
+    def default_ttl_hours(self) -> float | None:
+        """Canonical TTL for this tier, in hours. None = no expiry."""
+        return {
+            MemoryTier.WORKING:    0.0,
+            MemoryTier.SHORT_TERM: 48.0,
+            MemoryTier.EPISODIC:   720.0,
+            MemoryTier.SEMANTIC:   None,
+            MemoryTier.LONG_TERM:  None,
+        }[self]
 
-        Parameters
-        ----------
-        write:
-            If ``True``, return the write-side event (``memory_write``);
-            otherwise return the read-side event (``memory_recall``).
-        """
-        return "memory_write" if write else "memory_recall"
 
-
-# ---------------------------------------------------------------------------
-# MemoryQuery — describes what is being sought
-# ---------------------------------------------------------------------------
+# ── MemoryQuery ───────────────────────────────────────────────────────────── #
 
 class MemoryQuery:
     """Describes what kind of memory is being sought.
 
-    Parameters
-    ----------
-    query_text:
-        The natural-language or embedding query string.
-    intent:
-        Routing hint — one of ``"context"``, ``"recall"``, ``"fact"``,
-        ``"identity"``, or ``"full"``.  Controls which tiers are searched
-        when ``tiers`` is ``None``.
-    gaian_id:
-        Optional scoping to a specific Gaian persona.
-    tiers:
-        Explicit tier list; overrides intent-based routing when provided.
-    max_results:
-        Maximum number of results to return across all searched tiers.
-    recency_weight:
-        Float in [0.0, 1.0].  Higher values rank recent memories first;
-        lower values rank by relevance.
+    Attributes:
+        query_text:     Natural language query string.
+        intent:         Routing hint. One of:
+                        'context'  → WORKING + SHORT_TERM
+                        'recall'   → SHORT_TERM + EPISODIC
+                        'fact'     → SEMANTIC
+                        'identity' → LONG_TERM
+                        'full'     → all tiers (expensive)
+        gaian_id:       Scopes results to a specific Gaian.
+        tiers:          Explicit tier override; overrides intent routing.
+        max_results:    Maximum results returned after merge + rank.
+        recency_weight: [0, 1] weight toward recency vs. relevance in ranking.
+        canon_refs:     Canon entries this query was issued under.
     """
 
     VALID_INTENTS = frozenset({"context", "recall", "fact", "identity", "full"})
@@ -98,40 +99,42 @@ class MemoryQuery:
         tiers: list[MemoryTier] | None = None,
         max_results: int = 10,
         recency_weight: float = 0.5,
+        canon_refs: list[str] | None = None,
     ) -> None:
         if intent not in self.VALID_INTENTS:
-            raise ValueError(f"intent must be one of {self.VALID_INTENTS!r}, got {intent!r}")
+            raise ValueError(
+                f"Invalid intent {intent!r}. Must be one of {sorted(self.VALID_INTENTS)}."
+            )
+        if not 0.0 <= recency_weight <= 1.0:
+            raise ValueError(f"recency_weight must be in [0, 1], got {recency_weight}.")
         self.query_text    = query_text
         self.intent        = intent
         self.gaian_id      = gaian_id
         self.tiers         = tiers
-        self.max_results   = max_results
+        self.max_results   = max(1, max_results)
         self.recency_weight = recency_weight
+        self.canon_refs    = canon_refs or ["C34", "C01"]
+
+    def __repr__(self) -> str:
+        return (
+            f"MemoryQuery(intent={self.intent!r}, "
+            f"gaian_id={self.gaian_id!r}, "
+            f"text={self.query_text[:40]!r})"
+        )
 
 
-# ---------------------------------------------------------------------------
-# MemoryStore — protocol for tier-specific backends
-# ---------------------------------------------------------------------------
+# ── MemoryStore Protocol ───────────────────────────────────────────────────── #
 
 @runtime_checkable
 class MemoryStore(Protocol):
-    """Protocol every tier-specific memory store must satisfy.
-
-    Implementations are injected into ``MemoryRouter`` at construction time.
-    This protocol is defined here (not in ``memory/store.py``) so that
-    ``MemoryRouter`` can depend on it without importing the concrete
-    implementation, avoiding import cycles.
-
-    ``memory/store.py`` contains the concrete ``GaianMemoryStore`` class
-    that implements this protocol — do **not** re-export this Protocol from
-    ``memory/store.py`` or a shadowing collision will occur.
-    """
+    """Protocol contract for all tier-specific memory store implementations."""
 
     async def write(
         self,
         key: str,
         value: Any,
         gaian_id: str | None = None,
+        ttl_hours: float | None = None,
     ) -> None: ...
 
     async def read(
@@ -140,39 +143,20 @@ class MemoryStore(Protocol):
         gaian_id: str | None = None,
     ) -> Any | None: ...
 
-    async def search(self, query: "MemoryQuery") -> list[dict]: ...
+    async def search(
+        self,
+        query: MemoryQuery,
+    ) -> list[dict]: ...
 
-    async def evict_expired(self) -> int:
-        """Evict expired entries; return the number evicted."""
-        ...
+    async def evict_expired(self) -> int: ...
 
 
-# ---------------------------------------------------------------------------
-# MemoryRouter
-# ---------------------------------------------------------------------------
+# ── MemoryRouter ─────────────────────────────────────────────────────────────── #
 
 class MemoryRouter:
-    """
-    Routes ``MemoryQuery`` objects to the appropriate tier(s).
-    Merges and ranks results when multiple tiers are searched.
+    """Routes MemoryQuery objects to the correct tier(s)."""
 
-    Intent-to-tier routing rules
-    ----------------------------
-    ``"context"``  → WORKING + SHORT_TERM
-    ``"recall"``   → SHORT_TERM + EPISODIC
-    ``"fact"``     → SEMANTIC
-    ``"identity"`` → LONG_TERM
-    ``"full"``     → all tiers (expensive; only for explicit full-context requests)
-
-    Trace integration
-    -----------------
-    ``MemoryRouter.search`` and ``MemoryRouter.write`` emit trace events
-    using ``MemoryTier.to_trace_event()``, which returns the string value
-    of ``TraceEventType.MEMORY_RECALL`` or ``TraceEventType.MEMORY_WRITE``
-    without importing ``core.trace`` at module level (avoids circular dep).
-    Callers that want to wrap these calls in a ``GAIATrace`` context manager
-    should do so in their own code; ``MemoryRouter`` does not own traces.
-    """
+    CANON_REFS = ["C34", "C01"]
 
     _INTENT_MAP: dict[str, list[MemoryTier]] = {
         "context":  [MemoryTier.WORKING,    MemoryTier.SHORT_TERM],
@@ -183,27 +167,56 @@ class MemoryRouter:
     }
 
     def __init__(self, stores: dict[MemoryTier, MemoryStore]) -> None:
+        missing = [t for t in MemoryTier if t not in stores]
+        if missing:
+            log.warning("MemoryRouter: missing stores for tiers: %s", [t.name for t in missing])
         self._stores = stores
 
     async def search(self, query: MemoryQuery) -> list[dict]:
-        """Search the appropriate tier(s) and return ranked results.
-
-        Each result dict gains a ``_tier`` key (the tier name string) and
-        a ``_trace_event`` key (the corresponding TraceEventType string)
-        so callers can emit a correctly-typed trace record.
-        """
         tiers = query.tiers or self._INTENT_MAP.get(query.intent, list(MemoryTier))
-        results: list[dict] = []
+        if _TRACE_AVAILABLE:
+            async with AsyncGAIATrace(
+                event=TraceEventType.MEMORY_RECALL,
+                gaian_id=query.gaian_id,
+                canon_refs=query.canon_refs,
+                inputs={"intent": query.intent, "tiers": [t.name for t in tiers],
+                        "query_text": query.query_text[:80]},
+            ) as trace:
+                results = await self._fan_out(tiers, query)
+                ranked  = self._rank(results, query)
+                trace.record_output({"result_count": len(ranked)})
+                return ranked
+        else:
+            results = await self._fan_out(tiers, query)
+            return self._rank(results, query)
+
+    async def _fan_out(self, tiers: list[MemoryTier], query: MemoryQuery) -> list[dict]:
+        tasks, tier_labels = [], []
         for tier in tiers:
             store = self._stores.get(tier)
-            if store is None:
+            if store:
+                tasks.append(store.search(query))
+                tier_labels.append(tier)
+        if not tasks:
+            return []
+        gathered = await asyncio.gather(*tasks, return_exceptions=True)
+        results: list[dict] = []
+        for tier, outcome in zip(tier_labels, gathered):
+            if isinstance(outcome, Exception):
+                log.warning("MemoryRouter: tier %s raised %r", tier.name, outcome)
                 continue
-            tier_results = await store.search(query)
-            for r in tier_results:
+            for r in outcome:
                 r["_tier"] = tier.name
-                r["_trace_event"] = tier.to_trace_event(write=False)
-            results.extend(tier_results)
-        return self._rank(results, query)
+            results.extend(outcome)
+        return results
+
+    def _rank(self, results: list[dict], query: MemoryQuery) -> list[dict]:
+        w = query.recency_weight
+        for r in results:
+            rel = float(r.get("_relevance", 0.5))
+            rec = float(r.get("_recency",   0.5))
+            r["_score"] = w * rec + (1.0 - w) * rel
+        return sorted(results, key=lambda x: x["_score"], reverse=True)[: query.max_results]
 
     async def write(
         self,
@@ -211,53 +224,42 @@ class MemoryRouter:
         key: str,
         value: Any,
         gaian_id: str | None = None,
+        ttl_hours: float | None = None,
     ) -> None:
-        """Write a value to a specific memory tier.
-
-        Raises ``KeyError`` if no store is registered for *tier*.
-        """
-        store = self._stores[tier]
-        await store.write(key, value, gaian_id=gaian_id)
-
-    async def read(
-        self,
-        tier: MemoryTier,
-        key: str,
-        gaian_id: str | None = None,
-    ) -> Any | None:
-        """Read a value from a specific memory tier.
-
-        Returns ``None`` if the key does not exist or no store is registered.
-        """
         store = self._stores.get(tier)
         if store is None:
-            return None
-        return await store.read(key, gaian_id=gaian_id)
+            log.warning("MemoryRouter.write: no store registered for tier %s", tier.name)
+            return
+        await store.write(key, value, gaian_id, ttl_hours)
 
-    def _rank(self, results: list[dict], query: MemoryQuery) -> list[dict]:
-        """Combine recency and relevance scores, weighted by ``query.recency_weight``.
+    async def promote(
+        self,
+        key: str,
+        from_tier: MemoryTier,
+        to_tier: MemoryTier,
+        gaian_id: str | None = None,
+    ) -> bool:
+        src = self._stores.get(from_tier)
+        dst = self._stores.get(to_tier)
+        if not src or not dst:
+            log.warning("MemoryRouter.promote: missing store(s) for %s → %s", from_tier.name, to_tier.name)
+            return False
+        value = await src.read(key, gaian_id)
+        if value is None:
+            return False
+        await dst.write(key, value, gaian_id)
+        return True
 
-        Each result is expected to carry:
-        - ``_score`` (float, 0.0–1.0): semantic relevance from the store.
-        - ``_ts``    (float, Unix timestamp): creation/update time.
+    async def evict_all_expired(self) -> dict[str, int]:
+        results: dict[str, int] = {}
+        for tier, store in self._stores.items():
+            try:
+                count = await store.evict_expired()
+                results[tier.name] = count
+            except Exception as exc:  # noqa: BLE001
+                log.warning("MemoryRouter.evict: tier %s raised %r", tier.name, exc)
+                results[tier.name] = -1
+        return results
 
-        Missing fields default to 0.0 so partial results still sort cleanly.
-        Results are truncated to ``query.max_results``.
-        """
-        if not results:
-            return results
-
-        timestamps = [r.get("_ts", 0.0) for r in results]
-        ts_min, ts_max = min(timestamps), max(timestamps)
-        ts_range = ts_max - ts_min or 1.0
-
-        rw = max(0.0, min(1.0, query.recency_weight))
-        rel_w = 1.0 - rw
-
-        for r in results:
-            recency_score = (r.get("_ts", 0.0) - ts_min) / ts_range
-            relevance_score = float(r.get("_score", 0.0))
-            r["_combined_score"] = rw * recency_score + rel_w * relevance_score
-
-        results.sort(key=lambda r: r["_combined_score"], reverse=True)
-        return results[: query.max_results]
+    def registered_tiers(self) -> list[MemoryTier]:
+        return list(self._stores.keys())
