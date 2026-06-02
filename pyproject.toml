@@ -34,7 +34,19 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+# ── Paths ──────────────────────────────────────────────────────────────────
+# Includes repo root (core/, api/) and src-python/ (sovereign_memory/ etc.)
+pythonpath = [".", "src-python"]
+
+# ── Async ──────────────────────────────────────────────────────────────────
+# Required by pytest-asyncio >=0.23. Without this, async def test_* functions
+# are silently skipped. pyproject.toml takes precedence over pytest.ini, so
+# this MUST live here — not in a separate pytest.ini.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+
+# ── Guards ─────────────────────────────────────────────────────────────────
+timeout = 60
 
 [tool.ruff]
 line-length = 100
