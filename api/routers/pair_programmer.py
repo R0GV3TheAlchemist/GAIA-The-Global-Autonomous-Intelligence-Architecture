@@ -53,13 +53,14 @@ Guidelines:
 class Message(BaseModel):
     """A single turn in the conversation (mirrors OpenAI / Ollama chat format)."""
     role:    Literal["user", "assistant", "system"]
-    content: str
+    content: str = Field(..., max_length=10_000)
 
 
 class PairProgrammerRequest(BaseModel):
     # Primary inputs — caller provides ONE of these:
     prompt:   Optional[str] = Field(
         None,
+        max_length=20_000,
         description="Plain-text prompt.  Use this for simple, single-turn requests.",
     )
     messages: Optional[list[Message]] = Field(
@@ -72,18 +73,21 @@ class PairProgrammerRequest(BaseModel):
     # Optional context injected before the conversation
     file_context: Optional[str] = Field(
         None,
+        max_length=50_000,          # ~1,250 lines — keeps total prompt within model limits
         description="Raw source of the file currently open in the editor.  "
                     "Injected into the system prompt so the model understands "
                     "the surrounding code.",
     )
     language: Optional[str] = Field(
         None,
+        max_length=64,
         description="Programming language hint (e.g. 'TypeScript', 'Python').  "
                     "Helps the model choose the right syntax when not inferable "
                     "from `file_context`.",
     )
     cursor_context: Optional[str] = Field(
         None,
+        max_length=5_000,           # ~125 lines — tight excerpt around the cursor
         description="A small excerpt (±20 lines) around the cursor position.  "
                     "Used to anchor completions to the exact edit location.",
     )
