@@ -2,7 +2,7 @@
 """
 scripts/validate_crystal_db.py
 GAIA-OS Crystal Database — Programmatic Consistency Checker
-Version: 1.1.0 (2026-06-01: add c8a/c8b/c9a/c9b to BATCH_SERIES; now scans all 29 batches)
+Version: 1.2.0 (2026-06-01: R00 empty-batch guard + R14 cross-batch duplicate detection)
 
 Scans all batch files in src/crystals/db/ and validates every
 CrystalRecord object against the defined rule-set. Exits with code 1
@@ -147,7 +147,7 @@ def split_records(source: str) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
-# Validation rules
+# Validation rules (per-record)
 # ---------------------------------------------------------------------------
 
 def validate_record(batch_id: str, name: str, blob: str) -> list[Violation]:
@@ -342,14 +342,22 @@ def main():
     parser.add_argument("--json-out", type=str, help="Write JSON report to file")
     args = parser.parse_args()
 
-    if args.batch:
+    single_batch_mode = bool(args.batch)
+
+    if single_batch_mode:
         target_batches = [f"batch-{args.batch.lower()}"]
     else:
         target_batches = ALL_BATCHES
 
-    all_violations: list[Violation] = []
+    all_violations: list[Violation] = []\
+
+
     record_count = 0
     missing_batches = []
+
+    # name (normalised) → first batch_id that defined it
+    # Used for R14 cross-batch duplicate detection (full-scan only).
+    seen_crystal_names: dict[str, str] = {}
 
     for batch_id in target_batches:
         filepath = os.path.join(DB_DIR, f"{batch_id}.data.ts")
@@ -361,11 +369,34 @@ def main():
             source = f.read()
 
         records = split_records(source)
+
+        # R00 — registered batch file is empty (stub / placeholder)
+        if len(records) == 0:
+            all_violations.append(Violation(
+                ERROR, "R00", batch_id, "<batch>",
+                "Batch file is registered in BATCH_SERIES but contains zero CrystalRecord entries",
+                fix="Populate with 5 crystal entries or remove from BATCH_SERIES and delete the file",
+            ))
+            continue  # nothing to validate per-record
+
         record_count += len(records)
 
         for name, blob in records:
+            # Per-record rules (R01–R13)
             violations = validate_record(batch_id, name, blob)
             all_violations.extend(violations)
+
+            # Accumulate names for R14 (full-scan only)
+            if not single_batch_mode:
+                normalised = name.strip().lower()
+                if normalised in seen_crystal_names:
+                    all_violations.append(Violation(
+                        ERROR, "R14", batch_id, name,
+                        f"Duplicate crystal name — '{name}' already appears in {seen_crystal_names[normalised]}",
+                        fix="Remove or rename the duplicate entry; use trade_name: true if this is a legitimate variant",
+                    ))
+                else:
+                    seen_crystal_names[normalised] = batch_id
 
     errors   = [v for v in all_violations if v.severity == ERROR]
     warnings = [v for v in all_violations if v.severity == WARN]
@@ -391,7 +422,7 @@ def main():
     # JSON report
     if args.json_out:
         report = {
-            "version": "1.1.0",
+            "version": "1.2.0",
             "records_scanned": record_count,
             "batches_scanned": len(target_batches) - len(missing_batches),
             "missing_batches": missing_batches,
