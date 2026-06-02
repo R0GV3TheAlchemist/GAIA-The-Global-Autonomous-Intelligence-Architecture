@@ -16,7 +16,8 @@ Covers:
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
+import httpx
+from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 
 import api.routers.alignment as alignment_module
@@ -36,10 +37,10 @@ def reset_emitter():
 
 
 @pytest.fixture()
-def client():
-    app = FastAPI()
-    app.include_router(router, prefix="/alignment")
-    return TestClient(app)
+def app():
+    _app = FastAPI()
+    _app.include_router(router, prefix="/alignment")
+    return _app
 
 
 # ===========================================================================
@@ -48,55 +49,67 @@ def client():
 
 class TestComputeHappyPath:
 
-    def test_returns_200(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 1.0,
-        })
+    @pytest.mark.asyncio
+    async def test_returns_200(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 1.0,
+            })
         assert resp.status_code == 200
 
-    def test_response_has_all_fields(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 1.0,
-        })
+    @pytest.mark.asyncio
+    async def test_response_has_all_fields(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 1.0,
+            })
         body = resp.json()
         for key in ("score", "hrv_score", "schumann_score", "solar_kp",
                     "ui_tier", "last_updated", "fallback_mode"):
             assert key in body, f"missing key: {key}"
 
-    def test_score_in_range(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 1.0,
-        })
+    @pytest.mark.asyncio
+    async def test_score_in_range(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 1.0,
+            })
         assert 0.0 <= resp.json()["score"] <= 100.0
 
-    def test_ui_tier_valid(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_ui_tier_valid(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 0.0,
+            })
         assert resp.json()["ui_tier"] in ("minimal", "core", "standard", "full", "vibrant")
 
-    def test_fallback_mode_empty_on_healthy_feeds(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_fallback_mode_empty_on_healthy_feeds(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 0.0,
+            })
         assert resp.json()["fallback_mode"] == ""
 
-    def test_solar_kp_echoed_in_response(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 3.5,
-        })
+    @pytest.mark.asyncio
+    async def test_solar_kp_echoed_in_response(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 3.5,
+            })
         assert resp.json()["solar_kp"] == pytest.approx(3.5, abs=0.01)
 
 
@@ -106,68 +119,84 @@ class TestComputeHappyPath:
 
 class TestComputeFailureModes:
 
-    def test_hrv_unavailable_returns_200(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": None,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_hrv_unavailable_returns_200(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": None,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 0.0,
+            })
         assert resp.status_code == 200
 
-    def test_hrv_unavailable_fallback_recorded(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": None,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_hrv_unavailable_fallback_recorded(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": None,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 0.0,
+            })
         assert "hrv_unavailable" in resp.json()["fallback_mode"]
 
-    def test_schumann_unavailable_fallback_recorded(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": None,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_schumann_unavailable_fallback_recorded(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": None,
+                "solar_kp": 0.0,
+            })
         assert "schumann_unavailable" in resp.json()["fallback_mode"]
 
-    def test_both_unavailable_score_is_50(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": None,
-            "raw_schumann_amplitude": None,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_both_unavailable_score_is_50(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": None,
+                "raw_schumann_amplitude": None,
+                "solar_kp": 0.0,
+            })
         assert resp.json()["score"] == pytest.approx(50.0)
 
-    def test_both_unavailable_tier_is_standard(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": None,
-            "raw_schumann_amplitude": None,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_both_unavailable_tier_is_standard(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": None,
+                "raw_schumann_amplitude": None,
+                "solar_kp": 0.0,
+            })
         assert resp.json()["ui_tier"] == "standard"
 
-    def test_kp_storm_score_is_zero(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 9.0,
-        })
+    @pytest.mark.asyncio
+    async def test_kp_storm_score_is_zero(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 9.0,
+            })
         assert resp.json()["score"] == pytest.approx(0.0)
 
-    def test_kp_storm_tier_is_minimal(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 9.0,
-        })
+    @pytest.mark.asyncio
+    async def test_kp_storm_tier_is_minimal(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 9.0,
+            })
         assert resp.json()["ui_tier"] == "minimal"
 
-    def test_kp_storm_fallback_recorded(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 9.0,
-        })
+    @pytest.mark.asyncio
+    async def test_kp_storm_fallback_recorded(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 9.0,
+            })
         assert "kp_storm" in resp.json()["fallback_mode"]
 
 
@@ -177,40 +206,50 @@ class TestComputeFailureModes:
 
 class TestComputeValidation:
 
-    def test_negative_rmssd_returns_422(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": -1.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_negative_rmssd_returns_422(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": -1.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": 0.0,
+            })
         assert resp.status_code == 422
 
-    def test_negative_amplitude_returns_422(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": -0.5,
-            "solar_kp": 0.0,
-        })
+    @pytest.mark.asyncio
+    async def test_negative_amplitude_returns_422(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": -0.5,
+                "solar_kp": 0.0,
+            })
         assert resp.status_code == 422
 
-    def test_negative_kp_returns_422(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-            "solar_kp": -1.0,
-        })
+    @pytest.mark.asyncio
+    async def test_negative_kp_returns_422(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+                "solar_kp": -1.0,
+            })
         assert resp.status_code == 422
 
-    def test_missing_all_fields_uses_defaults(self, client):
+    @pytest.mark.asyncio
+    async def test_missing_all_fields_uses_defaults(self, app):
         """Empty body is valid — all fields have defaults (None / 0.0)."""
-        resp = client.post("/alignment/compute", json={})
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={})
         assert resp.status_code == 200
 
-    def test_solar_kp_defaults_to_zero(self, client):
-        resp = client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0,
-            "raw_schumann_amplitude": 2.0,
-        })
+    @pytest.mark.asyncio
+    async def test_solar_kp_defaults_to_zero(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0,
+                "raw_schumann_amplitude": 2.0,
+            })
         assert resp.json()["solar_kp"] == pytest.approx(0.0, abs=0.01)
 
 
@@ -220,30 +259,40 @@ class TestComputeValidation:
 
 class TestAlignmentStatus:
 
-    def test_status_200_before_compute(self, client):
-        resp = client.get("/alignment/status")
+    @pytest.mark.asyncio
+    async def test_status_200_before_compute(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/alignment/status")
         assert resp.status_code == 200
 
-    def test_emitter_ready_true(self, client):
-        resp = client.get("/alignment/status")
+    @pytest.mark.asyncio
+    async def test_emitter_ready_true(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/alignment/status")
         assert resp.json()["emitter_ready"] is True
 
-    def test_last_state_none_before_compute(self, client):
-        resp = client.get("/alignment/status")
+    @pytest.mark.asyncio
+    async def test_last_state_none_before_compute(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/alignment/status")
         assert resp.json()["last_state"] is None
 
-    def test_last_state_populated_after_compute(self, client):
-        client.post("/alignment/compute", json={
-            "raw_rmssd": 60.0, "raw_schumann_amplitude": 2.0, "solar_kp": 1.0,
-        })
-        resp = client.get("/alignment/status")
+    @pytest.mark.asyncio
+    async def test_last_state_populated_after_compute(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/alignment/compute", json={
+                "raw_rmssd": 60.0, "raw_schumann_amplitude": 2.0, "solar_kp": 1.0,
+            })
+            resp = await client.get("/alignment/status")
         assert resp.json()["last_state"] is not None
 
-    def test_sample_counts_increment(self, client):
-        for _ in range(3):
-            client.post("/alignment/compute", json={
-                "raw_rmssd": 55.0, "raw_schumann_amplitude": 2.0, "solar_kp": 0.0,
-            })
-        status = client.get("/alignment/status").json()
+    @pytest.mark.asyncio
+    async def test_sample_counts_increment(self, app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            for _ in range(3):
+                await client.post("/alignment/compute", json={
+                    "raw_rmssd": 55.0, "raw_schumann_amplitude": 2.0, "solar_kp": 0.0,
+                })
+            status = (await client.get("/alignment/status")).json()
         assert status["hrv_sample_count"] == 3
         assert status["schumann_sample_count"] == 3

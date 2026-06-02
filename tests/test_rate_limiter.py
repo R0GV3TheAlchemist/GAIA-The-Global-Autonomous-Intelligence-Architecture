@@ -14,7 +14,7 @@ import pytest
 import time
 from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
 
 from core.rate_limiter import (
     _sliding_window_check,
@@ -156,33 +156,33 @@ def app_with_middleware():
     return _app
 
 
-@pytest.fixture
-def mw_client(app_with_middleware):
-    return TestClient(app_with_middleware, raise_server_exceptions=False)
-
-
 class TestRateLimitMiddleware:
-    def test_normal_request_passes(self, mw_client):
-        r = mw_client.get("/test")
+    @pytest.mark.asyncio
+    async def test_normal_request_passes(self, app_with_middleware):
+        async with AsyncClient(transport=ASGITransport(app=app_with_middleware), base_url="http://test") as client:
+            r = await client.get("/test")
         assert r.status_code == 200
 
-    def test_ratelimit_headers_on_ok_response(self, mw_client):
-        r = mw_client.get("/test")
+    @pytest.mark.asyncio
+    async def test_ratelimit_headers_on_ok_response(self, app_with_middleware):
+        async with AsyncClient(transport=ASGITransport(app=app_with_middleware), base_url="http://test") as client:
+            r = await client.get("/test")
         assert "x-ratelimit-limit" in r.headers
         assert "x-ratelimit-remaining" in r.headers
 
-    def test_bypass_path_not_throttled(self, mw_client):
-        # Hammer /status well above default limit — should never 429
-        for _ in range(5):
-            r = mw_client.get("/status")
-            assert r.status_code == 200
+    @pytest.mark.asyncio
+    async def test_bypass_path_not_throttled(self, app_with_middleware):
+        async with AsyncClient(transport=ASGITransport(app=app_with_middleware), base_url="http://test") as client:
+            for _ in range(5):
+                r = await client.get("/status")
+                assert r.status_code == 200
 
-    def test_blocks_after_limit(self):
+    @pytest.mark.asyncio
+    async def test_blocks_after_limit(self):
         """Use a tiny limit to verify 429 is returned."""
         clear_store()
         _app = FastAPI()
 
-        import os
         with patch.object(RateLimitMiddleware, '_MAX', 2), \
              patch.object(RateLimitMiddleware, '_WINDOW', 60):
 
@@ -192,8 +192,8 @@ class TestRateLimitMiddleware:
             async def hit():
                 return {"ok": True}
 
-            client = TestClient(_app, raise_server_exceptions=False)
-            client.get("/hit")
-            client.get("/hit")
-            r = client.get("/hit")
+            async with AsyncClient(transport=ASGITransport(app=_app), base_url="http://test") as client:
+                await client.get("/hit")
+                await client.get("/hit")
+                r = await client.get("/hit")
             assert r.status_code == 429

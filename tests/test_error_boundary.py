@@ -15,7 +15,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import ValidationError
@@ -85,7 +85,7 @@ class TestEnvelope:
 
 
 # ================================================================== #
-#  Integration via TestClient                                         #
+#  Integration via AsyncClient + ASGITransport                        #
 # ================================================================== #
 
 @pytest.fixture
@@ -113,64 +113,83 @@ def app_with_boundary():
     return _app
 
 
-@pytest.fixture
-def client(app_with_boundary):
-    return TestClient(app_with_boundary, raise_server_exceptions=False)
-
-
 class TestHTTPExceptionHandler:
-    def test_404_status_code(self, client):
-        r = client.get("/raise-404")
+    @pytest.mark.asyncio
+    async def test_404_status_code(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-404")
         assert r.status_code == 404
 
-    def test_404_ok_is_false(self, client):
-        r = client.get("/raise-404")
+    @pytest.mark.asyncio
+    async def test_404_ok_is_false(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-404")
         assert r.json()["ok"] is False
 
-    def test_404_code_is_not_found(self, client):
-        r = client.get("/raise-404")
+    @pytest.mark.asyncio
+    async def test_404_code_is_not_found(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-404")
         assert r.json()["error"]["code"] == "NOT_FOUND"
 
-    def test_404_message_passed_through(self, client):
-        r = client.get("/raise-404")
+    @pytest.mark.asyncio
+    async def test_404_message_passed_through(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-404")
         assert "luna" in r.json()["error"]["message"]
 
-    def test_correlation_id_header_present(self, client):
-        r = client.get("/raise-404")
+    @pytest.mark.asyncio
+    async def test_correlation_id_header_present(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-404")
         assert "x-correlation-id" in r.headers
 
-    def test_403_code_is_forbidden(self, client):
-        r = client.get("/raise-403")
+    @pytest.mark.asyncio
+    async def test_403_code_is_forbidden(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-403")
         assert r.json()["error"]["code"] == "FORBIDDEN"
 
 
 class TestUnhandledExceptionHandler:
-    def test_500_status_code(self, client):
-        r = client.get("/raise-500")
+    @pytest.mark.asyncio
+    async def test_500_status_code(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-500")
         assert r.status_code == 500
 
-    def test_500_ok_is_false(self, client):
-        r = client.get("/raise-500")
+    @pytest.mark.asyncio
+    async def test_500_ok_is_false(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-500")
         assert r.json()["ok"] is False
 
-    def test_500_code_is_internal_server_error(self, client):
-        r = client.get("/raise-500")
+    @pytest.mark.asyncio
+    async def test_500_code_is_internal_server_error(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-500")
         assert r.json()["error"]["code"] == "INTERNAL_SERVER_ERROR"
 
-    def test_no_traceback_in_response(self, client):
-        r = client.get("/raise-500")
+    @pytest.mark.asyncio
+    async def test_no_traceback_in_response(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-500")
         body = json.dumps(r.json())
         assert "Traceback" not in body
         assert "kaboom" not in body
 
-    def test_500_correlation_id_header_present(self, client):
-        r = client.get("/raise-500")
+    @pytest.mark.asyncio
+    async def test_500_correlation_id_header_present(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/raise-500")
         assert "x-correlation-id" in r.headers
 
 
 class TestHappyPath:
-    def test_ok_route_unaffected(self, client):
-        r = client.get("/ok")
+    @pytest.mark.asyncio
+    async def test_ok_route_unaffected(self, app_with_boundary):
+        async with AsyncClient(transport=ASGITransport(app=app_with_boundary), base_url="http://test") as client:
+            r = await client.get("/ok")
         assert r.status_code == 200
         assert r.json()["ok"] is True
 

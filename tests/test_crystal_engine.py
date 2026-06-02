@@ -5,7 +5,7 @@ Three-layer test suite for the Crystal Core (Issue #91).
 
 Layer 1  — Pure-unit tests (no I/O, no mocking)
 Layer 2  — Engine tests  (CrystalCore, stream methods patched with AsyncMock)
-Layer 3  — Router tests  (FastAPI TestClient, engine injected)
+Layer 3  — Router tests  (httpx.AsyncClient + ASGITransport, engine injected)
 
 All Issue #91 acceptance criteria owned by the engine/router are covered here.
 """
@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
 
 from crystal.engine import CrystalCore
 from crystal.orb_params import derive_orb_params
@@ -115,11 +115,7 @@ _FIRST_PERSON_RE = re.compile(
 # ---------------------------------------------------------------------------
 
 def _in_range(value: float, lo: float, hi: float, rel_tol: float = 1e-9) -> bool:
-    """Return True if lo <= value <= hi, with rel_tol tolerance on both boundaries.
-
-    Handles IEEE 754 ULP noise: a value like 0.12000000000000001 that should
-    equal 0.12 is treated as within range.
-    """
+    """Return True if lo <= value <= hi, with rel_tol tolerance on both boundaries."""
     ge_lo = value >= lo or math.isclose(value, lo, rel_tol=rel_tol)
     le_hi = value <= hi or math.isclose(value, hi, rel_tol=rel_tol)
     return ge_lo and le_hi
@@ -166,13 +162,13 @@ def _patch_fractured(core: CrystalCore) -> CrystalCore:
 
 
 @pytest.fixture()
-def test_client(core):
+def app_with_core(core):
     _patch_neutral(core)
     import crystal.router as _rm
     _rm._crystal_core = core
     app = FastAPI()
     app.include_router(crystal_router)
-    return TestClient(app)
+    return app
 
 
 # ===========================================================================
@@ -349,7 +345,6 @@ class TestCoherenceScore:
 
     @pytest.mark.asyncio
     async def test_neutral_psi_approximately_half(self, core):
-        """Ψ ≈ 0.5 when all four components are 0.5."""
         state = await _patch_neutral(core).tick()
         assert abs(state.coherence - 0.5) < 0.10, (
             f"Expected Ψ ≈ 0.5, got {state.coherence:.4f}"
@@ -357,7 +352,6 @@ class TestCoherenceScore:
 
     @pytest.mark.asyncio
     async def test_fractured_psi_below_threshold(self, core):
-        """Ψ < 0.30 when affect volatility is max and stage scores are all 0."""
         state = await _patch_fractured(core).tick()
         assert state.coherence < 0.30, (
             f"Expected Ψ < 0.30 for worst-case input, got {state.coherence:.4f}"
@@ -365,7 +359,6 @@ class TestCoherenceScore:
 
     @pytest.mark.asyncio
     async def test_crystalline_psi_above_threshold(self, core):
-        """Ψ > 0.85 on a fully coherent mock input."""
         state = await _patch_crystalline(core).tick()
         assert state.coherence > 0.85, (
             f"Expected Ψ > 0.85 for fully-coherent input, got {state.coherence:.4f}"
@@ -392,11 +385,10 @@ class TestGracefulDegradation:
 
     @pytest.mark.asyncio
     async def test_schumann_none_defaults_h_to_half(self, core):
-        """Schumann stream unavailable → H = 0.5, no exception."""
         _patch_streams(
             core,
             _NEUTRAL_AFFECT, _NEUTRAL_STAGE, _NEUTRAL_SHADOW,
-            None,  # ← Schumann offline
+            None,
         )
         state = await core.tick()
         assert state.schumann_disturbance == "unavailable"
@@ -406,11 +398,10 @@ class TestGracefulDegradation:
 
     @pytest.mark.asyncio
     async def test_shadow_none_defaults_e_to_half(self, core):
-        """Shadow stream unavailable → E = 0.5, no exception."""
         _patch_streams(
             core,
             _NEUTRAL_AFFECT, _NEUTRAL_STAGE,
-            None,             # ← Shadow offline
+            None,
             _NEUTRAL_SCHUMANN,
         )
         state = await core.tick()
@@ -420,7 +411,6 @@ class TestGracefulDegradation:
 
     @pytest.mark.asyncio
     async def test_all_streams_none_still_returns_state(self, core):
-        """All streams unavailable → CrystalState returned, Ψ in [0,1]."""
         _patch_streams(core, None, None, None, None)
         state = await core.tick()
         assert isinstance(state, CrystalState)
@@ -428,7 +418,6 @@ class TestGracefulDegradation:
 
     @pytest.mark.asyncio
     async def test_all_streams_none_band_is_midrange(self, core):
-        """All neutral defaults → band is in the middle three tiers."""
         _patch_streams(core, None, None, None, None)
         state = await core.tick()
         assert state.coherence_band in (
@@ -440,7 +429,6 @@ class TestPersonaToneEngine:
 
     @pytest.mark.asyncio
     async def test_sparse_on_fractured(self, core):
-        """PersonaTone.SPARSE is injected when CoherenceBand == FRACTURED."""
         state = await _patch_fractured(core).tick()
         assert state.coherence_band == CoherenceBand.FRACTURED
         assert state.persona_tone == PersonaTone.SPARSE
@@ -456,7 +444,6 @@ class TestHistory:
 
     @pytest.mark.asyncio
     async def test_history_length_after_n_ticks(self, core):
-        """history() returns exactly N entries after N ticks."""
         for _ in range(5):
             _patch_neutral(core)
             await core.tick()
@@ -474,11 +461,10 @@ class TestHistory:
 
     @pytest.mark.asyncio
     async def test_history_days_filter(self, core):
-        """history(days=1) caps at 96 ticks."""
         for _ in range(10):
             _patch_neutral(core)
             await core.tick()
-        assert len(core.history(days=1)) == 10  # < 96 cap
+        assert len(core.history(days=1)) == 10
 
 
 class TestConcurrency:
@@ -489,8 +475,6 @@ class TestConcurrency:
         Four concurrent tick() calls must all complete without raising.
         The internal asyncio.Lock serialises them.
         """
-        # Each tick() call consumes the mocks once, so we need the same
-        # return values for all 4 calls.
         core._fetch_affect   = AsyncMock(return_value=_NEUTRAL_AFFECT)
         core._fetch_stage    = AsyncMock(return_value=_NEUTRAL_STAGE)
         core._fetch_shadow   = AsyncMock(return_value=_NEUTRAL_SHADOW)
@@ -504,18 +488,22 @@ class TestConcurrency:
 
 
 # ===========================================================================
-# Layer 3 — Router tests  (FastAPI TestClient)
+# Layer 3 — Router tests  (httpx.AsyncClient + ASGITransport)
 # ===========================================================================
 
 class TestCrystalRouter:
 
-    def test_health_returns_ok(self, test_client):
-        resp = test_client.get("/crystal/health")
+    @pytest.mark.asyncio
+    async def test_health_returns_ok(self, app_with_core):
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            resp = await client.get("/crystal/health")
         assert resp.status_code == 200
         assert resp.json().get("ok") is True
 
-    def test_get_state_returns_200_with_all_fields(self, test_client):
-        resp = test_client.get("/crystal/state", params={"user_id": "test-user"})
+    @pytest.mark.asyncio
+    async def test_get_state_returns_200_with_all_fields(self, app_with_core):
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            resp = await client.get("/crystal/state", params={"user_id": "test-user"})
         assert resp.status_code == 200
         data = resp.json()
         for key in (
@@ -524,32 +512,42 @@ class TestCrystalRouter:
         ):
             assert key in data, f"Missing field: {key}"
 
-    def test_post_tick_returns_200(self, test_client):
-        resp = test_client.post("/crystal/tick", json={"user_id": "test-user"})
+    @pytest.mark.asyncio
+    async def test_post_tick_returns_200(self, app_with_core):
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            resp = await client.post("/crystal/tick", json={"user_id": "test-user"})
         assert resp.status_code == 200
         assert "coherence" in resp.json()
 
-    def test_post_tick_within_200ms(self, test_client):
+    @pytest.mark.asyncio
+    async def test_post_tick_within_200ms(self, app_with_core):
         """POST /crystal/tick with mocked streams returns within 200 ms."""
-        t0 = time.perf_counter()
-        resp = test_client.post("/crystal/tick", json={"user_id": "test-user"})
-        elapsed = (time.perf_counter() - t0) * 1000
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            t0 = time.perf_counter()
+            resp = await client.post("/crystal/tick", json={"user_id": "test-user"})
+            elapsed = (time.perf_counter() - t0) * 1000
         assert resp.status_code == 200
         assert elapsed < 200, f"Tick took {elapsed:.1f} ms — exceeds 200 ms budget"
 
-    def test_get_history_returns_list(self, test_client):
-        resp = test_client.get(
-            "/crystal/history", params={"days": 1, "user_id": "test-user"}
-        )
+    @pytest.mark.asyncio
+    async def test_get_history_returns_list(self, app_with_core):
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            resp = await client.get(
+                "/crystal/history", params={"days": 1, "user_id": "test-user"}
+            )
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_coherence_in_range(self, test_client):
-        resp = test_client.get("/crystal/state", params={"user_id": "test-user"})
+    @pytest.mark.asyncio
+    async def test_coherence_in_range(self, app_with_core):
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            resp = await client.get("/crystal/state", params={"user_id": "test-user"})
         assert 0.0 <= resp.json()["coherence"] <= 1.0
 
-    def test_orb_params_has_all_8_fields(self, test_client):
-        resp = test_client.get("/crystal/state", params={"user_id": "test-user"})
+    @pytest.mark.asyncio
+    async def test_orb_params_has_all_8_fields(self, app_with_core):
+        async with AsyncClient(transport=ASGITransport(app=app_with_core), base_url="http://test") as client:
+            resp = await client.get("/crystal/state", params={"user_id": "test-user"})
         orb = resp.json()["orb_params"]
         required = [
             "glow_color", "glow_intensity", "pulse_frequency", "pulse_amplitude",
