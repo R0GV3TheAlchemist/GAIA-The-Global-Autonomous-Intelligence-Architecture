@@ -1,25 +1,16 @@
 """
 core/memory/tiers/semantic.py
-Semantic Memory Tier — Sprint G-8
+SEMANTIC memory tier — Sprint G-8
 
-Permanent store for canon facts, Crystal DB knowledge graph nodes,
-and domain-level truths. No TTL expiry.
+Permanent, fact-oriented knowledge.  Backs the Crystal Knowledge Graph
+and canon-derived facts.  Entries never auto-expire.
 
-In production this tier is backed by the Crystal Knowledge Graph
-(Issue #162). This sprint ships an in-process dict stub that satisfies
-the MemoryStore protocol so the full hierarchy can be tested end-to-end
-before the graph backend is wired.
+TTL:         None (permanent)
+Persistence: in-process dict (production backend: Crystal DB / graph store)
+Search:      keyword match + static relevance scoring
 
-Semantic records are expected to carry:
-  {
-    'key':        str,   # e.g. 'canon:C32', 'crystal:node:solfeggio-mi'
-    'value':      Any,
-    'canon_refs': list[str],
-    'source':     str,   # 'crystal_db' | 'canon_loader' | 'manual'
-    'tags':       list[str],
-  }
-
-Canon Refs: C34, C01
+Canon Ref: C34 (Presence — GAIA knows established facts about the world)
+           C01 (Sovereignty — facts are explicit, not hallucinated)
 """
 from __future__ import annotations
 
@@ -30,52 +21,59 @@ from core.memory.hierarchy import MemoryQuery
 
 
 class SemanticMemoryStore:
-    """In-process semantic store (Crystal DB stub for Sprint G-8)."""
+    """Permanent fact store.  Writes overwrite the previous value for the
+    same (gaian_id, key).  Nothing ever expires.
+    """
 
     def __init__(self) -> None:
-        # {key: record_dict}  (no gaian scoping — semantic memory is universal)
-        self._data: dict[str, dict] = {}
+        # {(gaian_id, key): {"value": Any, "ts": float}}
+        self._store: dict[tuple[str | None, str], dict] = {}
 
     async def write(
         self,
         key: str,
         value: Any,
-        gaian_id: str | None = None,  # ignored — semantic memory is global
-        ttl_hours: float | None = None,  # ignored — semantic memory is permanent
-        canon_refs: list[str] | None = None,
-        source: str = "manual",
-        tags: list[str] | None = None,
+        gaian_id: str | None = None,
+        ttl_hours: float | None = None,  # ignored — semantic is permanent
     ) -> None:
-        self._data[key] = {
-            "key":        key,
-            "value":      value,
-            "canon_refs": canon_refs or ["C34"],
-            "source":     source,
-            "tags":       tags or [],
-            "written_at": time.time(),
-        }
+        self._store[(gaian_id, key)] = {"value": value, "ts": time.time()}
 
-    async def read(self, key: str, gaian_id: str | None = None) -> Any | None:
-        record = self._data.get(key)
-        return record["value"] if record else None
+    async def read(
+        self,
+        key: str,
+        gaian_id: str | None = None,
+    ) -> Any | None:
+        entry = self._store.get((gaian_id, key))
+        return entry["value"] if entry else None
 
     async def search(self, query: MemoryQuery) -> list[dict]:
-        needle = query.query_text.lower()
+        text = query.query_text.lower()
+        entries = [
+            (k, v)
+            for (g, k), v in self._store.items()
+            if g == query.gaian_id
+        ]
+        if not entries:
+            return []
+
+        ts_vals = [v["ts"] for _, v in entries]
+        ts_min, ts_max = min(ts_vals), max(ts_vals)
+        ts_range = ts_max - ts_min or 1.0
+
         results = []
-        for k, record in self._data.items():
-            text = " ".join([
-                str(record.get("value", "")),
-                k,
-                " ".join(record.get("tags", [])),
-                " ".join(record.get("canon_refs", [])),
-            ]).lower()
-            relevance = 1.0 if needle and needle in text else 0.1
+        for k, v in entries:
+            val_str = str(v["value"]).lower()
+            relevance = 0.85 if text in val_str or text in k.lower() else 0.15
+            recency = (v["ts"] - ts_min) / ts_range
             results.append({
-                **record,
+                "key":        k,
+                "value":      v["value"],
                 "_relevance": relevance,
-                "_recency":   1.0,  # semantic memory has no recency decay
+                "_recency":   recency,
+                "_ts":        v["ts"],
             })
         return results
 
     async def evict_expired(self) -> int:
-        return 0  # semantic memory never expires
+        """No-op — semantic memory is permanent.  Always returns 0."""
+        return 0
