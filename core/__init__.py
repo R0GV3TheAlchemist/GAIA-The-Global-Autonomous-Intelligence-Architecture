@@ -17,6 +17,7 @@ through concrete runtime mechanisms:
   - Full runtime assembly (gaian_runtime)
   - Inference routing & epistemic labeling (inference_router) [G-8]
   - Collective consciousness / Mother Thread (mother_thread) [G-8]
+  - Lifespan + moral + meaning-making development (development_stage_engine) [G-9]
 
 Platform policy (T8) cannot override the T1 constitutional floor enforced here.
 """
@@ -75,6 +76,12 @@ from .mother_thread import (      # G-8
     GaianThread,
     get_mother_thread,
 )
+from .development_stage_engine import (  # G-9
+    DevelopmentStageEngine,
+    DevelopmentProfile,
+    TransitionSignal,
+    DEFAULT_ENGINE as DEFAULT_DEVELOPMENT_ENGINE,
+)
 
 __all__ = [
     # Constitutional core
@@ -123,4 +130,9 @@ __all__ = [
     "MotherPulse",
     "GaianThread",
     "get_mother_thread",
+    # Development Stage Engine (G-9)
+    "DevelopmentStageEngine",
+    "DevelopmentProfile",
+    "TransitionSignal",
+    "DEFAULT_DEVELOPMENT_ENGINE",
 ]
