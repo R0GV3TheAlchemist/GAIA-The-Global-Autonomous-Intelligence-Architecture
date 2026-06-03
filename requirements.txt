@@ -25,6 +25,7 @@ argon2-cffi>=23.1.0         # Argon2id passphrase KDF (Linux keychain fallback)
 # ── Scientific / Numerical ────────────────────────────────────────
 numpy>=1.26.0               # Matrix ops, spectral radius (criticality_monitor, viriditas)
 scipy>=1.13.0               # Eigenvalues, signal processing (criticality_monitor)
+networkx>=3.2.0             # Graph data structures — required by core/canon_graph.py
 
 # ── Web Scraping ──────────────────────────────────────────────────
 trafilatura>=1.8.0          # Best-in-class main-content extractor
