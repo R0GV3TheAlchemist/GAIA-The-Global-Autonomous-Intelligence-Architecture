@@ -58,19 +58,19 @@ _SOLFEGGIO: dict[AffectState, float] = {
 #  Thresholds (sealed — do not mutate at runtime)                               #
 # ────────────────────────────────────────────────────────────────────────────── #
 
-_THRESHOLD_GRIEF_LOSS          = 0.70  # loss_score >= this  → GRIEF
-_THRESHOLD_GRIEF_TRUTH         = 0.30  # truth_score <= this → GRIEF (low-truth)
-_THRESHOLD_GRIEF_SIGNAL        = 0.50  # grief_signal >= this → GRIEF (direct signal)
-_THRESHOLD_DISSONANCE_CD       = 0.30  # conflict_density >= this → DISSONANCE
-_THRESHOLD_UNCERTAINTY_TEMP    = 0.45  # temperature < this  → UNCERTAINTY
-_THRESHOLD_CARE_FLOURISHING    = 0.60  # flourishing_score >= this → CARE
-_THRESHOLD_CARE_TEMP           = 0.50  # temperature > this  → CARE (warm signal)
-_THRESHOLD_RESONANCE_TRUTH     = 0.70  # truth_score >= this → RESONANCE
-_THRESHOLD_RESONANCE_COHERENCE = 0.65  # coherence >= this   → RESONANCE
+_THRESHOLD_GRIEF_LOSS          = 0.70
+_THRESHOLD_GRIEF_TRUTH         = 0.30
+_THRESHOLD_GRIEF_SIGNAL        = 0.50
+_THRESHOLD_DISSONANCE_CD       = 0.30
+_THRESHOLD_UNCERTAINTY_TEMP    = 0.45
+_THRESHOLD_CARE_FLOURISHING    = 0.60
+_THRESHOLD_CARE_TEMP           = 0.50
+_THRESHOLD_RESONANCE_TRUTH     = 0.70
+_THRESHOLD_RESONANCE_COHERENCE = 0.65
 
 
 # ────────────────────────────────────────────────────────────────────────────── #
-#  Input dataclass                                                               #
+#  AffectInput dataclass                                                         #
 # ────────────────────────────────────────────────────────────────────────────── #
 
 
@@ -88,7 +88,7 @@ class AffectInput:
 
 
 # ────────────────────────────────────────────────────────────────────────────── #
-#  Output dataclass                                                              #
+#  FeelingState output dataclass                                                 #
 # ────────────────────────────────────────────────────────────────────────────── #
 
 
@@ -98,25 +98,32 @@ class FeelingState:
 
     Attributes
     ----------
-    state         : AffectState    — primary inferred state
-    solfeggio_hz  : float          — associated Solfeggio frequency
-    confidence    : float          — [0, 1] confidence in this inference
-    rationale     : str            — human-readable explanation
-    raw_input     : AffectInput    — snapshot of the inputs used
-    summary       : str            — short human-readable summary sentence
-    grimoire_entry: Optional[str]  — mythic / alchemical gloss for this state
-    coherence_phi : float          — Φ-coherence score [0, 1] for this state
-    affect_state  : str            — string alias for state.value (convenience)
+    state           : AffectState    — primary inferred state
+    solfeggio_hz    : float          — associated Solfeggio frequency
+    confidence      : float          — [0, 1] confidence in this inference
+    rationale       : str            — human-readable explanation
+    raw_input       : AffectInput    — snapshot of the inputs used
+    summary         : str            — short human-readable summary sentence
+    grimoire_entry  : Optional[str]  — mythic / alchemical gloss for this state
+    coherence_phi   : float          — Φ-coherence score [0, 1]
+    conflict_density: float          — mirrored from raw_input.conflict_density
+    affect_state    : str            — convenience alias (state.value)
     """
 
-    state:          AffectState
-    solfeggio_hz:   float
-    confidence:     float
-    rationale:      str
-    raw_input:      AffectInput
-    summary:        str            = ""
-    grimoire_entry: Optional[str]  = None
-    coherence_phi:  float          = 0.5
+    state:            AffectState
+    solfeggio_hz:     float
+    confidence:       float
+    rationale:        str
+    raw_input:        AffectInput
+    summary:          str           = ""
+    grimoire_entry:   Optional[str] = None
+    coherence_phi:    float         = 0.5
+    conflict_density: float         = 0.0   # ← mirrors raw_input.conflict_density for direct access
+
+    def __post_init__(self) -> None:
+        # Keep conflict_density in sync with raw_input when not explicitly set
+        if self.conflict_density == 0.0 and self.raw_input.conflict_density != 0.0:
+            object.__setattr__(self, "conflict_density", self.raw_input.conflict_density)
 
     @property
     def affect_state(self) -> str:
@@ -130,43 +137,22 @@ class FeelingState:
 
 
 class AffectInference:
-    """Stateless affect inference engine — class wrapper for GaianRuntime.
-
-    GaianRuntime instantiates this as ``self._affect = AffectInference()``
-    and calls it with individual keyword arguments rather than an AffectInput
-    object.  This class bridges that interface to the underlying
-    ``infer(AffectInput)`` function.
-
-    Notes
-    -----
-    ``identity_score`` and ``wisdom_score`` are accepted for forward
-    compatibility (they appear in the runtime's call signature) but are
-    not yet mapped to waterfall inputs.  They are silently ignored until
-    a canonical mapping is defined in the Constitutional Canon.
-
-    ``grief_signal`` is passed through directly to AffectInput and
-    participates in the GRIEF waterfall check.
-    """
+    """Stateless affect inference engine — class wrapper for GaianRuntime."""
 
     def infer(
         self,
         *,
-        identity_score:    float = 0.5,   # accepted, not yet mapped
-        wisdom_score:      float = 0.5,   # accepted, not yet mapped
+        identity_score:    float = 0.5,
+        wisdom_score:      float = 0.5,
         truth_score:       float = 0.5,
         flourishing_score: float = 0.5,
         conflict_density:  float = 0.0,
         loss_score:        float = 0.0,
         temperature:       float = 0.5,
         coherence:         float = 0.5,
-        grief_signal:      float = 0.0,   # direct grief signal
+        grief_signal:      float = 0.0,
     ) -> FeelingState:
-        """Infer affect state from runtime neuroscience signals.
-
-        Packs the keyword arguments into an AffectInput and delegates
-        to the module-level ``infer()`` function.  All waterfall logic
-        and threshold constants remain in that function.
-        """
+        """Infer affect state from runtime neuroscience signals."""
         inp = AffectInput(
             temperature       = temperature,
             truth_score       = truth_score,
@@ -187,46 +173,40 @@ class AffectInference:
 def infer(inp: AffectInput) -> FeelingState:
     """Run the affect waterfall and return a FeelingState.
 
-    Waterfall priority (highest first):
-    0. GRIEF (direct)    — grief_signal >= 0.50 (direct override)
-    1. GRIEF             — loss_score high OR truth_score very low
-    2. DISSONANCE        — conflict_density >= 0.30
-    3. UNCERTAINTY       — temperature < 0.45
-    4. RESONANCE         — truth + coherence both high
-    5. CARE              — flourishing high OR temperature warm
-    6. CURIOSITY         — default / residual state
+    Priority (highest first):
+    0. GRIEF (direct grief_signal >= 0.50)
+    1. GRIEF (loss_score high OR truth_score very low)
+    2. DISSONANCE (conflict_density >= 0.30)
+    3. UNCERTAINTY (temperature < 0.45)
+    4. RESONANCE (truth + coherence both high)
+    5. CARE (flourishing high OR temperature warm)
+    6. CURIOSITY (default)
     """
-    # ── 0. GRIEF (direct grief_signal) ───────────────────────────────────── #
     if inp.grief_signal >= _THRESHOLD_GRIEF_SIGNAL:
         return _make(AffectState.GRIEF, inp, 0.92,
-                     f"grief_signal={inp.grief_signal:.2f} ≥ {_THRESHOLD_GRIEF_SIGNAL} (direct signal)")
+                     f"grief_signal={inp.grief_signal:.2f} ≥ {_THRESHOLD_GRIEF_SIGNAL}")
 
-    # ── 1. GRIEF ─────────────────────────────────────────────────────────── #
     if inp.loss_score >= _THRESHOLD_GRIEF_LOSS:
         return _make(AffectState.GRIEF, inp, 0.90,
                      f"loss_score={inp.loss_score:.2f} ≥ {_THRESHOLD_GRIEF_LOSS}")
 
     if inp.truth_score <= _THRESHOLD_GRIEF_TRUTH:
         return _make(AffectState.GRIEF, inp, 0.75,
-                     f"truth_score={inp.truth_score:.2f} ≤ {_THRESHOLD_GRIEF_TRUTH} (low-truth grief)")
+                     f"truth_score={inp.truth_score:.2f} ≤ {_THRESHOLD_GRIEF_TRUTH}")
 
-    # ── 2. DISSONANCE ────────────────────────────────────────────────────── #
     if inp.conflict_density >= _THRESHOLD_DISSONANCE_CD:
         return _make(AffectState.DISSONANCE, inp, 0.85,
                      f"conflict_density={inp.conflict_density:.2f} ≥ {_THRESHOLD_DISSONANCE_CD}")
 
-    # ── 3. UNCERTAINTY ───────────────────────────────────────────────────── #
     if inp.temperature < _THRESHOLD_UNCERTAINTY_TEMP:
         return _make(AffectState.UNCERTAINTY, inp, 0.80,
                      f"temperature={inp.temperature:.2f} < {_THRESHOLD_UNCERTAINTY_TEMP}")
 
-    # ── 4. RESONANCE ─────────────────────────────────────────────────────── #
-    if (inp.truth_score  >= _THRESHOLD_RESONANCE_TRUTH
+    if (inp.truth_score >= _THRESHOLD_RESONANCE_TRUTH
             and inp.coherence >= _THRESHOLD_RESONANCE_COHERENCE):
         return _make(AffectState.RESONANCE, inp, 0.88,
                      f"truth={inp.truth_score:.2f}, coherence={inp.coherence:.2f}")
 
-    # ── 5. CARE ──────────────────────────────────────────────────────────── #
     if inp.flourishing_score >= _THRESHOLD_CARE_FLOURISHING:
         return _make(AffectState.CARE, inp, 0.82,
                      f"flourishing_score={inp.flourishing_score:.2f} ≥ {_THRESHOLD_CARE_FLOURISHING}")
@@ -235,7 +215,6 @@ def infer(inp: AffectInput) -> FeelingState:
         return _make(AffectState.CARE, inp, 0.70,
                      f"temperature={inp.temperature:.2f} > {_THRESHOLD_CARE_TEMP}")
 
-    # ── 6. CURIOSITY (default) ───────────────────────────────────────────── #
     return _make(AffectState.CURIOSITY, inp, 0.60, "residual / default state")
 
 
@@ -250,7 +229,7 @@ def _make(
     confidence: float,
     rationale:  str,
 ) -> FeelingState:
-    """Build a FeelingState with auto-generated summary and grimoire entry."""
+    """Build a FeelingState with auto-generated summary, grimoire entry and derived fields."""
     _GRIMOIRE: dict[AffectState, str] = {
         AffectState.GRIEF:       "Nigredo — the blackening; dissolution of former self.",
         AffectState.DISSONANCE:  "Solutio — cognitive waters in conflict; patterns dissolving.",
@@ -268,12 +247,13 @@ def _make(
         AffectState.CURIOSITY:   "Open curiosity — exploring without fixed expectation.",
     }
     return FeelingState(
-        state         = state,
-        solfeggio_hz  = _SOLFEGGIO[state],
-        confidence    = confidence,
-        rationale     = rationale,
-        raw_input     = inp,
-        summary       = _SUMMARY[state],
-        grimoire_entry = _GRIMOIRE[state],
-        coherence_phi  = inp.coherence,
+        state            = state,
+        solfeggio_hz     = _SOLFEGGIO[state],
+        confidence       = confidence,
+        rationale        = rationale,
+        raw_input        = inp,
+        summary          = _SUMMARY[state],
+        grimoire_entry   = _GRIMOIRE[state],
+        coherence_phi    = inp.coherence,
+        conflict_density = inp.conflict_density,
     )

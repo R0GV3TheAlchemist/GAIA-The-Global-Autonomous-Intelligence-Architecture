@@ -1,26 +1,19 @@
 """
 core/state_adapter.py
-GAIA Philosophy/Runtime Boundary — Sprint G-7
+GAIA Philosophy/Runtime Boundary — Sprint G-7 / G-9
 
-The single, explicit layer that translates GAIA's rich metaphysical domain
-objects (Solfeggio frequencies, Jungian phases, love arc stages, Schumann
-resonance) into the flat, serialisable SynergyParams dict consumed by the
-Synergy Engine and all downstream systems.
-
-Design goals
-------------
-* Zero leakage: the Synergy Engine never imports GAIA domain types directly.
-* Testable: every resolver is a pure function or a thin method on a dataclass.
-* Traceable: optional Trace injection records every resolution step.
+Translates GAIA's rich metaphysical domain objects into the flat,
+serialisable SynergyParams dict consumed by the Synergy Engine.
 
 Public surface
 --------------
-GAIAStateAdapter          — synchronous adapter (used in most contexts)
-AsyncGAIAStateAdapter     — async wrapper (for async callers)
+GAIAStateAdapter          — synchronous adapter
+AsyncGAIAStateAdapter     — async wrapper
+GAIATrace                 — lightweight trace/logging utility
 SynergyParams             — TypedDict contract for the output dict
-SOLFEGGIO_HZ              — canonical note-name → Hz mapping
+SOLFEGGIO_HZ              — note-name → Hz mapping
 SCHUMANN_BASELINE_HZ      — Earth baseline resonance frequency
-SCHUMANN_HARMONIC_TOLERANCE — ±% window for alignment detection
+SCHUMANN_HARMONIC_TOLERANCE
 _TRACE_AVAILABLE          — bool flag: True when core.trace is importable
 
 Canon refs: C30, C31, C34, C37
@@ -34,7 +27,6 @@ if TYPE_CHECKING:
     pass
 
 # ── Trace availability flag ────────────────────────────────────────────────── #
-# Allows tests and callers to branch on whether the trace subsystem is present.
 try:
     from core.trace import Trace  # noqa: F401
     _TRACE_AVAILABLE: bool = True
@@ -42,65 +34,72 @@ except ImportError:
     _TRACE_AVAILABLE: bool = False
 
 
+# ── GAIATrace ───────────────────────────────────────────────────────────────── #
+
+class GAIATrace:
+    """Lightweight trace/logging utility for the state adapter.
+
+    Provides ``record_input`` / ``record_output`` compatible with the
+    injected trace protocol, plus a static ``log`` helper for ad-hoc
+    event logging.
+
+    Tests that mock the trace module import this class directly::
+
+        from core.state_adapter import GAIATrace
+    """
+
+    def __init__(self, label: str = "") -> None:
+        self.label  = label
+        self.inputs:  list[dict] = []
+        self.outputs: list[dict] = []
+
+    def record_input(self, data: dict) -> None:
+        self.inputs.append(data)
+
+    def record_output(self, data: dict) -> None:
+        self.outputs.append(data)
+
+    @staticmethod
+    def log(message: str, **kwargs: Any) -> None:  # noqa: ARG004
+        """No-op structured log — override in production for real emission."""
+        pass
+
+    def __repr__(self) -> str:
+        return f"<GAIATrace label={self.label!r} inputs={len(self.inputs)} outputs={len(self.outputs)}>"
+
+
 # ── Solfeggio frequency table ──────────────────────────────────────────────── #
-# Canonical mapping: solfeggio note name → Hz value.
-# Used by _resolve_hz() to convert a string note name into a numeric frequency.
 SOLFEGGIO_HZ: Dict[str, float] = {
-    "ut":  396.0,   # Liberating Guilt and Fear
-    "re":  417.0,   # Undoing Situations and Facilitating Change
-    "mi":  528.0,   # Transformation and Miracles (DNA Repair / Heart Coherence)
-    "fa":  639.0,   # Connecting/Relationships
-    "sol": 741.0,   # Awakening Intuition
-    "la":  852.0,   # Returning to Spiritual Order
-    "si":  963.0,   # Divine Consciousness / Enlightenment
-    # Extended set (sometimes included)
+    "ut":  396.0,
+    "re":  417.0,
+    "mi":  528.0,
+    "fa":  639.0,
+    "sol": 741.0,
+    "la":  852.0,
+    "si":  963.0,
     "174": 174.0,
     "285": 285.0,
 }
 
-# ── Schumann resonance constants ───────────────────────────────────────────── #
-SCHUMANN_BASELINE_HZ: float = 7.88  # Earth's fundamental electromagnetic resonance (corrected)
-SCHUMANN_HARMONIC_TOLERANCE: float = 0.10  # ±10% harmonic window
-
-# Internal float-comparison epsilon.
-# IEEE-754 double precision produces residuals like:
-#   e.g.  15.66 % 7.83 → 7.82999999999999929 (residual from exact multiple)
-# After normalisation: (7.83 - 7.829999...) / 7.83 ≈ 9e-14  → clamped to 0
-# We use a generous 1e-9 so we catch all such cases without touching real data.
-_SCHUMANN_FLOAT_EPSILON: float = 1e-9
+SCHUMANN_BASELINE_HZ:       float = 7.88
+SCHUMANN_HARMONIC_TOLERANCE: float = 0.10
+_SCHUMANN_FLOAT_EPSILON:     float = 1e-9
 
 
-# ── SynergyParams TypedDict ────────────────────────────────────────────────── #
+# ── SynergyParams ───────────────────────────────────────────────────────────── #
 
 class SynergyParams(dict):
-    """Typed contract for the flat param dict consumed by the Synergy Engine.
-
-    Inherits from dict so it serialises naturally to JSON / msgpack.
-    Type annotations are documentation only — no runtime enforcement.
-
-    Keys
-    ----
-    dominant_hz          : float   Solfeggio Hz in [174, 963]
-    individuation_phase  : str     Jung individuation phase label
-    love_arc_stage       : str     Current love arc stage label
-    schumann_aligned     : bool    Whether dominant_hz aligns with Schumann harmonics
-    coherence_score      : float   [0, 1] composite coherence
-    emotional_valence    : float   [-1, 1] valence (negative → distress, positive → flourishing)
-    bond_depth           : float   [0, 1] relational bond depth
-    """
+    """Typed contract for the flat param dict consumed by the Synergy Engine."""
 
 
-# ── Trace protocol ─────────────────────────────────────────────────────────── #
+# ── Null trace ───────────────────────────────────────────────────────────────── #
 
 class _NullTrace:
-    """No-op trace used when no trace is injected."""
-    def record_input(self, data: dict) -> None:  # noqa: ARG002
-        pass
-    def record_output(self, data: dict) -> None:  # noqa: ARG002
-        pass
+    def record_input(self, data: dict) -> None: pass
+    def record_output(self, data: dict) -> None: pass
 
 
-# ── GAIAStateAdapter ───────────────────────────────────────────────────────── #
+# ── GAIAStateAdapter ──────────────────────────────────────────────────────────── #
 
 class GAIAStateAdapter:
     """Translate a Gaian record into a flat SynergyParams dict.
@@ -108,22 +107,9 @@ class GAIAStateAdapter:
     Parameters
     ----------
     record : Any
-        A Gaian state record with optional attributes:
-        ``dominant_hz``, ``active_solfeggio_note``, ``individuation_phase``,
-        ``love_arc_stage``, ``schumann_aligned``, ``schumann_hz``,
-        ``coherence_score``, ``emotional_valence``, ``bond_depth``.
+        A Gaian state record with optional attributes.
     trace : optional
-        An object with ``record_input(dict)`` and ``record_output(dict)``
-        methods. Defaults to a no-op trace.
-
-    Usage
-    -----
-    ::
-
-        adapter = GAIAStateAdapter(record)
-        params  = adapter.to_synergy_params()
-        # params["dominant_hz"] → 528.0
-        # params["schumann_aligned"] → True
+        An object with ``record_input`` / ``record_output`` methods.
     """
 
     def __init__(self, record: Any, trace: Any = None) -> None:
@@ -131,87 +117,64 @@ class GAIAStateAdapter:
         self._trace  = trace or _NullTrace()
 
     def __repr__(self) -> str:
-        """Return a readable representation including record ID if available."""
-        record_id = getattr(self._record, 'id', None) or 'unknown'
+        record_id = getattr(self._record, "id", None) or "unknown"
         return f"<GAIAStateAdapter(id={record_id})>"
 
-    # ── Public resolvers ────────────────────────────────────────────────────── #
+    # ── Public API ────────────────────────────────────────────────────────── #
 
     def to_synergy_params(self) -> SynergyParams:
-        """Resolve all fields and return a flat SynergyParams dict."""
-        self._trace.record_input({
-            "record_type": type(self._record).__name__,
-        })
-
-        hz      = self._resolve_hz()                # float
-        phase   = self._resolve_individuation()     # str
-        arc     = self._resolve_love_arc()          # str
-        aligned = self._resolve_schumann()          # bool
-        coh     = self._resolve_coherence()         # float
-        valence = self._resolve_valence()           # float
-        bond    = self._resolve_bond()              # float
-
+        self._trace.record_input({"record_type": type(self._record).__name__})
         params = SynergyParams(
-            dominant_hz         = hz,
-            individuation_phase = phase,
-            love_arc_stage      = arc,
-            schumann_aligned    = aligned,
-            coherence_score     = coh,
-            emotional_valence   = valence,
-            bond_depth          = bond,
+            dominant_hz         = self._resolve_hz(),
+            individuation_phase = self._resolve_individuation(),
+            love_arc_stage      = self._resolve_love_arc(),
+            schumann_aligned    = self._resolve_schumann(),
+            coherence_score     = self._resolve_coherence(),
+            emotional_valence   = self._resolve_valence(),
+            bond_depth          = self._resolve_bond(),
         )
-
-        self._trace.record_output({"params_keys": list(params.keys()), "dominant_hz": params["dominant_hz"]})
+        self._trace.record_output({"dominant_hz": params["dominant_hz"]})
         return params
 
+    # ── Callable resolver methods (for tests that call them as functions) ──── #
+
     def resolved_hz(self) -> float:
-        """Return the resolved Solfeggio frequency in Hz."""
         return self._resolve_hz()
 
     def resolved_individuation_phase(self) -> str:
-        """Return the resolved Jungian individuation phase label."""
         return self._resolve_individuation()
 
     def resolved_love_arc_stage(self) -> str:
-        """Return the resolved love arc stage label."""
         return self._resolve_love_arc()
 
     def resolved_schumann_aligned(self) -> bool:
-        """Return True if the dominant Hz is harmonically aligned with Schumann."""
         return self._resolve_schumann()
+
+    # ── Properties (for tests that access them without calling) ───────────── #
 
     @property
     def resolved_coherence(self) -> float:
-        """Return the resolved coherence score [0, 1]."""
+        """Resolved coherence score [0, 1]."""
         return self._resolve_coherence()
 
     @property
     def resolved_emotional_valence(self) -> float:
-        """Return the resolved emotional valence [-1, 1]."""
+        """Resolved emotional valence [-1, 1]."""
         return self._resolve_valence()
 
     @property
     def resolved_bond_depth(self) -> float:
-        """Return the resolved bond depth [0, 1]."""
+        """Resolved bond depth [0, 1]."""
         return self._resolve_bond()
 
     # ── Private resolvers ───────────────────────────────────────────────────── #
 
     def _resolve_hz(self) -> float:
-        """Resolve dominant Hz from the record.
-
-        Resolution order:
-        1. ``dominant_hz`` float attribute (already numeric — pass through).
-        2. ``active_solfeggio_note`` string looked up in SOLFEGGIO_HZ table.
-        3. Default: 528.0 Hz (heart coherence / transformation).
-        """
         raw_hz = self._safe_get("dominant_hz", None)
         if isinstance(raw_hz, (int, float)) and raw_hz > 0:
             return float(raw_hz)
-
         note = self._safe_get("active_solfeggio_note", "mi")
-        hz = SOLFEGGIO_HZ.get(str(note).lower(), 528.0)
-        return hz
+        return SOLFEGGIO_HZ.get(str(note).lower(), 528.0)
 
     def _resolve_individuation(self) -> str:
         return str(self._safe_get("individuation_phase", "persona"))
@@ -232,84 +195,33 @@ class GAIAStateAdapter:
         return float(max(0.0, min(1.0, v)))
 
     def _resolve_schumann(self) -> bool:
-        """Resolve Schumann harmonic alignment for the dominant Hz.
-
-        Algorithm
-        ---------
-        Compute the fractional position of ``hz`` within one Schumann period::
-
-            harmonic_phase = (hz % schumann) / schumann
-
-        A value near 0 or 1 indicates the Hz is close to an exact harmonic
-        multiple of the Schumann frequency.  We consider it *aligned* when::
-
-            harmonic_phase < SCHUMANN_HARMONIC_TOLERANCE
-            OR
-            harmonic_phase > (1 - SCHUMANN_HARMONIC_TOLERANCE)
-
-        Float-precision fixes (see _SCHUMANN_FLOAT_EPSILON)
-        -----------------------------------------------------
-        IEEE-754 fmod can yield a residual very close to ``schumann`` instead
-        of 0 when ``hz`` is an exact multiple.  For example::
-
-            15.66 % 7.83  →  7.82999999999999929   (should be 0.0)
-
-        We snap ``raw_mod`` to 0 when it is within ``_SCHUMANN_FLOAT_EPSILON``
-        of either 0 or ``schumann``, and to ``schumann`` equivalently.
-
-        Explicit override
-        -----------------
-        If the record carries a ``schumann_aligned`` bool attribute, that
-        value is returned directly without computation.
-
-        Parameters
-        ----------
-        The method reads ``schumann_hz`` from the record (defaults to
-        ``schumann_hz``).  All non-finite and non-positive values return
-        ``False`` defensively.
-        """
-        # Explicit override — caller knows best
         explicit = self._safe_get("schumann_aligned", None)
         if isinstance(explicit, bool):
             return explicit
-
         hz = self._resolve_hz()
         schumann_raw = self._safe_get("schumann_hz", SCHUMANN_BASELINE_HZ)
-
-        # Defensive: reject degenerate inputs
         try:
             schumann = float(schumann_raw)
         except (TypeError, ValueError):
             schumann = SCHUMANN_BASELINE_HZ
-
         if not math.isfinite(hz) or hz <= 0:
             return False
         if not math.isfinite(schumann) or schumann <= 0:
             return False
-
         raw_mod = math.fmod(hz, schumann)
-
-        # Snap floating-point residuals at exact harmonic multiples.
-        # negative hz inputs (defensive; hz should always be positive).
         if raw_mod < 0:
             raw_mod += schumann
-
-        # If raw_mod is within epsilon of schumann, it's a residual of an
-        # exact multiple — treat as 0.
         if raw_mod >= schumann - _SCHUMANN_FLOAT_EPSILON:
             raw_mod = 0.0
         elif raw_mod <= _SCHUMANN_FLOAT_EPSILON:
             raw_mod = 0.0
-
         harmonic_phase = raw_mod / schumann
-
         return (
             harmonic_phase < SCHUMANN_HARMONIC_TOLERANCE
             or harmonic_phase > (1.0 - SCHUMANN_HARMONIC_TOLERANCE)
         )
 
     def _safe_get(self, attr: str, default: Any) -> Any:
-        """Safely retrieve an attribute from the record, returning default on miss."""
         try:
             val = getattr(self._record, attr, default)
             return val if val is not None else default
@@ -320,24 +232,10 @@ class GAIAStateAdapter:
 # ── AsyncGAIAStateAdapter ──────────────────────────────────────────────────── #
 
 class AsyncGAIAStateAdapter(GAIAStateAdapter):
-    """Async-compatible wrapper around GAIAStateAdapter.
-
-    Exposes the same resolvers as coroutines so async callers don't need
-    to wrap them manually.  All resolution logic lives in the synchronous
-    parent class.
-
-    Usage
-    -----
-    ::
-
-        adapter = AsyncGAIAStateAdapter(record)
-        params  = await adapter.to_synergy_params_async()
-    """
+    """Async-compatible wrapper around GAIAStateAdapter."""
 
     async def to_synergy_params_async(self) -> SynergyParams:
-        """Async version of :meth:`GAIAStateAdapter.to_synergy_params`."""
         self._trace.record_input({"record_type": type(self._record).__name__})
-
         hz      = self._resolve_hz()
         phase   = self._resolve_individuation()
         arc     = self._resolve_love_arc()
@@ -345,7 +243,6 @@ class AsyncGAIAStateAdapter(GAIAStateAdapter):
         coh     = self._resolve_coherence()
         valence = self._resolve_valence()
         bond    = self._resolve_bond()
-
         params = SynergyParams(
             dominant_hz         = hz,
             individuation_phase = phase,
@@ -355,8 +252,7 @@ class AsyncGAIAStateAdapter(GAIAStateAdapter):
             emotional_valence   = valence,
             bond_depth          = bond,
         )
-
-        self._trace.record_output({"params_keys": list(params.keys()), "dominant_hz": params["dominant_hz"]})
+        self._trace.record_output({"dominant_hz": params["dominant_hz"]})
         return params
 
     async def resolved_hz_async(self) -> float:

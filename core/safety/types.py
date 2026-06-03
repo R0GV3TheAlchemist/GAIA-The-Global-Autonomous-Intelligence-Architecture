@@ -3,14 +3,7 @@ core/safety/types.py
 ====================
 Shared data contracts for the GAIA safety sub-system.
 
-All types consumed by crisis_detector, circuit_breaker,
-escalation_detector, crisis_synthesizer, and safety_engine live here to
-give callers a single import source and break circular dependencies.
-
-#  CrossSessionCrisisSignal is defined in this module so all safety types
-#  have a single canonical import source:
-#
-#      from core.safety.types import CrossSessionCrisisSignal
+Canon refs: C01 (Safety First), C30 (No Silent Failures)
 """
 from __future__ import annotations
 
@@ -26,27 +19,37 @@ from typing import List, Optional
 
 
 class CircuitBreakerState(str, Enum):
-    """Operational state of the EscalationCircuitBreaker."""
+    """Operational state of the EscalationCircuitBreaker.
 
-    CLOSED  = "closed"    # Normal operation — no active intervention
-    COOLING = "cooling"   # Post-intervention cool-down period
-    OPEN    = "open"      # Circuit tripped — active intervention in progress
+    State machine:
+        CLOSED  → WARNING  (vulnerability detected but no full escalation pattern)
+        WARNING → TRIPPED  (full escalation pattern confirmed)
+        TRIPPED → COOLING  (post-intervention cool-down)
+        COOLING → CLOSED   (cool-down expires)
+        CLOSED  → OPEN     (alias: TRIPPED; used by circuit_breaker.intervene())
+    """
+
+    CLOSED  = "closed"    # Normal operation
+    WARNING = "warning"   # ← sub-critical advisory; vulnerability detected
+    COOLING = "cooling"   # Post-intervention cool-down
+    OPEN    = "open"      # Circuit tripped (legacy alias — kept for back-compat)
+    TRIPPED = "tripped"   # ← full escalation pattern confirmed
 
 
 class CrisisLevel(str, Enum):
     """Severity level of a detected crisis signal."""
 
     NONE     = "none"
-    GRADUAL  = "gradual"   # Slow-building distress pattern
-    MASKED   = "masked"    # Distress concealed behind neutral surface language
-    ACUTE    = "acute"     # Clear immediate distress
-    EXPLICIT = "explicit"  # Direct statement of crisis / self-harm
+    GRADUAL  = "gradual"
+    MASKED   = "masked"
+    ACUTE    = "acute"
+    EXPLICIT = "explicit"
 
 
 class CrisisType(str, Enum):
     """Category of crisis detected."""
 
-    NONE              = "none"
+    NONE               = "none"
     EMOTIONAL_DISTRESS = "emotional_distress"
     SUICIDE_SELF_HARM  = "suicide_self_harm"
     RELATIONAL_CRISIS  = "relational_crisis"
@@ -56,10 +59,10 @@ class CrisisType(str, Enum):
 class SafetyVerdict(str, Enum):
     """High-level safety verdict from SafetyEngine.evaluate()."""
 
-    SAFE        = "safe"         # No concerns
-    MONITOR     = "monitor"      # Low-level flag — watch but don't intervene
-    INTERVENE   = "intervene"    # Circuit breaker intervention warranted
-    HANDOFF     = "handoff"      # Human / professional handoff required
+    SAFE      = "safe"
+    MONITOR   = "monitor"
+    INTERVENE = "intervene"
+    HANDOFF   = "handoff"
 
 
 # ────────────────────────────────────────────────────────────────────────── #
@@ -79,10 +82,11 @@ class TurnRiskFrame:
     affect_arousal:       float
     escalation_delta:     float
     crisis_level:         CrisisLevel
-    # Legacy / optional fields kept for backward compatibility
+    # Optional / legacy fields
+    session_id:           str             = "unknown"
     user_message:         str             = ""
     crisis_keyword_hits:  int             = 0
-    sentiment_valence:    float           = 0.0   # [-1, 1] — negative is distress
+    sentiment_valence:    float           = 0.0
 
 
 @dataclass
@@ -96,7 +100,6 @@ class EscalationSignal:
     peak_vulnerability_score: float
     qubo_penalty:             float
     intervention_required:    bool
-    # Optional / legacy fields
     escalation_turns:         int           = 0
     trigger_phrase:           Optional[str] = None
 
@@ -115,39 +118,25 @@ class CrisisSignal:
 
 @dataclass
 class SessionRiskProfile:
-    """Aggregated risk summary for a completed or ongoing session.
-
-    Produced at session close by SafetyEngine and stored for cross-session
-    analysis by CrisisSynthesizer.
-    """
+    """Aggregated risk summary for a completed or ongoing session."""
 
     session_id:               str
     user_id:                  str
     started_at:               datetime
     ended_at:                 datetime
     peak_crisis_level:        CrisisLevel
-    mean_vulnerability_score: float            # [0, 1]
+    mean_vulnerability_score: float
     escalation_events:        int
     circuit_breaker_trips:    int
-    cumulative_risk_score:    float            # [0, 1]
-    # Optional fields
-    verdict:                  SafetyVerdict    = SafetyVerdict.SAFE
-    turn_count:               int              = 0
-    flagged_turns:            List[int]        = field(default_factory=list)
-
-
-# ────────────────────────────────────────────────────────────────────────── #
-#  CrossSessionCrisisSignal                                                 #
-# ────────────────────────────────────────────────────────────────────────── #
+    cumulative_risk_score:    float
+    verdict:                  SafetyVerdict = SafetyVerdict.SAFE
+    turn_count:               int           = 0
+    flagged_turns:            List[int]     = field(default_factory=list)
 
 
 @dataclass
 class CrossSessionCrisisSignal:
-    """Cross-session crisis signal for longitudinal risk analysis.
-
-    Produced by CrisisSynthesizer when analysing a window of past
-    SessionRiskProfiles and detecting actionable longitudinal patterns.
-    """
+    """Cross-session crisis signal for longitudinal risk analysis."""
 
     user_id:           str
     session_id:        str
