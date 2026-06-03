@@ -1,0 +1,9 @@
+# GAIA-APP ML / Embedding Requirements
+# Install for local vector search with real embeddings (Issue #66)
+# In CI, sovereign_memory degrades gracefully to time-ordered recall.
+# Do NOT include in CI — sentence-transformers pulls in torch (~1GB).
+#
+# Usage: pip install -r requirements-ml.txt
+
+sentence-transformers>=2.7.0  # all-MiniLM-L6-v2 (384-dim) for sqlite-vec
+# earthengine-api>=0.1.390  # Google Earth Engine (run: earthengine authenticate)

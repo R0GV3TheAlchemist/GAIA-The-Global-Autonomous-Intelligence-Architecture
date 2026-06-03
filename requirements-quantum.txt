@@ -1,0 +1,9 @@
+# GAIA-APP Quantum Chemistry Requirements
+# Install ONLY for local quantum substrate simulation work (Issue #133)
+# Do NOT include in CI — install time is 15-25 minutes.
+#
+# Usage: pip install -r requirements-quantum.txt
+
+qiskit-nature>=0.7.0        # Fermionic Hamiltonians, ElectronicStructureProblem
+qiskit-aer>=0.14.0          # AerSimulator statevector/CPU backend
+pyscf>=2.4.0                # PySCF ab-initio driver (Mole, RHF, CCSD)
