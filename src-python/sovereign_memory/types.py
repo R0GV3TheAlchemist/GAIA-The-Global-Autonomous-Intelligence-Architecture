@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -71,3 +71,44 @@ class SearchResult:
     score        : float
     tier         : MemoryTier = MemoryTier.SEMANTIC
     tags         : List[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Affect snapshot
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AffectSnapshot:
+    """Snapshot of biometric affect data at a point in time.
+
+    Holds one or more BiometricSample readings captured together and
+    exposes to_biometric_rows() for batch INSERT into biometric_history.
+
+    Used by SovereignMemory.store_affect_snapshot() (sovereign_memory/__init__.py)
+    to persist all samples in a single atomic transaction.
+    """
+    principal_id : str
+    timestamp    : int                              # Unix ms — snapshot time
+    samples      : List[BiometricSample] = field(default_factory=list)
+
+    def to_biometric_rows(self) -> List[Dict[str, object]]:
+        """Convert samples to rows suitable for biometric_history INSERT.
+
+        Each row contains the five columns expected by the schema:
+        principal_id, timestamp, signal_type, value, source.
+
+        Returns
+        -------
+        List[dict]
+            One dict per BiometricSample in self.samples.
+        """
+        return [
+            {
+                "principal_id": self.principal_id,
+                "timestamp"   : sample.timestamp,
+                "signal_type" : sample.signal_type,
+                "value"       : sample.value,
+                "source"      : sample.source,
+            }
+            for sample in self.samples
+        ]
