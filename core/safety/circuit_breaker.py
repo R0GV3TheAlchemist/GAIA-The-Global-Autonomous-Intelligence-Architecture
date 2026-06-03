@@ -84,14 +84,22 @@ class EscalationCircuitBreaker:
     def tick(self) -> CircuitBreakerState:
         """Call once per turn after intervention to manage cooling-down state.
 
-        Decrements the cooling counter and returns CLOSED as soon as it
-        reaches zero — so cooling_turns=3 means exactly 3 ticks of COOLING
-        then CLOSED on the third tick.
+        Decrements the cooling counter and returns COOLING as long as the
+        counter is > 0 *after* the decrement — meaning the turn is still
+        inside the cooldown window. Returns CLOSED only once the counter
+        has already reached zero before this tick (i.e. cooldown fully
+        expired on a prior tick).
+
+        Fix (PR-A): the previous implementation returned CLOSED on the tick
+        where the counter hit exactly 0, ending cooling one turn too early.
+        The corrected logic:
+            counter > 0  →  decrement  →  still > 0  →  COOLING
+            counter > 0  →  decrement  →  hits 0      →  COOLING  (last guarded turn)
+            counter == 0 →  no change  →                 CLOSED
+        This ensures `cooling_turns=N` produces exactly N turns of COOLING.
         """
         if self._cooling_counter > 0:
             self._cooling_counter -= 1
-            if self._cooling_counter == 0:
-                return CircuitBreakerState.CLOSED
             return CircuitBreakerState.COOLING
         return CircuitBreakerState.CLOSED
 

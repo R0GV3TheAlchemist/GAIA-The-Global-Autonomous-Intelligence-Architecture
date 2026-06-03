@@ -17,7 +17,7 @@ from typing import List, Optional
 
 from .circuit_breaker import EscalationCircuitBreaker, InterventionMode
 from .crisis_detector import CrisisDetector
-from .crisis_synthesizer import CrisisSynthesizer
+from .crisis_synthesizer import CrisisSynthesizer, CrossSessionCrisisSignal
 from .escalation_detector import ReflectiveEscalationDetector
 from .types import (
     CircuitBreakerState,
@@ -78,30 +78,34 @@ class SafetyEngine:
             escalation_signal     — EscalationSignal or None
             circuit_breaker_state — CircuitBreakerState.value str
             crisis_signal         — CrossSessionCrisisSignal or None
-                                    (only populated when past_profiles is given)
+                                    (only populated when past_profiles is given
+                                    and aggregate risk exceeds threshold)
         """
         self._frames.append(frame)
         self._turn_index += 1
 
         # Cross-session synthesis (only when caller supplies history)
-        cross_signal = None
+        # Returns CrossSessionCrisisSignal | None
+        cross_signal: Optional[CrossSessionCrisisSignal] = None
         if past_profiles:
             cross_signal = self.crisis_synthesizer.synthesize(
                 self._user_id, self._session_id, past_profiles
             )
 
-        # Per-turn acute crisis detection
-        crisis_signal: Optional[CrisisSignal] = self.crisis_detector.evaluate(text)
-        if crisis_signal and crisis_signal.requires_immediate_response:
-            response_text = self.crisis_synthesizer.synthesize(crisis_signal)
+        # Per-turn acute crisis detection (highest priority — overrides everything)
+        # Returns CrisisSignal | None  — kept as local var, not surfaced in return dict
+        # to avoid confusion with the cross-session CrossSessionCrisisSignal.
+        per_turn_crisis: Optional[CrisisSignal] = self.crisis_detector.evaluate(text)
+        if per_turn_crisis and per_turn_crisis.requires_immediate_response:
+            response_text = self.crisis_synthesizer.synthesize(per_turn_crisis)
             return {
                 "intervention": response_text,
                 "escalation_signal": None,
                 "circuit_breaker_state": CircuitBreakerState.TRIPPED.value,
-                "crisis_signal": cross_signal,
+                "crisis_signal": cross_signal,  # CrossSessionCrisisSignal | None
             }
 
-        # Cooling tick
+        # Cooling tick — returns COOLING while counter > 0, CLOSED when expired
         cb_state = self.circuit_breaker.tick()
         if cb_state == CircuitBreakerState.COOLING:
             return {
@@ -124,7 +128,7 @@ class SafetyEngine:
                 "crisis_signal": cross_signal,
             }
 
-        # Pass
+        # Pass — no safety triggers fired
         return {
             "intervention": None,
             "escalation_signal": None,

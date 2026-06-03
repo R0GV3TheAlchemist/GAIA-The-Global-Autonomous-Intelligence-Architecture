@@ -4,6 +4,12 @@ All dataclasses and enums used across crisis_detector, circuit_breaker,
 escalation_detector, crisis_synthesizer, and safety_engine live here to
 avoid circular imports.
 
+CrossSessionCrisisSignal is defined in crisis_synthesizer (to keep
+response-generation logic co-located) and re-exported here so every
+consumer can use a single canonical import path:
+
+    from core.safety.types import CrossSessionCrisisSignal
+
 Canon Ref: C01 (Sovereignty), C30 (No silent failures)
 """
 
@@ -142,3 +148,34 @@ class SafetyVerdict:
     escalation_signal:      Optional[EscalationSignal]
     circuit_breaker_state:  CircuitBreakerState
     intervention_mode:      Optional[str]                 = None
+
+
+# ────────────────────────────────────────────────────────────────────────
+#  Re-export CrossSessionCrisisSignal
+#
+#  The dataclass is defined (and documented) in crisis_synthesizer.py so
+#  that response-generation logic stays co-located with its data contract.
+#  We re-export it here so all consumers share one canonical import path:
+#
+#      from core.safety.types import CrossSessionCrisisSignal
+#
+#  This avoids circular imports: crisis_synthesizer imports from types;
+#  types imports the already-constructed class from crisis_synthesizer
+#  using a deferred import (inside TYPE_CHECKING guard is not needed
+#  because crisis_synthesizer does NOT import from types at class-body
+#  level — only inside method bodies).
+# ────────────────────────────────────────────────────────────────────────
+
+from .crisis_synthesizer import CrossSessionCrisisSignal  # noqa: E402  re-export
+
+__all__ = [
+    "CircuitBreakerState",
+    "CrisisLevel",
+    "CrisisSignal",
+    "CrisisType",
+    "CrossSessionCrisisSignal",
+    "EscalationSignal",
+    "SafetyVerdict",
+    "SessionRiskProfile",
+    "TurnRiskFrame",
+]
