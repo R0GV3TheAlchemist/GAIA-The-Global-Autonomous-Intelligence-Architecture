@@ -1,6 +1,6 @@
 """
 core/development_stage_engine.py
-GAIA Developmental Stage Engine — Sprint G-8
+GAIA Developmental Stage Engine — Sprint G-8 / G-9
 
 Provides two complementary APIs:
 
@@ -14,6 +14,10 @@ Provides two complementary APIs:
     engine.update(depth_score=0.6, sovereignty_score=0.5, bond_score=0.65)
     stage  = engine.current_stage()                  # → "Allegiance"
     engine.reset()
+
+G-9 additions:
+  DevelopmentProfile  — snapshot of a user’s full developmental state
+  TransitionSignal    — encodes a detected or pending stage transition
 
 The five canonical stages (Emergence → Initiation → Allegiance →
 Individuation → Sovereignty) model GAIA’s relational development arc.
@@ -80,6 +84,71 @@ class StageResult:
     rationale:      str             = ""
     transitions:    List[str]       = field(default_factory=list)
     metadata:       Dict[str, Any]  = field(default_factory=dict)
+
+
+@dataclass
+class DevelopmentProfile:
+    """G-9: Full developmental snapshot for a GAIA user / session.
+
+    Captures the current stage, composite scores, session history length,
+    and any active thematic annotations derived from recent turns.
+    """
+    stage:              Stage
+    composite_score:    float                   = 0.0
+    depth_score:        float                   = 0.0
+    sovereignty_score:  float                   = 0.0
+    bond_score:         float                   = 0.0
+    session_count:      int                     = 0
+    themes:             List[str]               = field(default_factory=list)
+    metadata:           Dict[str, Any]          = field(default_factory=dict)
+
+    @classmethod
+    def from_engine(cls, engine: "DevelopmentStageEngine") -> "DevelopmentProfile":
+        """Build a profile snapshot from a stateful engine instance."""
+        turns = engine._turns
+        session_count = engine._session_count
+        if turns:
+            depth_avg        = sum(t["depth_score"]       for t in turns) / len(turns)
+            sovereignty_avg  = sum(t["sovereignty_score"] for t in turns) / len(turns)
+            bond_avg         = sum(t["bond_score"]        for t in turns) / len(turns)
+            composite        = (depth_avg + sovereignty_avg + bond_avg) / 3.0
+        else:
+            depth_avg = sovereignty_avg = bond_avg = composite = 0.0
+        stage_name = engine.current_stage()
+        stage = Stage(stage_name)
+        return cls(
+            stage=stage,
+            composite_score=composite,
+            depth_score=depth_avg,
+            sovereignty_score=sovereignty_avg,
+            bond_score=bond_avg,
+            session_count=session_count,
+        )
+
+
+@dataclass
+class TransitionSignal:
+    """G-9: Encodes a detected or pending stage transition.
+
+    Emitted when the engine observes that composite scores have crossed
+    a stage boundary, signalling that GAIA’s relational arc has shifted.
+    """
+    from_stage:     Stage
+    to_stage:       Stage
+    composite_at_transition: float      = 0.0
+    confidence:     float               = 1.0
+    rationale:      str                 = ""
+    metadata:       Dict[str, Any]      = field(default_factory=dict)
+
+    @property
+    def is_progression(self) -> bool:
+        """True if the transition moves forward through the stage arc."""
+        return STAGE_ORDER.index(self.to_stage) > STAGE_ORDER.index(self.from_stage)
+
+    @property
+    def is_regression(self) -> bool:
+        """True if the transition moves backward (regression signal fired)."""
+        return STAGE_ORDER.index(self.to_stage) < STAGE_ORDER.index(self.from_stage)
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +277,10 @@ class DevelopmentStageEngine:
                 return stage_name
 
         return "Sovereignty"  # composite >= 0.88 and no threshold matched
+
+    def profile(self) -> DevelopmentProfile:
+        """G-9: Return a full DevelopmentProfile snapshot of current state."""
+        return DevelopmentProfile.from_engine(self)
 
     def reset(self) -> None:
         """Reset accumulated state for a fresh assessment cycle."""
