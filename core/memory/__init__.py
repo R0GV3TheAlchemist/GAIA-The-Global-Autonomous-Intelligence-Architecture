@@ -1,16 +1,36 @@
 """
 core/memory/__init__.py
-GAIA Memory Package — Sprint G-8
+GAIA Memory Package
 
-Public surface:
-  build_default_router()  — factory that wires all five tier stores into
-                            a ready-to-use MemoryRouter.
+Public surface (flat API — used by tests and all GAIA modules):
+  FallbackEmbedder   — hash-based embedder (no network required)
+  MemoryItem         — canonical memory row dataclass
+  MemoryKind         — enum: message / fact / preference / …
+  MemoryPruner       — capacity + TTL enforcement
+  MemoryStore        — SQLite-backed semantic memory store
+  MemoryTier         — enum: ephemeral / short_term / long_term / permanent
+  RetrievedMemory    — (item, score) result wrapper
+
+Legacy hierarchy API (Sprint G-8) also re-exported for back-compat:
+  MemoryQuery, MemoryRouter, WorkingMemoryStore, ShortTermMemoryStore,
+  EpisodicMemoryStore, SemanticMemoryStore, LongTermMemoryStore
 
 Canon refs: C34 (Presence), C01 (Sovereignty)
 """
 from __future__ import annotations
 
-from .hierarchy import MemoryQuery, MemoryRouter, MemoryStore, MemoryTier
+# ---------------------------------------------------------------------------
+# Flat API (new — used by test_memory_store.py and all new modules)
+# ---------------------------------------------------------------------------
+from .embedder import EmbeddingProvider, FallbackEmbedder
+from .taxonomy import MemoryItem, MemoryKind, MemoryTier
+from .store import MemoryStore, RetrievedMemory
+from .pruner import MemoryPruner
+
+# ---------------------------------------------------------------------------
+# Legacy hierarchy API (Sprint G-8 — kept for back-compat)
+# ---------------------------------------------------------------------------
+from .hierarchy import MemoryQuery, MemoryRouter
 from .tiers import (
     WorkingMemoryStore,
     ShortTermMemoryStore,
@@ -34,8 +54,7 @@ def build_default_router(
         SQLite database path for ShortTermMemoryStore.
         Defaults to ':memory:' (in-process, no persistence).
     semantic_store:
-        Optional pre-built SemanticMemoryStore to inject
-        (e.g. one pre-loaded with canon facts).
+        Optional pre-built SemanticMemoryStore to inject.
     long_term_store:
         Optional pre-built LongTermMemoryStore to inject.
 
@@ -51,12 +70,18 @@ def build_default_router(
 
 
 __all__ = [
-    # Hierarchy types
-    "MemoryQuery",
-    "MemoryRouter",
+    # Flat API
+    "EmbeddingProvider",
+    "FallbackEmbedder",
+    "MemoryItem",
+    "MemoryKind",
+    "MemoryPruner",
     "MemoryStore",
     "MemoryTier",
-    # Tier stores
+    "RetrievedMemory",
+    # Legacy hierarchy
+    "MemoryQuery",
+    "MemoryRouter",
     "WorkingMemoryStore",
     "ShortTermMemoryStore",
     "EpisodicMemoryStore",
