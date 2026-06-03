@@ -20,26 +20,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Python setup ───────────────────────────────────────────────
+      # ── 2. Python setup ──────────────────────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      # ── 3. Install dependencies ────────────────────────────────────────────
-      #    requirements.txt  → lightweight CI-safe core deps (<60s install)
-      #    requirements-quantum.txt and requirements-ml.txt are opt-in
-      #    for local research environments only (see docs/INSTALL.md)
+      # ── 3. Install dependencies ──────────────────────────────────────────
+      #    Step A: lightweight runtime deps from requirements.txt
+      #    Step B: dev deps from pyproject.toml [project.optional-dependencies.dev]
+      #    Using pip install -e ".[dev]" guarantees CI deps exactly match
+      #    pyproject.toml — no more manual drift between ci.yml and local.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
-          pip install pytest pytest-asyncio pytest-cov pytest-timeout
+          pip install -e ".[dev]"
+          pip install pytest-cov
 
-      # ── 4. Syntax check ───────────────────────────────────────────────
+      # ── 4. Syntax check ──────────────────────────────────────────────────
       - name: Syntax check (py_compile)
         run: |
           python -m compileall -q core/ 2>&1 | tee /tmp/compile.log
@@ -47,12 +49,12 @@ jobs:
             echo '::error::Syntax errors found in core/ — fix before merging'
             exit 1
           fi
-          echo '✅  All core/ files compile cleanly'
+          echo '\u2705  All core/ files compile cleanly'
 
       # ── 5. Pytest ────────────────────────────────────────────────────────
-      #    PYTHONPATH includes both repo root (core/, api/) AND src-python/
-      #    (affect_engine/, crystal/, shadow_engine/, sovereign_memory/).
-      #    This mirrors what test.yml and pyproject.toml pythonpath already do.
+      #    PYTHONPATH is set explicitly here AND in pyproject.toml AND in
+      #    conftest.py (self-healing). Triple-redundant so no branch config
+      #    drift can ever break collection again.
       - name: Run pytest
         run: |
           python -m pytest tests/ \

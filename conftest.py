@@ -1,29 +1,43 @@
 """
 conftest.py  (repo root)
 
-Pytest collection guard for feat/gaiatrace-171.
+Self-healing sys.path guard.
 
-The nine test files listed in `collect_ignore` import from modules that
-live in src-python/ on main (affect_engine, crystal, shadow_engine,
-sovereign_memory).  Those packages do not exist on this branch, so
-pytest raises ModuleNotFoundError during collection and aborts before
-running any tests at all.
+Ensures src-python/ is always on sys.path before pytest attempts to import
+any test module — regardless of whether pytest.ini, pyproject.toml, or
+neither is supplying a pythonpath setting.  This makes the test suite
+robust to the pytest.ini-vs-pyproject.toml precedence trap that previously
+caused 9 ModuleNotFoundError failures during CI collection.
 
-`collect_ignore` is evaluated by pytest before it attempts to import
-anything, making it more robust than --ignore CLI flags.  Remove this
-file (or empty the list) once src-python/ is merged onto this branch.
+Safe to leave in place permanently.  The insert is a no-op if src-python/
+is already on sys.path (e.g. because PYTHONPATH is set in CI or because
+pyproject.toml pythonpath is active).
 """
 
-import os
+from __future__ import annotations
 
-collect_ignore = [
-    os.path.join("tests", "test_affect_engine.py"),
-    os.path.join("tests", "test_crystal_coherence.py"),
-    os.path.join("tests", "test_crystal_engine.py"),
-    os.path.join("tests", "test_crystal_narrative.py"),
-    os.path.join("tests", "test_shadow_archetypes.py"),
-    os.path.join("tests", "test_shadow_engine.py"),
-    os.path.join("tests", "test_shadow_integration.py"),
-    os.path.join("tests", "test_shadow_intensity.py"),
-    os.path.join("tests", "test_sovereign_memory.py"),
-]
+import sys
+from pathlib import Path
+
+# ── Self-healing path injection ───────────────────────────────────────────────
+_REPO_ROOT = Path(__file__).parent.resolve()
+_SRC_PYTHON = _REPO_ROOT / "src-python"
+_REPO_ROOT_STR = str(_REPO_ROOT)
+_SRC_PYTHON_STR = str(_SRC_PYTHON)
+
+if _SRC_PYTHON_STR not in sys.path:
+    sys.path.insert(0, _SRC_PYTHON_STR)
+
+if _REPO_ROOT_STR not in sys.path:
+    sys.path.insert(0, _REPO_ROOT_STR)
+
+
+# ── Debug hook — printed once per CI run ─────────────────────────────────────
+def pytest_configure(config):
+    """Emit active pythonpath at the start of every pytest session."""
+    print(
+        f"\n[conftest] sys.path includes:"
+        f"\n  repo root  : {_REPO_ROOT_STR}"
+        f"\n  src-python : {_SRC_PYTHON_STR}"
+        f"\n  already present: {_SRC_PYTHON_STR in sys.path}"
+    )
