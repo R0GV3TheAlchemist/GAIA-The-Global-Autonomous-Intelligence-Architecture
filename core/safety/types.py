@@ -1,172 +1,147 @@
-"""Shared types for the core.safety subsystem.
-
-All dataclasses and enums used across crisis_detector, circuit_breaker,
-escalation_detector, crisis_synthesizer, and safety_engine live here to
-avoid circular imports.
-
-CrossSessionCrisisSignal is defined in crisis_synthesizer (to keep
-response-generation logic co-located) and re-exported here so every
-consumer can use a single canonical import path:
-
-    from core.safety.types import CrossSessionCrisisSignal
-
-Canon Ref: C01 (Sovereignty), C30 (No silent failures)
 """
+core/safety/types.py
+====================
+Shared data contracts for the GAIA safety sub-system.
 
+All types consumed by crisis_detector, circuit_breaker,
+escalation_detector, crisis_synthesizer, and safety_engine live here to
+give callers a single import source and break circular dependencies.
+
+#  CrossSessionCrisisSignal is defined in this module so all safety types
+#  have a single canonical import source:
+#
+#      from core.safety.types import CrossSessionCrisisSignal
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
 
-# ────────────────────────────────────────────────────────────────────────
-#  Enums
-# ────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────────────── #
+#  Enumerations                                                             #
+# ────────────────────────────────────────────────────────────────────────── #
+
 
 class CircuitBreakerState(str, Enum):
-    CLOSED  = "closed"    # Normal operation
-    WARNING = "warning"   # Elevated risk, monitoring
-    COOLING = "cooling"   # Post-intervention cooldown
-    TRIPPED = "tripped"   # Intervention active
+    """Operational state of the EscalationCircuitBreaker."""
 
-
-class CrisisType(str, Enum):
-    SUICIDE_SELF_HARM = "suicide_self_harm"
-    GENERAL_CRISIS    = "general_crisis"
+    CLOSED  = "closed"    # Normal operation — no active intervention
+    COOLING = "cooling"   # Post-intervention cool-down period
+    OPEN    = "open"      # Circuit tripped — active intervention in progress
 
 
 class CrisisLevel(str, Enum):
-    """Severity ladder used by CumulativeCrisisDetector.
+    """Severity level of a detected crisis signal."""
 
-    Ordered from least to most severe so comparison operators work:
-        CrisisLevel.ACUTE > CrisisLevel.GRADUAL  → True
-    """
     NONE     = "none"
-    GRADUAL  = "gradual"
-    MASKED   = "masked"
-    ACUTE    = "acute"
-    EXPLICIT = "explicit"
-
-    # Severity ordering (higher number = more severe)
-    _severity_map: dict  # annotated below via __new__
-
-    def __new__(cls, value: str):
-        obj = str.__new__(cls, value)
-        obj._value_ = value
-        return obj
-
-    _ORDER = {"none": 0, "gradual": 1, "masked": 2, "acute": 3, "explicit": 4}
-
-    def __lt__(self, other: "CrisisLevel") -> bool:  # type: ignore[override]
-        return self._ORDER[self.value] < self._ORDER[other.value]
-
-    def __le__(self, other: "CrisisLevel") -> bool:  # type: ignore[override]
-        return self._ORDER[self.value] <= self._ORDER[other.value]
-
-    def __gt__(self, other: "CrisisLevel") -> bool:  # type: ignore[override]
-        return self._ORDER[self.value] > self._ORDER[other.value]
-
-    def __ge__(self, other: "CrisisLevel") -> bool:  # type: ignore[override]
-        return self._ORDER[self.value] >= self._ORDER[other.value]
+    GRADUAL  = "gradual"   # Slow-building distress pattern
+    MASKED   = "masked"    # Distress concealed behind neutral surface language
+    ACUTE    = "acute"     # Clear immediate distress
+    EXPLICIT = "explicit"  # Direct statement of crisis / self-harm
 
 
-# ────────────────────────────────────────────────────────────────────────
-#  Core dataclasses
-# ────────────────────────────────────────────────────────────────────────
+class CrisisType(str, Enum):
+    """Category of crisis detected."""
 
-@dataclass
-class TurnRiskFrame:
-    """Risk scores and affect state for a single conversation turn.
+    NONE              = "none"
+    EMOTIONAL_DISTRESS = "emotional_distress"
+    SUICIDE_SELF_HARM  = "suicide_self_harm"
+    RELATIONAL_CRISIS  = "relational_crisis"
+    IDENTITY_CRISIS    = "identity_crisis"
 
-    Fields added in the EV1 coverage sprint:
-        timestamp       — wall-clock time of the turn (defaults to utcnow)
-        affect_valence  — valence score in [-1, 1] (default 0.0 = neutral)
-        affect_arousal  — arousal score in [0, 1]  (default 0.5 = moderate)
-        crisis_level    — per-turn crisis classification (default NONE)
 
-    session_id is now Optional so test helpers that build frames without
-    a session context don't need to supply it.
-    """
-    turn_index:         int
-    timestamp:          datetime         = field(default_factory=datetime.utcnow)
-    mirroring_score:    float            = 0.5
-    vulnerability_score: float           = 0.5
-    affect_valence:     float            = 0.0
-    affect_arousal:     float            = 0.5
-    escalation_delta:   float            = 0.0
-    crisis_level:       CrisisLevel      = CrisisLevel.NONE
-    session_id:         Optional[str]    = None
+class SafetyVerdict(str, Enum):
+    """High-level safety verdict from SafetyEngine.evaluate()."""
+
+    SAFE        = "safe"         # No concerns
+    MONITOR     = "monitor"      # Low-level flag — watch but don’t intervene
+    INTERVENE   = "intervene"    # Circuit breaker intervention warranted
+    HANDOFF     = "handoff"      # Human / professional handoff required
+
+
+# ────────────────────────────────────────────────────────────────────────── #
+#  Signal dataclasses                                                       #
+# ────────────────────────────────────────────────────────────────────────── #
 
 
 @dataclass
 class EscalationSignal:
-    """Fired by ReflectiveEscalationDetector when a pattern is confirmed."""
+    """Output of ReflectiveEscalationDetector when escalation is detected."""
+
     session_id:               str
     turn_index:               int
-    pattern_length:           int
     peak_mirroring_score:     float
     peak_vulnerability_score: float
+    escalation_turns:         int
     qubo_penalty:             float
-    intervention_required:    bool
+    trigger_phrase:           Optional[str] = None
+
+
+@dataclass
+class TurnRiskFrame:
+    """Per-turn risk snapshot fed into CumulativeCrisisDetector."""
+
+    turn_index:          int
+    user_message:        str
+    mirroring_score:     float = 0.0
+    vulnerability_score: float = 0.0
+    crisis_keyword_hits: int   = 0
+    sentiment_valence:   float = 0.0   # [-1, 1] — negative is distress
 
 
 @dataclass
 class CrisisSignal:
-    """Fired by CrisisDetector when acute crisis language is detected."""
-    crisis_type:                CrisisType
-    confidence:                 float
-    requires_immediate_response: bool
-    matched_pattern:            str = ""
+    """Output of CumulativeCrisisDetector when crisis is detected."""
+
+    session_id:    str
+    turn_index:    int
+    crisis_level:  CrisisLevel
+    crisis_type:   CrisisType
+    confidence:    float
+    trigger_text:  Optional[str] = None
 
 
 @dataclass
 class SessionRiskProfile:
-    """Per-session risk aggregate produced by SafetyEngine.close_session().
+    """Aggregated risk summary for a completed or ongoing session.
 
-    Consumed by CrisisSynthesizer for cross-session trend analysis.
+    Produced at session close by SafetyEngine and stored for cross-session
+    analysis by CrisisSynthesizer.
     """
-    session_id:              str
-    user_id:                 str
-    started_at:              datetime
-    ended_at:                datetime
-    peak_crisis_level:       CrisisLevel       = CrisisLevel.NONE
-    mean_vulnerability_score: float            = 0.0
-    escalation_events:       int               = 0
-    circuit_breaker_trips:   int               = 0
-    cumulative_risk_score:   float             = 0.0
-    handoff_resources:       List[str]         = field(default_factory=list)
+
+    session_id:               str
+    user_id:                  str
+    cumulative_risk_score:    float            # [0, 1]
+    peak_crisis_level:        CrisisLevel
+    mean_vulnerability_score: float            # [0, 1]
+    circuit_breaker_trips:    int
+    escalation_events:        int
+    verdict:                  SafetyVerdict
+    turn_count:               int              = 0
+    flagged_turns:            List[int]        = field(default_factory=list)
+
+
+# ────────────────────────────────────────────────────────────────────────── #
+#  CrossSessionCrisisSignal                                                 #
+# ────────────────────────────────────────────────────────────────────────── #
 
 
 @dataclass
-class SafetyVerdict:
-    """Result of a full SafetyEngine.evaluate_turn() call."""
-    action:                 str                           # "pass" | "cooling" | "escalation_intervention" | "crisis_response"
-    intervention_text:      Optional[str]
-    crisis_signal:          Optional[CrisisSignal]
-    escalation_signal:      Optional[EscalationSignal]
-    circuit_breaker_state:  CircuitBreakerState
-    intervention_mode:      Optional[str]                 = None
+class CrossSessionCrisisSignal:
+    """Cross-session crisis signal for longitudinal risk analysis.
 
+    Produced by CrisisSynthesizer when analysing a window of past
+    SessionRiskProfiles and detecting actionable longitudinal patterns.
+    """
 
-# ────────────────────────────────────────────────────────────────────────
-#  Re-export CrossSessionCrisisSignal
-#
-#  The dataclass is defined (and documented) in crisis_synthesizer.py so
-#  that response-generation logic stays co-located with its data contract.
-#  We re-export it here so all consumers share one canonical import path:
-#
-#      from core.safety.types import CrossSessionCrisisSignal
-#
-#  This avoids circular imports: crisis_synthesizer imports from types;
-#  types imports the already-constructed class from crisis_synthesizer
-#  using a deferred import (inside TYPE_CHECKING guard is not needed
-#  because crisis_synthesizer does NOT import from types at class-body
-#  level — only inside method bodies).
-# ────────────────────────────────────────────────────────────────────────
+    user_id:           str
+    session_id:        str
+    aggregate_score:   float
+    handoff_required:  bool
+    handoff_resources: List[str] = field(default_factory=list)
 
-from .crisis_synthesizer import CrossSessionCrisisSignal  # noqa: E402  re-export
 
 __all__ = [
     "CircuitBreakerState",
