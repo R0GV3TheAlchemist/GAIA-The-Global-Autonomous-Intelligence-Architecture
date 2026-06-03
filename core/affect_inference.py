@@ -8,7 +8,9 @@ Constitutional Canon (C30 / Affect Inference Layer spec):
     GRIEF, DISSONANCE, UNCERTAINTY, RESONANCE, CARE, CURIOSITY
 
 Public surface:
-    infer(...)   →  FeelingState
+    AffectInference        — class wrapper used by GaianRuntime
+    infer(AffectInput)     — bare function for direct / test use
+    AffectState, AffectInput, FeelingState
 
 All thresholds are sealed in _THRESHOLD_* constants; the waterfall is
 orderly, highest-priority first so callers can reason about precedence.
@@ -109,6 +111,56 @@ class FeelingState:
 
 
 # ──────────────────────────────────────────────────────────────────────────── #
+#  AffectInference — class wrapper (used by GaianRuntime)                   #
+# ──────────────────────────────────────────────────────────────────────────── #
+
+
+class AffectInference:
+    """Stateless affect inference engine — class wrapper for GaianRuntime.
+
+    GaianRuntime instantiates this as ``self._affect = AffectInference()``
+    and calls it with individual keyword arguments rather than an AffectInput
+    object.  This class bridges that interface to the underlying
+    ``infer(AffectInput)`` function.
+
+    Notes
+    -----
+    ``identity_score`` and ``wisdom_score`` are accepted for forward
+    compatibility (they appear in the runtime's call signature) but are
+    not yet mapped to waterfall inputs.  They are silently ignored until
+    a canonical mapping is defined in the Constitutional Canon.
+    """
+
+    def infer(
+        self,
+        *,
+        identity_score:    float = 0.5,   # accepted, not yet mapped
+        wisdom_score:      float = 0.5,   # accepted, not yet mapped
+        truth_score:       float = 0.5,
+        flourishing_score: float = 0.5,
+        conflict_density:  float = 0.0,
+        loss_score:        float = 0.0,
+        temperature:       float = 0.5,
+        coherence:         float = 0.5,
+    ) -> FeelingState:
+        """Infer affect state from runtime neuroscience signals.
+
+        Packs the keyword arguments into an AffectInput and delegates
+        to the module-level ``infer()`` function.  All waterfall logic
+        and threshold constants remain in that function.
+        """
+        inp = AffectInput(
+            temperature       = temperature,
+            truth_score       = truth_score,
+            flourishing_score = flourishing_score,
+            conflict_density  = conflict_density,
+            loss_score        = loss_score,
+            coherence         = coherence,
+        )
+        return infer(inp)
+
+
+# ──────────────────────────────────────────────────────────────────────────── #
 #  Public inference function                                                  #
 # ──────────────────────────────────────────────────────────────────────────── #
 
@@ -168,10 +220,10 @@ def infer(inp: AffectInput) -> FeelingState:
 
 
 def _make(
-    state:     AffectState,
-    inp:       AffectInput,
+    state:      AffectState,
+    inp:        AffectInput,
     confidence: float,
-    rationale: str,
+    rationale:  str,
 ) -> FeelingState:
     return FeelingState(
         state        = state,
