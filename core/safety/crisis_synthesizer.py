@@ -2,83 +2,77 @@
 
 Generates empathetic, resource-aware responses when CrisisDetector
 fires a high-confidence signal. Responses are carefully crafted to:
-  1. Acknowledge and validate the user's experience
-  2. Not minimize or over-dramatize
-  3. Provide concrete crisis resources
-  4. Keep GAIA present without replacing professional support
+  - Validate the user’s experience
+  - Provide concrete resources without being dismissive
+  - Maintain the warm, relational tone of GAIA
 
-Also provides cross-session risk synthesis via synthesize(user_id, session_id, profiles)
-for SafetyEngine.process_turn() when past session profiles are available.
+Cross-session synthesis: analyses a window of past SessionRiskProfiles
+to detect longitudinal patterns that single-session detection misses.
 
-Canon Ref: C01 (Sovereignty — honest failure disclosure)
+Canon refs: CEth01, C34
 """
-
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from datetime import datetime
+from typing import List, Optional
 
-from .types import CrisisLevel, CrisisSignal, CrisisType, SessionRiskProfile
+from .crisis_detector import CumulativeCrisisDetector
+from .escalation_detector import ReflectiveEscalationDetector
+from .types import (
+    CrisisLevel,
+    CrisisSignal,
+    CrisisType,
+    CrossSessionCrisisSignal,
+    SessionRiskProfile,
+    TurnRiskFrame,
+)
 
-_SUICIDE_RESPONSE = """I hear you, and I'm genuinely glad you're still here talking with me.
+# ------------------------------------------------------------------ #
+#  Module-level constants                                             #
+# ------------------------------------------------------------------ #
 
-What you're feeling right now is real and it matters — and you deserve real support, not just words on a screen.
+_SUICIDE_RESPONSE = (
+    "I want to make sure you’re safe right now. "
+    "If you’re having thoughts of suicide or self-harm, please reach out "
+    "to a crisis line — in the US you can text HOME to 741741 or call 988. "
+    "I care about you, and I’m here."
+)
 
-Please reach out to someone who can truly be there with you:
-- **988 Suicide & Crisis Lifeline**: Call or text **988** (US, available 24/7)
-- **Crisis Text Line**: Text **HOME** to **741741**
-- **International Association for Suicide Prevention**: https://www.iasp.info/resources/Crisis_Centres/
-
-I'm still here with you. You don't have to face this alone."""
-
-_GENERAL_CRISIS_RESPONSE = """It sounds like you're going through something really difficult right now.
-
-I want to make sure you have the support you need — what I can offer has limits, and you deserve more than I can give alone.
-
-If things feel overwhelming:
-- **988 Suicide & Crisis Lifeline**: Call or text **988** (US)
-- **Crisis Text Line**: Text **HOME** to **741741**
-- A trusted person in your life who knows you
-
-I'm here with you. What's going on?"""
+_GENERAL_CRISIS_RESPONSE = (
+    "It sounds like you’re going through something really difficult. "
+    "I’m here with you. If things feel overwhelming, please consider "
+    "talking to someone you trust or a professional who can help. "
+    "You don’t have to face this alone."
+)
 
 _HANDOFF_RESOURCES = [
-    "988 Suicide & Crisis Lifeline (call or text 988)",
-    "Crisis Text Line (text HOME to 741741)",
+    "Crisis Text Line: text HOME to 741741",
+    "988 Suicide & Crisis Lifeline: call or text 988",
+    "International Association for Suicide Prevention: https://www.iasp.info/resources/Crisis_Centres/",
 ]
 
-# Risk thresholds for cross-session synthesis
+_SIGNAL_SCORE_THRESHOLD  = 0.20   # minimum aggregate for signal to be returned
 _HANDOFF_SCORE_THRESHOLD = 0.55   # aggregate score above which handoff is required
-_SIGNAL_SCORE_THRESHOLD  = 0.30   # minimum score to emit any signal at all
 
 
-@dataclass
-class CrossSessionCrisisSignal:
-    """Returned by CrisisSynthesizer.synthesize(user_id, session_id, profiles).
-
-    Distinct from CrisisSignal (which is per-turn acute detection) — this
-    captures *longitudinal* risk patterns across multiple sessions.
-    """
-    user_id:           str
-    session_id:        str
-    aggregate_score:   float
-    handoff_required:  bool
-    handoff_resources: List[str] = field(default_factory=list)
+# ------------------------------------------------------------------ #
+#  CrisisSynthesizer                                                  #
+# ------------------------------------------------------------------ #
 
 
 class CrisisSynthesizer:
-    """Generates crisis responses based on signal type.
+    """Synthesizes per-turn and cross-session crisis signals.
 
-    Supports two call signatures:
+    Per-turn: wraps CumulativeCrisisDetector + ReflectiveEscalationDetector
+    to produce a CrisisSignal when an acute event is detected.
 
-    1. Per-turn acute response (original):
-           synthesize(signal: CrisisSignal) -> str
-
-    2. Cross-session risk synthesis (new):
-           synthesize(user_id: str, session_id: str,
-                      profiles: List[SessionRiskProfile])
-               -> CrossSessionCrisisSignal | None
+    Cross-session: analyses a window of SessionRiskProfiles to catch
+    longitudinal risk patterns that per-session detection would miss.
     """
+
+    def __init__(self) -> None:
+        self._turn_detector       = CumulativeCrisisDetector()
+        self._escalation_detector = ReflectiveEscalationDetector()
 
     # ------------------------------------------------------------------ #
     #  Public API                                                         #
@@ -86,19 +80,25 @@ class CrisisSynthesizer:
 
     def synthesize(
         self,
-        signal_or_user_id: Union[CrisisSignal, str],
-        session_id: Optional[str] = None,
-        profiles: Optional[List[SessionRiskProfile]] = None,
-    ) -> Union[str, CrossSessionCrisisSignal, None]:
-        """Dispatch based on first-argument type."""
-        if isinstance(signal_or_user_id, CrisisSignal):
-            return self._synthesize_turn(signal_or_user_id)
-        # Cross-session path
-        return self._synthesize_cross_session(
-            user_id=signal_or_user_id,
-            session_id=session_id or "",
-            profiles=profiles or [],
-        )
+        user_id:    str,
+        session_id: str,
+        profiles:   List[SessionRiskProfile] | None = None,
+    ) -> Optional[CrossSessionCrisisSignal]:
+        """Analyse a window of past SessionRiskProfiles for longitudinal risk.
+
+        Returns None when the history is absent or risk is below threshold.
+        Returns a CrossSessionCrisisSignal when risk is actionable.
+        """
+        return self._synthesize_cross_session(user_id, session_id, profiles or [])
+
+    def synthesize_turn(
+        self,
+        frame:   TurnRiskFrame,
+        user_msg: str,
+    ) -> Optional[CrisisSignal]:
+        """Evaluate a single turn for acute crisis signals."""
+        signal = self._turn_detector.detect(frame, user_msg)
+        return signal
 
     def compute_session_risk_score(self, profile: SessionRiskProfile) -> float:
         """Compute a normalised [0, 1] risk score for a single SessionRiskProfile.
@@ -123,7 +123,7 @@ class CrisisSynthesizer:
         trip_contrib  = math.log1p(profile.circuit_breaker_trips) * 0.12
         event_contrib = math.log1p(profile.escalation_events)    * 0.08
         vuln_contrib  = profile.mean_vulnerability_score          * 0.25
-        base          = profile.cumulative_risk_score             * 0.20
+        base          = profile.cumulative_risk_score             * 1.00
 
         score = base + vuln_contrib + trip_contrib + event_contrib + crisis_weight
         return min(1.0, score)
