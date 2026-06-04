@@ -12,6 +12,7 @@ The embedding model is pluggable via GAIA_EMBED_MODEL env var:
   - "local"   : sentence-transformers all-MiniLM-L6-v2  (default, offline)
   - "openai"  : text-embedding-3-small via OpenAI API
   - "nomic"   : nomic-embed-text-v1.5 via Ollama
+  - "none"    : disables embedding entirely (test / offline mode)
 
 If embedding fails for any reason, the system degrades gracefully to
 time-ordered recall — sovereign memory never blocks on a missing model.
@@ -23,6 +24,7 @@ import logging
 import os
 import struct
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
@@ -37,6 +39,27 @@ _DIM_NOMIC   = 768   # nomic-embed-text-v1.5
 
 # How many candidates to pull from vec0 before re-ranking
 _VEC_CANDIDATES = 100
+
+# ─────────────────────────────────────────────────────────────────
+# Anchor the HuggingFace / sentence-transformers model cache to an
+# absolute path inside the repo so CI never falls back to a relative
+# path like  ../../blobs/<sha>  which breaks when pytest is invoked
+# from a working directory other than the repo root.
+# ─────────────────────────────────────────────────────────────────
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]  # src-python/sovereign_memory -> repo root
+_BLOB_CACHE = _REPO_ROOT / ".cache" / "huggingface"
+
+# Only set if not already overridden by the environment (CI may set its own)
+if not os.environ.get("HF_HOME"):
+    os.environ["HF_HOME"] = str(_BLOB_CACHE)
+if not os.environ.get("TRANSFORMERS_CACHE"):
+    os.environ["TRANSFORMERS_CACHE"] = str(_BLOB_CACHE / "hub")
+if not os.environ.get("SENTENCE_TRANSFORMERS_HOME"):
+    os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(_BLOB_CACHE / "sentence_transformers")
+
+_BLOB_CACHE.mkdir(parents=True, exist_ok=True)
+
 
 # ─────────────────────────────────────────────────────────────────
 # Extension loading
@@ -120,10 +143,14 @@ _embed_model_name: str = ""
 def _get_embed_fn():
     """
     Lazy-load the embedding function once and cache it.
-    Returns a callable: text -> list[float]
+    Returns a callable: text -> list[float], or None if mode=="none".
     """
     global _embed_model, _embed_model_name
     mode = os.environ.get("GAIA_EMBED_MODEL", "local").lower()
+
+    # ── Explicit no-op mode for tests that don’t need real embeddings ──────────
+    if mode == "none":
+        return None
 
     if mode == "openai":
         import openai  # type: ignore
@@ -152,6 +179,7 @@ def _get_embed_fn():
         return _embed
 
     # Default: local sentence-transformers
+    # HF_HOME / SENTENCE_TRANSFORMERS_HOME are set to absolute paths above
     if _embed_model is None:
         from sentence_transformers import SentenceTransformer  # type: ignore
         _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -165,9 +193,12 @@ def embed_text(text: str) -> Optional[List[float]]:
     """
     Embed *text* and return a float list, or None on any failure.
     Truncates to 512 chars for the local model to keep latency low.
+    Returns None immediately when GAIA_EMBED_MODEL=none.
     """
     try:
         fn = _get_embed_fn()
+        if fn is None:
+            return None
         return fn(text[:512])
     except Exception as exc:  # noqa: BLE001
         logger.warning("Embedding failed: %s", exc)
@@ -198,7 +229,6 @@ def store_episodic_embedding(
     if vec is None:
         return False
     try:
-        # sqlite-vec upsert: delete then insert (vec0 doesn't support ON CONFLICT)
         conn.execute(
             "DELETE FROM vec_episodic_embeddings WHERE rowid=?", (rowid,)
         )
@@ -268,7 +298,6 @@ def search_episodic_vec(
 
     try:
         now_ms = int(time.time() * 1000)
-        # One-year window for normalising recency (arbitrary but stable)
         one_year_ms = 365 * 24 * 3_600_000
 
         rows = conn.execute(
