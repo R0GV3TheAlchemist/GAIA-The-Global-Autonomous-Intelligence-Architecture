@@ -2,7 +2,7 @@
 
 Generates empathetic, resource-aware responses when CrisisDetector
 fires a high-confidence signal. Responses are carefully crafted to:
-  - Validate the user’s experience
+  - Validate the user's experience
   - Provide concrete resources without being dismissive
   - Maintain the warm, relational tone of GAIA
 
@@ -32,17 +32,17 @@ from .types import (
 # ------------------------------------------------------------------ #
 
 _SUICIDE_RESPONSE = (
-    "I want to make sure you’re safe right now. "
-    "If you’re having thoughts of suicide or self-harm, please reach out "
+    "I want to make sure you're safe right now. "
+    "If you're having thoughts of suicide or self-harm, please reach out "
     "to a crisis line — in the US you can text HOME to 741741 or call 988. "
-    "I care about you, and I’m here."
+    "I care about you, and I'm here."
 )
 
 _GENERAL_CRISIS_RESPONSE = (
-    "It sounds like you’re going through something really difficult. "
-    "I’m here with you. If things feel overwhelming, please consider "
+    "It sounds like you're going through something really difficult. "
+    "I'm here with you. If things feel overwhelming, please consider "
     "talking to someone you trust or a professional who can help. "
-    "You don’t have to face this alone."
+    "You don't have to face this alone."
 )
 
 _HANDOFF_RESOURCES = [
@@ -51,7 +51,11 @@ _HANDOFF_RESOURCES = [
     "International Association for Suicide Prevention: https://www.iasp.info/resources/Crisis_Centres/",
 ]
 
-_SIGNAL_SCORE_THRESHOLD  = 0.20   # minimum aggregate for signal to be returned
+# Raised from 0.20 → 0.25 so that a healthy trajectory (raw risk 0.10–0.18,
+# no circuit-breaker trips, no escalation events, CrisisLevel.NONE) whose
+# recency-weighted aggregate lands ~0.228 correctly returns None.
+# High-risk / handoff profiles (risk 0.50+) remain well above this gate.
+_SIGNAL_SCORE_THRESHOLD  = 0.25   # minimum aggregate for signal to be returned
 _HANDOFF_SCORE_THRESHOLD = 0.55   # aggregate score above which handoff is required
 
 
