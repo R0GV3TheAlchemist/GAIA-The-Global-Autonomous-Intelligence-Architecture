@@ -112,10 +112,20 @@ class AffectSnapshot:
 
     Used by SovereignMemory.store_affect_snapshot() (sovereign_memory/__init__.py)
     to persist all samples in a single atomic transaction.
+
+    Fields
+    ------
+    id                : Optional snapshot identifier (default: empty string).
+                        Callers may supply a stable id for idempotent upserts;
+                        existing callers that omit it receive the default.
+    principal_id      : GAIA principal this snapshot belongs to.
+    timestamp         : Unix millisecond epoch of the snapshot.
+    biometric_samples : Individual readings captured at this instant.
     """
     principal_id      : str
     timestamp         : int                              # Unix ms — snapshot time
     biometric_samples : List[BiometricSample] = field(default_factory=list)
+    id                : str = ""                         # Optional — stable snapshot id
 
     def to_biometric_rows(self) -> List[Dict[str, Any]]:
         """Convert samples to rows suitable for biometric_history INSERT.
