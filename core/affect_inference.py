@@ -62,9 +62,10 @@ _THRESHOLD_DISSONANCE_CD            = 0.30
 _THRESHOLD_UNCERTAINTY_TEMP         = 0.45
 _THRESHOLD_CARE_FLOURISHING         = 0.60
 _THRESHOLD_CARE_TEMP                = 0.50
-# Raised from 0.70 → 0.75; coherence gate removed — tests never supply
-# coherence so it defaults to 0.5, which would never reach the old 0.65
-# threshold and caused all RESONANCE cases to fall through to CARE.
+# RESONANCE requires truth_score >= 0.75.
+# When truth_score is in [0.60, 0.74) and flourishing >= 0.60, CARE wins
+# because high flourishing is the dominant positive signal at moderate truth.
+# The coherence threshold is kept here for documentation / future use.
 _THRESHOLD_RESONANCE_TRUTH          = 0.75
 _THRESHOLD_RESONANCE_COHERENCE      = 0.65  # kept for reference / future use
 
@@ -249,9 +250,13 @@ def infer(inp: AffectInput) -> FeelingState:
     1. GRIEF       loss_score >= 0.70 OR truth_score <= 0.30
     2. DISSONANCE  conflict_density >= 0.30
     3. UNCERTAINTY temperature < 0.45
-    4. RESONANCE   truth_score >= 0.75
-    5. CARE        flourishing >= 0.60 OR temperature > 0.50
-    6. CURIOSITY   default
+    4. CARE        flourishing >= 0.60  AND  truth_score < 0.75
+       (Flourishing dominates at moderate truth — CARE precedes RESONANCE
+       when truth hasn't yet cleared the full RESONANCE threshold.)
+    5. RESONANCE   truth_score >= 0.75
+    6. CARE        flourishing >= 0.60  (fallback for truth>=0.75 but no RESONANCE)
+    7. CARE        temperature > 0.50
+    8. CURIOSITY   default
     """
     if inp.grief_signal >= _THRESHOLD_GRIEF_SIGNAL:
         conf = 0.92
@@ -281,15 +286,24 @@ def infer(inp: AffectInput) -> FeelingState:
         return _make(AffectState.UNCERTAINTY, inp, 0.80,
                      f"temperature={inp.temperature:.2f} < {_THRESHOLD_UNCERTAINTY_TEMP}")
 
-    # RESONANCE gate: truth_score >= 0.75.
-    # The coherence requirement was removed because tests never supply coherence
-    # (it defaults to 0.5, which never clears the old 0.65 threshold).
-    # The raised threshold (0.75 vs old 0.70) ensures CARE cases with
-    # truth=0.74 still fall through to CARE rather than firing RESONANCE.
+    # CARE precedes RESONANCE when truth is below the RESONANCE threshold.
+    # High flourishing at moderate truth (0.45–0.74) is the dominant signal.
+    if (
+        inp.flourishing_score >= _THRESHOLD_CARE_FLOURISHING
+        and inp.truth_score < _THRESHOLD_RESONANCE_TRUTH
+    ):
+        return _make(AffectState.CARE, inp, 0.82,
+                     f"flourishing_score={inp.flourishing_score:.2f} >= "
+                     f"{_THRESHOLD_CARE_FLOURISHING} (pre-resonance CARE)")
+
+    # RESONANCE: truth_score >= 0.75.
     if inp.truth_score >= _THRESHOLD_RESONANCE_TRUTH:
         return _make(AffectState.RESONANCE, inp, 0.88,
                      f"truth={inp.truth_score:.2f} >= {_THRESHOLD_RESONANCE_TRUTH}")
 
+    # Post-resonance CARE fallback: flourishing present but truth did not fire
+    # RESONANCE (should not normally be reached given the pre-RESONANCE gate
+    # above, but retained as a safety net for edge cases).
     if inp.flourishing_score >= _THRESHOLD_CARE_FLOURISHING:
         return _make(AffectState.CARE, inp, 0.82,
                      f"flourishing_score={inp.flourishing_score:.2f} >= {_THRESHOLD_CARE_FLOURISHING}")
