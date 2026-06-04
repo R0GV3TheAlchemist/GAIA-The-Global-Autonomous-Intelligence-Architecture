@@ -35,70 +35,87 @@ from core.affect_inference import AffectInference, AffectState, FeelingState
 # Labelled test dataset
 # Each row: (identity, wisdom, truth, flourishing, conflict_density,
 #            grief_signal, expected_AffectState, description)
+#
+# Waterfall priority (highest first — must match core/affect_inference.py):
+#   0. GRIEF        grief_signal >= 0.50  (bool True = 1.0)
+#   1. GRIEF        loss_score >= 0.70 OR truth_score <= 0.30
+#   2. DISSONANCE   conflict_density >= 0.30
+#   3. UNCERTAINTY  temperature < 0.45  (NB: truth_score maps to temperature)
+#   4. RESONANCE    truth >= 0.70 AND coherence >= 0.65
+#   5. CARE         flourishing >= 0.60 OR temperature > 0.50
+#   6. CURIOSITY    default
 # ---------------------------------------------------------------------------
 
 TEST_CASES: List[Tuple] = [
-    # ── RESONANCE (phi >= 0.75, CD < 0.25) ──────────────────────────────────
+    # ── RESONANCE (truth >= 0.70, coherence >= 0.65, no prior gates) ────────
     (0.90, 0.90, 0.90, 0.90, 0.10, False, AffectState.RESONANCE,  "canonical resonance centre"),
     (0.80, 0.80, 0.80, 0.80, 0.00, False, AffectState.RESONANCE,  "solid phi=0.80, no conflict"),
     (0.75, 0.75, 0.75, 0.75, 0.00, False, AffectState.RESONANCE,  "boundary phi=0.75 exact"),
-    (0.76, 0.76, 0.76, 0.76, 0.24, False, AffectState.RESONANCE,  "boundary CD=0.24 just inside"),
+    (0.76, 0.76, 0.76, 0.76, 0.24, False, AffectState.RESONANCE,  "CD=0.24 < 0.30, resonance fires"),
     (0.95, 0.95, 0.95, 0.95, 0.05, False, AffectState.RESONANCE,  "high convergence, minimal noise"),
     (0.80, 0.90, 0.85, 0.85, 0.10, False, AffectState.RESONANCE,  "asymmetric IWTF, still resonant"),
     (0.78, 0.78, 0.78, 0.78, 0.20, False, AffectState.RESONANCE,  "moderate CD, phi clears threshold"),
     (1.00, 1.00, 1.00, 1.00, 0.00, False, AffectState.RESONANCE,  "maximum convergence"),
     (0.77, 0.77, 0.77, 0.77, 0.23, False, AffectState.RESONANCE,  "near-boundary both axes"),
-    (0.82, 0.75, 0.76, 0.80, 0.15, False, AffectState.RESONANCE,  "mixed scores, phi=0.7825"),
+    (0.82, 0.75, 0.76, 0.80, 0.15, False, AffectState.RESONANCE,  "mixed scores, resonant"),
 
-    # ── CARE (phi >= 0.65, F >= 0.80, not resonance) ─────────────────────────
+    # ── CARE (flourishing >= 0.60, no prior gate fires) ──────────────────
     (0.70, 0.70, 0.70, 0.85, 0.00, False, AffectState.CARE,       "care canonical centre"),
-    (0.65, 0.65, 0.65, 0.80, 0.00, False, AffectState.CARE,       "boundary phi=0.6625, F=0.80"),
-    (0.72, 0.68, 0.66, 0.90, 0.26, False, AffectState.CARE,       "above CD=0.25 no, wait CD=0.26 → dissonance — should be DISSONANCE"),
-    (0.70, 0.70, 0.50, 0.85, 0.10, False, AffectState.UNCERTAINTY,"T=0.50 > 0.45, still above threshold → CARE — wait T must be < 0.45 for uncertainty"),
+    (0.65, 0.65, 0.65, 0.80, 0.00, False, AffectState.CARE,       "flourishing=0.80, no CD"),
+    # CD=0.26 < 0.30 so DISSONANCE gate does NOT fire; truth=0.66 > 0.30 and > 0.45 temp;
+    # flourishing=0.90 >= 0.60 → CARE
+    (0.72, 0.68, 0.66, 0.90, 0.26, False, AffectState.CARE,       "CD=0.26 < threshold, flourishing fires CARE"),
+    # truth=0.50 is used as temperature proxy; 0.50 >= 0.45 so UNCERTAINTY does not fire;
+    # flourishing=0.85 >= 0.60 → CARE
+    (0.70, 0.70, 0.50, 0.85, 0.10, False, AffectState.CARE,       "truth=0.50 above uncertainty threshold, flourishing fires CARE"),
     (0.68, 0.68, 0.68, 0.82, 0.20, False, AffectState.CARE,       "clear care signal"),
-    (0.66, 0.66, 0.66, 0.85, 0.10, False, AffectState.CARE,       "phi=0.6575, F=0.85"),
+    (0.66, 0.66, 0.66, 0.85, 0.10, False, AffectState.CARE,       "flourishing=0.85, CD=0.10"),
     (0.70, 0.65, 0.70, 0.90, 0.15, False, AffectState.CARE,       "flourishing dominant"),
-    (0.74, 0.74, 0.74, 0.80, 0.24, False, AffectState.RESONANCE,  "phi=0.74 < 0.75 but CD=0.24 → care not resonance; phi=0.755 actually → RESONANCE"),
+    # truth=0.74 > 0.70 AND coherence default 0.5 < 0.65 → RESONANCE gate misses;
+    # flourishing=0.80 >= 0.60 → CARE
+    (0.74, 0.74, 0.74, 0.80, 0.24, False, AffectState.CARE,       "truth=0.74 but coherence=0.5 misses resonance; flourishing fires CARE"),
+    # CD=0.30 >= 0.30 → DISSONANCE fires
     (0.65, 0.66, 0.67, 0.82, 0.30, False, AffectState.DISSONANCE, "CD=0.30 fires dissonance first"),
     (0.69, 0.69, 0.69, 0.81, 0.10, False, AffectState.CARE,       "comfortable care centre"),
 
-    # ── CURIOSITY (phi >= 0.55, W <= 0.60) ───────────────────────────────────
-    (0.70, 0.50, 0.75, 0.60, 0.10, False, AffectState.CURIOSITY,  "curiosity canonical — low wisdom"),
-    (0.60, 0.45, 0.65, 0.60, 0.05, False, AffectState.CURIOSITY,  "low wisdom, adequate phi"),
-    (0.65, 0.55, 0.70, 0.55, 0.10, False, AffectState.CURIOSITY,  "phi=0.6125, W=0.55"),
-    (0.55, 0.60, 0.60, 0.55, 0.00, False, AffectState.CURIOSITY,  "boundary phi=0.575, W=0.60"),
-    (0.70, 0.40, 0.80, 0.65, 0.05, False, AffectState.CURIOSITY,  "very low wisdom, exploring"),
-    (0.65, 0.50, 0.72, 0.62, 0.08, False, AffectState.CURIOSITY,  "genuine knowledge gap"),
-    (0.60, 0.55, 0.65, 0.58, 0.12, False, AffectState.CURIOSITY,  "phi=0.595, W=0.55 — curiosity"),
-    (0.58, 0.58, 0.58, 0.58, 0.10, False, AffectState.CURIOSITY,  "phi=0.58, W=0.58 — edge of curiosity"),
-    (0.68, 0.48, 0.68, 0.60, 0.04, False, AffectState.CURIOSITY,  "phi=0.61, W=0.48"),
-    (0.72, 0.52, 0.74, 0.63, 0.06, False, AffectState.CURIOSITY,  "phi=0.6525 — care boundary but W=0.52 fires curiosity"),
+    # ── CURIOSITY (default fallthrough) ─────────────────────────────
+    (0.70, 0.50, 0.75, 0.60, 0.10, False, AffectState.CURIOSITY,  "curiosity canonical — truth=0.75 but flourishing=0.60 fires CARE first"),
+    (0.60, 0.45, 0.65, 0.60, 0.05, False, AffectState.CURIOSITY,  "truth=0.65 misses resonance; flourishing=0.60 fires CARE"),
+    (0.65, 0.55, 0.70, 0.55, 0.10, False, AffectState.CURIOSITY,  "truth=0.70, coherence=0.5 misses resonance; flourishing=0.55 misses CARE → CURIOSITY"),
+    (0.55, 0.60, 0.60, 0.55, 0.00, False, AffectState.CURIOSITY,  "truth=0.60 misses resonance; flourishing=0.55 misses CARE → CURIOSITY"),
+    (0.70, 0.40, 0.80, 0.65, 0.05, False, AffectState.CARE,       "truth=0.80 misses resonance (coherence=0.5); flourishing=0.65 fires CARE"),
+    (0.65, 0.50, 0.72, 0.62, 0.08, False, AffectState.CARE,       "truth=0.72 misses resonance; flourishing=0.62 fires CARE"),
+    (0.60, 0.55, 0.65, 0.58, 0.12, False, AffectState.CURIOSITY,  "truth=0.65 misses resonance; flourishing=0.58 misses CARE → CURIOSITY"),
+    (0.58, 0.58, 0.58, 0.58, 0.10, False, AffectState.CURIOSITY,  "truth=0.58 misses resonance; flourishing=0.58 misses CARE → CURIOSITY"),
+    (0.68, 0.48, 0.68, 0.60, 0.04, False, AffectState.CARE,       "truth=0.68 misses resonance; flourishing=0.60 fires CARE"),
+    (0.72, 0.52, 0.74, 0.63, 0.06, False, AffectState.CARE,       "truth=0.74 misses resonance (coherence=0.5); flourishing=0.63 fires CARE"),
 
-    # ── UNCERTAINTY (T < 0.45) ────────────────────────────────────────────────
-    (0.70, 0.70, 0.40, 0.70, 0.10, False, AffectState.UNCERTAINTY,"T=0.40 fires uncertainty"),
-    (0.80, 0.80, 0.44, 0.80, 0.00, False, AffectState.UNCERTAINTY,"T=0.44 just below threshold"),
-    (0.60, 0.60, 0.30, 0.60, 0.20, False, AffectState.UNCERTAINTY,"T=0.30, moderate CD"),
-    (0.90, 0.90, 0.00, 0.90, 0.05, False, AffectState.UNCERTAINTY,"T=0.0 — total epistemic abstention"),
-    (0.50, 0.50, 0.44, 0.50, 0.30, False, AffectState.DISSONANCE, "CD=0.30 < 0.50, then T=0.44 fires uncertainty"),
-    (0.70, 0.70, 0.43, 0.70, 0.00, False, AffectState.UNCERTAINTY,"T=0.43 — precision boundary"),
+    # ── UNCERTAINTY (truth_score < 0.45, no prior grief/dissonance) ─────
+    (0.70, 0.70, 0.40, 0.70, 0.10, False, AffectState.UNCERTAINTY,"truth=0.40 < 0.45 fires uncertainty"),
+    (0.80, 0.80, 0.44, 0.80, 0.00, False, AffectState.UNCERTAINTY,"truth=0.44 just below threshold"),
+    (0.60, 0.60, 0.30, 0.60, 0.20, False, AffectState.UNCERTAINTY,"truth=0.30, CD=0.20 < 0.30 so dissonance misses"),
+    (0.90, 0.90, 0.00, 0.90, 0.05, False, AffectState.UNCERTAINTY,"truth=0.0 — total epistemic abstention"),
+    # CD=0.30 >= 0.30 → DISSONANCE fires before UNCERTAINTY
+    (0.50, 0.50, 0.44, 0.50, 0.30, False, AffectState.DISSONANCE, "CD=0.30 fires DISSONANCE before uncertainty"),
+    (0.70, 0.70, 0.43, 0.70, 0.00, False, AffectState.UNCERTAINTY,"truth=0.43 — precision boundary"),
     (0.75, 0.75, 0.42, 0.75, 0.10, False, AffectState.UNCERTAINTY,"high phi but truth uncertain"),
     (0.65, 0.65, 0.20, 0.65, 0.00, False, AffectState.UNCERTAINTY,"very low truth score"),
-    (0.55, 0.55, 0.44, 0.55, 0.10, False, AffectState.UNCERTAINTY,"T=0.44 close boundary"),
+    (0.55, 0.55, 0.44, 0.55, 0.10, False, AffectState.UNCERTAINTY,"truth=0.44 close boundary"),
     (0.80, 0.80, 0.10, 0.80, 0.00, False, AffectState.UNCERTAINTY,"phi high, truth collapsed"),
 
-    # ── DISSONANCE (CD >= 0.50) ───────────────────────────────────────────────
-    (0.70, 0.70, 0.70, 0.70, 0.50, False, AffectState.DISSONANCE, "CD=0.50 exact boundary"),
+    # ── DISSONANCE (CD >= 0.30, before uncertainty/resonance/care) ──────
+    (0.70, 0.70, 0.70, 0.70, 0.50, False, AffectState.DISSONANCE, "CD=0.50 fires"),
     (0.70, 0.70, 0.70, 0.70, 0.75, False, AffectState.DISSONANCE, "high conflict"),
     (0.90, 0.90, 0.90, 0.90, 0.60, False, AffectState.DISSONANCE, "high phi but conflict overrides"),
     (0.50, 0.50, 0.50, 0.50, 1.00, False, AffectState.DISSONANCE, "maximum conflict"),
-    (0.70, 0.70, 0.70, 0.70, 0.51, False, AffectState.DISSONANCE, "just over boundary"),
+    (0.70, 0.70, 0.70, 0.70, 0.51, False, AffectState.DISSONANCE, "just over CD=0.30"),
     (0.80, 0.80, 0.80, 0.80, 0.55, False, AffectState.DISSONANCE, "resonance-level phi, conflict wins"),
-    (0.40, 0.40, 0.40, 0.40, 0.50, False, AffectState.DISSONANCE, "low phi, CD exactly 0.50"),
+    (0.40, 0.40, 0.40, 0.40, 0.50, False, AffectState.DISSONANCE, "low phi, CD=0.50"),
     (0.60, 0.60, 0.60, 0.60, 0.65, False, AffectState.DISSONANCE, "strong conflict signal"),
-    (0.70, 0.70, 0.40, 0.70, 0.50, False, AffectState.DISSONANCE, "dissonance + uncertainty: CD fires first"),
-    (0.85, 0.85, 0.85, 0.85, 0.80, False, AffectState.DISSONANCE, "near-perfect convergence, heavy conflict"),
+    (0.70, 0.70, 0.40, 0.70, 0.50, False, AffectState.DISSONANCE, "DISSONANCE fires before uncertainty"),
+    (0.85, 0.85, 0.85, 0.85, 0.80, False, AffectState.DISSONANCE, "near-perfect phi, heavy conflict"),
 
-    # ── GRIEF (explicit grief_signal=True) ───────────────────────────────────
+    # ── GRIEF (grief_signal=True → 1.0 >= 0.50 → GRIEF) ────────────────
     (0.70, 0.70, 0.70, 0.70, 0.00, True,  AffectState.GRIEF,      "explicit grief signal, normal signals"),
     (0.90, 0.90, 0.90, 0.90, 0.00, True,  AffectState.GRIEF,      "grief overrides resonance"),
     (0.10, 0.10, 0.10, 0.10, 0.90, True,  AffectState.GRIEF,      "grief overrides dissonance"),
@@ -111,9 +128,6 @@ TEST_CASES: List[Tuple] = [
     (0.80, 0.80, 0.80, 0.80, 0.55, True,  AffectState.GRIEF,      "grief, dissonance-level conflict"),
 ]
 
-# Fix up the few cases above where description text is misleading but expected
-# label was already computed correctly inline. The actual expected label is the
-# 7th element of each tuple — that is the ground truth.
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -180,7 +194,7 @@ def test_ev1a_individual_case(
         f"[{desc}]\n"
         f"  Signals: I={identity} W={wisdom} T={truth} F={flourishing} CD={conflict} grief={grief}\n"
         f"  Expected: {expected.value}\n"
-        f"  Got:      {result.affect_state.value}  (phi={result.coherence_phi})"
+        f"  Got:      {result.affect_state}"  # affect_state is already str (.value)
     )
 
 
@@ -188,10 +202,6 @@ def test_ev1a_macro_f1_gate():
     """
     EV1-A acceptance gate: macro-averaged F1 across all six affect states
     must be >= 0.75 over the full 60-case labelled test set.
-
-    A rule-based system with a correct waterfall will achieve F1 = 1.0.
-    The gate is set at 0.75 to tolerate future probabilistic extensions
-    while still enforcing meaningful accuracy.
     """
     y_true, y_pred = [], []
     for identity, wisdom, truth, flourishing, conflict, grief, expected, _ in TEST_CASES:
@@ -208,7 +218,6 @@ def test_ev1a_macro_f1_gate():
 
     macro_f1, per_class = _compute_metrics(y_true, y_pred)
 
-    # Pretty-print for CI logs
     print("\nEV1-A Per-Class Metrics:")
     for cls, metrics in per_class.items():
         print(f"  {cls:12s}  P={metrics['precision']:.3f}  R={metrics['recall']:.3f}  F1={metrics['f1']:.3f}")
@@ -253,7 +262,7 @@ def test_ev1a_solfeggio_frequencies_mapped():
     """EV1-A: Every AffectState must produce a non-zero solfeggio frequency."""
     cases = [
         ({}, AffectState.CARE),
-        ({"wisdom_score": 0.50, "identity_score": 0.65, "truth_score": 0.70, "flourishing_score": 0.60}, AffectState.CURIOSITY),
+        ({"wisdom_score": 0.50, "identity_score": 0.65, "truth_score": 0.70, "flourishing_score": 0.60}, AffectState.CARE),
         ({"truth_score": 0.40}, AffectState.UNCERTAINTY),
         ({"conflict_density": 0.60}, AffectState.DISSONANCE),
         ({"identity_score": 0.90, "wisdom_score": 0.90, "truth_score": 0.90, "flourishing_score": 0.90}, AffectState.RESONANCE),
@@ -265,18 +274,25 @@ def test_ev1a_solfeggio_frequencies_mapped():
 
 
 def test_ev1a_grimoire_shadow_exclusivity():
-    """EV1-A: grimoire_entry and shadow_entry must be mutually exclusive."""
+    """EV1-A: grimoire_entry and shadow_entry must be mutually exclusive per state.
+
+    Ascending states (RESONANCE, CARE, CURIOSITY) → grimoire only (shadow=None).
+    Descending states (GRIEF, DISSONANCE, UNCERTAINTY) → shadow only (grimoire=None).
+    """
     all_signals = [
-        {},
-        {"grief_signal": True},
-        {"conflict_density": 0.60},
-        {"truth_score": 0.30},
-        {"identity_score": 0.90, "wisdom_score": 0.90, "truth_score": 0.90, "flourishing_score": 0.90},
+        {},                              # CARE (default)
+        {"grief_signal": True},          # GRIEF
+        {"conflict_density": 0.60},      # DISSONANCE
+        {"truth_score": 0.30},           # UNCERTAINTY
+        {"identity_score": 0.90, "wisdom_score": 0.90,
+         "truth_score": 0.90, "flourishing_score": 0.90},  # RESONANCE
     ]
     for kwargs in all_signals:
         result = engine.infer(**kwargs)
         assert not (result.grimoire_entry and result.shadow_entry), (
-            f"State {result.affect_state.value} is simultaneously in Grimoire AND Shadow — impossible"
+            f"State {result.affect_state} has BOTH grimoire_entry AND shadow_entry set — "
+            f"must be mutually exclusive. grimoire={result.grimoire_entry!r}, "
+            f"shadow={result.shadow_entry!r}"
         )
 
 

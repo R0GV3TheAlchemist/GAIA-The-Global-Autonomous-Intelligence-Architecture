@@ -186,6 +186,8 @@ class MemoryStore:
         """
         now = int(time.time())
         metadata_json = json.dumps(metadata) if metadata else None
+        # Ensure role is never None — the column has NOT NULL DEFAULT 'user'
+        safe_role = role if role is not None else "user"
         cur = self._conn.execute(
             """
             INSERT INTO memory_items
@@ -197,7 +199,7 @@ class MemoryStore:
                 user_id,
                 kind.value if isinstance(kind, MemoryKind) else kind,
                 tier.value if isinstance(tier, MemoryTier) else tier,
-                role,
+                safe_role,
                 text, importance, now,
                 session_id, topic_tag, ttl_seconds,
                 metadata_json,
@@ -286,6 +288,7 @@ class MemoryStore:
             session_id=item.session_id,
             topic_tag=item.topic_tag,
             ttl_seconds=item.ttl_seconds,
+            metadata=item.metadata if isinstance(item.metadata, dict) else None,
         )
 
     # ------------------------------------------------------------------
