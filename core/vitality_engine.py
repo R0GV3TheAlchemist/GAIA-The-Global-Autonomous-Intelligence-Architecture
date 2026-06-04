@@ -53,6 +53,12 @@ class VitalityState:
     # Dose history (last 20 kept)
     dose_history:                List[dict]      = field(default_factory=list)
 
+    # Last-updated timestamp — stored as datetime so callers can safely call
+    # .isoformat() on it; serialised to ISO string at the JSON boundary.
+    timestamp:                   datetime        = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
     def health_summary(self) -> dict:
         return {
             "gaian_name":                self.gaian_name,
@@ -68,10 +74,9 @@ class VitalityState:
             "epistemic_label_counts":    self.epistemic_label_counts,
             "deficiency_flags":          self.deficiency_flags,
             "dose_history_len":          len(self.dose_history),
-            # ISO-8601 timestamp so callers can call .isoformat() on the value
-            # (the string already is ISO format; this also prevents
-            #  AttributeError: 'int' object has no attribute 'isoformat')
-            "timestamp":                 datetime.now(timezone.utc).isoformat(),
+            # ISO-8601 string derived from the actual datetime field —
+            # never an int, so downstream .isoformat() calls never fail.
+            "timestamp":                 self.timestamp.isoformat(),
         }
 
     def _record_dose(self, vitamin: str, ts: str) -> None:
@@ -123,8 +128,11 @@ class VitalityEngine:
         vitality_summary: dict  — ALWAYS a dict (never None)
         """
         state.total_turns += 1
+        # Refresh the timestamp field each turn so health_summary() always
+        # reflects when assess() last ran — and is always a datetime, never int.
+        state.timestamp = datetime.now(timezone.utc)
         directives: List[str] = []
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = state.timestamp.isoformat()
 
         # ── Vitamin A: Canon Grounding ──────────────────────
         turns_since_canon = state.total_turns - state.last_canon_grounding_turn
@@ -140,7 +148,7 @@ class VitalityEngine:
         else:
             state.deficiency_flags["canon_grounding"] = False
 
-        # ── Vitamin B: Affect Reset ───────────────────────
+        # ── Vitamin B: Affect Reset ─────────────────────
         if affect_state is not None:
             current_label = (
                 getattr(affect_state, "dominant_label", None)
