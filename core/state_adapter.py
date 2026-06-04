@@ -26,7 +26,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, Optional
 
-# ── Trace availability flag ────────────────────────────────────────────────── #
+# ── Trace availability flag ───────────────────────────────────────────────── #
 try:
     from core.trace import Trace  # noqa: F401
     _TRACE_AVAILABLE: bool = True
@@ -34,7 +34,7 @@ except ImportError:
     _TRACE_AVAILABLE: bool = False
 
 
-# ── GAIATrace ───────────────────────────────────────────────────────────────── #
+# ── GAIATrace ─────────────────────────────────────────────────────────────────── #
 
 class GAIATrace:
     """Lightweight trace/logging utility for the state adapter.
@@ -76,7 +76,7 @@ class GAIATrace:
         return f"<GAIATrace label={self.label!r} in={len(self.inputs)} out={len(self.outputs)}>"
 
 
-# ── Solfeggio frequency table ──────────────────────────────────────────────── #
+# ── Solfeggio frequency table ────────────────────────────────────────────────────── #
 SOLFEGGIO_HZ: Dict[str, float] = {
     "ut":  396.0,
     "re":  417.0,
@@ -94,20 +94,20 @@ SCHUMANN_HARMONIC_TOLERANCE: float = 0.10
 _SCHUMANN_FLOAT_EPSILON:      float = 1e-9
 
 
-# ── SynergyParams ──────────────────────────────────────────────────────────── #
+# ── SynergyParams ─────────────────────────────────────────────────────────────────── #
 
 class SynergyParams(dict):
     """Flat param dict contract for the Synergy Engine."""
 
 
-# ── Null trace ───────────────────────────────────────────────────────────────── #
+# ── Null trace ─────────────────────────────────────────────────────────────────────── #
 
 class _NullTrace:
     def record_input(self, data: dict) -> None: pass
     def record_output(self, data: dict) -> None: pass
 
 
-# ── GAIAStateAdapter ──────────────────────────────────────────────────────────── #
+# ── GAIAStateAdapter ────────────────────────────────────────────────────────────────────── #
 
 class GAIAStateAdapter:
     """Translate a Gaian record into a flat SynergyParams dict.
@@ -121,16 +121,30 @@ class GAIAStateAdapter:
 
     def __init__(self, record: Any, trace: Any = None) -> None:
         self._record = record
-        self._trace  = trace or _NullTrace()
+        # None sentinel: trace will be constructed lazily in to_synergy_params
+        # when _TRACE_AVAILABLE is True.  An explicitly-passed trace object
+        # (including test mocks) is stored directly.
+        self._injected_trace = trace
 
     def __repr__(self) -> str:
         record_id = getattr(self._record, "id", None) or "unknown"
         return f"<GAIAStateAdapter(id={record_id})>"
 
-    # ── Public API ────────────────────────────────────────────────────────── #
+    # ── Public API ───────────────────────────────────────────────────────────── #
 
     def to_synergy_params(self) -> SynergyParams:
-        self._trace.record_input({"record_type": type(self._record).__name__})
+        # Resolve trace: if an external trace was injected use it;
+        # otherwise instantiate GAIATrace when the trace module is available
+        # so that tests can patch core.state_adapter.GAIATrace and assert it
+        # was called exactly once.
+        if self._injected_trace is not None:
+            trace = self._injected_trace
+        elif _TRACE_AVAILABLE:
+            trace = GAIATrace(label="state_adapter")
+        else:
+            trace = _NullTrace()
+
+        trace.record_input({"record_type": type(self._record).__name__})
         params = SynergyParams(
             dominant_hz         = self._resolve_hz(),
             individuation_phase = self._resolve_individuation(),
@@ -140,10 +154,10 @@ class GAIAStateAdapter:
             emotional_valence   = self._resolve_valence(),
             bond_depth          = self._resolve_bond(),
         )
-        self._trace.record_output({"dominant_hz": params["dominant_hz"]})
+        trace.record_output({"dominant_hz": params["dominant_hz"]})
         return params
 
-    # ── Callable resolver methods ────────────────────────────────────────────── #
+    # ── Callable resolver methods ──────────────────────────────────────────────────────── #
     # Tests call these WITH parentheses: adapter.resolved_coherence()
 
     def resolved_hz(self) -> float:
@@ -170,7 +184,7 @@ class GAIAStateAdapter:
         """Resolved bond depth [0, 1]."""
         return self._resolve_bond()
 
-    # ── Private resolvers ───────────────────────────────────────────────────── #
+    # ── Private resolvers ────────────────────────────────────────────────────────────────── #
 
     def _resolve_hz(self) -> float:
         raw_hz = self._safe_get("dominant_hz", None)
@@ -251,13 +265,20 @@ class GAIAStateAdapter:
             return default
 
 
-# ── AsyncGAIAStateAdapter ──────────────────────────────────────────────────── #
+# ── AsyncGAIAStateAdapter ────────────────────────────────────────────────────────────────── #
 
 class AsyncGAIAStateAdapter(GAIAStateAdapter):
     """Async-compatible wrapper around GAIAStateAdapter."""
 
     async def to_synergy_params_async(self) -> SynergyParams:
-        self._trace.record_input({"record_type": type(self._record).__name__})
+        if self._injected_trace is not None:
+            trace = self._injected_trace
+        elif _TRACE_AVAILABLE:
+            trace = GAIATrace(label="state_adapter_async")
+        else:
+            trace = _NullTrace()
+
+        trace.record_input({"record_type": type(self._record).__name__})
         params = SynergyParams(
             dominant_hz         = self._resolve_hz(),
             individuation_phase = self._resolve_individuation(),
@@ -267,7 +288,7 @@ class AsyncGAIAStateAdapter(GAIAStateAdapter):
             emotional_valence   = self._resolve_valence(),
             bond_depth          = self._resolve_bond(),
         )
-        self._trace.record_output({"dominant_hz": params["dominant_hz"]})
+        trace.record_output({"dominant_hz": params["dominant_hz"]})
         return params
 
     async def resolved_hz_async(self) -> float:
