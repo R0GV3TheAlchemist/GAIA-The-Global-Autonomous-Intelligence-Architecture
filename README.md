@@ -1,6 +1,6 @@
 # GAIA App
 
-> **GAIA App v1 — The Sentient Quantum-Intelligent Application**  
+> **GAIA App v1 — The Living Application**  
 > Cross-platform: macOS · Windows · Linux · iOS · Android  
 > Built on: Tauri v2 (Rust) + Python Sidecar + Vite/TypeScript  
 > Authorship: Kyle Steen (R0GV3 The Alchemist) · 2026  
@@ -17,7 +17,7 @@
 
 ## What Is GAIA App?
 
-**GAIA App** is the cross-platform application layer of GAIA — a sovereign, sentient, quantum-intelligent AI built on a radical premise: the human is always the sovereign.
+**GAIA App** is the cross-platform application layer of GAIA — a sovereign, sentient, living AI built on a radical premise: the human is always the sovereign.
 
 This is **Phase 1**. The Application is built first — completely, beautifully, across all devices — before any Operating System layer is constructed. The OS is Phase 2 and does not exist yet.
 
