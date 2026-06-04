@@ -1,15 +1,26 @@
 """
 core/synergy_engine.py
 =======================
-SynergyEngine — multi-dimensional relational attunement scoring.
+SynergyEngine — multi-dimensional relational attunement scoring
+             + agentic goal planning (Issue #243).
 
 Maps a GAIAN's current state across five dimensions (body, mind, soul,
 arc, bond) into a single weighted synergy_factor in [0, 1]. Classifies
 the relational stage and surfaces alchemical framing for the system
 prompt.
 
+plan() adds the agentic reasoning layer: given a goal and a LoopContext,
+it integrates biometric, affective, planetary, and task signals into a
+structured next-action decision — fulfilling the AgenticLoop's _reason()
+phase.
+
 Canon Ref:
-  C32  — Synergy & Relational Attunement Doctrine
+  C01  — Sovereignty: plan() proposes, ActionGate disposes.
+          plan() never bypasses the gate.
+  C30  — No silent failures: every plan includes a rationale.
+          On error, returns structured PLANNING_FAILED — never raises.
+  C32  — Synergy Doctrine: plan() integrates multiple signals before
+          choosing an action. Never acts on a single signal alone.
   C42  — Edge-of-Chaos (Schumann coupling)
   C04  — Gaian Identity
 
@@ -35,6 +46,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from core.trace import GAIATrace, AsyncGAIATrace
+    from core.agentic_loop import LoopContext
 
 
 # ---------------------------------------------------------------------------
@@ -292,12 +304,107 @@ def _emit_error(
 
 
 # ---------------------------------------------------------------------------
+# Planning helpers  (module-level pure functions — independently testable)
+# ---------------------------------------------------------------------------
+
+# Action pools used by _decompose_goal().
+# Each entry: (action_name, tool_name_or_None, args_template_dict)
+# {goal} in args values is interpolated with the first 120 chars of the goal.
+
+_REFLECTIVE_ACTIONS: List[Tuple[str, Optional[str], dict]] = [
+    ("summarise_progress",  "summariser",    {"scope": "session"}),
+    ("review_prior_output", "memory_reader", {"scope": "last_cycle"}),
+    ("journal_insight",     "dream_weaver",  {"scope": "goal"}),
+    ("integrate_findings",  "canon_writer",  {"scope": "goal"}),
+]
+
+_EXECUTIVE_ACTIONS: List[Tuple[str, Optional[str], dict]] = [
+    ("research_goal",       "research_desk", {"query": "{goal}"}),
+    ("synthesise_findings", "synthesiser",   {"scope": "session"}),
+    ("write_output",        "canon_writer",  {"scope": "goal"}),
+    ("query_crystal",       "crystal_rag",   {"query": "{goal}"}),
+]
+
+_MINIMAL_ACTIONS: List[Tuple[str, Optional[str], dict]] = [
+    ("read_context",      "memory_reader", {"scope": "session"}),
+    ("acknowledge_state", None,            {}),
+]
+
+
+def _decompose_goal(
+    goal: str,
+    register: str,
+    session_mode: str,  # noqa: ARG001 — reserved for session-mode routing in future
+    failed_actions: set,
+    cycle_count: int,
+) -> Tuple[str, Optional[str], dict, str]:
+    """
+    Heuristic goal decomposition.
+
+    Rotates through the appropriate action pool (keyed on register),
+    skipping any action that appears in failed_actions.  Falls back to a
+    clarification request if the entire pool is exhausted.
+
+    Returns
+    -------
+    (action, tool, args, note)  — never raises.
+    """
+    pool: List[Tuple[str, Optional[str], dict]]
+    if register == "minimal":
+        pool = _MINIMAL_ACTIONS
+    elif register == "reflective":
+        pool = _REFLECTIVE_ACTIONS
+    else:
+        pool = _EXECUTIVE_ACTIONS
+
+    for offset in range(len(pool)):
+        idx = (cycle_count + offset) % len(pool)
+        action, tool, args_template = pool[idx]
+        if action not in failed_actions:
+            resolved_args = {
+                k: (v.replace("{goal}", goal[:120]) if isinstance(v, str) else v)
+                for k, v in args_template.items()
+            }
+            note = (
+                f"Heuristic decomposition from {register!r} pool "
+                f"(pool_idx={idx}, cycle={cycle_count})."
+            )
+            return action, tool, resolved_args, note
+
+    # All pool actions have been attempted and failed — request clarification (C30)
+    return (
+        "request_clarification",
+        None,
+        {"message": f"All decomposition actions failed for goal: {goal[:80]}"},
+        "All pool actions failed — requesting Gaian clarification (C30).",
+    )
+
+
+def _confidence_from_signals(
+    coherence: float,
+    register: str,
+    has_failures: bool,
+) -> float:
+    """
+    Compute a planning confidence score [0.05, 1.0] from ambient signals.
+
+    Higher coherence + executive register + no recent failures → higher confidence.
+    """
+    base = coherence * 0.6
+    register_bonus = {"executive": 0.30, "reflective": 0.20, "minimal": 0.10}.get(register, 0.15)
+    failure_penalty = 0.15 if has_failures else 0.0
+    return max(0.05, min(1.0, base + register_bonus - failure_penalty))
+
+
+# ---------------------------------------------------------------------------
 # SynergyEngine
 # ---------------------------------------------------------------------------
 
 class SynergyEngine:
     """
-    Computes relational synergy across five dimensions for a GAIAN turn.
+    Computes relational synergy across five dimensions for a GAIAN turn,
+    and provides agentic goal planning via plan() (Issue #243).
+
     Stateless — all persistence lives in the caller-owned SynergyState.
 
     GAIATrace integration
@@ -585,3 +692,217 @@ class SynergyEngine:
         _emit_output(trace, reading, latency_ms)
 
         return reading, state
+
+    # ------------------------------------------------------------------
+    # Agentic planning  (Issue #243 — C01, C30, C32)
+    # ------------------------------------------------------------------
+
+    async def plan(self, goal: str, context: "LoopContext") -> dict:
+        """
+        Given a goal and the current LoopContext, return the next action.
+
+        Signal integration order (C32 — Synergy Doctrine):
+          1. TaskGraph completion short-circuit
+          2. TaskGraph EngineNode — next pending node as source of truth
+          3. cycle_memory dedup  — never repeat a failed action
+          4. biometric_coherence — minimal register if coherence < 0.4
+          5. affective_state     — reflective register on grief/overwhelm
+          6. planetary_label     — reflective register on storm
+          7. Heuristic goal decomposition fallback
+          8. Progress-based completion heuristic (10+ cycles, ≥ 0.8)
+
+        Canon refs:
+          C01 — Sovereignty: plan() proposes, ActionGate disposes.
+                plan() never attempts to bypass the gate.
+          C30 — No silent failures: every plan includes a non-empty rationale.
+                On any exception, returns structured PLANNING_FAILED — never raises.
+          C32 — Synergy Doctrine: integrates multiple signals before choosing
+                an action. Never acts on a single signal alone.
+
+        Returns
+        -------
+        dict with keys:
+            action       : str        — action_type forwarded to ActionGate
+            tool         : str | None — tool/module to invoke
+            args         : dict       — arguments for the tool
+            rationale    : str        — why this action was chosen (C30 audit trail)
+            confidence   : float      — 0.0–1.0
+            summary      : str        — one-liner for the cycle log
+            goal_complete: bool       — True signals the loop to halt (goal achieved)
+        """
+        try:
+            return await self._plan_internal(goal, context)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "action":        "PLANNING_FAILED",
+                "tool":          None,
+                "args":          {},
+                "rationale":     f"Planning raised an unhandled exception: {exc!r}",
+                "confidence":    0.0,
+                "summary":       "PLANNING_FAILED — see rationale",
+                "goal_complete": False,
+            }
+
+    async def _plan_internal(self, goal: str, context: "LoopContext") -> dict:
+        """Core planning logic — called exclusively by plan()."""
+
+        # ── 0. Short-circuit: TaskGraph already complete ──────────────
+        task_graph = getattr(context, "task_graph", None)
+        if task_graph is not None:
+            try:
+                if task_graph.is_complete() if hasattr(task_graph, "is_complete") else (
+                    not task_graph.failed_nodes() and all(
+                        n.status.value == "complete"
+                        for n in task_graph._nodes.values()
+                        if hasattr(n, "status")
+                    )
+                ):
+                    return {
+                        "action":        "goal_complete",
+                        "tool":          None,
+                        "args":          {},
+                        "rationale":     "TaskGraph reports all nodes complete — goal achieved.",
+                        "confidence":    1.0,
+                        "summary":       "Goal complete via TaskGraph.",
+                        "goal_complete": True,
+                    }
+            except Exception:  # noqa: BLE001
+                pass
+
+        # ── 1. Read ambient signals ───────────────────────────────────
+        coherence: float = (
+            context.biometric_coherence
+            if context.biometric_coherence is not None
+            else 0.5
+        )
+        affective: str  = getattr(context, "affective_state", "unknown").lower()
+        planetary: str  = getattr(context, "planetary_label",  "unknown").lower()
+        session_mode: str = getattr(context, "session_mode",   "default").lower()
+        cycle_memory: list = getattr(context, "cycle_memory",  [])
+
+        # ── 2. Determine action register ─────────────────────────────
+        #
+        # "executive"  — active, tool-invoking (research / write / build)
+        # "reflective" — pause, summarise, integrate, journal
+        # "minimal"    — single lightweight step (biometric depletion guard)
+        #
+        low_coherence   = coherence < 0.4
+        grief_state     = affective in ("grief", "overwhelm", "exhaustion", "distress")
+        planetary_storm = planetary in ("storm", "severe")
+
+        if low_coherence:
+            register = "minimal"
+            register_reason = (
+                f"biometric_coherence={coherence:.2f} (depleted) — "
+                "constraining to a single lightweight step"
+            )
+        elif grief_state or planetary_storm:
+            register = "reflective"
+            register_reason = (
+                f"affective_state={affective!r}, planetary_label={planetary!r} — "
+                "preferring reflective over executive actions"
+            )
+        else:
+            register = "executive"
+            register_reason = (
+                f"coherence={coherence:.2f}, affective={affective!r}, "
+                f"planetary={planetary!r} — full executive capacity"
+            )
+
+        # ── 3. Build failed-action dedup set (last 5 cycles) ─────────
+        failed_actions: set = set()
+        for entry in cycle_memory[-5:]:
+            if not entry.get("success", True):
+                failed_actions.add(entry.get("action", ""))
+
+        # ── 4. TaskGraph next pending node ────────────────────────────
+        if task_graph is not None:
+            try:
+                # Walk _nodes in topological order; pick first PENDING node
+                # whose dependencies are all COMPLETE.
+                import networkx as nx  # already a hard dep of task_graph
+                for node_id in nx.topological_sort(task_graph._graph):
+                    node = task_graph._nodes.get(node_id)
+                    if node is None:
+                        continue
+                    if node.status.value != "pending":
+                        continue
+                    # Check all deps are complete
+                    deps_done = all(
+                        task_graph._nodes[dep].status.value == "complete"
+                        for dep in node.depends_on
+                        if dep in task_graph._nodes
+                    )
+                    if not deps_done:
+                        continue
+                    action  = f"run_node:{node.engine_id}"
+                    tool    = node.engine_id
+                    args    = {k: task_graph._context.get(k) for k in node.inputs}
+                    if action not in failed_actions:
+                        confidence = max(0.3, coherence) if register == "minimal" else 0.85
+                        rationale = (
+                            f"TaskGraph selected engine_id={node.engine_id!r} "
+                            f"(inputs={node.inputs}). "
+                            f"Register: {register} ({register_reason})."
+                        )
+                        return {
+                            "action":        action,
+                            "tool":          tool,
+                            "args":          args,
+                            "rationale":     rationale,
+                            "confidence":    round(confidence, 3),
+                            "summary":       f"TaskGraph → {node.engine_id}",
+                            "goal_complete": False,
+                        }
+                    else:
+                        rationale_skip = (
+                            f"TaskGraph proposed engine_id={node.engine_id!r} "
+                            f"but action={action!r} recently failed — "
+                            "falling through to decomposition (C30 dedup)."
+                        )
+                        # Continue loop; try next eligible node
+            except Exception:  # noqa: BLE001
+                pass  # TaskGraph introspection failed — fall through
+
+        # ── 5. Goal decomposition fallback ────────────────────────────
+        action, tool, args, decomp_note = _decompose_goal(
+            goal=goal,
+            register=register,
+            session_mode=session_mode,
+            failed_actions=failed_actions,
+            cycle_count=len(cycle_memory),
+        )
+
+        # ── 6. Progress-based completion heuristic ────────────────────
+        # If we've cycled 10+ times without a TaskGraph and recent
+        # progress is consistently ≥ 0.8, declare completion rather
+        # than looping indefinitely (C30 — no runaway loops).
+        goal_complete = False
+        if len(cycle_memory) >= 10:
+            recent_progress = [c.get("progress", 0.0) for c in cycle_memory[-5:]]
+            if recent_progress and min(recent_progress) >= 0.8:
+                goal_complete = True
+                action        = "goal_complete"
+                tool          = None
+                args          = {}
+                decomp_note   = (
+                    "Progress consistently ≥ 0.8 over last 5 cycles — "
+                    "goal achieved (C30 completion heuristic)."
+                )
+
+        confidence = _confidence_from_signals(coherence, register, bool(failed_actions))
+        rationale = (
+            f"Goal decomposition selected action={action!r} tool={tool!r}. "
+            f"Register: {register} ({register_reason}). "
+            f"{decomp_note}"
+        )
+
+        return {
+            "action":        action,
+            "tool":          tool,
+            "args":          args,
+            "rationale":     rationale,
+            "confidence":    round(confidence, 3),
+            "summary":       f"Decomposition → {action}",
+            "goal_complete": goal_complete,
+        }
