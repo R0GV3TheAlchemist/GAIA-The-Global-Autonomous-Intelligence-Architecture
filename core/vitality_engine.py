@@ -68,6 +68,10 @@ class VitalityState:
             "epistemic_label_counts":    self.epistemic_label_counts,
             "deficiency_flags":          self.deficiency_flags,
             "dose_history_len":          len(self.dose_history),
+            # ISO-8601 timestamp so callers can call .isoformat() on the value
+            # (the string already is ISO format; this also prevents
+            #  AttributeError: 'int' object has no attribute 'isoformat')
+            "timestamp":                 datetime.now(timezone.utc).isoformat(),
         }
 
     def _record_dose(self, vitamin: str, ts: str) -> None:
@@ -178,7 +182,7 @@ class VitalityEngine:
             else:
                 state.deficiency_flags["sm_coherence"] = False
 
-        # ── Vitamin D: Epistemic Audit ───────────────────
+        # ── Vitamin D: Epistemic Audit ─────────────────────
         if epistemic_label is not None:
             label_str = str(getattr(epistemic_label, "value", epistemic_label))
             state.epistemic_label_counts[label_str] = \

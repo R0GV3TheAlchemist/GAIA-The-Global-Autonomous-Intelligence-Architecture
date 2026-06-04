@@ -115,17 +115,36 @@ class AffectSnapshot:
 
     Fields
     ------
-    id                : Optional snapshot identifier (default: empty string).
-                        Callers may supply a stable id for idempotent upserts;
-                        existing callers that omit it receive the default.
     principal_id      : GAIA principal this snapshot belongs to.
     timestamp         : Unix millisecond epoch of the snapshot.
     biometric_samples : Individual readings captured at this instant.
+    id                : Optional stable snapshot identifier (default: "").
+
+    Affect-signal fields (all optional, for test and runtime use)
+    ---------------------------------------------------------------
+    emotion           : Primary emotion label (e.g. "joy", "grief").
+    confidence        : Classifier confidence [0, 1].
+    valence           : Affective valence  [-1.0, 1.0].  Positive = pleasant.
+    arousal           : Arousal/activation [-1.0, 1.0].
+    dominance         : Dominance/control  [-1.0, 1.0].
+    entropy           : Shannon entropy of the emotion distribution [0, 1].
+    arc_stability     : Stability of the emotion arc over recent turns [0, 1].
+    is_neutral_primary: True when the primary affect is neutral/baseline.
     """
     principal_id      : str
     timestamp         : int                              # Unix ms — snapshot time
     biometric_samples : List[BiometricSample] = field(default_factory=list)
-    id                : str = ""                         # Optional — stable snapshot id
+    id                : str = ""                         # Optional stable snapshot id
+
+    # Affect-signal fields — all optional with safe defaults
+    emotion           : Optional[str]   = None
+    confidence        : float           = 0.0
+    valence           : float           = 0.0
+    arousal           : float           = 0.0
+    dominance         : float           = 0.0
+    entropy           : float           = 0.0
+    arc_stability     : float           = 1.0
+    is_neutral_primary: bool            = False
 
     def to_biometric_rows(self) -> List[Dict[str, Any]]:
         """Convert samples to rows suitable for biometric_history INSERT.
