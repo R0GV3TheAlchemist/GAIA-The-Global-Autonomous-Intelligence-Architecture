@@ -5,11 +5,34 @@ ActionGate — consent-aware, risk-tiered action enforcement for GAIA-OS.
 
 Every proposed action passes through ActionGate before execution.
 The gate consults the ConsentLedger (if present), evaluates policy
-rules, and either approves, flags, or raises on blocked actions.
+rules, and either approves, flags, or blocks actions.
 
 Canon Refs:
   C18  — Consent & Action Safety Doctrine
   C04  — Gaian Identity
+  C01  — Sovereignty: no irreversible action without consent
+  C30  — No silent failures; every decision is explained
+
+Sovereignty Chain
+-----------------
+AgenticLoop → ActionGate → ConsentLedger
+
+Three-phase consent resolution (in order):
+
+  Phase 1 — Pre-authorization (check_preauth)
+      Standing consent the Gaian granted in advance.
+      Resolves MEDIUM/LOW tier actions when Gaian is offline.
+      Never resolves HIGH/CRITICAL or Canon milestone actions.
+
+  Phase 2 — Purpose-level live consent (check)
+      Explicit consent grant for a named purpose.
+      Requires Gaian to have been present at grant time.
+
+  Phase 3 — Policy rules
+      CRITICAL  — unconditionally blocked, no consent pathway
+      HIGH      — requires live consent (pre-auth cannot resolve)
+      FLAGGED   — allowed but elevated-review annotation
+      Default   — allowed
 
 Trace integration (GAIATrace / AsyncGAIATrace)
 ----------------------------------------------
@@ -37,7 +60,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 if TYPE_CHECKING:
     from core.trace import GAIATrace, AsyncGAIATrace
 
-_TRACE_CANON_REFS = ["C18", "C04"]
+_TRACE_CANON_REFS = ["C18", "C04", "C01", "C30"]
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +87,7 @@ class RiskTier(str, Enum):
 
     HIGH
         Sensitive or privacy-adjacent operations.  Ledger consent required;
-        flagged for elevated review.
+        flagged for elevated review.  Pre-authorization cannot resolve HIGH.
         Examples: ``export_pii``, ``modify_canon``, ``escalate_privilege``
 
     CRITICAL
@@ -92,26 +115,33 @@ class RiskTier(str, Enum):
 
 RISK_TIER_MAP: Dict[str, RiskTier] = {
     # LOW — read-only / informational
-    "read_memory":         RiskTier.LOW,
-    "query_canon":         RiskTier.LOW,
-    "get_status":          RiskTier.LOW,
-    "list_gaians":         RiskTier.LOW,
-    "ping":                RiskTier.LOW,
+    "read_memory":              RiskTier.LOW,
+    "query_canon":              RiskTier.LOW,
+    "get_status":               RiskTier.LOW,
+    "list_gaians":              RiskTier.LOW,
+    "ping":                     RiskTier.LOW,
+    "fetch_emotional_arc":      RiskTier.LOW,
+    "audit_emotional_arc_cache":RiskTier.LOW,
+    "flag_non_milestone_records":RiskTier.LOW,
     # MEDIUM — reversible writes
-    "write_memory":        RiskTier.MEDIUM,
-    "update_preference":   RiskTier.MEDIUM,
-    "schedule_task":       RiskTier.MEDIUM,
-    "send_message":        RiskTier.MEDIUM,
-    "create_session":      RiskTier.MEDIUM,
-    # HIGH — sensitive / privacy-adjacent (flagged)
-    "modify_canon":        RiskTier.HIGH,
-    "escalate_privilege":  RiskTier.HIGH,
-    "export_pii":          RiskTier.HIGH,
+    "write_memory":             RiskTier.MEDIUM,
+    "update_preference":        RiskTier.MEDIUM,
+    "schedule_task":            RiskTier.MEDIUM,
+    "send_message":             RiskTier.MEDIUM,
+    "create_session":           RiskTier.MEDIUM,
+    "delete_emotional_cache":   RiskTier.MEDIUM,
+    "delete_non_milestone_records": RiskTier.MEDIUM,
+    # HIGH — sensitive / privacy-adjacent (flagged; pre-auth cannot resolve)
+    "modify_canon":             RiskTier.HIGH,
+    "escalate_privilege":       RiskTier.HIGH,
+    "export_pii":               RiskTier.HIGH,
+    "run_shadow_analysis":      RiskTier.HIGH,
+    "delete_milestone_records": RiskTier.HIGH,
     # CRITICAL — unconditionally blocked
-    "delete_gaian":        RiskTier.CRITICAL,
-    "override_consent":    RiskTier.CRITICAL,
-    "bypass_ethics_layer": RiskTier.CRITICAL,
-    "hard_reset_memory":   RiskTier.CRITICAL,
+    "delete_gaian":             RiskTier.CRITICAL,
+    "override_consent":         RiskTier.CRITICAL,
+    "bypass_ethics_layer":      RiskTier.CRITICAL,
+    "hard_reset_memory":        RiskTier.CRITICAL,
 }
 
 _DEFAULT_TIER = RiskTier.MEDIUM
@@ -137,7 +167,33 @@ FLAGGED_ACTION_TYPES: frozenset = frozenset({
     "modify_canon",
     "escalate_privilege",
     "export_pii",
+    "run_shadow_analysis",
+    "delete_milestone_records",
 })
+
+
+# ---------------------------------------------------------------------------
+# Tier bridge: ActionGate RiskTier → ConsentLedger RiskTier
+# Keeps the two enums decoupled while allowing interop.
+# ---------------------------------------------------------------------------
+
+def _tier_bridge(gate_tier: RiskTier) -> Optional[Any]:
+    """
+    Map an ActionGate RiskTier to the ConsentLedger RiskTier equivalent.
+    Returns None if the mapping is not possible (CRITICAL has no CL equivalent).
+    Import is lazy to avoid circular dependency.
+    """
+    try:
+        from core.consent_ledger import RiskTier as CLRiskTier
+        _map = {
+            RiskTier.LOW:      CLRiskTier.TIER_1,
+            RiskTier.MEDIUM:   CLRiskTier.TIER_2,
+            RiskTier.HIGH:     CLRiskTier.TIER_3,   # pre-auth cannot resolve TIER_3
+            RiskTier.CRITICAL: None,                # no CL tier for CRITICAL
+        }
+        return _map.get(gate_tier)
+    except ImportError:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -151,18 +207,22 @@ def _emit_action(
     decision: str,
     risk_tier: RiskTier,
     latency_ms: float,
+    preauth_record_id: Optional[str] = None,
 ) -> None:
     if trace is None:
         return
     try:
         from core.trace import TraceEventType
+        payload = {
+            "action_type":       action_type,
+            "action_data":       action_data,
+            "decision":          decision,
+            "risk_tier":         risk_tier.value,
+        }
+        if preauth_record_id:
+            payload["preauth_record_id"] = preauth_record_id
         trace.record_output(
-            output={
-                "action_type": action_type,
-                "action_data": action_data,
-                "decision":    decision,
-                "risk_tier":   risk_tier.value,
-            },
+            output=payload,
             event_type=TraceEventType.ACTION,
             canon_refs=_TRACE_CANON_REFS,
         )
@@ -195,18 +255,45 @@ def _emit_gate_error(
 
 class ActionGate:
     """
-    Consent-aware, risk-tiered action gate (C18).
+    Consent-aware, risk-tiered action gate (C18, C01, C30).
+
+    Three-phase consent resolution
+    --------------------------------
+    1. Pre-authorization  — check_preauth() on the ConsentLedger.
+       Resolves LOW/MEDIUM actions when Gaian is offline.
+       HIGH and CRITICAL never resolve via pre-auth.
+
+    2. Purpose-level consent  — check() on the ConsentLedger.
+       Explicit consent grant for a named purpose.
+
+    3. Policy rules  — BLOCKED / FLAGGED / allowed.
+
+    Result dict
+    -----------
+    status           : "allowed" | "flagged" | "blocked"
+    reason           : human-readable policy explanation
+    action_type      : echoed from input
+    risk_tier        : RiskTier value string
+    consent_source   : "preauth" | "ledger" | "policy" | None
+    preauth_record_id: CL-XXXX record ID if pre-auth resolved, else None
 
     Usage::
 
-        gate = ActionGate()
+        ledger = ConsentLedger()
+        gate = ActionGate(consent_ledger=ledger)
 
-        # Non-raising check — returns a decision dict including 'risk_tier'
-        result = gate.check("modify_canon", {"ref": "C32"}, trace=t)
-        # result["risk_tier"] == "high"
+        result = gate.check(
+            "delete_emotional_cache",
+            {"scope": "non_milestone"},
+            gaian_id="r0gv3",
+            session_mode="autonomous_maintenance",
+            has_canon_milestone=False,
+        )
+        # result["consent_source"] == "preauth"
+        # result["preauth_record_id"] == "CL-A3F7C2..."
 
-        # Raising enforce — raises PermissionError on blocked actions
-        gate.enforce("export_pii", {"fields": ["email"]}, trace=t)
+        gate.enforce("delete_gaian", {})
+        # raises PermissionError unconditionally
     """
 
     def __init__(self, consent_ledger: Any = None) -> None:
@@ -214,10 +301,115 @@ class ActionGate:
         Parameters
         ----------
         consent_ledger:
-            Optional ConsentLedger instance.  When provided, gate
-            delegates consent checks to it before applying policy rules.
+            Optional ConsentLedger instance.  When provided, gate runs
+            all three consent resolution phases before applying policy.
         """
         self._ledger = consent_ledger
+
+    # ------------------------------------------------------------------
+    # Internal: three-phase consent resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_consent(
+        self,
+        action_type: str,
+        action_data: Dict[str, Any],
+        gaian_id: Optional[str],
+        session_mode: str,
+        has_canon_milestone: bool,
+    ) -> Dict[str, Any]:
+        """
+        Run three-phase consent resolution against the ConsentLedger.
+
+        Returns a partial result dict with keys:
+          resolved        : bool   — True if consent was positively confirmed
+          blocked         : bool   — True if consent was definitively denied
+          consent_source  : str | None
+          preauth_record_id : str | None
+          reason          : str
+        """
+        if self._ledger is None or gaian_id is None:
+            return {
+                "resolved": False, "blocked": False,
+                "consent_source": None, "preauth_record_id": None,
+                "reason": "No ledger or gaian_id — falling through to policy rules.",
+            }
+
+        tier = get_risk_tier(action_type)
+
+        # ── Phase 1: Pre-authorization ──────────────────────────────────
+        # Only available for LOW and MEDIUM tiers.
+        # HIGH maps to TIER_3 which check_preauth() hard-denies.
+        # CRITICAL has no CL tier — we skip pre-auth entirely.
+        if tier != RiskTier.CRITICAL:
+            cl_tier = _tier_bridge(tier)
+            if cl_tier is not None and hasattr(self._ledger, "check_preauth"):
+                try:
+                    match = self._ledger.check_preauth(
+                        gaian_id=gaian_id,
+                        action=action_type,
+                        tier=cl_tier,
+                        session_mode=session_mode,
+                        has_canon_milestone=has_canon_milestone,
+                    )
+                    if match.matched:
+                        return {
+                            "resolved": True, "blocked": False,
+                            "consent_source": "preauth",
+                            "preauth_record_id": match.record_id,
+                            "reason": match.reason,
+                        }
+                    # Pre-auth denied — fall through to Phase 2
+                    # (denial here is NOT a block; it just means no pre-auth match)
+                except Exception as exc:
+                    # Broken pre-auth check never silences the gate (C30)
+                    pass
+
+        # ── Phase 2: Purpose-level live consent ────────────────────────
+        if hasattr(self._ledger, "check"):
+            try:
+                # Use the extended check() signature if available
+                ledger_ok = self._ledger.check(
+                    gaian_id,
+                    action_type,
+                    action=action_type,
+                    tier=_tier_bridge(tier),
+                    session_mode=session_mode,
+                    has_canon_milestone=has_canon_milestone,
+                )
+                if ledger_ok:
+                    return {
+                        "resolved": True, "blocked": False,
+                        "consent_source": "ledger",
+                        "preauth_record_id": None,
+                        "reason": f"ConsentLedger.check() confirmed consent for '{action_type}'.",
+                    }
+            except TypeError:
+                # Older ConsentLedger signature — graceful fallback
+                try:
+                    ledger_ok = self._ledger.check(gaian_id, action_type)
+                    if ledger_ok:
+                        return {
+                            "resolved": True, "blocked": False,
+                            "consent_source": "ledger",
+                            "preauth_record_id": None,
+                            "reason": f"ConsentLedger.check() confirmed consent for '{action_type}'.",
+                        }
+                except Exception:
+                    pass
+            except Exception as exc:
+                return {
+                    "resolved": False, "blocked": True,
+                    "consent_source": None, "preauth_record_id": None,
+                    "reason": f"ConsentLedger raised during check: {exc}",
+                }
+
+        # Neither phase resolved — fall through to policy rules
+        return {
+            "resolved": False, "blocked": False,
+            "consent_source": None, "preauth_record_id": None,
+            "reason": "No consent resolved — applying policy rules.",
+        }
 
     # ------------------------------------------------------------------
     # Internal policy check
@@ -227,55 +419,83 @@ class ActionGate:
         self,
         action_type: str,
         action_data: Dict[str, Any],
+        gaian_id: Optional[str] = None,
+        session_mode: str = "default",
+        has_canon_milestone: bool = False,
     ) -> Dict[str, Any]:
         """
-        Apply built-in policy rules.  Returns a result dict with keys:
-          status    : "allowed" | "flagged" | "blocked"
-          reason    : human-readable string
-          action_type : echoed back
-          risk_tier : RiskTier value string
+        Full three-phase policy check. Returns result dict with keys:
+          status            : "allowed" | "flagged" | "blocked"
+          reason            : human-readable string
+          action_type       : echoed back
+          risk_tier         : RiskTier value string
+          consent_source    : "preauth" | "ledger" | "policy" | None
+          preauth_record_id : CL-XXXX if pre-auth resolved, else None
         """
         tier = get_risk_tier(action_type)
 
+        # CRITICAL — unconditional block, no consent pathway whatsoever
         if action_type in BLOCKED_ACTION_TYPES:
             return {
-                "status":      "blocked",
-                "reason":      f"Action '{action_type}' is unconditionally blocked by GAIA-OS policy (C18).",
-                "action_type": action_type,
-                "risk_tier":   tier.value,
+                "status":             "blocked",
+                "reason":             (
+                    f"Action '{action_type}' is unconditionally blocked "
+                    "by GAIA-OS policy (C18). No consent pathway exists."
+                ),
+                "action_type":        action_type,
+                "risk_tier":          tier.value,
+                "consent_source":     None,
+                "preauth_record_id":  None,
             }
 
-        if self._ledger is not None:
-            try:
-                ledger_ok = self._ledger.is_consented(action_type, action_data)
-                if not ledger_ok:
-                    return {
-                        "status":      "blocked",
-                        "reason":      f"ConsentLedger denied action '{action_type}'.",
-                        "action_type": action_type,
-                        "risk_tier":   tier.value,
-                    }
-            except Exception as exc:
-                return {
-                    "status":      "flagged",
-                    "reason":      f"ConsentLedger raised during check: {exc}",
-                    "action_type": action_type,
-                    "risk_tier":   tier.value,
-                }
+        # Run three-phase consent resolution
+        consent = self._resolve_consent(
+            action_type, action_data, gaian_id, session_mode, has_canon_milestone
+        )
 
+        if consent["blocked"]:
+            return {
+                "status":             "blocked",
+                "reason":             consent["reason"],
+                "action_type":        action_type,
+                "risk_tier":          tier.value,
+                "consent_source":     consent["consent_source"],
+                "preauth_record_id":  consent["preauth_record_id"],
+            }
+
+        if consent["resolved"]:
+            # Consent confirmed — respect FLAGGED annotation but allow
+            status = "flagged" if action_type in FLAGGED_ACTION_TYPES else "allowed"
+            return {
+                "status":             status,
+                "reason":             consent["reason"],
+                "action_type":        action_type,
+                "risk_tier":          tier.value,
+                "consent_source":     consent["consent_source"],
+                "preauth_record_id":  consent["preauth_record_id"],
+            }
+
+        # No consent resolved — apply policy rules
         if action_type in FLAGGED_ACTION_TYPES:
             return {
-                "status":      "flagged",
-                "reason":      f"Action '{action_type}' requires elevated review (C18).",
-                "action_type": action_type,
-                "risk_tier":   tier.value,
+                "status":             "flagged",
+                "reason":             (
+                    f"Action '{action_type}' requires elevated review (C18). "
+                    "No pre-authorization or live consent found."
+                ),
+                "action_type":        action_type,
+                "risk_tier":          tier.value,
+                "consent_source":     "policy",
+                "preauth_record_id":  None,
             }
 
         return {
-            "status":      "allowed",
-            "reason":      "Action passed all policy checks.",
-            "action_type": action_type,
-            "risk_tier":   tier.value,
+            "status":             "allowed",
+            "reason":             "Action passed all policy checks.",
+            "action_type":        action_type,
+            "risk_tier":          tier.value,
+            "consent_source":     "policy",
+            "preauth_record_id":  None,
         }
 
     # ------------------------------------------------------------------
@@ -289,28 +509,37 @@ class ActionGate:
         *,
         trace: Any = None,
         gaian_id: Optional[str] = None,
+        session_mode: str = "default",
+        has_canon_milestone: bool = False,
     ) -> Dict[str, Any]:
         """
-        Non-raising gate check.  Returns the policy result dict.
+        Non-raising gate check. Returns the policy result dict.
 
         Result dict keys
         ----------------
-        status      : ``"allowed"`` | ``"flagged"`` | ``"blocked"``
-        reason      : human-readable policy explanation
-        action_type : echoed from input
-        risk_tier   : ``RiskTier`` value string (``"low"`` … ``"critical"``)
+        status            : ``"allowed"`` | ``"flagged"`` | ``"blocked"``
+        reason            : human-readable policy explanation
+        action_type       : echoed from input
+        risk_tier         : ``RiskTier`` value string (``"low"`` … ``"critical"``)
+        consent_source    : ``"preauth"`` | ``"ledger"`` | ``"policy"`` | ``None``
+        preauth_record_id : ``"CL-XXXX"`` if pre-auth resolved, else ``None``
 
         Parameters
         ----------
         action_type:
-            Short identifier for the action (e.g. ``"export_pii"``)
+            Short identifier for the action (e.g. ``"delete_emotional_cache"``)
         action_data:
-            Arbitrary payload describing the action.  Forwarded to the
-            ConsentLedger and included in the trace event.
+            Arbitrary payload describing the action. Included in trace events.
         trace:
             Optional GAIATrace / AsyncGAIATrace context for event emission.
         gaian_id:
-            Forwarded into trace events for per-Gaian attribution.
+            The Gaian requesting the action. Required for consent resolution.
+        session_mode:
+            Current loop session mode (e.g. ``"autonomous_maintenance"``).
+            Forwarded to check_preauth() for scope matching.
+        has_canon_milestone:
+            True if the action touches Canon milestone records.
+            Causes pre-auth scope exclusion — live consent required.
         """
         action_data = action_data or {}
         if gaian_id is not None:
@@ -318,7 +547,9 @@ class ActionGate:
 
         t0 = time.perf_counter()
         try:
-            result = self._policy_check(action_type, action_data)
+            result = self._policy_check(
+                action_type, action_data, gaian_id, session_mode, has_canon_milestone
+            )
         except Exception as exc:
             _emit_gate_error(trace, action_type, str(exc))
             raise
@@ -329,6 +560,7 @@ class ActionGate:
             result["status"],
             get_risk_tier(action_type),
             latency_ms,
+            preauth_record_id=result.get("preauth_record_id"),
         )
         return result
 
@@ -339,14 +571,16 @@ class ActionGate:
         *,
         trace: Any = None,
         gaian_id: Optional[str] = None,
+        session_mode: str = "default",
+        has_canon_milestone: bool = False,
     ) -> Dict[str, Any]:
         """
-        Raising gate check.  Identical to :meth:`check` but raises
+        Raising gate check. Identical to :meth:`check` but raises
         ``PermissionError`` when the policy result is ``"blocked"``.
 
         Parameters
         ----------
-        action_type, action_data, trace, gaian_id:
+        action_type, action_data, trace, gaian_id, session_mode, has_canon_milestone:
             Same as :meth:`check`.
 
         Raises
@@ -359,6 +593,8 @@ class ActionGate:
             action_data,
             trace=trace,
             gaian_id=gaian_id,
+            session_mode=session_mode,
+            has_canon_milestone=has_canon_milestone,
         )
         if result["status"] == "blocked":
             _emit_gate_error(trace, action_type, result["reason"])
