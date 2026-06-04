@@ -119,6 +119,9 @@ class AffectSnapshot:
     timestamp         : Unix millisecond epoch of the snapshot.
     biometric_samples : Individual readings captured at this instant.
     id                : Optional stable snapshot identifier (default: "").
+    source            : Provenance label for the snapshot (e.g. "journal",
+                        "sensor", "manual"). Persisted alongside biometric
+                        rows so callers can filter by origin.
 
     Affect-signal fields (all optional, for test and runtime use)
     ---------------------------------------------------------------
@@ -135,6 +138,7 @@ class AffectSnapshot:
     timestamp         : int                              # Unix ms — snapshot time
     biometric_samples : List[BiometricSample] = field(default_factory=list)
     id                : str = ""                         # Optional stable snapshot id
+    source            : str = ""                         # Provenance: "journal", "sensor", etc.
 
     # Affect-signal fields — all optional with safe defaults
     emotion           : Optional[str]   = None
