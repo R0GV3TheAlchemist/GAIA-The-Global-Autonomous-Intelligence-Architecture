@@ -29,6 +29,17 @@ from .types import (
     TurnRiskFrame,
 )
 
+# Explicit severity ordering for CrisisLevel so that max() works correctly.
+# CrisisLevel inherits from str; alphabetical ordering is wrong
+# ("none" > "masked" > "gradual" > "explicit" > "acute" alphabetically).
+_CRISIS_SEVERITY: dict[CrisisLevel, int] = {
+    CrisisLevel.NONE:     0,
+    CrisisLevel.GRADUAL:  1,
+    CrisisLevel.MASKED:   2,
+    CrisisLevel.ACUTE:    3,
+    CrisisLevel.EXPLICIT: 4,
+}
+
 
 class SafetyEngine:
     """Stateful per-session safety orchestrator."""
@@ -142,8 +153,11 @@ class SafetyEngine:
 
         if self._frames:
             mean_vuln = sum(f.vulnerability_score for f in self._frames) / len(self._frames)
+            # Use an explicit severity key — CrisisLevel inherits from str and
+            # its alphabetical ordering is the inverse of severity intent.
             peak_crisis = max(
                 (f.crisis_level for f in self._frames),
+                key=lambda lvl: _CRISIS_SEVERITY[lvl],
                 default=CrisisLevel.NONE,
             )
         else:

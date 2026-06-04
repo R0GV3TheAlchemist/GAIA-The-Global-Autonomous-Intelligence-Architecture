@@ -106,14 +106,29 @@ class EscalationSignal:
 
 @dataclass
 class CrisisSignal:
-    """Output of CumulativeCrisisDetector when crisis is detected."""
+    """Output of CrisisDetector / CumulativeCrisisDetector when crisis is detected.
 
-    session_id:    str
-    turn_index:    int
-    crisis_level:  CrisisLevel
-    crisis_type:   CrisisType
-    confidence:    float
-    trigger_text:  Optional[str] = None
+    Fields used by CumulativeCrisisDetector (session-aware path):
+        session_id, turn_index, crisis_level, crisis_type, confidence, trigger_text
+
+    Fields used by CrisisDetector.evaluate() (fast keyword path):
+        crisis_type, confidence, requires_immediate_response, matched_pattern
+
+    All fields that are not always supplied have sensible defaults so that
+    either construction pattern works without a TypeError.
+    """
+
+    # Core fields — required by the session-aware path
+    crisis_type:                CrisisType
+    confidence:                 float
+    # Optional / defaulted fields
+    session_id:                 str            = "unknown"
+    turn_index:                 int            = 0
+    crisis_level:               CrisisLevel    = CrisisLevel.NONE
+    trigger_text:               Optional[str]  = None
+    # Fast keyword-path fields (CrisisDetector.evaluate)
+    requires_immediate_response: bool          = False
+    matched_pattern:            Optional[str]  = None
 
 
 @dataclass
