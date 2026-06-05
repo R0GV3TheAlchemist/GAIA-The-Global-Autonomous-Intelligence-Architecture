@@ -5,14 +5,13 @@ GAIA's core Perceive → Reason → Act → Observe (PRAO) loop.
 
 Revision notes
 --------------
-obs-wiring     : TraceContext spans, Telemetry counters, AuditLog events.
-canon-rag      : _reason() calls RAGPipeline.retrieve() before the planner.
-persisted-index: _maybe_ingest_canon() passes store_path to ingest_canon()
-                 so Canon is only embedded once; subsequent cold starts
-                 reuse the persisted SQLite index if the fingerprint matches.
-fix-collection : Added HaltCondition enum, AgenticLoopResult dataclass,
-                 create_loop() factory, async run(), cancel() method to
-                 satisfy test_agentic_loop_obs.py collection.
+obs-wiring      : TraceContext spans, Telemetry counters, AuditLog events.
+canon-rag       : _reason() calls RAGPipeline.retrieve() before the planner.
+persisted-index : _maybe_ingest_canon() passes store_path to ingest_canon()
+                  so Canon is only embedded once; subsequent cold starts
+                  reuse the persisted SQLite index if the fingerprint matches.
+fix-ci          : Added HaltCondition, AgenticLoopResult, create_loop(),
+                  async run(), cancel() to satisfy test_agentic_loop_obs.py.
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ try:
     from core.obs.telemetry import Telemetry
     from core.obs.audit import AuditLog
     _OBS_AVAILABLE = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _OBS_AVAILABLE = False
     TraceContext = None  # type: ignore[assignment,misc]
     Telemetry = None    # type: ignore[assignment,misc]
@@ -46,15 +45,11 @@ except ImportError:
 try:
     from core.rag.pipeline import RAGPipeline
     _RAG_AVAILABLE = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _RAG_AVAILABLE = False
     RAGPipeline = None  # type: ignore[assignment,misc]
 
-# ---------------------------------------------------------------------------
-# Default Canon store path
-# ---------------------------------------------------------------------------
 _DEFAULT_CANON_STORE = Path.home() / ".gaia" / "data"
-
 logger = logging.getLogger(__name__)
 
 
@@ -64,22 +59,22 @@ logger = logging.getLogger(__name__)
 
 class HaltCondition(Enum):
     """Reason the agentic loop terminated."""
-    GOAL_ACHIEVED  = "goal_achieved"
-    MAX_ITERATIONS = "max_iterations"
+    GOAL_ACHIEVED   = "goal_achieved"
+    MAX_ITERATIONS  = "max_iterations"
     GAIAN_CANCELLED = "cancelled"
-    ERROR          = "error"
+    ERROR           = "error"
 
 
 @dataclass
 class AgenticLoopResult:
     """Return value from AgenticLoop.run()."""
-    session_id:      str
-    state:           "AgentState"
-    halt_condition:  HaltCondition
-    goal_achieved:   bool
-    iterations:      int
-    duration_s:      float
-    error:           Optional[str] = None
+    session_id:     str
+    state:          "AgentState"
+    halt_condition: HaltCondition
+    goal_achieved:  bool
+    iterations:     int
+    duration_s:     float
+    error:          Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -100,15 +95,15 @@ class AgenticLoopResult:
 class AgentState:
     """Mutable snapshot passed through each PRAO phase."""
     goal: str
-    observations: List[str] = field(default_factory=list)
-    history: List[Dict[str, Any]] = field(default_factory=list)
-    memory: Dict[str, Any] = field(default_factory=dict)
-    complete: bool = False
-    error: Optional[str] = None
+    observations: List[str]       = field(default_factory=list)
+    history:      List[Dict[str, Any]] = field(default_factory=list)
+    memory:       Dict[str, Any]  = field(default_factory=dict)
+    complete:     bool            = False
+    error:        Optional[str]   = None
 
     def summary(self) -> str:
         obs_tail = self.observations[-3:] if self.observations else []
-        obs_str = " | ".join(obs_tail) if obs_tail else "none yet"
+        obs_str  = " | ".join(obs_tail) if obs_tail else "none yet"
         return f"Goal: {self.goal}. Recent observations: {obs_str}"
 
     def to_dict(self) -> dict:
@@ -146,6 +141,27 @@ class ActionGate:
 
 
 # ---------------------------------------------------------------------------
+# Default stub planner
+# ---------------------------------------------------------------------------
+
+_STUB_COMPLETE_AFTER = 3
+
+
+def _default_stub_planner(
+    state: AgentState,
+    *,
+    canon_context: str = "",
+    _counter: list = [0],  # noqa: B006
+) -> dict:
+    """Minimal planner for tests: returns complete=True after 3 calls."""
+    _counter[0] += 1
+    if _counter[0] >= _STUB_COMPLETE_AFTER:
+        _counter[0] = 0
+        return {"complete": True}
+    return {"tool": "noop", "args": {}}
+
+
+# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
@@ -155,18 +171,17 @@ class AgenticLoop:
 
     Parameters
     ----------
-    planner         : callable(state, canon_context='') → action dict
-    tools           : mapping of tool name → callable
-    perceiver       : callable(state) → updated state (optional)
-    observer        : callable(state, result) → updated state (optional)
-    rag             : RAGPipeline instance (optional)
-    human_callback  : callable(action) → bool for human-approval gate
-    action_gate     : ActionGate-compatible object (optional)
-    max_iterations  : safety ceiling (default 50)
-    telemetry       : Telemetry instance (optional)
-    audit           : AuditLog instance (optional)
-    canon_store_path: Path to persist Canon SQLite index
-                      (default ~/.gaia/data/; None = in-memory only)
+    planner          : callable(state, *, canon_context='') → action dict
+    tools            : mapping of tool name → callable
+    perceiver        : callable(state) → updated state (optional)
+    observer         : callable(state, result) → updated state (optional)
+    rag              : RAGPipeline instance (optional)
+    human_callback   : callable(action) → bool for human-approval gate
+    action_gate      : ActionGate-compatible object (optional)
+    max_iterations   : safety ceiling (default 50)
+    telemetry        : Telemetry instance (optional)
+    audit            : AuditLog instance (optional)
+    canon_store_path : Path to persist Canon SQLite index
     """
 
     def __init__(
@@ -193,11 +208,9 @@ class AgenticLoop:
         self._canon_store_path = canon_store_path
         self._cancelled      = False
 
-        # Observability
         self._telemetry = telemetry or (Telemetry() if _OBS_AVAILABLE and Telemetry else None)
         self._audit     = audit     or (AuditLog()  if _OBS_AVAILABLE and AuditLog  else None)
 
-        # RAG
         self._rag: Optional[Any] = rag
         if self._rag is None and _RAG_AVAILABLE:
             self._rag = RAGPipeline()
@@ -333,32 +346,18 @@ class AgenticLoop:
 
     async def run(
         self,
-        goal: str,
-        gaian_id: str = "gaia",
+        goal:          str,
+        gaian_id:      str = "gaia",
         initial_state: Optional[AgentState] = None,
     ) -> AgenticLoopResult:
-        """
-        Run the PRAO loop asynchronously.
-
-        Parameters
-        ----------
-        goal         : The session goal.
-        gaian_id     : Identifier for audit records.
-        initial_state: Optional pre-seeded AgentState.
-
-        Returns
-        -------
-        AgenticLoopResult
-        """
         session_id = str(uuid.uuid4())
         state      = initial_state or AgentState(goal=goal)
         t_session  = time.monotonic()
         iterations = 0
+        halt       = HaltCondition.MAX_ITERATIONS
 
         self._audit_record("SESSION_START",
             meta={"session_id": session_id, "goal": goal, "gaian_id": gaian_id})
-
-        halt = HaltCondition.MAX_ITERATIONS
 
         try:
             self._maybe_ingest_canon(session_id)
@@ -377,25 +376,25 @@ class AgenticLoop:
                         halt = HaltCondition.GAIAN_CANCELLED
                         break
 
-                    state = self._run_phase("perceive", self._perceive, state)
-                    action = self._run_phase("reason",  self._reason,  state)
+                    state  = self._run_phase("perceive", self._perceive, state)
+                    action = self._run_phase("reason",   self._reason,   state)
 
                     if action.get("complete"):
                         state.complete = True
                         halt = HaltCondition.GOAL_ACHIEVED
                         break
 
-                    # Gate
+                    # Gate — supports both sync ActionGate and async evaluate() objects
                     gate_result = self._gate.approve(action, self._human_callback)
                     if asyncio.iscoroutine(gate_result):
-                        gate_result_obj = await gate_result
-                        approved   = getattr(gate_result_obj, "approved", False)
-                        needs_human = getattr(gate_result_obj, "requires_human_approval", False)
-                        reason     = getattr(gate_result_obj, "reason", None)
+                        gate_obj   = await gate_result
+                        approved   = getattr(gate_obj, "approved", False)
+                        needs_human = getattr(gate_obj, "requires_human_approval", False)
+                        reason     = getattr(gate_obj, "reason", None)
                     else:
-                        approved   = bool(gate_result)
+                        approved    = bool(gate_result)
                         needs_human = False
-                        reason     = None
+                        reason      = None
 
                     if not approved:
                         policy = "requires_human" if needs_human else "denied"
@@ -412,14 +411,13 @@ class AgenticLoop:
                         meta={"session_id": session_id, "iteration": iteration,
                               "action": action, "approved": True})
 
-                    result = self._run_phase("act",     self._act,     state, action)
-                    state  = self._run_phase("observe",  self._observe, state, result)
+                    result = self._run_phase("act",    self._act,    state, action)
+                    state  = self._run_phase("observe", self._observe, state, result)
 
                     self._log_info("agentic_loop.cycle",
                         meta={"session_id": session_id, "iteration": iteration,
                               "action": action.get("tool"), "success": result.success,
                               "progress": action.get("progress")})
-
                     self._telemetry_record("agentic_loop.cycle", time.monotonic() - t_session)
 
                 else:
@@ -452,54 +450,21 @@ class AgenticLoop:
 
 
 # ---------------------------------------------------------------------------
-# Default stub planner (used by create_loop)
-# ---------------------------------------------------------------------------
-
-_STUB_COMPLETE_AFTER = 3  # complete after this many calls
-
-
-def _default_stub_planner(
-    state: AgentState,
-    *,
-    canon_context: str = "",
-    _counter: list = [0],  # noqa: B006 — intentional mutable default
-) -> dict:
-    """
-    Minimal stub planner for test/CI use.
-    Returns complete=True after _STUB_COMPLETE_AFTER calls.
-    """
-    _counter[0] += 1
-    if _counter[0] >= _STUB_COMPLETE_AFTER:
-        _counter[0] = 0
-        return {"complete": True}
-    return {"tool": "noop", "args": {}}
-
-
-# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
 def create_loop(
-    max_iterations: int = 50,
-    tool_registry: Optional[Dict[str, Callable]] = None,
-    action_gate: Optional[Any] = None,
+    max_iterations:    int = 50,
+    tool_registry:     Optional[Dict[str, Callable]] = None,
+    action_gate:       Optional[Any] = None,
     approval_callback: Optional[Callable] = None,
-    planner: Optional[Callable] = None,
-    audit: Optional[Any] = None,
-    telemetry: Optional[Any] = None,
+    planner:           Optional[Callable] = None,
+    audit:             Optional[Any] = None,
+    telemetry:         Optional[Any] = None,
 ) -> AgenticLoop:
     """
     Factory to create a pre-configured AgenticLoop.
-
-    Parameters
-    ----------
-    max_iterations   : Safety ceiling.
-    tool_registry    : Dict of tool_name → callable.
-    action_gate      : Gate object with evaluate(action, gaian_id) coroutine.
-    approval_callback: Human-approval callback.
-    planner          : Custom planner callable (default: stub planner).
-    audit            : AuditLog instance.
-    telemetry        : Telemetry instance.
+    canon_store_path is always None so tests have no filesystem side-effects.
     """
     return AgenticLoop(
         planner=planner,
@@ -509,5 +474,5 @@ def create_loop(
         max_iterations=max_iterations,
         audit=audit,
         telemetry=telemetry,
-        canon_store_path=None,  # no persistence in test context
+        canon_store_path=None,
     )
