@@ -31,11 +31,12 @@ except ImportError:
     IndexStore = None  # type: ignore[assignment,misc]
 
 try:
-    from .canon_loader import CanonLoader
+    from .canon_loader import CanonLoader, CanonChunk
     _CANON_LOADER_AVAILABLE = True
 except ImportError:
     _CANON_LOADER_AVAILABLE = False
-    CanonLoader = None  # type: ignore[assignment,misc]
+    CanonLoader  = None  # type: ignore[assignment,misc]
+    CanonChunk   = None  # type: ignore[assignment,misc]
 
 try:
     from .embedder import FallbackEmbedder
@@ -143,8 +144,8 @@ class RAGPipeline:
 
     def ingest_canon(
         self,
-        ref:        str           = "feat/obs-rag",
-        force:      bool          = False,
+        ref:        str            = "main",
+        force:      bool           = False,
         store_path: Optional[Path] = None,
     ) -> dict:
         if self.canon_loaded and not force:
@@ -153,6 +154,7 @@ class RAGPipeline:
         t0 = time.monotonic()
         self._store_path = store_path
 
+        # --- Warm start ---
         if store_path is not None and _INDEX_STORE_AVAILABLE and not force:
             store = IndexStore(data_dir=store_path)
             store.ensure_dir()
@@ -165,45 +167,59 @@ class RAGPipeline:
                     self.canon_loaded = True
                     self._canon_chunk_count = self._index.count()
                     return {
-                        "status": "warm_start", "warm_start": True,
-                        "doc_count": 0, "chunk_count": self._canon_chunk_count,
+                        "status":      "warm_start",
+                        "warm_start":  True,
+                        "doc_count":   0,
+                        "chunk_count": self._canon_chunk_count,
                         "fingerprint": self._fingerprint,
-                        "store_path": str(store.db_path),
-                        "duration_s": round(time.monotonic() - t0, 3),
+                        "store_path":  str(store.db_path),
+                        "duration_s":  round(time.monotonic() - t0, 3),
                     }
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("ingest_canon: warm start failed — %s", exc)
 
+        # --- Cold start ---
         if not _CANON_LOADER_AVAILABLE:
             self.canon_loaded = True
             return {
-                "status": "ok", "warm_start": False,
-                "doc_count": 0, "chunk_count": 0,
-                "fingerprint": None, "store_path": None,
-                "duration_s": round(time.monotonic() - t0, 3),
+                "status":      "ok",
+                "warm_start":  False,
+                "doc_count":   0,
+                "chunk_count": 0,
+                "fingerprint": None,
+                "store_path":  None,
+                "duration_s":  round(time.monotonic() - t0, 3),
             }
 
         try:
-            loader    = CanonLoader(ref=ref)
-            canon_docs = loader.load()
+            loader     = CanonLoader(ref=ref)
+            canon_docs = loader.load()          # returns List[CanonChunk]
         except Exception as exc:  # noqa: BLE001
             self.canon_loaded = True
             return {
-                "status": "error", "warm_start": False,
-                "doc_count": 0, "chunk_count": 0,
-                "error": str(exc),
-                "duration_s": round(time.monotonic() - t0, 3),
+                "status":      "error",
+                "warm_start":  False,
+                "doc_count":   0,
+                "chunk_count": 0,
+                "error":       str(exc),
+                "duration_s":  round(time.monotonic() - t0, 3),
             }
 
-        all_chunks: list[Chunk] = []
-        fp_parts:   list[str]   = []
+        # canon_docs is List[CanonChunk] — access .text and .source directly
+        all_chunks: List[Chunk] = []
+        fp_parts:   List[str]   = []
+        seen_sources: set        = set()
+
         for doc in canon_docs:
+            # CanonChunk already has .text and .source
             doc_chunks = chunk_text(
-                doc.get("content", ""),
-                source=doc.get("id", doc.get("path", "unknown")),
+                doc.text,
+                source=doc.source,
             )
             all_chunks.extend(doc_chunks)
-            fp_parts.append(f"{doc.get('id', doc.get('path', 'unknown'))}:{len(doc_chunks)}")
+            if doc.source not in seen_sources:
+                seen_sources.add(doc.source)
+                fp_parts.append(f"{doc.source}:{doc.canon_id}")
 
         if self._embedder is not None and all_chunks:
             self._embedder.fit([c.text for c in all_chunks])
@@ -226,15 +242,16 @@ class RAGPipeline:
 
         self._fingerprint       = fingerprint
         self._warm_start        = False
-        self._canon_doc_count   = len(canon_docs)
+        self._canon_doc_count   = len(seen_sources)
         self._canon_chunk_count = len(all_chunks)
         self.canon_loaded       = True
 
         return {
-            "status": "ok", "warm_start": False,
-            "doc_count": self._canon_doc_count,
+            "status":      "ok",
+            "warm_start":  False,
+            "doc_count":   self._canon_doc_count,
             "chunk_count": self._canon_chunk_count,
             "fingerprint": fingerprint,
-            "store_path": str(store_path / "canon_index.db") if store_path else None,
-            "duration_s": round(time.monotonic() - t0, 3),
+            "store_path":  str(store_path / "canon_index.db") if store_path else None,
+            "duration_s":  round(time.monotonic() - t0, 3),
         }

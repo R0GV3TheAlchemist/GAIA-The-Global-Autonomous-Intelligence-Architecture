@@ -47,10 +47,10 @@ _GITHUB_API_TREE = (
     "https://api.github.com/repos/R0GV3TheAlchemist/GAIA-OS/"
     "git/trees/{ref}?recursive=1"
 )
-_DEFAULT_REF = "feat/obs-rag"
-_MIN_CHUNK_CHARS = 80   # discard whitespace-only / very short fragments
-_MAX_CHUNK_CHARS = 4000 # hard ceiling; split further if exceeded
-_REQUEST_DELAY = 0.05   # polite pause between raw-content requests (seconds)
+_DEFAULT_REF = "main"
+_MIN_CHUNK_CHARS = 80
+_MAX_CHUNK_CHARS = 4000
+_REQUEST_DELAY = 0.05
 
 
 # ---------------------------------------------------------------------------
@@ -61,19 +61,18 @@ _REQUEST_DELAY = 0.05   # polite pause between raw-content requests (seconds)
 class CanonChunk:
     """A single retrievable unit from the Canon corpus."""
 
-    canon_id: str        # full filename stem, e.g. "C140_Tool_Orchestration_as_Prehension_Implementation_Spec"
-    source: str          # relative path within repo, e.g. "canon/C140_..."
-    chunk_index: int     # 0-based position within the source file
-    text: str            # the actual paragraph text
-    size_bytes: int = 0  # original file size for provenance
-    metadata: dict = field(default_factory=dict)
+    canon_id:    str
+    source:      str
+    chunk_index: int
+    text:        str
+    size_bytes:  int  = 0
+    metadata:    dict = field(default_factory=dict)
 
     @property
     def uid(self) -> str:
         return f"{self.canon_id}::{self.chunk_index}"
 
     def citation_header(self) -> str:
-        """Short prefix injected into retrieved context blocks."""
         return f"[Canon: {self.canon_id}]"
 
 
@@ -82,7 +81,6 @@ class CanonChunk:
 # ---------------------------------------------------------------------------
 
 def _fetch_text(url: str) -> Optional[str]:
-    """Return decoded text from *url* or None on failure."""
     try:
         if _HTTP_CLIENT == "httpx":
             resp = httpx.get(url, timeout=15, follow_redirects=True)
@@ -101,7 +99,6 @@ def _fetch_text(url: str) -> Optional[str]:
 
 
 def _fetch_json(url: str) -> Optional[dict]:
-    """Return parsed JSON from *url* or None on failure."""
     try:
         if _HTTP_CLIENT == "httpx":
             resp = httpx.get(url, timeout=20, follow_redirects=True)
@@ -120,19 +117,10 @@ def _fetch_json(url: str) -> Optional[dict]:
 
 
 def _canon_id_from_path(path: str) -> str:
-    """Derive a stable canon_id from the repo-relative file path."""
-    return PurePosixPath(path).stem  # strips .md extension
+    return PurePosixPath(path).stem
 
 
 def _split_into_chunks(text: str, max_chars: int = _MAX_CHUNK_CHARS) -> List[str]:
-    """
-    Split *text* into paragraph chunks.
-
-    Strategy:
-    1. Split on blank lines (\n\n+) to get natural paragraphs.
-    2. If any paragraph exceeds *max_chars*, further split on single\n.
-    3. Filter out chunks shorter than _MIN_CHUNK_CHARS.
-    """
     raw_paras = re.split(r"\n{2,}", text)
     chunks: List[str] = []
     for para in raw_paras:
@@ -142,7 +130,6 @@ def _split_into_chunks(text: str, max_chars: int = _MAX_CHUNK_CHARS) -> List[str
         if len(para) <= max_chars:
             chunks.append(para)
         else:
-            # Sub-split on single newline
             for sub in para.split("\n"):
                 sub = sub.strip()
                 if len(sub) >= _MIN_CHUNK_CHARS:
@@ -160,14 +147,14 @@ class CanonLoader:
 
     Usage
     -----
-    >>> loader = CanonLoader(ref="feat/obs-rag")
-    >>> chunks = loader.load_all()
+    >>> loader = CanonLoader(ref="main")
+    >>> chunks = loader.load()          # or loader.load_all()
     >>> print(len(chunks), "chunks loaded")
     """
 
     def __init__(self, ref: str = _DEFAULT_REF) -> None:
-        self.ref = ref
-        self._loaded: bool = False
+        self.ref      = ref
+        self._loaded: bool           = False
         self._chunks: List[CanonChunk] = []
 
     # ------------------------------------------------------------------
@@ -175,11 +162,7 @@ class CanonLoader:
     # ------------------------------------------------------------------
 
     def _list_canon_files(self) -> List[dict]:
-        """
-        Return GitHub tree entries for all *.md files under canon/.
-        Falls back to empty list on API failure.
-        """
-        url = _GITHUB_API_TREE.format(ref=self.ref)
+        url  = _GITHUB_API_TREE.format(ref=self.ref)
         data = _fetch_json(url)
         if not data or "tree" not in data:
             logger.error("canon_loader: could not fetch repo tree from %s", url)
@@ -196,15 +179,11 @@ class CanonLoader:
     # ------------------------------------------------------------------
 
     def _load_file(self, entry: dict) -> Iterator[CanonChunk]:
-        """
-        Fetch one Canon file and yield its chunks.
-        *entry* is a GitHub tree blob dict with at minimum 'path' and 'size'.
-        """
-        path: str = entry["path"]
-        size: int = entry.get("size", 0)
-        canon_id = _canon_id_from_path(path)
-        filename = PurePosixPath(path).name
-        url = _CANON_BASE_URL.format(ref=self.ref, filename=filename)
+        path:     str = entry["path"]
+        size:     int = entry.get("size", 0)
+        canon_id      = _canon_id_from_path(path)
+        filename      = PurePosixPath(path).name
+        url           = _CANON_BASE_URL.format(ref=self.ref, filename=filename)
 
         text = _fetch_text(url)
         if not text:
@@ -220,8 +199,8 @@ class CanonLoader:
                 text=chunk_text,
                 size_bytes=size,
                 metadata={
-                    "ref": self.ref,
-                    "filename": filename,
+                    "ref":          self.ref,
+                    "filename":     filename,
                     "total_chunks": len(chunks),
                 },
             )
@@ -234,8 +213,6 @@ class CanonLoader:
         Returns
         -------
         List[CanonChunk]
-            All paragraph chunks from all Canon documents, ordered by
-            (canon_id, chunk_index).
         """
         if self._loaded and not force:
             return self._chunks
@@ -247,20 +224,24 @@ class CanonLoader:
 
         logger.info("canon_loader: discovered %d Canon files on ref=%s", len(entries), self.ref)
 
-        seen_uids: set = set()
+        seen_uids: set        = set()
         chunks: List[CanonChunk] = []
         for entry in entries:
             for chunk in self._load_file(entry):
                 if chunk.uid in seen_uids:
-                    continue  # idempotent re-ingestion guard
+                    continue
                 seen_uids.add(chunk.uid)
                 chunks.append(chunk)
 
         chunks.sort(key=lambda c: (c.canon_id, c.chunk_index))
-        self._chunks = chunks
-        self._loaded = True
+        self._chunks  = chunks
+        self._loaded  = True
         logger.info("canon_loader: loaded %d chunks from %d files", len(chunks), len(entries))
         return self._chunks
+
+    def load(self, force: bool = False) -> List[CanonChunk]:
+        """Alias for load_all(). Called by RAGPipeline.ingest_canon()."""
+        return self.load_all(force=force)
 
     # ------------------------------------------------------------------
     # Convenience
@@ -274,5 +255,4 @@ class CanonLoader:
         return len(self._chunks)
 
     def sources(self) -> List[str]:
-        """Unique canon_ids present in the loaded corpus."""
         return sorted({c.canon_id for c in self._chunks})
