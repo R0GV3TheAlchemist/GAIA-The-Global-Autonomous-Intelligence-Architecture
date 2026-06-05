@@ -11,6 +11,15 @@ Canon refs:
     C01  — Gaian is sovereign; no action without consent
     C30  — No silent failures; every halt is explained
     C32  — Synergy Doctrine; the loop enriches, never bypasses
+
+Obs integration (added):
+    - Every session is wrapped in a TraceContext span
+    - Every phase (perceive/reason/act/observe) gets a child span
+    - Every tool call is timed and emitted via StructuredLogger.tool_call()
+    - Every ACT writes an AuditLog AGENT_ACTION event
+    - Every gate decision writes an AuditLog POLICY_DECISION / PERMISSION_DENY event
+    - SESSION_START and SESSION_END are audited
+    - Per-phase latency is recorded in Telemetry
 """
 
 from __future__ import annotations
@@ -22,7 +31,21 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Coroutine, Optional
 
-# GAIA-OS internal imports — graceful stubs if modules are mid-build
+# ── Observability (core/obs) ─────────────────────────────────────────────────
+# Graceful: if core/obs is mid-build, falls back to stdlib logging throughout.
+try:
+    from core.obs import get_logger as _obs_get_logger
+    from core.obs import get_audit as _obs_get_audit
+    from core.obs import get_telemetry as _obs_get_telemetry
+    from core.obs.tracer import TraceContext
+    from core.obs.audit import AuditEventType
+    _OBS_AVAILABLE = True
+except ImportError:
+    _OBS_AVAILABLE = False
+    TraceContext = None  # type: ignore
+    AuditEventType = None  # type: ignore
+
+# ── GAIA-OS internal imports — graceful stubs if modules are mid-build ───────
 try:
     from core.action_gate import ActionGate, ActionRiskTier, GateDecision
 except ImportError:
@@ -43,14 +66,50 @@ except ImportError:
     TaskNode = None  # type: ignore
     TaskStatus = None  # type: ignore
 
-try:
-    from core.logger import get_logger
-except ImportError:
-    import logging
-    def get_logger(name: str):
-        return logging.getLogger(name)
+# ── Logger bootstrap ─────────────────────────────────────────────────────────
+# Uses core.obs.StructuredLogger when available; stdlib logging otherwise.
+if _OBS_AVAILABLE:
+    _struct_logger = _obs_get_logger()
+    _audit = _obs_get_audit()
+    _telemetry = _obs_get_telemetry()
+else:
+    import logging as _stdlib_logging
+    _struct_logger = None
+    _audit = None
+    _telemetry = None
+    _fallback_log = _stdlib_logging.getLogger("gaia.agentic_loop")
 
-logger = get_logger("gaia.agentic_loop")
+
+def _log_info(msg: str, **kwargs) -> None:
+    if _struct_logger:
+        _struct_logger.info(msg, **kwargs)
+    else:
+        _fallback_log.info(msg)  # type: ignore[name-defined]
+
+
+def _log_warning(msg: str, **kwargs) -> None:
+    if _struct_logger:
+        _struct_logger.warning(msg, **kwargs)
+    else:
+        _fallback_log.warning(msg)  # type: ignore[name-defined]
+
+
+def _log_error(msg: str, **kwargs) -> None:
+    if _struct_logger:
+        _struct_logger.error(msg, **kwargs)
+    else:
+        _fallback_log.error(msg)  # type: ignore[name-defined]
+
+
+def _audit_record(event_type: str, actor: str, action: str, outcome: str = "ok",
+                  resource: Optional[str] = None, meta: Optional[dict] = None) -> None:
+    if _audit:
+        _audit.record(event_type, actor, action, outcome, resource, meta)
+
+
+def _telemetry_record(tool: str, latency_ms: float, error: bool = False) -> None:
+    if _telemetry:
+        _telemetry.record(tool, latency_ms, error)
 
 
 # ─────────────────────────────────────────────
@@ -150,6 +209,9 @@ class LoopCycle:
     started_at: float = field(default_factory=time.time)
     duration_ms: float = 0.0
 
+    # Obs span IDs (populated at runtime, not serialised to external consumers)
+    _trace_id: Optional[str] = field(default=None, repr=False)
+
 
 @dataclass
 class AgenticLoopResult:
@@ -196,14 +258,12 @@ async def _default_approval_callback(action: str, reason: str) -> bool:
     """
     Default human-in-the-loop approval gate.
     In production this surfaces a UI prompt to the Gaian.
-    In development it logs and returns True for non-destructive actions.
+    Stub returns False (deny by default) to enforce safe defaults.
     """
-    logger.warning(
-        "HUMAN APPROVAL REQUIRED — action=%s reason=%s",
-        action, reason
+    _log_warning(
+        f"HUMAN APPROVAL REQUIRED — action={action!r} reason={reason!r}",
+        tool="agentic_loop.approval_gate",
     )
-    # Production: replace with actual Gaian approval UI event
-    # This stub returns False (deny by default) to enforce safe defaults
     return False
 
 
@@ -224,6 +284,12 @@ class AgenticLoop:
 
     Every cycle produces a LoopCycle record for the audit trail.
     The loop never silently swallows failures.
+
+    Observability:
+    - The entire session runs inside a TraceContext span.
+    - Each PRAO phase is a child span.
+    - Every tool dispatch and gate decision is logged + audited.
+    - Per-phase latency is tracked in Telemetry.
 
     Usage::
 
@@ -277,10 +343,20 @@ class AgenticLoop:
             session_mode=session_mode,
             extra=initial_context or {},
         )
+        session_id = context.session_id
 
-        logger.info(
-            "[AgenticLoop] START session=%s gaian=%s goal=%r",
-            context.session_id, gaian_id, goal[:80]
+        # Audit: session start
+        _audit_record(
+            AuditEventType.SESSION_START if _OBS_AVAILABLE else "session.start",
+            actor=gaian_id,
+            action=f"loop:start:{session_id}",
+            meta={"goal": goal[:120], "session_mode": session_mode},
+        )
+
+        _log_info(
+            f"[AgenticLoop] START session={session_id} gaian={gaian_id} goal={goal[:80]!r}",
+            tool="agentic_loop",
+            meta={"session_id": session_id, "gaian_id": gaian_id, "goal": goal[:120]},
         )
 
         if self.task_graph_factory:
@@ -292,93 +368,139 @@ class AgenticLoop:
         error_message: Optional[str] = None
         loop_start = time.time()
 
-        for iteration in range(1, self.max_iterations + 1):
-            if self._cancelled:
-                halt = HaltCondition.GAIAN_CANCELLED
-                logger.info("[AgenticLoop] CANCELLED by Gaian at iteration %d", iteration)
-                break
+        # ── Outer session TraceContext ────────────────────────────────────────
+        _session_ctx = TraceContext(f"agentic_loop:{session_id}") if _OBS_AVAILABLE else None
+        session_entered = False
+        if _session_ctx:
+            _session_ctx.__enter__()
+            session_entered = True
 
-            cycle = LoopCycle(
-                session_id=context.session_id,
-                iteration=iteration,
-            )
-            cycle_start = time.time()
-
-            try:
-                # ── PERCEIVE ──────────────────
-                cycle.phase_entered = LoopPhase.PERCEIVE
-                await self._perceive(context, cycle)
-
-                # ── REASON ───────────────────
-                cycle.phase_entered = LoopPhase.REASON
-                should_proceed = await self._reason(context, cycle)
-                if not should_proceed:
-                    halt = HaltCondition.GOAL_ACHIEVED
-                    cycle.halt_condition = halt
-                    cycle.should_continue = False
-                    cycles.append(cycle)
+        try:
+            for iteration in range(1, self.max_iterations + 1):
+                if self._cancelled:
+                    halt = HaltCondition.GAIAN_CANCELLED
+                    _log_info(
+                        f"[AgenticLoop] CANCELLED by Gaian at iteration {iteration}",
+                        tool="agentic_loop",
+                        meta={"session_id": session_id, "iteration": iteration},
+                    )
                     break
 
-                # ── ACT ───────────────────────
-                cycle.phase_entered = LoopPhase.ACT
-                action_ok, action_halt = await self._act(context, cycle)
-                if not action_ok:
-                    halt = action_halt or HaltCondition.ACTION_BLOCKED
-                    cycle.halt_condition = halt
-                    cycle.should_continue = False
-                    cycles.append(cycle)
-                    break
-
-                # ── OBSERVE ───────────────────
-                cycle.phase_entered = LoopPhase.OBSERVE
-                goal_done, observe_halt = await self._observe(context, cycle)
-                cycle.phase_exited = LoopPhase.HALTED if observe_halt else LoopPhase.OBSERVE
-
-                context.cycle_memory.append({
-                    "iteration": iteration,
-                    "action": cycle.planned_action,
-                    "success": cycle.action_approved and cycle.action_error is None,
-                    "progress": cycle.goal_progress,
-                })
-
-            except Exception as exc:  # noqa: BLE001
-                logger.exception(
-                    "[AgenticLoop] ERROR at iteration %d phase=%s: %s",
-                    iteration, cycle.phase_entered.value, exc
+                cycle = LoopCycle(
+                    session_id=session_id,
+                    iteration=iteration,
                 )
-                cycle.action_error = str(exc)
-                halt = HaltCondition.ERROR
-                error_message = str(exc)
-                cycle.halt_condition = halt
+                cycle_start = time.time()
+                goal_done = False
+                observe_halt: Optional[HaltCondition] = None
+
+                try:
+                    # ── PERCEIVE ──────────────────────────────────────────────
+                    await self._run_phase(
+                        LoopPhase.PERCEIVE, context, cycle,
+                        self._perceive
+                    )
+
+                    # ── REASON ────────────────────────────────────────────────
+                    should_proceed = await self._run_phase(
+                        LoopPhase.REASON, context, cycle,
+                        self._reason
+                    )
+                    if not should_proceed:
+                        halt = HaltCondition.GOAL_ACHIEVED
+                        cycle.halt_condition = halt
+                        cycle.should_continue = False
+                        cycles.append(cycle)
+                        break
+
+                    # ── ACT ───────────────────────────────────────────────────
+                    action_ok, action_halt = await self._run_phase(
+                        LoopPhase.ACT, context, cycle,
+                        self._act
+                    )
+                    if not action_ok:
+                        halt = action_halt or HaltCondition.ACTION_BLOCKED
+                        cycle.halt_condition = halt
+                        cycle.should_continue = False
+                        cycles.append(cycle)
+                        break
+
+                    # ── OBSERVE ───────────────────────────────────────────────
+                    goal_done, observe_halt = await self._run_phase(
+                        LoopPhase.OBSERVE, context, cycle,
+                        self._observe
+                    )
+                    cycle.phase_exited = LoopPhase.HALTED if observe_halt else LoopPhase.OBSERVE
+
+                    context.cycle_memory.append({
+                        "iteration": iteration,
+                        "action": cycle.planned_action,
+                        "success": cycle.action_approved and cycle.action_error is None,
+                        "progress": cycle.goal_progress,
+                    })
+
+                except Exception as exc:  # noqa: BLE001
+                    _log_error(
+                        f"[AgenticLoop] ERROR at iteration {iteration} "
+                        f"phase={cycle.phase_entered.value}: {exc}",
+                        tool="agentic_loop",
+                        outcome="error",
+                        meta={"session_id": session_id, "iteration": iteration, "error": str(exc)},
+                    )
+                    cycle.action_error = str(exc)
+                    halt = HaltCondition.ERROR
+                    error_message = str(exc)
+                    cycle.halt_condition = halt
+                    cycles.append(cycle)
+                    break
+
+                finally:
+                    cycle.duration_ms = (time.time() - cycle_start) * 1000
+
                 cycles.append(cycle)
-                break
+                self._log_cycle(cycle)
 
-            finally:
-                cycle.duration_ms = (time.time() - cycle_start) * 1000
+                if goal_done:
+                    halt = HaltCondition.GOAL_ACHIEVED
+                    final_output = context.extra.get("final_output")
+                    break
 
-            cycles.append(cycle)
-            self._log_cycle(cycle)
+                if observe_halt:
+                    halt = observe_halt
+                    break
 
-            if goal_done:
-                halt = HaltCondition.GOAL_ACHIEVED
-                final_output = context.extra.get("final_output")
-                break
+            else:
+                _log_warning(
+                    f"[AgenticLoop] MAX_ITERATIONS ({self.max_iterations}) reached "
+                    f"for goal={goal[:80]!r} — halting. (Canon C30)",
+                    tool="agentic_loop",
+                    outcome="warning",
+                    meta={"session_id": session_id, "max_iterations": self.max_iterations},
+                )
+                halt = HaltCondition.MAX_ITERATIONS
 
-            if observe_halt:
-                halt = observe_halt
-                break
-
-        else:
-            # Exhausted iterations — Canon C30: surface this, never swallow it
-            logger.warning(
-                "[AgenticLoop] MAX_ITERATIONS (%d) reached for goal=%r — halting.",
-                self.max_iterations, goal[:80]
-            )
-            halt = HaltCondition.MAX_ITERATIONS
+        finally:
+            if session_entered and _session_ctx:
+                _session_ctx.__exit__(None, None, None)
 
         total_duration = time.time() - loop_start
+
+        # Audit: session end
+        _audit_record(
+            AuditEventType.SESSION_END if _OBS_AVAILABLE else "session.end",
+            actor=gaian_id,
+            action=f"loop:end:{session_id}",
+            outcome="ok" if halt == HaltCondition.GOAL_ACHIEVED else halt.value,
+            meta={
+                "halt_condition": halt.value,
+                "iterations": len(cycles),
+                "duration_s": round(total_duration, 3),
+                "goal_achieved": halt == HaltCondition.GOAL_ACHIEVED,
+            },
+        )
+
         result = AgenticLoopResult(
-            session_id=context.session_id,
+            session_id=session_id,
             goal=goal,
             gaian_id=gaian_id,
             halt_condition=halt,
@@ -390,16 +512,54 @@ class AgenticLoop:
             error_message=error_message,
         )
 
-        logger.info(
-            "[AgenticLoop] END session=%s halt=%s iterations=%d duration=%.2fs goal_achieved=%s",
-            context.session_id, halt.value, len(cycles), total_duration, result.goal_achieved
+        _log_info(
+            f"[AgenticLoop] END session={session_id} halt={halt.value} "
+            f"iterations={len(cycles)} duration={total_duration:.2f}s "
+            f"goal_achieved={result.goal_achieved}",
+            tool="agentic_loop",
+            latency_ms=round(total_duration * 1000, 2),
+            outcome="ok" if result.goal_achieved else halt.value,
+            meta=result.to_dict(),
         )
+        _telemetry_record("agentic_loop.session", latency_ms=total_duration * 1000,
+                          error=halt == HaltCondition.ERROR)
+
         return result
 
     def cancel(self) -> None:
         """Gaian-initiated cancellation. Takes effect before the next iteration."""
         self._cancelled = True
-        logger.info("[AgenticLoop] Cancellation requested by Gaian.")
+        _log_info("[AgenticLoop] Cancellation requested by Gaian.", tool="agentic_loop")
+
+    # ── Phase runner (new) ───────────────────────────────────────────────────
+
+    async def _run_phase(self, phase: LoopPhase, context: LoopContext,
+                          cycle: LoopCycle, fn: Callable) -> Any:
+        """
+        Execute a loop phase wrapped in a TraceContext child span.
+        Records phase latency in Telemetry.
+        Returns whatever the phase function returns.
+        """
+        cycle.phase_entered = phase
+        phase_start = time.time()
+        span_name = f"agentic_loop.{phase.value}"
+
+        if _OBS_AVAILABLE:
+            ctx = TraceContext(span_name, meta={"session_id": context.session_id,
+                                                 "iteration": cycle.iteration})
+            ctx.__enter__()
+        try:
+            result = await fn(context, cycle)
+            elapsed = (time.time() - phase_start) * 1000
+            _telemetry_record(span_name, latency_ms=elapsed)
+            return result
+        except Exception:
+            elapsed = (time.time() - phase_start) * 1000
+            _telemetry_record(span_name, latency_ms=elapsed, error=True)
+            raise
+        finally:
+            if _OBS_AVAILABLE:
+                ctx.__exit__(None, None, None)
 
     # ── Loop phases ──────────────────────────
 
@@ -407,21 +567,14 @@ class AgenticLoop:
         """
         PERCEIVE: Gather ambient context.
         Reads session state, biometric coherence, planetary signals.
-        Populates cycle perception fields for downstream phases.
         """
-        # Session mode — from context or environment
         cycle.perceived_session_mode = context.session_mode
-
-        # Biometric coherence — delegate to engine if available
         if hasattr(context, "biometric_coherence") and context.biometric_coherence is not None:
             cycle.perceived_biometric = context.biometric_coherence
         else:
-            cycle.perceived_biometric = None  # engine offline — graceful degradation
-
-        # Planetary label
+            cycle.perceived_biometric = None
         cycle.perceived_planetary = context.planetary_label
 
-        # Hook for subclasses / injected perception layer
         if hasattr(self, "_perception_hook"):
             await self._perception_hook(context, cycle)  # type: ignore
 
@@ -430,16 +583,13 @@ class AgenticLoop:
     ) -> bool:
         """
         REASON: Determine the next best action toward the goal.
-        Returns False if the goal is already complete (nothing left to do).
-        Uses SynergyEngine and TaskGraph if available.
-        Falls back to a stub plan if engines are not yet wired.
+        Returns False if the goal is already complete.
         """
-        # Check if task graph signals completion
         if context.task_graph is not None:
             try:
                 if context.task_graph.is_complete():
                     cycle.reasoning_summary = "TaskGraph reports all tasks complete."
-                    return False  # Signal: goal achieved
+                    return False
                 next_task = context.task_graph.next_task()
                 context.current_task = next_task
                 cycle.planned_action = getattr(next_task, "action", str(next_task))
@@ -447,9 +597,9 @@ class AgenticLoop:
                 cycle.reasoning_summary = f"TaskGraph selected: {cycle.planned_action}"
                 return True
             except Exception as exc:  # noqa: BLE001
-                logger.warning("[AgenticLoop.reason] TaskGraph error: %s", exc)
+                _log_warning(f"[AgenticLoop.reason] TaskGraph error: {exc}",
+                             tool="agentic_loop.reason")
 
-        # Synergy engine reasoning
         if self.synergy_engine is not None:
             try:
                 plan = await self._synergy_plan(context)
@@ -460,11 +610,10 @@ class AgenticLoop:
                 cycle.reasoning_summary = plan.get("summary", "")
                 return True
             except Exception as exc:  # noqa: BLE001
-                logger.warning("[AgenticLoop.reason] SynergyEngine error: %s", exc)
+                _log_warning(f"[AgenticLoop.reason] SynergyEngine error: {exc}",
+                             tool="agentic_loop.reason")
 
-        # Fallback: stub pass-through (loop continues; integrator must wire real plan)
         if len(context.cycle_memory) >= 3:
-            # Safety: if we have done 3+ cycles without real plan, declare complete
             cycle.reasoning_summary = "Stub planner: 3 cycles passed — declaring complete."
             return False
 
@@ -479,12 +628,13 @@ class AgenticLoop:
         """
         ACT: Execute the planned action through the ActionGate.
         Canon C01: Every action passes through sovereignty check first.
-        Returns (action_ok, optional_halt_condition).
+        Writes AGENT_ACTION + POLICY_DECISION audit events.
         """
         action = cycle.planned_action
         tool_name = cycle.planned_tool
+        act_start = time.time()
 
-        # ── ActionGate sovereignty check ──
+        # ── ActionGate sovereignty check ──────────────────────────────────────
         if self.action_gate is not None:
             try:
                 gate_result = await self._gate_check(action, context)
@@ -492,50 +642,122 @@ class AgenticLoop:
 
                 if not gate_result.approved:
                     if gate_result.requires_human_approval:
-                        # Human-in-the-loop gate
                         approved = await self.approval_callback(
                             action,
                             gate_result.reason or "Irreversible action requires Gaian confirmation."
                         )
                         if not approved:
                             cycle.action_approved = False
-                            logger.info(
-                                "[AgenticLoop.act] Gaian declined approval for action=%s",
-                                action
+                            _log_info(
+                                f"[AgenticLoop.act] Gaian declined approval for action={action!r}",
+                                tool="agentic_loop.act",
+                                outcome="deny",
+                                meta={"action": action, "session_id": context.session_id},
+                            )
+                            _audit_record(
+                                AuditEventType.PERMISSION_DENY if _OBS_AVAILABLE else "permission.deny",
+                                actor=context.gaian_id,
+                                action=action,
+                                outcome="deny",
+                                meta={"reason": "gaian_declined", "gate_decision": str(gate_result)},
                             )
                             return False, HaltCondition.HUMAN_REQUIRED
-                        # Gaian approved — proceed
+                        # Gaian approved — fall through to execute
+                        _audit_record(
+                            AuditEventType.PERMISSION_GRANT if _OBS_AVAILABLE else "permission.grant",
+                            actor=context.gaian_id,
+                            action=action,
+                            outcome="ok",
+                            meta={"gate_decision": str(gate_result)},
+                        )
                     else:
                         cycle.action_approved = False
-                        logger.warning(
-                            "[AgenticLoop.act] ActionGate BLOCKED action=%s reason=%s",
-                            action, gate_result.reason
+                        _log_warning(
+                            f"[AgenticLoop.act] ActionGate BLOCKED action={action!r} "
+                            f"reason={gate_result.reason!r}",
+                            tool="agentic_loop.act",
+                            outcome="blocked",
+                            meta={"action": action, "reason": gate_result.reason},
+                        )
+                        _audit_record(
+                            AuditEventType.POLICY_DECISION if _OBS_AVAILABLE else "policy.decision",
+                            actor="action_gate",
+                            action=action,
+                            outcome="blocked",
+                            meta={"reason": gate_result.reason},
                         )
                         return False, HaltCondition.ACTION_BLOCKED
+                else:
+                    _audit_record(
+                        AuditEventType.POLICY_DECISION if _OBS_AVAILABLE else "policy.decision",
+                        actor="action_gate",
+                        action=action,
+                        outcome="approved",
+                        meta={"gate_decision": str(gate_result)},
+                    )
             except Exception as exc:  # noqa: BLE001
-                logger.warning("[AgenticLoop.act] ActionGate error (proceeding): %s", exc)
+                _log_warning(f"[AgenticLoop.act] ActionGate error (proceeding): {exc}",
+                             tool="agentic_loop.act")
 
-        # ── Execute tool ──────────────────
+        # ── Execute tool ──────────────────────────────────────────────────────
         cycle.action_approved = True
+        tool_start = time.time()
+
         if tool_name and tool_name in self.tool_registry:
             tool_fn = self.tool_registry[tool_name]
             try:
                 result = await tool_fn(context, cycle)
+                tool_elapsed = (time.time() - tool_start) * 1000
                 cycle.action_result = result
                 context.last_action_result = result
                 context.last_action_success = True
+
+                _struct_logger.tool_call(tool_name, latency_ms=tool_elapsed, outcome="ok",
+                                          meta={"session_id": context.session_id,
+                                                "iteration": cycle.iteration}) \
+                    if _struct_logger else None
+                _telemetry_record(f"tool.{tool_name}", latency_ms=tool_elapsed)
+                _audit_record(
+                    AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
+                    actor=context.gaian_id,
+                    action=f"tool:{tool_name}",
+                    outcome="ok",
+                    resource=tool_name,
+                    meta={"action": action, "latency_ms": round(tool_elapsed, 2)},
+                )
+
             except Exception as exc:  # noqa: BLE001
+                tool_elapsed = (time.time() - tool_start) * 1000
                 cycle.action_error = str(exc)
                 context.last_action_success = False
-                logger.error(
-                    "[AgenticLoop.act] Tool '%s' raised: %s", tool_name, exc
+                _log_error(
+                    f"[AgenticLoop.act] Tool {tool_name!r} raised: {exc}",
+                    tool=f"agentic_loop.tool.{tool_name}",
+                    latency_ms=round(tool_elapsed, 2),
+                    outcome="error",
+                    meta={"error": str(exc)},
                 )
-                # Don't halt — let observe() decide
+                _telemetry_record(f"tool.{tool_name}", latency_ms=tool_elapsed, error=True)
+                _audit_record(
+                    AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
+                    actor=context.gaian_id,
+                    action=f"tool:{tool_name}",
+                    outcome="error",
+                    resource=tool_name,
+                    meta={"error": str(exc)},
+                )
         else:
             # No tool registered — stub success
             cycle.action_result = {"status": "stub_ok", "action": action}
             context.last_action_result = cycle.action_result
             context.last_action_success = True
+            _audit_record(
+                AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
+                actor=context.gaian_id,
+                action=f"stub:{action}",
+                outcome="ok",
+                meta={"note": "no tool registered"},
+            )
 
         return True, None
 
@@ -546,7 +768,6 @@ class AgenticLoop:
         OBSERVE: Evaluate action outcome, update state, decide whether to loop or halt.
         Returns (goal_done, optional_halt).
         """
-        # Track task completion
         if context.current_task is not None:
             if context.last_action_success:
                 context.completed_tasks.append(context.current_task)
@@ -558,13 +779,11 @@ class AgenticLoop:
             else:
                 context.failed_tasks.append(context.current_task)
 
-        # Estimate progress
         total = len(context.completed_tasks) + len(context.failed_tasks)
         cycle.goal_progress = (
             len(context.completed_tasks) / total if total > 0 else 0.0
         )
 
-        # Goal completion signal from task graph
         if context.task_graph is not None:
             try:
                 if context.task_graph.is_complete():
@@ -578,11 +797,13 @@ class AgenticLoop:
             except Exception:  # noqa: BLE001
                 pass
 
-        # Persistent failure gate — if last 3 actions all failed, halt
         recent = context.cycle_memory[-3:] if len(context.cycle_memory) >= 3 else []
         if recent and all(not c.get("success") for c in recent):
-            logger.warning(
-                "[AgenticLoop.observe] 3 consecutive failures — halting loop."
+            _log_warning(
+                "[AgenticLoop.observe] 3 consecutive failures — halting loop.",
+                tool="agentic_loop.observe",
+                outcome="error",
+                meta={"session_id": context.session_id},
             )
             return False, HaltCondition.ERROR
 
@@ -592,7 +813,6 @@ class AgenticLoop:
     # ── Internal helpers ─────────────────────
 
     async def _synergy_plan(self, context: LoopContext) -> dict:
-        """Delegate goal planning to SynergyEngine."""
         if self.synergy_engine is None:
             return {"action": "stub", "tool": "", "summary": "no synergy engine"}
         if asyncio.iscoroutinefunction(self.synergy_engine.plan):
@@ -600,24 +820,37 @@ class AgenticLoop:
         return self.synergy_engine.plan(context.goal, context)
 
     async def _gate_check(self, action: str, context: LoopContext):
-        """Run the ActionGate sovereignty check."""
         if asyncio.iscoroutinefunction(self.action_gate.evaluate):
             return await self.action_gate.evaluate(action, context.gaian_id)
         return self.action_gate.evaluate(action, context.gaian_id)
 
     def _log_cycle(self, cycle: LoopCycle) -> None:
         """Emit a structured log for the completed cycle — Canon C30."""
-        logger.info(
-            "[AgenticLoop] CYCLE iteration=%d phase=%s action=%r tool=%r "
-            "approved=%s progress=%.2f duration_ms=%.1f halt=%s",
-            cycle.iteration,
-            cycle.phase_exited.value,
-            cycle.planned_action[:60] if cycle.planned_action else "",
-            cycle.planned_tool,
-            cycle.action_approved,
-            cycle.goal_progress,
-            cycle.duration_ms,
-            cycle.halt_condition.value if cycle.halt_condition else "none",
+        _log_info(
+            f"[AgenticLoop] CYCLE iteration={cycle.iteration} "
+            f"phase={cycle.phase_exited.value} "
+            f"action={cycle.planned_action[:60]!r} "
+            f"tool={cycle.planned_tool!r} "
+            f"approved={cycle.action_approved} "
+            f"progress={cycle.goal_progress:.2f} "
+            f"duration_ms={cycle.duration_ms:.1f} "
+            f"halt={cycle.halt_condition.value if cycle.halt_condition else 'none'}",
+            tool="agentic_loop",
+            latency_ms=round(cycle.duration_ms, 2),
+            outcome="ok" if not cycle.action_error else "error",
+            meta={
+                "session_id": cycle.session_id,
+                "iteration": cycle.iteration,
+                "action": cycle.planned_action,
+                "tool": cycle.planned_tool,
+                "approved": cycle.action_approved,
+                "progress": round(cycle.goal_progress, 3),
+            },
+        )
+        _telemetry_record(
+            "agentic_loop.cycle",
+            latency_ms=cycle.duration_ms,
+            error=bool(cycle.action_error),
         )
 
 
@@ -636,8 +869,7 @@ def create_loop(
     """
     Factory for creating a configured AgenticLoop.
     All parameters are optional — the loop degrades gracefully
-    when engines are not yet wired, so this can ship before its
-    dependencies are fully built.
+    when engines are not yet wired.
     """
     return AgenticLoop(
         action_gate=action_gate,
