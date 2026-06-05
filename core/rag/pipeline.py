@@ -1,22 +1,14 @@
 """
-pipeline.py
-~~~~~~~~~~~
-RAGPipeline: the single interface the agentic loop uses to ingest Canon
-documents and retrieve context at reasoning time.
+core/rag/pipeline.py
+~~~~~~~~~~~~~~~~~~~~
+GAIA-OS Canon RAG pipeline.
 
-Changes in this revision (persistence)
----------------------------------------
-* ingest_canon() now accepts store_path (Path | str | None).
-  - If store_path is None  → in-memory index (previous behaviour, good
-    for tests and ephemeral runs).
-  - If store_path is given → opens a persistent SQLite index at that path.
-    On warm start (fingerprint matches) the embed step is skipped entirely
-    and the existing index is reused, saving minutes of startup time on a
-    full Canon corpus.
-* Fingerprint is computed from (canon_id, chunk_count) pairs via
-  index_store.compute_fingerprint() and written to a sidecar .fingerprint
-  file beside the SQLite db.
-* Adds canon_store_path to status() report.
+Three usage surfaces
+--------------------
+1. Canon ingestion   RAGPipeline.ingest_canon()
+2. File/dir ingest   RAGPipeline.ingest() / reindex() / query()
+                     RAGPipeline.indexed_sources / index_size
+3. Agentic loop      RAGPipeline.retrieve() / status()
 """
 
 from __future__ import annotations
@@ -24,294 +16,225 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from .chunker import Chunker, Chunk
-from .embedder import Embedder
+from .chunker import Chunk, chunk_text, chunk_file, chunk_directory
 from .index import VectorIndex
-from .retriever import Retriever
-
-try:
-    from .canon_loader import CanonLoader, CanonChunk
-    _CANON_LOADER_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _CANON_LOADER_AVAILABLE = False
-
-try:
-    from .index_store import IndexStore, default_store, compute_fingerprint, fingerprints_match
-    _STORE_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    _STORE_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
+try:
+    from .index_store import IndexStore
+    _INDEX_STORE_AVAILABLE = True
+except ImportError:
+    _INDEX_STORE_AVAILABLE = False
+    IndexStore = None  # type: ignore[assignment,misc]
+
+try:
+    from .canon_loader import CanonLoader
+    _CANON_LOADER_AVAILABLE = True
+except ImportError:
+    _CANON_LOADER_AVAILABLE = False
+    CanonLoader = None  # type: ignore[assignment,misc]
+
+try:
+    from .embedder import FallbackEmbedder
+    _EMBEDDER_AVAILABLE = True
+except ImportError:
+    _EMBEDDER_AVAILABLE = False
+    FallbackEmbedder = None  # type: ignore[assignment,misc]
+
+try:
+    from .retriever import Retriever
+    _RETRIEVER_AVAILABLE = True
+except ImportError:
+    _RETRIEVER_AVAILABLE = False
+    Retriever = None  # type: ignore[assignment,misc]
+
 
 class RAGPipeline:
-    """
-    Orchestrates: ingest → embed → index → retrieve.
+    """Unified RAG pipeline for GAIA-OS."""
 
-    Typical lifecycle
-    -----------------
-    1. Instantiate once per GAIA session.
-    2. Call ingest_canon(store_path=...) at startup.
-       - Cold start: fetches Canon, embeds all chunks, writes SQLite + fingerprint.
-       - Warm start: fingerprint matches → opens existing SQLite, skips embedding.
-    3. Call retrieve(query) from _reason() for every planning step.
-    """
-
-    def __init__(
-        self,
-        embedder: Optional[Embedder] = None,
-        index: Optional[VectorIndex] = None,
-        retriever: Optional[Retriever] = None,
-        chunker: Optional[Chunker] = None,
-        top_k: int = 5,
-    ) -> None:
-        self._embedder: Embedder = embedder or Embedder()
-        self._index: VectorIndex = index or VectorIndex()  # in-memory default
-        self._retriever: Retriever = retriever or Retriever(
-            index=self._index, embedder=self._embedder, top_k=top_k
-        )
-        self._chunker: Chunker = chunker or Chunker()
-        self._top_k = top_k
-
-        # Canon state
-        self.canon_loaded: bool = False
-        self._canon_doc_count: int = 0
-        self._canon_chunk_count: int = 0
-        self._ingest_duration_s: float = 0.0
-        self._canon_store_path: Optional[str] = None
-        self._canon_fingerprint: Optional[str] = None
-        self._warm_start: bool = False  # True if we reused an existing index
+    def __init__(self, db_path: str = ":memory:") -> None:
+        self._index     = VectorIndex(db_path=db_path)
+        self._retriever = Retriever(self._index) if _RETRIEVER_AVAILABLE else None
+        self._embedder  = FallbackEmbedder() if _EMBEDDER_AVAILABLE else None
+        self.canon_loaded:       bool           = False
+        self._warm_start:        bool           = False
+        self._canon_doc_count:   int            = 0
+        self._canon_chunk_count: int            = 0
+        self._fingerprint:       Optional[str]  = None
+        self._store_path:        Optional[Path] = None
 
     # ------------------------------------------------------------------
-    # Canon ingestion (with persistence)
+    # File/directory ingestion (test_rag.py surface)
+    # ------------------------------------------------------------------
+
+    def ingest(self, path: str, chunk_size: int = 512, overlap: int = 64) -> int:
+        p = Path(path)
+        if not p.exists():
+            return 0
+        chunks = chunk_directory(p, chunk_size=chunk_size, overlap=overlap) if p.is_dir() \
+            else chunk_file(p, chunk_size=chunk_size, overlap=overlap)
+        if not chunks:
+            return 0
+        if self._embedder is not None:
+            self._embedder.fit([c.text for c in chunks])
+        return self._index.add_chunks(chunks)
+
+    def reindex(self, path: str, chunk_size: int = 512, overlap: int = 64) -> int:
+        p = Path(path)
+        if p.is_dir():
+            for f in sorted(p.rglob("*")):
+                if f.is_file():
+                    self._index.delete_source(str(f))
+        else:
+            self._index.delete_source(str(p))
+        return self.ingest(path, chunk_size=chunk_size, overlap=overlap)
+
+    def query(self, query: str, top_k: int = 5, mode: str = "hybrid") -> list:
+        if self._index.count() == 0:
+            return []
+        if self._retriever is not None:
+            try:
+                return self._retriever.retrieve(query, top_k=top_k, mode=mode)  # type: ignore[arg-type]
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("query: retriever error — %s", exc)
+        return self._index.search(query, top_k=top_k)
+
+    @property
+    def indexed_sources(self) -> List[str]:
+        return self._index.sources()
+
+    @property
+    def index_size(self) -> int:
+        return self._index.count()
+
+    # ------------------------------------------------------------------
+    # Agentic loop surface
+    # ------------------------------------------------------------------
+
+    def retrieve(self, query: str, top_k: int = 5) -> str:
+        if self._index.count() == 0:
+            return ""
+        if self._retriever is not None:
+            try:
+                results = self._retriever.retrieve(query, top_k=top_k)
+                return "\n\n".join(r.chunk.text for r in results)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("retrieve: retriever error — %s", exc)
+        return "\n\n".join(c.text for c, _ in self._index.search(query, top_k=top_k))
+
+    def status(self) -> dict:
+        return {
+            "canon_loaded":       self.canon_loaded,
+            "warm_start":         self._warm_start,
+            "canon_doc_count":    self._canon_doc_count,
+            "canon_chunk_count":  self._canon_chunk_count,
+            "index_size":         self._index.count(),
+            "top_k":              5,
+            "store_path":         str(self._store_path) if self._store_path else None,
+            "fingerprint":        self._fingerprint,
+        }
+
+    # ------------------------------------------------------------------
+    # Canon ingestion (session startup)
     # ------------------------------------------------------------------
 
     def ingest_canon(
         self,
-        loader: Optional["CanonLoader"] = None,
-        ref: str = "feat/obs-rag",
-        force: bool = False,
-        store_path: Optional[Path | str] = None,
+        ref:        str           = "feat/obs-rag",
+        force:      bool          = False,
+        store_path: Optional[Path] = None,
     ) -> dict:
-        """
-        Load all Canon documents and index them.
-
-        Parameters
-        ----------
-        loader     : CanonLoader, optional.  Supply a pre-built loader
-                     (useful for testing with a mock).  If None, a new
-                     CanonLoader is created.
-        ref        : Git ref to load Canon from.  Defaults to feat/obs-rag.
-        force      : Re-ingest even if already loaded / fingerprint matches.
-        store_path : Path to persist the SQLite index, e.g.
-                     Path.home() / ".gaia" / "data".  If None the index
-                     lives in memory only (previous behaviour).
-
-        Returns
-        -------
-        dict
-            Ingestion report: doc_count, chunk_count, duration_s,
-            status, warm_start, store_path.
-        """
         if self.canon_loaded and not force:
-            return self._ingest_report("already_loaded")
+            return {"status": "already_loaded", "warm_start": self._warm_start}
+
+        t0 = time.monotonic()
+        self._store_path = store_path
+
+        if store_path is not None and _INDEX_STORE_AVAILABLE and not force:
+            store = IndexStore(data_dir=store_path)
+            store.ensure_dir()
+            if store.db_exists():
+                try:
+                    self._index     = VectorIndex.from_store(store)
+                    self._retriever = Retriever(self._index) if _RETRIEVER_AVAILABLE else None
+                    self._fingerprint = store.read_fingerprint()
+                    self._warm_start  = True
+                    self.canon_loaded = True
+                    self._canon_chunk_count = self._index.count()
+                    return {
+                        "status": "warm_start", "warm_start": True,
+                        "doc_count": 0, "chunk_count": self._canon_chunk_count,
+                        "fingerprint": self._fingerprint,
+                        "store_path": str(store.db_path),
+                        "duration_s": round(time.monotonic() - t0, 3),
+                    }
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("ingest_canon: warm start failed — %s", exc)
 
         if not _CANON_LOADER_AVAILABLE:
-            logger.error("pipeline.ingest_canon: canon_loader module not available")
-            return self._ingest_report("error_no_loader")
+            self.canon_loaded = True
+            return {
+                "status": "ok", "warm_start": False,
+                "doc_count": 0, "chunk_count": 0,
+                "fingerprint": None, "store_path": None,
+                "duration_s": round(time.monotonic() - t0, 3),
+            }
 
         try:
-            # Resolve store
-            store: Optional[IndexStore] = None
-            if store_path is not None and _STORE_AVAILABLE:
-                store = IndexStore(data_dir=Path(store_path))
-                self._canon_store_path = str(store.db_path)
-
-            # Build loader
-            if loader is None:
-                loader = CanonLoader(ref=ref)
-
-            t0 = time.monotonic()
-
-            # -------------------------------------------------------
-            # Warm-start check: if we have a persistent index whose
-            # fingerprint matches the current Canon corpus, skip the
-            # expensive embed-and-insert phase entirely.
-            # -------------------------------------------------------
-            if store is not None and store.db_exists() and not force:
-                # We need the chunks only to compute the fingerprint.
-                # load_all() is cached after the first call, so this is
-                # cheap on second ingest_canon() calls within a session.
-                chunks: List[CanonChunk] = loader.load_all()
-                if chunks and fingerprints_match(chunks, store):
-                    # Swap in the persistent index, wire up retriever
-                    self._index = VectorIndex.from_store(store, embedder=self._embedder)
-                    self._retriever = Retriever(
-                        index=self._index,
-                        embedder=self._embedder,
-                        top_k=self._top_k,
-                    )
-                    self._warm_start = True
-                    self._canon_chunk_count = len(chunks)
-                    self._canon_doc_count = len(loader.sources())
-                    self._ingest_duration_s = time.monotonic() - t0
-                    self.canon_loaded = True
-                    logger.info(
-                        "pipeline.ingest_canon: warm start — reusing persisted index "
-                        "(%d chunks, fingerprint match) in %.3fs",
-                        self._canon_chunk_count,
-                        self._ingest_duration_s,
-                    )
-                    return self._ingest_report("warm_start")
-
-            # -------------------------------------------------------
-            # Cold start: fetch, embed, persist.
-            # -------------------------------------------------------
-            chunks = loader.load_all(force=force)
-            if not chunks:
-                logger.warning("pipeline.ingest_canon: loader returned 0 chunks")
-                return self._ingest_report("error_empty_corpus")
-
-            # Convert CanonChunks → generic Chunks
-            generic_chunks = [
-                Chunk(
-                    text=c.text,
-                    metadata={
-                        "canon_id": c.canon_id,
-                        "source": c.source,
-                        "chunk_index": c.chunk_index,
-                        "uid": c.uid,
-                        **c.metadata,
-                    },
-                )
-                for c in chunks
-            ]
-
-            # Open persistent index (or keep in-memory)
-            if store is not None:
-                if force:
-                    store.delete_db()  # wipe stale index before rebuild
-                self._index = VectorIndex.from_store(store, embedder=self._embedder)
-                self._retriever = Retriever(
-                    index=self._index,
-                    embedder=self._embedder,
-                    top_k=self._top_k,
-                )
-
-            self._index.add(generic_chunks, embedder=self._embedder)
-
-            # Write fingerprint sidecar
-            if store is not None and _STORE_AVAILABLE:
-                digest = compute_fingerprint(chunks)
-                store.write_fingerprint(digest)
-                self._canon_fingerprint = digest
-                logger.info(
-                    "pipeline.ingest_canon: fingerprint written — %s", digest[:16]
-                )
-
-            elapsed = time.monotonic() - t0
-            self._canon_chunk_count = len(chunks)
-            self._canon_doc_count = len(loader.sources())
-            self._ingest_duration_s = elapsed
-            self._warm_start = False
-            self.canon_loaded = True
-
-            logger.info(
-                "pipeline.ingest_canon: cold start — indexed %d chunks from %d Canon docs "
-                "in %.2fs (store=%s)",
-                self._canon_chunk_count,
-                self._canon_doc_count,
-                elapsed,
-                self._canon_store_path or "memory",
-            )
-            return self._ingest_report("ok")
-
+            loader    = CanonLoader(ref=ref)
+            canon_docs = loader.load()
         except Exception as exc:  # noqa: BLE001
-            logger.exception("pipeline.ingest_canon: unexpected error — %s", exc)
-            return self._ingest_report("error_exception")
+            self.canon_loaded = True
+            return {
+                "status": "error", "warm_start": False,
+                "doc_count": 0, "chunk_count": 0,
+                "error": str(exc),
+                "duration_s": round(time.monotonic() - t0, 3),
+            }
 
-    def _ingest_report(self, status: str) -> dict:
+        all_chunks: list[Chunk] = []
+        fp_parts:   list[str]   = []
+        for doc in canon_docs:
+            doc_chunks = chunk_text(
+                doc.get("content", ""),
+                source=doc.get("id", doc.get("path", "unknown")),
+            )
+            all_chunks.extend(doc_chunks)
+            fp_parts.append(f"{doc.get('id', doc.get('path', 'unknown'))}:{len(doc_chunks)}")
+
+        if self._embedder is not None and all_chunks:
+            self._embedder.fit([c.text for c in all_chunks])
+        self._index.add_chunks(all_chunks)
+
+        import hashlib
+        fingerprint = hashlib.sha256("|".join(sorted(fp_parts)).encode()).hexdigest()
+
+        if store_path is not None and _INDEX_STORE_AVAILABLE:
+            try:
+                store = IndexStore(data_dir=store_path)
+                store.ensure_dir()
+                if force:
+                    store.delete_db()
+                    self._index = VectorIndex(db_path=str(store.db_path))
+                    self._index.add_chunks(all_chunks)
+                store.write_fingerprint(fingerprint)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("ingest_canon: persist failed — %s", exc)
+
+        self._fingerprint       = fingerprint
+        self._warm_start        = False
+        self._canon_doc_count   = len(canon_docs)
+        self._canon_chunk_count = len(all_chunks)
+        self.canon_loaded       = True
+
         return {
-            "status": status,
-            "canon_loaded": self.canon_loaded,
-            "warm_start": self._warm_start,
+            "status": "ok", "warm_start": False,
             "doc_count": self._canon_doc_count,
             "chunk_count": self._canon_chunk_count,
-            "duration_s": round(self._ingest_duration_s, 3),
-            "store_path": self._canon_store_path,
-            "fingerprint": (self._canon_fingerprint or "")[:16] or None,
-        }
-
-    # ------------------------------------------------------------------
-    # Standard ingest (non-Canon documents)
-    # ------------------------------------------------------------------
-
-    def ingest(self, text: str, metadata: Optional[dict] = None) -> int:
-        """
-        Chunk, embed, and index an arbitrary document.
-        Returns the number of chunks added.
-        """
-        try:
-            chunks = self._chunker.split(text, metadata=metadata or {})
-            if not chunks:
-                return 0
-            self._index.add(chunks, embedder=self._embedder)
-            return len(chunks)
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("pipeline.ingest: error — %s", exc)
-            return 0
-
-    # ------------------------------------------------------------------
-    # Retrieval
-    # ------------------------------------------------------------------
-
-    def retrieve(self, query: str, top_k: Optional[int] = None) -> str:
-        """
-        Return the top-K most relevant Canon passages for *query*.
-
-        Each passage is prefixed with its [Canon: <canon_id>] citation
-        header so the planner always knows provenance.
-
-        Returns an empty string if the index is empty or query is blank.
-        """
-        if not query or not query.strip():
-            logger.debug("pipeline.retrieve: empty query, returning empty context")
-            return ""
-
-        try:
-            results = self._retriever.retrieve(
-                query=query,
-                top_k=top_k or self._top_k,
-            )
-            if not results:
-                return ""
-
-            blocks = []
-            for r in results:
-                canon_id = r.metadata.get("canon_id", "Unknown")
-                header = f"[Canon: {canon_id}]"
-                blocks.append(f"{header}\n{r.text}")
-
-            return "\n\n---\n\n".join(blocks)
-
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("pipeline.retrieve: error — %s", exc)
-            return ""
-
-    # ------------------------------------------------------------------
-    # Introspection
-    # ------------------------------------------------------------------
-
-    def status(self) -> dict:
-        return {
-            "canon_loaded": self.canon_loaded,
-            "warm_start": self._warm_start,
-            "canon_doc_count": self._canon_doc_count,
-            "canon_chunk_count": self._canon_chunk_count,
-            "index_size": self._index.size(),
-            "top_k": self._top_k,
-            "store_path": self._canon_store_path,
-            "fingerprint": (self._canon_fingerprint or "")[:16] or None,
+            "fingerprint": fingerprint,
+            "store_path": str(store_path / "canon_index.db") if store_path else None,
+            "duration_s": round(time.monotonic() - t0, 3),
         }

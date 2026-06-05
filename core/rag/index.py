@@ -1,266 +1,195 @@
 """
 core/rag/index.py
+~~~~~~~~~~~~~~~~~
+SQLite-backed vector index for the GAIA-OS RAG pipeline.
 
-SQLite-backed vector index for GAIA-OS RAG pipeline.
-Stores chunk text, provenance metadata, and embedding vectors.
-Supports cosine similarity search over stored embeddings.
-
-Schema:
-    chunks table:
-        chunk_id    TEXT PRIMARY KEY
-        source      TEXT
-        doc_title   TEXT
-        section     TEXT
-        chunk_index INTEGER
-        char_start  INTEGER
-        text        TEXT
-        embedding   BLOB     -- JSON-serialized float list
-        ingested_at TEXT
-
-Zero external dependencies: uses stdlib sqlite3 only.
-
-Changes in this revision
-------------------------
-* size()        -- alias for count(); required by RAGPipeline.status().
-* add()         -- alias for add_chunks(); matches pipeline call-site.
-* from_store()  -- classmethod to open a persistent db at the canonical
-                   path resolved by IndexStore, creating the directory
-                   and file on first use.
+Public surface
+--------------
+VectorIndex  — add_chunks(), search(), keyword_search(), count(), sources(),
+               size(), delete_source(), from_store().
 """
-import json
+
+from __future__ import annotations
+
+import logging
 import sqlite3
-import threading
-from datetime import datetime, timezone
+import struct
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from .chunker import Chunk
-from .embedder import FallbackEmbedder, cosine_similarity
+
+logger = logging.getLogger(__name__)
+
+try:
+    import numpy as np
+    _NUMPY = True
+except ImportError:
+    _NUMPY = False
 
 
-DEFAULT_DB_PATH = ":memory:"
+def _bag_of_words_embed(text: str, vocab_size: int = 256) -> List[float]:
+    vec   = [0.0] * vocab_size
+    total = 0
+    for ch in text.lower():
+        vec[ord(ch) % vocab_size] += 1.0
+        total += 1
+    if total > 0:
+        vec = [v / total for v in vec]
+    return vec
+
+
+def _embed(text: str, dim: int = 256) -> List[float]:
+    return _bag_of_words_embed(text, vocab_size=dim)
+
+
+def _cosine(a: List[float], b: List[float]) -> float:
+    if _NUMPY:
+        av = np.array(a, dtype=np.float32)
+        bv = np.array(b, dtype=np.float32)
+        d  = float(np.linalg.norm(av)) * float(np.linalg.norm(bv))
+        return float(np.dot(av, bv) / d) if d > 0 else 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na  = sum(x * x for x in a) ** 0.5
+    nb  = sum(x * x for x in b) ** 0.5
+    return dot / (na * nb) if na * nb > 0 else 0.0
+
+
+def _pack(vec: List[float]) -> bytes:
+    return struct.pack(f"{len(vec)}f", *vec)
+
+
+def _unpack(data: bytes) -> List[float]:
+    n = len(data) // 4
+    return list(struct.unpack(f"{n}f", data))
+
+
+_DDL = """
+CREATE TABLE IF NOT EXISTS chunks (
+    chunk_id   TEXT PRIMARY KEY,
+    text       TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    doc_title  TEXT DEFAULT '',
+    section    TEXT DEFAULT '',
+    char_start INTEGER DEFAULT 0,
+    embedding  BLOB
+);
+CREATE INDEX IF NOT EXISTS idx_source ON chunks(source);
+"""
 
 
 class VectorIndex:
     """
-    Persistent or in-memory SQLite vector index.
+    SQLite-backed vector index.
 
-    Args:
-        db_path: Path to SQLite file, or ':memory:' for in-memory.
-        embedder: Embedder instance (default: FallbackEmbedder).
+    Parameters
+    ----------
+    db_path : SQLite file path, or ':memory:' for an in-memory DB.
+    dim     : Embedding dimension.
     """
 
-    def __init__(
-        self,
-        db_path: str = DEFAULT_DB_PATH,
-        embedder: Optional[FallbackEmbedder] = None,
-    ):
-        self.db_path = db_path
-        self.embedder = embedder or FallbackEmbedder()
-        self._lock = threading.Lock()
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._init_schema()
-
-    # ------------------------------------------------------------------
-    # Classmethod constructors
-    # ------------------------------------------------------------------
+    def __init__(self, db_path: str = ":memory:", dim: int = 256) -> None:
+        self._db_path = db_path
+        self._dim     = dim
+        self._conn    = sqlite3.connect(db_path, check_same_thread=False)
+        self._conn.executescript(_DDL)
+        self._conn.commit()
 
     @classmethod
-    def from_store(cls, store: "IndexStore", embedder=None) -> "VectorIndex":  # type: ignore[name-defined]
-        """
-        Open (or create) a VectorIndex backed by the SQLite file at
-        *store.db_path*, ensuring the parent directory exists first.
-
-        This is the preferred constructor for production use; the default
-        constructor with db_path=':memory:' remains the default for tests.
-        """
-        store.ensure_dir()
-        return cls(db_path=str(store.db_path), embedder=embedder)
+    def from_store(cls, store: Any) -> "VectorIndex":
+        return cls(db_path=str(store.db_path))
 
     # ------------------------------------------------------------------
-    # Schema
+    # Write
     # ------------------------------------------------------------------
 
-    def _init_schema(self) -> None:
-        with self._conn:
-            self._conn.execute("""
-                CREATE TABLE IF NOT EXISTS chunks (
-                    chunk_id    TEXT PRIMARY KEY,
-                    source      TEXT NOT NULL,
-                    doc_title   TEXT,
-                    section     TEXT,
-                    chunk_index INTEGER,
-                    char_start  INTEGER,
-                    text        TEXT NOT NULL,
-                    embedding   TEXT,
-                    ingested_at TEXT NOT NULL
-                )
-            """)
-            self._conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_source ON chunks(source)"
-            )
-
-    # ------------------------------------------------------------------
-    # Write path
-    # ------------------------------------------------------------------
-
-    def add_chunks(self, chunks: List[Chunk]) -> int:
-        """
-        Add chunks to the index. Fits embedder vocabulary, then embeds + stores.
-        Returns count of newly indexed chunks (skips duplicates by chunk_id).
-        """
+    def add_chunks(self, chunks: List[Chunk], embedder: Optional[Any] = None) -> int:
         if not chunks:
             return 0
-
-        texts = [c.text for c in chunks]
-        self.embedder.fit(texts)
-
-        now = datetime.now(timezone.utc).isoformat()
         added = 0
-        with self._lock:
-            for chunk in chunks:
-                embedding = self.embedder.embed(chunk.text)
-                try:
-                    with self._conn:
-                        self._conn.execute(
-                            """
-                            INSERT OR IGNORE INTO chunks
-                                (chunk_id, source, doc_title, section, chunk_index,
-                                 char_start, text, embedding, ingested_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """,
-                            (
-                                chunk.chunk_id,
-                                chunk.source,
-                                chunk.doc_title,
-                                chunk.section,
-                                chunk.chunk_index,
-                                chunk.char_start,
-                                chunk.text,
-                                json.dumps(embedding),
-                                now,
-                            ),
-                        )
+        cur   = self._conn.cursor()
+        for chunk in chunks:
+            embedding = (
+                embedder.embed(chunk.text) if embedder is not None
+                else _embed(chunk.text, self._dim)
+            )
+            blob = _pack(embedding)
+            try:
+                cur.execute(
+                    "INSERT OR IGNORE INTO chunks "
+                    "(chunk_id,text,source,doc_title,section,char_start,embedding) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (chunk.chunk_id, chunk.text, chunk.source,
+                     chunk.doc_title, chunk.section, chunk.char_start, blob),
+                )
+                if cur.rowcount:
                     added += 1
-                except sqlite3.Error:
-                    pass
+            except sqlite3.Error as exc:
+                logger.warning("add_chunks: sqlite error for %s — %s", chunk.chunk_id, exc)
+        self._conn.commit()
         return added
 
-    def add(self, chunks: List[Chunk], embedder=None) -> int:
-        """
-        Alias for add_chunks(), accepting an optional embedder override.
-        This matches the call-site in RAGPipeline.ingest_canon().
-        """
-        if embedder is not None:
-            # Temporarily swap embedder for this batch
-            original = self.embedder
-            self.embedder = embedder
-            result = self.add_chunks(chunks)
-            self.embedder = original
-            return result
-        return self.add_chunks(chunks)
+    def add(self, chunks: List[Chunk], embedder: Optional[Any] = None) -> int:
+        return self.add_chunks(chunks, embedder=embedder)
+
+    def delete_source(self, source: str) -> int:
+        cur = self._conn.cursor()
+        cur.execute("DELETE FROM chunks WHERE source = ?", (source,))
+        self._conn.commit()
+        return cur.rowcount
 
     # ------------------------------------------------------------------
-    # Read path
-    # ------------------------------------------------------------------
-
-    def search(
-        self, query_text: str, top_k: int = 5
-    ) -> List[Tuple[Chunk, float]]:
-        """
-        Dense vector search: embed query, compute cosine similarity vs all stored.
-        Returns top_k (chunk, score) pairs sorted by score descending.
-        """
-        query_vec = self.embedder.embed(query_text)
-
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT chunk_id, source, doc_title, section, chunk_index, char_start, text, embedding FROM chunks"
-            ).fetchall()
-
-        scored = []
-        for row in rows:
-            chunk_id, source, doc_title, section, chunk_index, char_start, text, emb_json = row
-            if emb_json:
-                stored_vec = json.loads(emb_json)
-                if len(stored_vec) == len(query_vec):
-                    score = cosine_similarity(query_vec, stored_vec)
-                    chunk = Chunk(
-                        text=text,
-                        source=source,
-                        doc_title=doc_title or "",
-                        section=section or "intro",
-                        chunk_index=chunk_index or 0,
-                        char_start=char_start or 0,
-                    )
-                    scored.append((chunk, score))
-
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return scored[:top_k]
-
-    def keyword_search(
-        self, query_text: str, top_k: int = 5
-    ) -> List[Tuple[Chunk, float]]:
-        """
-        Sparse keyword search using SQLite LIKE.
-        Returns (chunk, 1.0) for any chunk containing any query token.
-        """
-        tokens = query_text.lower().split()
-        if not tokens:
-            return []
-
-        like_clauses = " OR ".join(["LOWER(text) LIKE ?" for _ in tokens])
-        params = [f"%{tok}%" for tok in tokens]
-
-        with self._lock:
-            rows = self._conn.execute(
-                f"SELECT chunk_id, source, doc_title, section, chunk_index, char_start, text FROM chunks WHERE {like_clauses} LIMIT ?",
-                params + [top_k * 2],
-            ).fetchall()
-
-        results = []
-        for row in rows:
-            chunk_id, source, doc_title, section, chunk_index, char_start, text = row
-            chunk = Chunk(
-                text=text,
-                source=source,
-                doc_title=doc_title or "",
-                section=section or "intro",
-                chunk_index=chunk_index or 0,
-                char_start=char_start or 0,
-            )
-            results.append((chunk, 1.0))
-
-        return results[:top_k]
-
-    # ------------------------------------------------------------------
-    # Introspection
+    # Read
     # ------------------------------------------------------------------
 
     def count(self) -> int:
-        with self._lock:
-            row = self._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()
-            return row[0] if row else 0
+        return self._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
 
     def size(self) -> int:
-        """Alias for count(). Required by RAGPipeline.status()."""
         return self.count()
 
     def sources(self) -> List[str]:
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT DISTINCT source FROM chunks ORDER BY source"
-            ).fetchall()
-            return [r[0] for r in rows]
+        cur = self._conn.cursor()
+        cur.execute("SELECT DISTINCT source FROM chunks ORDER BY source")
+        return [row[0] for row in cur.fetchall()]
 
-    def delete_source(self, source: str) -> int:
-        """Remove all chunks from a given source file. Returns count deleted."""
-        with self._lock:
-            cur = self._conn.execute(
-                "DELETE FROM chunks WHERE source = ?", (source,)
-            )
-            self._conn.commit()
-            return cur.rowcount
+    def search(self, query: str, top_k: int = 5,
+               embedder: Optional[Any] = None) -> List[Tuple[Chunk, float]]:
+        q_emb = (
+            embedder.embed(query) if embedder is not None
+            else _embed(query, self._dim)
+        )
+        rows = self._conn.execute(
+            "SELECT chunk_id,text,source,doc_title,section,char_start,embedding FROM chunks"
+        ).fetchall()
+        scored: List[Tuple[Chunk, float]] = []
+        for chunk_id, text, source, doc_title, section, char_start, blob in rows:
+            emb   = _unpack(blob) if blob else _embed("", self._dim)
+            score = _cosine(q_emb, emb)
+            scored.append((
+                Chunk(chunk_id=chunk_id, text=text, source=source,
+                      doc_title=doc_title, section=section, char_start=char_start),
+                score,
+            ))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:top_k]
 
-    def close(self) -> None:
-        self._conn.close()
+    def keyword_search(self, query: str, top_k: int = 5) -> List[Tuple[Chunk, float]]:
+        terms = [t.lower() for t in query.split() if t.strip()]
+        if not terms:
+            return []
+        rows = self._conn.execute(
+            "SELECT chunk_id,text,source,doc_title,section,char_start FROM chunks"
+        ).fetchall()
+        scored: List[Tuple[Chunk, float]] = []
+        for chunk_id, text, source, doc_title, section, char_start in rows:
+            hits = sum(1 for t in terms if t in text.lower())
+            if not hits:
+                continue
+            scored.append((
+                Chunk(chunk_id=chunk_id, text=text, source=source,
+                      doc_title=doc_title, section=section, char_start=char_start),
+                hits / len(terms),
+            ))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:top_k]

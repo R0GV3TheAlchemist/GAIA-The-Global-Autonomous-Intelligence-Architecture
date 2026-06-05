@@ -1,21 +1,18 @@
 """
 core/rag/retriever.py
+~~~~~~~~~~~~~~~~~~~~~
+Hybrid retriever for the GAIA-OS RAG pipeline.
 
-Hybrid retriever for GAIA-OS RAG pipeline.
-Combines dense vector search (cosine similarity) + sparse keyword search,
-deduplicates results, and returns RetrievalResult objects with full provenance.
-
-RetrievalResult schema:
-    text: str           — chunk text
-    score: float        — combined relevance score [0, 1]
-    source: str         — file path
-    doc_title: str      — document title
-    section: str        — nearest section heading
-    chunk_id: str       — deterministic chunk ID
-    retrieval_type: str — 'dense', 'sparse', or 'hybrid'
+Public surface
+--------------
+RetrievalResult  — dataclass wrapping a Chunk + score + retrieval_type.
+Retriever        — hybrid / dense / sparse retrieval over a VectorIndex.
 """
+
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Literal
 
 from .chunker import Chunk
 from .index import VectorIndex
@@ -23,110 +20,62 @@ from .index import VectorIndex
 
 @dataclass
 class RetrievalResult:
-    text: str
-    score: float
-    source: str
-    doc_title: str
-    section: str
-    chunk_id: str
-    retrieval_type: str
+    chunk:          Chunk
+    score:          float
+    retrieval_type: str = "hybrid"
 
     def provenance(self) -> dict:
         return {
-            "chunk_id": self.chunk_id,
-            "source": self.source,
-            "doc_title": self.doc_title,
-            "section": self.section,
-            "score": self.score,
+            **self.chunk.provenance(),
+            "score":          self.score,
             "retrieval_type": self.retrieval_type,
         }
 
-    def __repr__(self) -> str:
-        return (
-            f"RetrievalResult(score={self.score:.3f}, "
-            f"doc='{self.doc_title}', section='{self.section}', "
-            f"source='{self.source}')"
-        )
-
 
 class Retriever:
-    """
-    Hybrid retriever: runs dense + sparse search, merges and re-ranks.
+    """Hybrid retriever with reciprocal-rank fusion."""
 
-    Scoring:
-        final_score = alpha * dense_score + (1 - alpha) * sparse_score
-        alpha = 0.7 (dense-dominant; tune via alpha param)
-    """
-
-    def __init__(self, index: VectorIndex, alpha: float = 0.7):
-        self.index = index
-        self.alpha = alpha
+    def __init__(self, index: VectorIndex, rrf_k: int = 60) -> None:
+        self._index = index
+        self._rrf_k = rrf_k
 
     def retrieve(
         self,
-        query: str,
-        top_k: int = 5,
-        mode: str = "hybrid",
+        query:  str,
+        top_k:  int = 5,
+        mode:   str = "hybrid",
     ) -> List[RetrievalResult]:
-        """
-        Retrieve relevant chunks for a query.
-
-        Args:
-            query: Natural language query string.
-            top_k: Number of results to return.
-            mode: 'dense' | 'sparse' | 'hybrid'
-
-        Returns:
-            List of RetrievalResult, sorted by score descending.
-            Empty list if index is empty or no results found.
-        """
-        if self.index.count() == 0:
+        if self._index.count() == 0:
             return []
+        if mode == "dense":
+            return self._dense(query, top_k)
+        if mode == "sparse":
+            return self._sparse(query, top_k)
+        return self._hybrid(query, top_k)
 
-        dense_results = {}
-        sparse_results = {}
+    def _dense(self, query: str, top_k: int) -> List[RetrievalResult]:
+        return [
+            RetrievalResult(chunk=c, score=float(s), retrieval_type="dense")
+            for c, s in self._index.search(query, top_k=top_k)
+        ]
 
-        if mode in ("dense", "hybrid"):
-            for chunk, score in self.index.search(query, top_k=top_k * 2):
-                dense_results[chunk.chunk_id] = (chunk, score)
+    def _sparse(self, query: str, top_k: int) -> List[RetrievalResult]:
+        return [
+            RetrievalResult(chunk=c, score=float(s), retrieval_type="sparse")
+            for c, s in self._index.keyword_search(query, top_k=top_k)
+        ]
 
-        if mode in ("sparse", "hybrid"):
-            for chunk, score in self.index.keyword_search(query, top_k=top_k * 2):
-                sparse_results[chunk.chunk_id] = (chunk, score)
-
-        all_ids = set(dense_results) | set(sparse_results)
-        merged = []
-
-        for cid in all_ids:
-            dense_score = dense_results[cid][1] if cid in dense_results else 0.0
-            sparse_score = sparse_results[cid][1] if cid in sparse_results else 0.0
-            chunk = (
-                dense_results[cid][0]
-                if cid in dense_results
-                else sparse_results[cid][0]
-            )
-
-            if mode == "dense":
-                final_score = dense_score
-                rtype = "dense"
-            elif mode == "sparse":
-                final_score = sparse_score
-                rtype = "sparse"
-            else:
-                final_score = self.alpha * dense_score + (1 - self.alpha) * sparse_score
-                rtype = "hybrid"
-
-            merged.append(
-                RetrievalResult(
-                    text=chunk.text,
-                    score=round(final_score, 4),
-                    source=chunk.source,
-                    doc_title=chunk.doc_title,
-                    section=chunk.section,
-                    chunk_id=chunk.chunk_id,
-                    retrieval_type=rtype,
-                )
-            )
-
-        merged.sort(key=lambda r: r.score, reverse=True)
-        return merged[:top_k]
+    def _hybrid(self, query: str, top_k: int) -> List[RetrievalResult]:
+        dense_hits  = self._index.search(query,           top_k=top_k * 2)
+        sparse_hits = self._index.keyword_search(query,   top_k=top_k * 2)
+        rrf: dict[str, float] = {}
+        for rank, (chunk, _) in enumerate(dense_hits):
+            rrf[chunk.chunk_id] = rrf.get(chunk.chunk_id, 0.0) + 1.0 / (self._rrf_k + rank + 1)
+        for rank, (chunk, _) in enumerate(sparse_hits):
+            rrf[chunk.chunk_id] = rrf.get(chunk.chunk_id, 0.0) + 1.0 / (self._rrf_k + rank + 1)
+        all_chunks = {c.chunk_id: c for c, _ in dense_hits + sparse_hits}
+        ranked = sorted(rrf.items(), key=lambda x: x[1], reverse=True)[:top_k]
+        return [
+            RetrievalResult(chunk=all_chunks[cid], score=round(s, 6), retrieval_type="hybrid")
+            for cid, s in ranked if cid in all_chunks
+        ]
