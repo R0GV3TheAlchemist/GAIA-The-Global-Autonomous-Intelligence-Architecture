@@ -5,10 +5,12 @@ GAIA's core Perceive → Reason → Act → Observe (PRAO) loop.
 
 Revision notes
 --------------
-obs-wiring (prev)  : TraceContext spans, Telemetry counters, AuditLog events.
-canon-rag (this)   : _reason() now calls RAGPipeline.retrieve() before the
-                     planner so every reasoning step is grounded in Canon.
-                     ingest_canon() is called once at session start.
+obs-wiring (prev)     : TraceContext spans, Telemetry counters, AuditLog events.
+canon-rag (prev)      : _reason() calls RAGPipeline.retrieve() before the planner.
+persisted-index (this): _maybe_ingest_canon() passes store_path to ingest_canon()
+                        so Canon is only embedded once; subsequent cold starts
+                        reuse the persisted SQLite index if the fingerprint matches.
+                        Default store path: ~/.gaia/data/
 """
 
 from __future__ import annotations
@@ -17,10 +19,11 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 # ---------------------------------------------------------------------------
-# Observability layer (optional — degrades gracefully if not installed)
+# Observability layer (optional)
 # ---------------------------------------------------------------------------
 try:
     from core.obs.trace import TraceContext
@@ -34,7 +37,7 @@ except ImportError:  # pragma: no cover
     AuditLog = None     # type: ignore[assignment,misc]
 
 # ---------------------------------------------------------------------------
-# RAG layer (optional — degrades gracefully)
+# RAG layer (optional)
 # ---------------------------------------------------------------------------
 try:
     from core.rag.pipeline import RAGPipeline
@@ -42,6 +45,11 @@ try:
 except ImportError:  # pragma: no cover
     _RAG_AVAILABLE = False
     RAGPipeline = None  # type: ignore[assignment,misc]
+
+# ---------------------------------------------------------------------------
+# Default Canon store path
+# ---------------------------------------------------------------------------
+_DEFAULT_CANON_STORE = Path.home() / ".gaia" / "data"
 
 logger = logging.getLogger(__name__)
 
@@ -85,15 +93,10 @@ class ActionResult:
 
 
 # ---------------------------------------------------------------------------
-# Action gate (human-in-the-loop)
+# Action gate
 # ---------------------------------------------------------------------------
 
 class ActionGate:
-    """
-    Decides whether a proposed action requires human approval.
-    Override `requires_human()` for custom policy.
-    """
-
     def requires_human(self, action: dict) -> bool:
         return action.get("requires_human", False)
 
@@ -115,13 +118,16 @@ class AgenticLoop:
 
     Parameters
     ----------
-    planner        : callable(state, canon_context) → action dict
-    tools          : mapping of tool name → callable
-    perceiver      : callable(state) → updated state (optional)
-    observer       : callable(state, result) → updated state (optional)
-    rag            : RAGPipeline instance (optional; auto-created if available)
-    human_callback : callable(action) → bool for human-approval gate
-    max_iterations : safety ceiling
+    planner         : callable(state, canon_context) → action dict
+    tools           : mapping of tool name → callable
+    perceiver       : callable(state) → updated state (optional)
+    observer        : callable(state, result) → updated state (optional)
+    rag             : RAGPipeline instance (optional; auto-created if available)
+    human_callback  : callable(action) → bool for human-approval gate
+    max_iterations  : safety ceiling
+    canon_store_path: Path to persist the Canon SQLite index.
+                      Defaults to ~/.gaia/data/.  Pass None to disable
+                      persistence (in-memory only).
     """
 
     def __init__(
@@ -135,6 +141,7 @@ class AgenticLoop:
         max_iterations: int = 50,
         telemetry: Optional[Any] = None,
         audit: Optional[Any] = None,
+        canon_store_path: Optional[Path] = _DEFAULT_CANON_STORE,
     ) -> None:
         self._planner = planner
         self._tools = tools
@@ -143,6 +150,7 @@ class AgenticLoop:
         self._human_callback = human_callback
         self._max_iterations = max_iterations
         self._gate = ActionGate()
+        self._canon_store_path = canon_store_path
 
         # Observability
         self._telemetry = telemetry or (Telemetry() if _OBS_AVAILABLE and Telemetry else None)
@@ -185,10 +193,6 @@ class AgenticLoop:
     # ------------------------------------------------------------------
 
     def _run_phase(self, name: str, fn: Callable, *args, **kwargs) -> Any:
-        """
-        Execute *fn* inside a child trace span, timing it and recording
-        latency to telemetry regardless of success or failure.
-        """
         span_name = f"agentic_loop.{name}"
         t0 = time.monotonic()
         try:
@@ -216,11 +220,7 @@ class AgenticLoop:
 
     def _reason(self, state: AgentState) -> dict:
         """
-        Produce the next action plan.
-
-        If Canon is loaded, retrieve the top-K most relevant passages
-        for the current state and inject them as *canon_context* into
-        the planner call.  Falls back gracefully if RAG is unavailable.
+        Produce the next action plan, grounded in Canon context.
         """
         canon_context: str = ""
 
@@ -234,6 +234,7 @@ class AgenticLoop:
                             "query_len": len(state.summary()),
                             "context_len": len(canon_context),
                             "canon_loaded": getattr(self._rag, "canon_loaded", False),
+                            "warm_start": getattr(self._rag, "_warm_start", False),
                         },
                     )
             except Exception as exc:  # noqa: BLE001
@@ -304,26 +305,34 @@ class AgenticLoop:
 
     def _maybe_ingest_canon(self, session_id: str) -> None:
         """
-        Ingest Canon at session start if RAG is available and not yet loaded.
-        Emits an audit event regardless of outcome.
+        Ingest Canon at session start.
+
+        Passes self._canon_store_path to ingest_canon() so the pipeline
+        can perform a warm-start check: if the SQLite file exists and the
+        fingerprint matches the current Canon corpus, embedding is skipped
+        entirely and the existing index is reused in ~milliseconds.
         """
         if self._rag is None:
             return
         if getattr(self._rag, "canon_loaded", False):
-            return  # already loaded (e.g. shared RAG instance)
+            return
 
         self._log_info(
             "canon.ingest.start",
-            meta={"session_id": session_id},
+            meta={
+                "session_id": session_id,
+                "store_path": str(self._canon_store_path) if self._canon_store_path else "memory",
+            },
         )
         try:
-            report = self._rag.ingest_canon()
+            report = self._rag.ingest_canon(store_path=self._canon_store_path)
             self._audit_record(
                 "CANON_INGESTED",
                 meta={"session_id": session_id, **report},
             )
+            warm = report.get("warm_start", False)
             self._log_info(
-                "canon.ingest.complete",
+                f"canon.ingest.{'warm' if warm else 'cold'}_start_complete",
                 meta={"session_id": session_id, **report},
             )
         except Exception as exc:  # noqa: BLE001
@@ -337,29 +346,14 @@ class AgenticLoop:
     # ------------------------------------------------------------------
 
     def run(self, goal: str, initial_state: Optional[AgentState] = None) -> AgentState:
-        """
-        Execute the PRAO loop until the goal is complete, an error occurs,
-        or *max_iterations* is reached.
-
-        Parameters
-        ----------
-        goal          : Natural-language goal string.
-        initial_state : Pre-populated AgentState (optional).
-
-        Returns
-        -------
-        AgentState  Final state with complete=True or error set.
-        """
         session_id = str(uuid.uuid4())
         state = initial_state or AgentState(goal=goal)
         t_session = time.monotonic()
-
         root_span = f"agentic_loop:{session_id}"
 
         def _inner():
             nonlocal state
 
-            # Canon ingestion at session start
             self._maybe_ingest_canon(session_id)
 
             self._audit_record(
@@ -368,17 +362,13 @@ class AgenticLoop:
             )
 
             for iteration in range(1, self._max_iterations + 1):
-                # --- Perceive ---
                 state = self._run_phase("perceive", self._perceive, state)
-
-                # --- Reason (with Canon context) ---
                 action = self._run_phase("reason", self._reason, state)
 
                 if action.get("complete"):
                     state.complete = True
                     break
 
-                # --- Action gate ---
                 approved = self._gate.approve(action, self._human_callback)
                 if not approved:
                     policy = "requires_human" if self._gate.requires_human(action) else "denied"
@@ -409,10 +399,7 @@ class AgenticLoop:
                     },
                 )
 
-                # --- Act ---
                 result = self._run_phase("act", self._act, state, action)
-
-                # --- Observe ---
                 state = self._run_phase("observe", self._observe, state, result)
 
                 self._log_cycle(
@@ -430,7 +417,6 @@ class AgenticLoop:
             else:
                 state.error = f"max_iterations ({self._max_iterations}) reached"
 
-        # Wrap entire session in a root trace span
         try:
             if _OBS_AVAILABLE and TraceContext:
                 with TraceContext(root_span):
