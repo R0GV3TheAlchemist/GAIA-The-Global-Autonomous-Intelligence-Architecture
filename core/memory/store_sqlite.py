@@ -1,16 +1,16 @@
 """
 core/memory/store_sqlite.py
 
-SQLite-backed MemoryStore for the semantic memory layer.
-Used by test_memory_store.py via: MemoryStore(db_path=..., embedder=FallbackEmbedder(dim=N))
+SQLite-backed MemoryStore for the flat semantic memory layer.
+Used by tests/test_memory_store.py via:
+    MemoryStore(db_path=..., embedder=FallbackEmbedder(dim=N))
 
-Note: 'permanent' and 'ephemeral' are stored as raw string tier values in
-SQLite. They are NOT members of the hierarchy MemoryTier enum (which has
-exactly 5 members). This store uses its own tier strings.
+Tier values are persisted as strings using StoreTier (7 members).
+This is decoupled from hierarchy.MemoryTier (5 members).
 
 Canon Reference: C01, C-SENTINEL Article 4
 Issue: #213
-Version: 1.1.0
+Version: 1.2.0
 """
 
 from __future__ import annotations
@@ -18,17 +18,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from pathlib import Path
 from typing import Any, Optional
 
 from core.memory.items import MemoryItem, MemoryKind, RetrievedMemory
-from core.memory.hierarchy import MemoryTier
-
-# Flat-store tier string constants (not enum members)
-_TIER_PERMANENT = "permanent"
-_TIER_EPHEMERAL  = "ephemeral"
-_TIER_LONG_TERM  = "long_term"
-_TIER_SHORT_TERM = "short_term"
+from core.memory.store_tier import StoreTier
 
 
 class MemoryStore:
@@ -90,7 +83,7 @@ class MemoryStore:
         metadata:     Optional[dict]     = None,
         ttl_seconds:  Optional[int]      = None,
     ) -> int:
-        tier_val = self._tier_str(tier)
+        tier_val = self._to_tier_str(tier)
         cur = self._conn.execute(
             """
             INSERT INTO memory_items
@@ -109,7 +102,7 @@ class MemoryStore:
         return cur.lastrowid
 
     async def remember_item(self, item: MemoryItem) -> int:
-        tier_val = self._tier_str(item.tier)
+        tier_val = self._to_tier_str(item.tier)
         cur = self._conn.execute(
             """
             INSERT INTO memory_items
@@ -159,7 +152,7 @@ class MemoryStore:
             sql += f" AND kind IN ({','.join('?' * len(kinds))})"
             args += [k.value for k in kinds]
         if tiers:
-            tier_vals = [self._tier_str(t) for t in tiers]
+            tier_vals = [self._to_tier_str(t) for t in tiers]
             sql += f" AND tier IN ({','.join('?' * len(tier_vals))})"
             args += tier_vals
         if topic_tag:
@@ -222,7 +215,7 @@ class MemoryStore:
         if user_id:
             where += " AND user_id = ?"
             args.append(user_id)
-        by_kind = {}
+        by_kind: dict = {}
         for row in self._conn.execute(
             f"SELECT kind, COUNT(*) FROM memory_items WHERE {where} GROUP BY kind",
             args,
@@ -247,12 +240,10 @@ class MemoryStore:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _tier_str(tier: Any) -> str:
-        """Convert a tier value (enum or string) to its DB string."""
+    def _to_tier_str(tier: Any) -> str:
+        """Normalise any tier value (StoreTier, hierarchy MemoryTier, str, None) to a DB string."""
         if tier is None:
-            return _TIER_EPHEMERAL
-        if isinstance(tier, MemoryTier):
-            return tier.value
+            return StoreTier.EPHEMERAL.value
         if hasattr(tier, 'value'):
             return tier.value
         return str(tier)
@@ -263,7 +254,7 @@ class MemoryStore:
             id=id_,
             user_id=user_id,
             kind=MemoryKind(kind),
-            tier=self._parse_tier(tier),
+            tier=StoreTier.parse(tier),
             role=role,
             text=text,
             importance=float(importance),
@@ -272,10 +263,3 @@ class MemoryStore:
             created_at=created_at,
             ttl_seconds=ttl_seconds,
         )
-
-    @staticmethod
-    def _parse_tier(val: str) -> Any:
-        try:
-            return MemoryTier(val)
-        except ValueError:
-            return val  # Return raw string for 'permanent', 'ephemeral', etc.

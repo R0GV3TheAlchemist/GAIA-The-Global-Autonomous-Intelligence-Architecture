@@ -1,10 +1,13 @@
 """
 core/memory/pruner.py
 
-MemoryPruner — capacity enforcement and TTL eviction for the memory layer.
+MemoryPruner — capacity enforcement and TTL eviction for the SQLite memory layer.
+Uses 'permanent' as a raw string tier value (StoreTier.PERMANENT.value) to
+avoid importing from hierarchy.MemoryTier.
+
 Canon Reference: C01 (Gaian Sovereignty), C-SENTINEL Article 4
 Issue: #213
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -12,6 +15,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from typing import Optional
+
+from core.memory.store_tier import StoreTier
 
 
 @dataclass
@@ -27,16 +32,16 @@ class MemoryPruner:
     Enforces memory capacity limits and evicts expired TTL items.
 
     - PERMANENT tier items are never pruned.
-    - Pruning removes the lowest-priority items (importance score) first.
+    - Pruning removes the lowest-importance items first.
     - TTL eviction soft-deletes items whose ttl_seconds has elapsed.
     """
 
     def __init__(
         self,
-        store,                       # MemoryStore instance
-        capacity: int   = 1000,
-        batch_size: int = 100,
-        min_age_sec: int = 60,
+        store,                        # MemoryStore (store_sqlite)
+        capacity:   int   = 1000,
+        batch_size: int   = 100,
+        min_age_sec: int  = 60,
     ) -> None:
         self._store      = store
         self._capacity   = capacity
@@ -84,21 +89,23 @@ class MemoryPruner:
         if count <= self._capacity:
             return 0
 
-        excess = count - self._capacity
-        to_delete = min(excess + self._batch_size, count)
+        excess     = count - self._capacity
+        to_delete  = excess + self._batch_size
+        permanent  = StoreTier.PERMANENT.value
 
-        query = """
+        uid_clause = "AND user_id = ?" if user_id else ""
+        query = f"""
             UPDATE memory_items
             SET deleted = 1
             WHERE id IN (
                 SELECT id FROM memory_items
                 WHERE deleted = 0
-                  AND tier != 'permanent'
+                  AND tier != '{permanent}'
                   {uid_clause}
                 ORDER BY importance ASC, created_at ASC
                 LIMIT ?
             )
-        """.format(uid_clause="AND user_id = ?" if user_id else "")
+        """
 
         args: list = []
         if user_id:
