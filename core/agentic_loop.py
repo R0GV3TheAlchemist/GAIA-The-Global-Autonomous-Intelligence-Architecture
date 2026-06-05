@@ -2,17 +2,6 @@
 agentic_loop.py
 ~~~~~~~~~~~~~~~
 GAIA's core Perceive → Reason → Act → Observe (PRAO) loop.
-
-Revision notes
---------------
-obs-wiring      : TraceContext spans, StructuredLogger records, Telemetry
-                  counters, AuditLog events — all using real API signatures.
-canon-rag       : _reason() calls RAGPipeline.retrieve() before the planner.
-persisted-index : _maybe_ingest_canon() passes store_path to ingest_canon()
-                  so Canon is only embedded once; subsequent cold starts
-                  reuse the persisted SQLite index if the fingerprint matches.
-fix-ci          : HaltCondition, AgenticLoopResult, create_loop(),
-                  async run(), cancel() satisfy test_agentic_loop_obs.py.
 """
 
 from __future__ import annotations
@@ -68,7 +57,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 class HaltCondition(Enum):
-    """Reason the agentic loop terminated."""
     GOAL_ACHIEVED   = "goal_achieved"
     MAX_ITERATIONS  = "max_iterations"
     GAIAN_CANCELLED = "cancelled"
@@ -77,7 +65,6 @@ class HaltCondition(Enum):
 
 @dataclass
 class AgenticLoopResult:
-    """Return value from AgenticLoop.run()."""
     session_id:     str
     state:          "AgentState"
     halt_condition: HaltCondition
@@ -97,13 +84,8 @@ class AgenticLoopResult:
         }
 
 
-# ---------------------------------------------------------------------------
-# Supporting data structures
-# ---------------------------------------------------------------------------
-
 @dataclass
 class AgentState:
-    """Mutable snapshot passed through each PRAO phase."""
     goal:         str
     observations: List[str]            = field(default_factory=list)
     history:      List[Dict[str, Any]] = field(default_factory=list)
@@ -172,11 +154,10 @@ def _default_stub_planner(
 
 
 # ---------------------------------------------------------------------------
-# Helpers — thin wrappers so every call goes through the patchable singletons
+# Module-level obs helpers
 # ---------------------------------------------------------------------------
 
 def _sl_info(msg: str, meta: Optional[dict] = None) -> None:
-    """Emit an INFO record to the module-level structured logger."""
     if _OBS_AVAILABLE and _struct_logger:
         _struct_logger.info(msg, meta=meta or {})
     logger.info("%s | %s", msg, meta)
@@ -194,50 +175,11 @@ def _sl_error(msg: str, meta: Optional[dict] = None) -> None:
     logger.error("%s | %s", msg, meta)
 
 
-def _audit_record(
-    event_type: str,
-    actor:      str = "gaia",
-    action:     str = "",
-    outcome:    str = "ok",
-    meta:       Optional[dict] = None,
-) -> None:
-    """Record an audit event via the module-level AuditLog singleton."""
-    if _OBS_AVAILABLE and _audit:
-        _audit.record(
-            event_type=event_type,
-            actor=actor,
-            action=action or event_type,
-            outcome=outcome,
-            meta=meta or {},
-        )
-
-
-def _tel_record(key: str, latency_s: float, error: bool = False) -> None:
-    """Record a latency sample (converted to ms) via module-level Telemetry."""
-    if _OBS_AVAILABLE and _telemetry:
-        _telemetry.record(key, latency_ms=latency_s * 1000, error=error)
-
-
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
 class AgenticLoop:
-    """
-    Orchestrates the PRAO cycle for a single GAIA session.
-
-    Parameters
-    ----------
-    planner          : callable(state, *, canon_context='') → action dict
-    tools            : mapping of tool name → callable
-    perceiver        : callable(state) → updated state (optional)
-    observer         : callable(state, result) → updated state (optional)
-    rag              : RAGPipeline instance (optional)
-    human_callback   : callable(action) → bool for human-approval gate
-    action_gate      : ActionGate-compatible object (optional)
-    max_iterations   : safety ceiling (default 50)
-    canon_store_path : Path to persist Canon SQLite index
-    """
 
     def __init__(
         self,
@@ -262,10 +204,8 @@ class AgenticLoop:
         self._gate             = action_gate or ActionGate()
         self._canon_store_path = canon_store_path
         self._cancelled        = False
-
-        # Allow per-instance overrides (used by tests via create_loop)
-        self._audit     = audit
-        self._telemetry = telemetry
+        self._audit            = audit      # None → use module singleton
+        self._telemetry        = telemetry  # None → use module singleton
 
         self._rag: Optional[Any] = rag
         if self._rag is None and _RAG_AVAILABLE:
@@ -276,11 +216,10 @@ class AgenticLoop:
     # ------------------------------------------------------------------
 
     def cancel(self) -> None:
-        """Signal the loop to halt at the start of the next cycle."""
         self._cancelled = True
 
     # ------------------------------------------------------------------
-    # Obs helpers (use instance override if set, else module singletons)
+    # Obs helpers (instance override → module singleton)
     # ------------------------------------------------------------------
 
     def _get_audit(self):
@@ -290,17 +229,20 @@ class AgenticLoop:
         return self._telemetry if self._telemetry is not None else _telemetry
 
     def _log_info(self, msg: str, meta: Optional[dict] = None) -> None:
-        _sl_info(msg, meta)
-        al = self._get_audit()
-        if al:
-            al.record(event_type=AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
-                      actor="gaia", action=msg, outcome="ok", meta=meta or {})
+        """Emit an INFO structured log record (no audit side-effect)."""
+        if _OBS_AVAILABLE and _struct_logger:
+            _struct_logger.info(msg, meta=meta or {})
+        logger.info("%s | %s", msg, meta)
 
     def _log_warning(self, msg: str, meta: Optional[dict] = None) -> None:
-        _sl_warning(msg, meta)
+        if _OBS_AVAILABLE and _struct_logger:
+            _struct_logger.warning(msg, meta=meta or {})
+        logger.warning("%s | %s", msg, meta)
 
     def _log_error(self, msg: str, meta: Optional[dict] = None) -> None:
-        _sl_error(msg, meta)
+        if _OBS_AVAILABLE and _struct_logger:
+            _struct_logger.error(msg, meta=meta or {})
+        logger.error("%s | %s", msg, meta)
 
     def _audit_event(
         self,
@@ -375,20 +317,10 @@ class AgenticLoop:
                 output = asyncio.get_event_loop().run_until_complete(output)
             elapsed = time.monotonic() - t0
             self._tel_record(f"tool.{tool_name}", elapsed)
-            self._audit_event(
-                AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
-                action=tool_name, outcome="ok",
-                meta={"tool": tool_name, "success": True, "duration_s": round(elapsed, 4)},
-            )
             return ActionResult(tool=tool_name, output=output, success=True)
         except Exception as exc:  # noqa: BLE001
             elapsed = time.monotonic() - t0
             self._tel_record(f"tool.{tool_name}", elapsed, error=True)
-            self._audit_event(
-                AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
-                action=tool_name, outcome="error",
-                meta={"tool": tool_name, "success": False, "error": str(exc)},
-            )
             return ActionResult(tool=tool_name, output=None, success=False, error=str(exc))
 
     def _observe(self, state: AgentState, result: ActionResult) -> AgentState:
@@ -408,18 +340,18 @@ class AgenticLoop:
             return
         if getattr(self._rag, "canon_loaded", False):
             return
-        _sl_info("canon.ingest.start",
+        self._log_info("canon.ingest.start",
             meta={"session_id": session_id,
                   "store_path": str(self._canon_store_path) if self._canon_store_path else "memory"})
         try:
             report = self._rag.ingest_canon(store_path=self._canon_store_path)
             warm = report.get("warm_start", False)
-            _sl_info(
+            self._log_info(
                 f"canon.ingest.{'warm' if warm else 'cold'}_start_complete",
                 meta={"session_id": session_id, **report},
             )
         except Exception as exc:  # noqa: BLE001
-            _sl_error(f"canon.ingest.failed — {exc}",
+            self._log_error(f"canon.ingest.failed — {exc}",
                 meta={"session_id": session_id, "error": str(exc)})
 
     # ------------------------------------------------------------------
@@ -438,6 +370,7 @@ class AgenticLoop:
         iterations = 0
         halt       = HaltCondition.MAX_ITERATIONS
 
+        # SESSION_START
         self._audit_event(
             AuditEventType.SESSION_START if _OBS_AVAILABLE else "session.start",
             gaian_id=gaian_id,
@@ -449,14 +382,15 @@ class AgenticLoop:
             self._maybe_ingest_canon(session_id)
 
             if self._cancelled:
-                _sl_info("CANCELLED before loop start", meta={"session_id": session_id})
+                self._log_info("CANCELLED before loop start",
+                    meta={"session_id": session_id})
                 halt = HaltCondition.GAIAN_CANCELLED
             else:
                 for iteration in range(1, self._max_iterations + 1):
                     iterations = iteration
 
                     if self._cancelled:
-                        _sl_info("CANCELLED",
+                        self._log_info("CANCELLED",
                             meta={"session_id": session_id, "iteration": iteration})
                         halt = HaltCondition.GAIAN_CANCELLED
                         break
@@ -467,9 +401,28 @@ class AgenticLoop:
                     if action.get("complete"):
                         state.complete = True
                         halt = HaltCondition.GOAL_ACHIEVED
+                        # Still emit AGENT_ACTION for this completing cycle
+                        self._audit_event(
+                            AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
+                            gaian_id=gaian_id,
+                            action="complete",
+                            outcome="ok",
+                            meta={"session_id": session_id, "iteration": iteration,
+                                  "action": action},
+                        )
                         break
 
-                    # Gate — supports sync ActionGate and async evaluate() objects
+                    # Emit AGENT_ACTION once per cycle (before gate check)
+                    self._audit_event(
+                        AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
+                        gaian_id=gaian_id,
+                        action=action.get("tool", "unknown"),
+                        outcome="ok",
+                        meta={"session_id": session_id, "iteration": iteration,
+                              "action": action},
+                    )
+
+                    # Gate check
                     raw_gate = self._gate
                     if hasattr(raw_gate, "evaluate") and asyncio.iscoroutinefunction(raw_gate.evaluate):
                         gate_obj    = await raw_gate.evaluate(action, gaian_id)
@@ -485,16 +438,13 @@ class AgenticLoop:
                         reason      = None
 
                     if not approved:
-                        policy  = "blocked"
-                        outcome = "blocked"
                         self._audit_event(
                             AuditEventType.POLICY_DECISION if _OBS_AVAILABLE else "policy.decision",
                             gaian_id=gaian_id,
                             action="policy_check",
-                            outcome=outcome,
+                            outcome="blocked",
                             meta={"session_id": session_id, "iteration": iteration,
-                                  "action": action, "approved": False,
-                                  "outcome": outcome, "reason": reason or policy},
+                                  "action": action, "approved": False, "reason": reason},
                         )
                         if needs_human:
                             self._audit_event(
@@ -518,7 +468,7 @@ class AgenticLoop:
                     result = self._run_phase("act",     self._act,     state, action)
                     state  = self._run_phase("observe",  self._observe, state, result)
 
-                    _sl_info("agentic_loop.cycle",
+                    self._log_info("agentic_loop.cycle",
                         meta={"session_id": session_id, "iteration": iteration,
                               "action": action.get("tool"), "success": result.success,
                               "progress": action.get("progress")})
@@ -531,7 +481,7 @@ class AgenticLoop:
         except Exception as exc:  # noqa: BLE001
             state.error = str(exc)
             halt = HaltCondition.ERROR
-            _sl_error(f"agentic_loop.session.error — {exc}",
+            self._log_error(f"agentic_loop.session.error — {exc}",
                 meta={"session_id": session_id})
 
         finally:
@@ -572,8 +522,7 @@ def create_loop(
     telemetry:         Optional[Any] = None,
 ) -> AgenticLoop:
     """
-    Factory to create a pre-configured AgenticLoop.
-    canon_store_path is always None so tests have no filesystem side-effects.
+    Factory — canon_store_path=None so tests have no filesystem side-effects.
     """
     return AgenticLoop(
         planner=planner,

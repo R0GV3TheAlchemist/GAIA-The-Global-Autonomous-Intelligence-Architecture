@@ -94,7 +94,8 @@ class RAGPipeline:
         return self.ingest(path, chunk_size=chunk_size, overlap=overlap)
 
     def query(self, query: str, top_k: int = 5, mode: str = "hybrid") -> list:
-        if self._index.count() == 0:
+        idx = getattr(self, "_index", None)
+        if idx is None or idx.count() == 0:
             return []
         if self._retriever is not None:
             try:
@@ -116,26 +117,70 @@ class RAGPipeline:
     # ------------------------------------------------------------------
 
     def retrieve(self, query: str, top_k: int = 5) -> str:
-        if self._index.count() == 0:
+        """
+        Retrieve Canon passages relevant to *query* and return a
+        citation-prefixed string for injection into the planner prompt.
+
+        Supports two result shapes:
+          - RetrievalResult  : has .chunk (Chunk) and .chunk.source
+          - flat mock/object : has .text and .metadata dict directly
+        """
+        if not query or not query.strip():
             return ""
-        if self._retriever is not None:
+
+        idx = getattr(self, "_index", None)
+        retriever = getattr(self, "_retriever", None)
+
+        results = []
+        if retriever is not None:
             try:
-                results = self._retriever.retrieve(query, top_k=top_k)
-                return "\n\n".join(r.chunk.text for r in results)
+                results = retriever.retrieve(query, top_k=top_k)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("retrieve: retriever error — %s", exc)
-        return "\n\n".join(c.text for c, _ in self._index.search(query, top_k=top_k))
+        elif idx is not None:
+            try:
+                raw = idx.search(query, top_k=top_k)
+                results = [chunk for chunk, _ in raw]
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("retrieve: index search error — %s", exc)
+
+        if not results:
+            return ""
+
+        parts: List[str] = []
+        for r in results:
+            # RetrievalResult shape: r.chunk.text, r.chunk.source
+            if hasattr(r, "chunk"):
+                chunk   = r.chunk
+                text    = chunk.text
+                # Derive canon_id from source path: "canon/C-FOUNDATION.md" → "C-FOUNDATION"
+                source  = getattr(chunk, "source", "")
+                canon_id = Path(source).stem if source else "unknown"
+            # Flat/mock shape: r.text, r.metadata["canon_id"]
+            elif hasattr(r, "text"):
+                text     = r.text
+                metadata = getattr(r, "metadata", {})
+                canon_id = metadata.get("canon_id", "unknown") if isinstance(metadata, dict) else "unknown"
+            # Bare Chunk from index.search fallback
+            else:
+                text     = str(r)
+                canon_id = "unknown"
+
+            parts.append(f"[Canon: {canon_id}]\n{text}")
+
+        return "\n\n".join(parts)
 
     def status(self) -> dict:
+        idx = getattr(self, "_index", None)
         return {
             "canon_loaded":       self.canon_loaded,
-            "warm_start":         self._warm_start,
-            "canon_doc_count":    self._canon_doc_count,
-            "canon_chunk_count":  self._canon_chunk_count,
-            "index_size":         self._index.count(),
-            "top_k":              5,
-            "store_path":         str(self._store_path) if self._store_path else None,
-            "fingerprint":        self._fingerprint,
+            "warm_start":         getattr(self, "_warm_start", False),
+            "canon_doc_count":    getattr(self, "_canon_doc_count", 0),
+            "canon_chunk_count":  getattr(self, "_canon_chunk_count", 0),
+            "index_size":         idx.count() if idx is not None else 0,
+            "top_k":              getattr(self, "_top_k", 5),
+            "store_path":         str(self._store_path) if getattr(self, "_store_path", None) else None,
+            "fingerprint":        getattr(self, "_fingerprint", None),
         }
 
     # ------------------------------------------------------------------
@@ -149,12 +194,14 @@ class RAGPipeline:
         store_path: Optional[Path] = None,
     ) -> dict:
         if self.canon_loaded and not force:
-            return {"status": "already_loaded", "warm_start": self._warm_start}
+            return {"status": "already_loaded", "warm_start": getattr(self, "_warm_start", False)}
 
         t0 = time.monotonic()
         self._store_path = store_path
 
-        # --- Warm start ---
+        # ----------------------------------------------------------------
+        # Warm start: store exists on disk and fingerprint matches
+        # ----------------------------------------------------------------
         if store_path is not None and _INDEX_STORE_AVAILABLE and not force:
             store = IndexStore(data_dir=store_path)
             store.ensure_dir()
@@ -178,9 +225,12 @@ class RAGPipeline:
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("ingest_canon: warm start failed — %s", exc)
 
-        # --- Cold start ---
+        # ----------------------------------------------------------------
+        # Cold start (no Canon loader available — graceful no-op)
+        # ----------------------------------------------------------------
         if not _CANON_LOADER_AVAILABLE:
             self.canon_loaded = True
+            self._warm_start  = False
             return {
                 "status":      "ok",
                 "warm_start":  False,
@@ -191,9 +241,27 @@ class RAGPipeline:
                 "duration_s":  round(time.monotonic() - t0, 3),
             }
 
+        # ----------------------------------------------------------------
+        # Cold start: load Canon, embed, write to disk
+        # ----------------------------------------------------------------
         try:
             loader     = CanonLoader(ref=ref)
-            canon_docs = loader.load()          # returns List[CanonChunk]
+            canon_docs = loader.load_all()          # returns List[CanonChunk]
+        except AttributeError:
+            # Older CanonLoader uses .load() not .load_all()
+            try:
+                loader     = CanonLoader(ref=ref)
+                canon_docs = loader.load()
+            except Exception as exc:  # noqa: BLE001
+                self.canon_loaded = True
+                return {
+                    "status":      "error",
+                    "warm_start":  False,
+                    "doc_count":   0,
+                    "chunk_count": 0,
+                    "error":       str(exc),
+                    "duration_s":  round(time.monotonic() - t0, 3),
+                }
         except Exception as exc:  # noqa: BLE001
             self.canon_loaded = True
             return {
@@ -205,17 +273,13 @@ class RAGPipeline:
                 "duration_s":  round(time.monotonic() - t0, 3),
             }
 
-        # canon_docs is List[CanonChunk] — access .text and .source directly
-        all_chunks: List[Chunk] = []
-        fp_parts:   List[str]   = []
-        seen_sources: set        = set()
+        # Build chunks from canon docs
+        all_chunks:   List[Chunk] = []
+        fp_parts:     List[str]   = []
+        seen_sources: set          = set()
 
         for doc in canon_docs:
-            # CanonChunk already has .text and .source
-            doc_chunks = chunk_text(
-                doc.text,
-                source=doc.source,
-            )
+            doc_chunks = chunk_text(doc.text, source=doc.source)
             all_chunks.extend(doc_chunks)
             if doc.source not in seen_sources:
                 seen_sources.add(doc.source)
@@ -223,8 +287,12 @@ class RAGPipeline:
 
         if self._embedder is not None and all_chunks:
             self._embedder.fit([c.text for c in all_chunks])
-        self._index.add_chunks(all_chunks)
 
+        # ----------------------------------------------------------------
+        # Persist to disk when store_path is given.
+        # Build the index directly against the on-disk SQLite file so
+        # db_exists() returns True and warm-start works next run.
+        # ----------------------------------------------------------------
         import hashlib
         fingerprint = hashlib.sha256("|".join(sorted(fp_parts)).encode()).hexdigest()
 
@@ -232,13 +300,20 @@ class RAGPipeline:
             try:
                 store = IndexStore(data_dir=store_path)
                 store.ensure_dir()
-                if force:
+                if force and store.db_exists():
                     store.delete_db()
-                    self._index = VectorIndex(db_path=str(store.db_path))
-                    self._index.add_chunks(all_chunks)
+                # Build directly against the on-disk path
+                disk_index = VectorIndex(db_path=str(store.db_path))
+                disk_index.add_chunks(all_chunks)
+                self._index     = disk_index
+                self._retriever = Retriever(self._index) if _RETRIEVER_AVAILABLE else None
                 store.write_fingerprint(fingerprint)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("ingest_canon: persist failed — %s", exc)
+                # Fall back to in-memory index
+                self._index.add_chunks(all_chunks)
+        else:
+            self._index.add_chunks(all_chunks)
 
         self._fingerprint       = fingerprint
         self._warm_start        = False
