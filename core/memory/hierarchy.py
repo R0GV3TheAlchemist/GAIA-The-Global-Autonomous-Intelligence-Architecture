@@ -10,10 +10,12 @@ Tiers (fastest → most permanent):
   EPISODIC   — in-process dict, 30 day TTL default
   SEMANTIC   — in-process dict, permanent, canon-indexed
   LONG_TERM  — in-process dict, permanent, Gaian-identity-scoped
+  PERMANENT  — alias tier used by flat store (test_memory_store.py)
+  EPHEMERAL  — alias tier used by flat store (test_memory_store.py)
 
 Canon Reference: C01 (GAIA as orchestration layer), C34 (Memory Sovereignty)
 Issue: #213
-Version: 1.0.0
+Version: 1.1.0
 """
 
 from __future__ import annotations
@@ -35,9 +37,7 @@ class MemoryTier(Enum):
     EPISODIC   = "episodic"
     SEMANTIC   = "semantic"
     LONG_TERM  = "long_term"
-    # Flat-store aliases used by test_memory_store.py
     PERMANENT  = "permanent"
-    LONG_TERM  = "long_term"
     EPHEMERAL  = "ephemeral"
 
     @property
@@ -67,12 +67,12 @@ VALID_INTENTS = {"context", "recall", "fact", "identity", "full"}
 @dataclass
 class MemoryQuery:
     text:           str
-    intent:         str                     = "context"
-    gaian_id:       Optional[str]           = None
+    intent:         str                        = "context"
+    gaian_id:       Optional[str]              = None
     tiers:          Optional[list[MemoryTier]] = None  # explicit override
-    max_results:    int                     = 10
-    recency_weight: float                   = 0.3
-    canon_refs:     list[str]               = field(default_factory=lambda: ["C34", "C01"])
+    max_results:    int                        = 10
+    recency_weight: float                      = 0.3
+    canon_refs:     list[str]                  = field(default_factory=lambda: ["C34", "C01"])
 
     def __post_init__(self) -> None:
         if self.intent not in VALID_INTENTS:
@@ -111,6 +111,7 @@ class MemoryStore(ABC):
 
 # ---------------------------------------------------------------------------
 # Intent → tier mapping
+# Note: 'full' maps only to the five hierarchy tiers, not PERMANENT/EPHEMERAL
 # ---------------------------------------------------------------------------
 
 _INTENT_TIERS: dict[str, list[MemoryTier]] = {
@@ -118,7 +119,8 @@ _INTENT_TIERS: dict[str, list[MemoryTier]] = {
     "recall":   [MemoryTier.SHORT_TERM, MemoryTier.EPISODIC],
     "fact":     [MemoryTier.SEMANTIC],
     "identity": [MemoryTier.LONG_TERM],
-    "full":     list(MemoryTier),
+    "full":     [MemoryTier.WORKING, MemoryTier.SHORT_TERM,
+                 MemoryTier.EPISODIC, MemoryTier.SEMANTIC, MemoryTier.LONG_TERM],
 }
 
 
