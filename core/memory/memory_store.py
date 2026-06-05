@@ -1,292 +1,147 @@
 """
-MemoryStore — Governed persistent memory surface.
+core/memory/memory_store.py
 
-All memory in GAIA is:
-  - Visible:        the user can see everything GAIA remembers about them
-  - Editable:       the user can correct inaccurate memories
-  - Deletable:      the user can remove any memory, with verifiable deletion
-  - Purpose-limited: each memory is tagged with its authorized uses
-  - Appealable:     contested memories can be flagged for formal review
+Data models for the Visible Memory & State Console.
+Every piece of data GAIA holds about a Gaian is represented here.
 
-Memory is not a background process — it is a governed surface.
-The human sovereign has full inspection and control rights over it.
-
-Epistemic Status: ESTABLISHED
-Canon Ref: C17 (Persistent Memory and Identity Architecture)
-
-Persistence: JSON file at $APPDATA/GAIA/memory.json (XDG-aware fallback).
-The file is written atomically (temp-file + rename) to prevent corruption.
+Canon Reference: C01 (Gaian Sovereignty), C-SENTINEL Article 4 (Memory Sovereignty)
+Issue:          #213
+Version:        1.0.0
 """
 
 from __future__ import annotations
 
-import datetime
-import hashlib
-import json
-import os
-import pathlib
-import tempfile
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
+import uuid
 
 
 # ---------------------------------------------------------------------------
-# Resolve storage path
+# Enumerations
 # ---------------------------------------------------------------------------
 
-def _default_store_path() -> pathlib.Path:
-    """Return the canonical path for memory.json across platforms."""
-    # Tauri writes to %APPDATA%\GAIA on Windows and ~/.local/share/GAIA on Linux/macOS.
-    if os.name == "nt":
-        base = pathlib.Path(os.environ.get("APPDATA", pathlib.Path.home() / "AppData" / "Roaming"))
-    else:
-        base = pathlib.Path(os.environ.get("XDG_DATA_HOME", pathlib.Path.home() / ".local" / "share"))
-    return base / "GAIA" / "memory.json"
+class MemoryTier(Enum):
+    """
+    Separates durable memory from temporary session state.
+    Acceptance Criterion: Session state and durable memory are clearly separated.
+    """
+    DURABLE  = "durable"   # Persists across sessions — preferences, identity, relationships
+    SESSION  = "session"   # Lives only for the current session — scratchpad, working goals
+    ARCHIVED = "archived"  # Soft-deleted — retained for audit, invisible to active context
+
+
+class MemoryCategory(Enum):
+    """Semantic category of a memory entry."""
+    PREFERENCE        = "preference"         # How the Gaian likes things done
+    RELATIONSHIP      = "relationship"       # People, bonds, trust levels
+    PROJECT           = "project"            # Active or historical projects
+    IDENTITY          = "identity"           # Long-term self-model of the Gaian
+    SESSION_GOAL      = "session_goal"       # What the Gaian wants from this session
+    FACT              = "fact"               # World or personal facts
+    EMOTIONAL_CONTEXT = "emotional_context"  # Mood, stress, recent events
+    CUSTOM            = "custom"             # Gaian-defined categories
+
+
+class ProvenanceSource(Enum):
+    """Where a memory entry originated."""
+    GAIAN_EXPLICIT   = "gaian_explicit"    # Gaian stated it directly
+    GAIAN_IMPLICIT   = "gaian_implicit"    # Inferred from Gaian behavior/language
+    SENTINEL_INFERRED = "sentinel_inferred" # Sentinel derived it from patterns
+    SYSTEM_GENERATED = "system_generated"  # Created by a system process
+    IMPORTED         = "imported"          # Imported from external source with consent
 
 
 # ---------------------------------------------------------------------------
-# MemoryEntry
+# Core Data Models
 # ---------------------------------------------------------------------------
 
+@dataclass
+class MemoryProvenance:
+    """
+    Explains where a memory came from and how confident GAIA is in it.
+    Acceptance Criterion: Each recalled memory includes provenance and confidence.
+    """
+    source:          ProvenanceSource
+    confidence:      float                   # 0.0 (uncertain) to 1.0 (certain)
+    origin_session:  Optional[str]  = None   # Session ID where this was first recorded
+    origin_context:  Optional[str]  = None   # The utterance or event that created it
+    derived_from:    list[str]      = field(default_factory=list)  # IDs of source memories
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError(
+                f"Confidence must be between 0.0 and 1.0, got {self.confidence}"
+            )
+
+
+@dataclass
 class MemoryEntry:
-    def __init__(
-        self,
-        content: str,
-        source: str,          # "explicit" | "inferred" | "session" | "external"
-        purposes: list[str],
-        confidence: float = 1.0,
-        *,
-        memory_id: Optional[str] = None,
-        created_at: Optional[str] = None,
-        updated_at: Optional[str] = None,
-        frozen: bool = False,
-        deleted: bool = False,
-        edit_count: int = 0,
-    ):
-        now = datetime.datetime.utcnow().isoformat()
-        self.id        = memory_id or self._compute_id(content)
-        self.content   = content
-        self.source    = source
-        self.purposes  = purposes
-        self.confidence = confidence
-        self.created_at = created_at or now
-        self.updated_at = updated_at or now
-        self.frozen    = frozen
-        self.deleted   = deleted
-        self.edit_count = edit_count
+    """
+    A single unit of GAIA's memory about a Gaian.
 
-    # Keep backward-compat alias used in old code
-    @property
-    def memory_id(self) -> str:
-        return self.id
+    All Gaian data belongs to the Gaian (C-SENTINEL Article 4).
+    The Gaian may inspect, correct, export, or delete any MemoryEntry.
 
-    def _compute_id(self, content: str) -> str:
-        ts = datetime.datetime.utcnow().isoformat()
-        return hashlib.sha256(f"{content}:{ts}".encode()).hexdigest()[:16]
+    Acceptance Criteria:
+      - Browsable with timestamps, confidence, provenance, last-used context
+      - Supports edit, delete, archive actions
+      - "Why am I seeing this?" explanation available
+    """
+    key:           str                          # Human-readable identifier, e.g. "preferred_name"
+    value:         str                          # The actual remembered content
+    category:      MemoryCategory
+    tier:          MemoryTier
+    provenance:    MemoryProvenance
+    id:            str                          = field(default_factory=lambda: str(uuid.uuid4()))
+    created_at:    datetime                     = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at:    datetime                     = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used_at:  Optional[datetime]           = None
+    last_used_context: Optional[str]            = None   # The response where this was last recalled
+    tags:          list[str]                    = field(default_factory=list)
+    explanation:   Optional[str]                = None   # "Why am I seeing this?" answer
 
     def to_dict(self) -> dict:
+        """Human-readable export. Gaian owns this data."""
         return {
-            "id":         self.id,
-            "content":    self.content,
-            "source":     self.source,
-            "purposes":   self.purposes,
-            "confidence": self.confidence,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-            "frozen":     self.frozen,
-            "deleted":    self.deleted,
-            "edit_count": self.edit_count,
+            "id":                 self.id,
+            "key":                self.key,
+            "value":              self.value,
+            "category":           self.category.value,
+            "tier":               self.tier.value,
+            "confidence":         self.provenance.confidence,
+            "source":             self.provenance.source.value,
+            "origin_context":     self.provenance.origin_context,
+            "created_at":         self.created_at.isoformat(),
+            "updated_at":         self.updated_at.isoformat(),
+            "last_used_at":       self.last_used_at.isoformat() if self.last_used_at else None,
+            "last_used_context":  self.last_used_context,
+            "tags":               self.tags,
+            "explanation":        self.explanation,
         }
 
-    @classmethod
-    def from_dict(cls, d: dict) -> "MemoryEntry":
-        return cls(
-            content    = d["content"],
-            source     = d.get("source", "explicit"),
-            purposes   = d.get("purposes", ["general"]),
-            confidence = d.get("confidence", 1.0),
-            memory_id  = d.get("id") or d.get("memory_id"),
-            created_at = d.get("created_at"),
-            updated_at = d.get("updated_at"),
-            frozen     = d.get("frozen", False),
-            deleted    = d.get("deleted", False),
-            edit_count = d.get("edit_count", 0),
-        )
 
-
-# ---------------------------------------------------------------------------
-# MemoryStore
-# ---------------------------------------------------------------------------
-
-class MemoryStore:
+@dataclass
+class SessionState:
     """
-    Governed persistent memory surface.
-    Backed by a JSON file that is loaded on first access and
-    written atomically on every mutation.
+    Temporary state that exists only for the current session.
+    Cleared at session end unless explicitly promoted to DURABLE.
+
+    Acceptance Criterion: Session state and durable memory are clearly separated.
     """
+    session_id:     str
+    gaian_id:       str
+    started_at:     datetime                   = field(default_factory=lambda: datetime.now(timezone.utc))
+    working_goals:  list[str]                  = field(default_factory=list)
+    active_context: dict                       = field(default_factory=dict)
+    scratchpad:     list[MemoryEntry]          = field(default_factory=list)
 
-    def __init__(self, store_path: Optional[pathlib.Path] = None):
-        self._path: pathlib.Path = store_path or _default_store_path()
-        self._memories: dict[str, MemoryEntry] = {}
-        self._audit: list[dict] = []
-        self._loaded = False
-
-    # ------------------------------------------------------------------
-    # Persistence
-    # ------------------------------------------------------------------
-
-    def _ensure_loaded(self) -> None:
-        if self._loaded:
-            return
-        self._loaded = True
-        if self._path.exists():
-            try:
-                data = json.loads(self._path.read_text(encoding="utf-8"))
-                for d in data.get("memories", []):
-                    entry = MemoryEntry.from_dict(d)
-                    self._memories[entry.id] = entry
-                self._audit = data.get("audit", [])
-            except Exception:
-                # Corrupted store — start fresh, keep the bad file as .bak
-                bak = self._path.with_suffix(".bak.json")
-                try:
-                    self._path.rename(bak)
-                except Exception:
-                    pass
-
-    def _save(self) -> None:
-        """Atomically write the store to disk."""
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "memories": [e.to_dict() for e in self._memories.values()],
-            "audit":    self._audit,
-        }
-        # Write to a temp file first, then rename (atomic on POSIX; best-effort on Windows)
-        fd, tmp = tempfile.mkstemp(dir=self._path.parent, suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2, ensure_ascii=False)
-            os.replace(tmp, self._path)
-        except Exception:
-            try:
-                os.unlink(tmp)
-            except Exception:
-                pass
-            raise
-
-    def _stamp(self) -> str:
-        return datetime.datetime.utcnow().isoformat()
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def add(
-        self,
-        content: str,
-        source: str,
-        purposes: list[str],
-        confidence: float = 1.0,
-    ) -> MemoryEntry:
-        self._ensure_loaded()
-        entry = MemoryEntry(content, source, purposes, confidence)
-        self._memories[entry.id] = entry
-        self._audit.append({
-            "action":    "add",
-            "memory_id": entry.id,
-            "timestamp": entry.created_at,
-        })
-        self._save()
+    def promote_to_durable(self, entry: MemoryEntry) -> MemoryEntry:
+        """
+        Elevate a session-scoped memory to durable.
+        Requires Gaian intent — never done automatically.
+        """
+        entry.tier = MemoryTier.DURABLE
+        entry.updated_at = datetime.now(timezone.utc)
         return entry
-
-    def get(self, memory_id: str) -> Optional[MemoryEntry]:
-        self._ensure_loaded()
-        entry = self._memories.get(memory_id)
-        return entry if (entry and not entry.deleted) else None
-
-    def edit(self, memory_id: str, new_content: str) -> bool:
-        self._ensure_loaded()
-        entry = self._memories.get(memory_id)
-        if not entry or entry.deleted or entry.frozen:
-            return False
-        old = entry.content
-        entry.content    = new_content
-        entry.updated_at = self._stamp()
-        entry.edit_count += 1
-        self._audit.append({
-            "action":      "edit",
-            "memory_id":   memory_id,
-            "old_content": old,
-            "new_content": new_content,
-            "timestamp":   entry.updated_at,
-        })
-        self._save()
-        return True
-
-    def delete(self, memory_id: str) -> bool:
-        self._ensure_loaded()
-        entry = self._memories.get(memory_id)
-        if not entry or entry.deleted:
-            return False
-        entry.deleted    = True
-        entry.updated_at = self._stamp()
-        self._audit.append({
-            "action":    "delete",
-            "memory_id": memory_id,
-            "timestamp": entry.updated_at,
-        })
-        self._save()
-        return True
-
-    def freeze(self, memory_id: str) -> bool:
-        self._ensure_loaded()
-        entry = self._memories.get(memory_id)
-        if not entry:
-            return False
-        entry.frozen = True
-        self._save()
-        return True
-
-    def unfreeze(self, memory_id: str) -> bool:
-        self._ensure_loaded()
-        entry = self._memories.get(memory_id)
-        if not entry:
-            return False
-        entry.frozen = False
-        self._save()
-        return True
-
-    def list_all(self) -> list[dict]:
-        """Return all non-deleted memory entries (user visibility surface)."""
-        self._ensure_loaded()
-        return [
-            e.to_dict()
-            for e in self._memories.values()
-            if not e.deleted
-        ]
-
-    def list_active_contents(self) -> list[str]:
-        """Return plain content strings for injection into inference prompts."""
-        self._ensure_loaded()
-        return [
-            e.content
-            for e in self._memories.values()
-            if not e.deleted and not e.frozen
-        ]
-
-    def get_audit_log(self) -> list[dict]:
-        self._ensure_loaded()
-        return list(self._audit)
-
-
-# ---------------------------------------------------------------------------
-# Singleton — shared across the server process
-# ---------------------------------------------------------------------------
-
-_store: Optional[MemoryStore] = None
-
-
-def get_memory_store() -> MemoryStore:
-    global _store
-    if _store is None:
-        _store = MemoryStore()
-    return _store
