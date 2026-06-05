@@ -126,7 +126,7 @@ class ActionGate:
         self._halted_sessions: Set[str] = set()
         self._registered_sessions: Set[str] = set()
         self._multi_party_threshold = max(2, multi_party_threshold)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # RLock: reentrant — approve() calls _delegation_allows() under same lock
         self._key = secrets.token_bytes(32)
         self._audit = get_audit()
 
@@ -235,6 +235,8 @@ class ActionGate:
         return existed
 
     def _delegation_allows(self, approver: str, risk_level: ActionRiskLevel) -> bool:
+        # Safe to acquire _lock here even when called from approve() because
+        # self._lock is an RLock — the same thread can re-enter it.
         with self._lock:
             scope = self._delegations.get(approver)
         if not scope:
@@ -341,7 +343,8 @@ class ActionGate:
             rl = ActionRiskLevel(receipt.risk_level)
             requirement = GateRequirement(receipt.requirement)
 
-            # Authorization check: gaian always allowed; delegate may be allowed
+            # Authorization check: gaian always allowed; delegate may be allowed.
+            # _delegation_allows() also acquires self._lock — safe because it is an RLock.
             if approver != "gaian" and not self._delegation_allows(approver, rl):
                 self._audit.record(
                     event_type=AuditEventType.PERMISSION_DENY,

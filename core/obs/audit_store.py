@@ -203,7 +203,7 @@ class AuditStore:
         self._dir      = Path(store_dir)
         self._path     = self._dir / NDJSON_FILENAME
         self._max_days = max_days
-        self._lock     = threading.Lock()
+        self._lock     = threading.RLock()  # RLock: purge() calls record() which also acquires the lock
         self._seq      = 0
         self._prev_hash: Optional[str] = None
 
@@ -332,10 +332,12 @@ class AuditStore:
     def purge(self, before_ts: str) -> int:
         """
         Gaian right-to-erasure: delete all entries with ts < before_ts.
-        Logs a PURGE record BEFORE modifying the file.
+        Logs a PURGE record BEFORE modifying the file so the intent is
+        always durable and cannot be erased by the purge itself.
         Returns number of entries deleted.
         """
-        # Record the purge intent first (cannot be erased by the purge itself)
+        # record() acquires self._lock; purge() then also acquires it below.
+        # Both succeed because self._lock is an RLock.
         self.record(
             event_type = "audit.purge",
             actor      = "gaian",
@@ -346,10 +348,18 @@ class AuditStore:
         with self._lock:
             pairs  = self._read_all_entries()
             kept   = [e for _, e in pairs if e.ts >= before_ts]
-            pruned = len(pairs) - len(kept)
-            if pruned:
+            removed_count = len(pairs) - len(kept)
+            if removed_count:
                 self._rewrite(kept)
-        return pruned
+        # Log completion with the actual removed count for a complete audit trail.
+        self.record(
+            event_type = "audit.purge",
+            actor      = "gaian",
+            action     = "purge",
+            outcome    = "ok",
+            meta       = {"before_ts": before_ts, "removed_count": removed_count},
+        )
+        return removed_count
 
     def delete_store(self) -> None:
         """Gaian full wipe — delete the NDJSON file entirely."""
