@@ -4,10 +4,12 @@ Public API for the GAIA-OS observability stack.
 
 Usage:
     from core.obs import get_logger, get_tracer, get_audit, get_telemetry
+    from core.obs import AuditStore, AuditReader
 """
 from .structured_logger import StructuredLogger, LogLevel
 from .tracer import TraceContext, get_current_trace_id
-from .audit import AuditLog, AuditEvent
+from .audit import AuditLog, AuditEvent, AuditEventType
+from .audit_store import AuditStore, AuditReader, StoredAuditEntry
 from .telemetry import Telemetry
 
 _logger = StructuredLogger()
@@ -42,5 +44,9 @@ __all__ = [
     "get_current_trace_id",
     "AuditLog",
     "AuditEvent",
+    "AuditEventType",
+    "AuditStore",
+    "AuditReader",
+    "StoredAuditEntry",
     "Telemetry",
 ]

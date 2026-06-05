@@ -17,6 +17,7 @@ import json
 import threading
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from .tracer import get_current_trace_id
 
@@ -38,20 +39,22 @@ class AuditEvent:
 
 # Canonical audit event types
 class AuditEventType:
-    PERMISSION_GRANT = "permission.grant"
-    PERMISSION_DENY = "permission.deny"
-    MEMORY_WRITE = "memory.write"
-    MEMORY_DELETE = "memory.delete"
-    MEMORY_READ = "memory.read"
+    PERMISSION_GRANT  = "permission.grant"
+    PERMISSION_DENY   = "permission.deny"
+    MEMORY_WRITE      = "memory.write"
+    MEMORY_DELETE     = "memory.delete"
+    MEMORY_READ       = "memory.read"
     EXTERNAL_API_CALL = "external.api_call"
-    FILE_WRITE = "file.write"
-    FILE_DELETE = "file.delete"
-    AGENT_ACTION = "agent.action"
-    POLICY_DECISION = "policy.decision"
-    RAG_INGEST = "rag.ingest"
-    RAG_QUERY = "rag.query"
-    SESSION_START = "session.start"
-    SESSION_END = "session.end"
+    FILE_WRITE        = "file.write"
+    FILE_DELETE       = "file.delete"
+    AGENT_ACTION      = "agent.action"
+    POLICY_DECISION   = "policy.decision"
+    RAG_INGEST        = "rag.ingest"
+    RAG_QUERY         = "rag.query"
+    SESSION_START     = "session.start"
+    SESSION_END       = "session.end"
+    AUDIT_PURGE       = "audit.purge"
+    AUDIT_STORE_OPEN  = "audit.store_open"
 
 
 class AuditLog:
@@ -59,13 +62,22 @@ class AuditLog:
     Append-only in-memory audit log.
     Thread-safe. Export to JSON for persistence.
 
-    Note: For production use, persist to encrypted storage via core/security.
-    This implementation is the in-memory foundation that the persistence layer wraps.
+    For durable, tamper-evident persistence use AuditStore from
+    core.obs.audit_store, which wraps this interface with HMAC signing,
+    hash chaining, and NDJSON file storage.
     """
 
     def __init__(self):
         self._events: List[AuditEvent] = []
         self._lock = threading.Lock()
+        self._store = None  # Optional[AuditStore] — set via attach_store()
+
+    def attach_store(self, store: Any) -> None:
+        """
+        Attach a persistent AuditStore.  When attached, every record()
+        call also writes to the durable store.
+        """
+        self._store = store
 
     def record(
         self,
@@ -79,6 +91,7 @@ class AuditLog:
         """
         Record an audit event. Returns the created event.
         Once appended, events cannot be modified or removed (append-only contract).
+        If an AuditStore is attached, also persists to disk.
         """
         event = AuditEvent(
             event_type=event_type,
@@ -92,6 +105,20 @@ class AuditLog:
         )
         with self._lock:
             self._events.append(event)
+        # Mirror to persistent store if attached (best-effort)
+        if self._store is not None:
+            try:
+                self._store.record(
+                    event_type=event_type,
+                    actor=actor,
+                    action=action,
+                    outcome=outcome,
+                    resource=resource,
+                    meta=meta or {},
+                    trace_id=event.trace_id,
+                )
+            except Exception:  # noqa: BLE001
+                pass
         return event
 
     def query(
