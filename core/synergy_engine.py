@@ -42,17 +42,21 @@ Trace integration (GAIATrace / AsyncGAIATrace):
   All trace operations are wrapped in try/except so a broken trace
   writer never silences a SynergyEngine error.
 
-EventType shim (Issue #5):
-  A module-level EventType enum is provided so tests and callers can
-  reference synergy_engine.EventType.QUERY / OUTPUT / ERROR without
-  importing core.trace directly.  At import time the shim attempts to
-  alias core.trace.TraceEventType; if that module is not yet available
-  it falls back to a standalone Enum with identical member names.
+EventType shim (Issue #5 / #258):
+  A module-level EventType enum is always defined as a standalone Enum
+  with members QUERY, OUTPUT, ERROR so that:
+    - from core.synergy_engine import EventType always works
+    - EventType.QUERY.name == "QUERY" is guaranteed (tests key on .name)
+    - No dependency on core.trace at import time
 
-  All internal emit helpers use this module-level EventType directly
-  rather than re-importing core.trace.TraceEventType at call time.
-  This guarantees trace events are always recorded even when core.trace
-  is not on the Python path (e.g. during isolated unit-test bootstrap).
+  The shim no longer aliases TraceEventType directly because that alias
+  was unsafe: if TraceEventType used different member names the test
+  helper _events_by_type() would silently drop all events (C30 —
+  no silent failures).
+
+  For downstream interop, callers that need TraceEventType can import it
+  from core.trace directly.  All internal _emit_* helpers reference the
+  module-level EventType.
 
 CanonEntry integration (Issue #253):
   _analyse_canon_context() now accepts either a plain str (legacy path)
@@ -86,28 +90,31 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# EventType shim  (Issue #5)
+# EventType shim  (Issue #5 / #258)
 # ---------------------------------------------------------------------------
-# Expose a module-level EventType so tests can do:
-#   from core.synergy_engine import EventType
-#   trace.record_output(event_type=EventType.QUERY, ...)
-# At import time we attempt to alias TraceEventType from core.trace;
-# if that module is unavailable we fall back to a standalone Enum.
+# Always define a standalone Enum with members QUERY, OUTPUT, ERROR.
 #
-# IMPORTANT: all _emit_* helpers below reference this module-level name
-# directly.  Do NOT add "from core.trace import TraceEventType" inside
-# helper bodies — that pattern silently drops events when core.trace is
-# absent during test bootstrap (C30 — no silent failures).
+# We deliberately do NOT alias core.trace.TraceEventType here.  That alias
+# was the root cause of Issue #258: if TraceEventType existed but used
+# different member names, EventType.QUERY.name would not equal "QUERY" and
+# _events_by_type() in the test suite would silently drop every event
+# (violating C30 — no silent failures).
+#
+# Callers that need TraceEventType for interop can import it from core.trace
+# directly.  All _emit_* helpers below use this module-level EventType only.
 # ---------------------------------------------------------------------------
 
-try:
-    from core.trace import TraceEventType as EventType  # type: ignore[assignment]
-except Exception:  # ImportError or circular-import during test bootstrap
-    class EventType(Enum):  # type: ignore[no-redef]
-        """Fallback event-type enum used when core.trace is not importable."""
-        QUERY  = "QUERY"
-        OUTPUT = "OUTPUT"
-        ERROR  = "ERROR"
+class EventType(Enum):
+    """
+    Canonical event-type enum for SynergyEngine trace events.
+
+    Member names are stable identifiers used by _events_by_type() in the
+    test suite and by all _emit_* helpers in this module.  Do not rename
+    members without updating all callers.
+    """
+    QUERY  = "QUERY"
+    OUTPUT = "OUTPUT"
+    ERROR  = "ERROR"
 
 
 # ---------------------------------------------------------------------------
@@ -525,7 +532,7 @@ def _classify_stage(
 # ---------------------------------------------------------------------------
 # Trace helpers — compute()
 #
-# Use the module-level EventType shim — never re-import core.trace here.
+# Use the module-level EventType — never re-import core.trace here.
 # ---------------------------------------------------------------------------
 
 def _emit_query(trace: Any, gaian_id: Optional[str], kwargs: dict) -> None:
@@ -581,7 +588,7 @@ def _emit_error(trace: Any, exc: BaseException) -> None:
 # ---------------------------------------------------------------------------
 # Trace helpers — plan()  (Issue #5)
 #
-# Use the module-level EventType shim — never re-import core.trace here.
+# Use the module-level EventType — never re-import core.trace here.
 # ---------------------------------------------------------------------------
 
 def _emit_plan_query(
@@ -967,12 +974,17 @@ class SynergyEngine:
         and the audit trail can inspect what the Canon passage contributed
         (C30 — no silent influence).
 
-        Instrumentation layout (Issue #5):
+        Instrumentation layout (Issue #5 / #258):
           - QUERY  fired at plan() entry, before _plan_internal(), so it
             always fires even when _plan_internal() raises immediately.
           - OUTPUT fired inside _plan_internal() at every return site.
           - ERROR  fired in the outer except block, after QUERY.
           - META   latency_ms recorded in the finally block, always.
+
+        EventType guarantee (Issue #258):
+          All events use the module-level EventType enum whose members have
+          .name == "QUERY" / "OUTPUT" / "ERROR".  This is stable regardless
+          of whether core.trace is importable at test time.
         """
         start_time = time.time()
 
@@ -988,7 +1000,7 @@ class SynergyEngine:
         _raw_canon    = getattr(context, "canon_context",    "") or ""
         _canon_hint   = _analyse_canon_context(_raw_canon)
 
-        # QUERY event — fires unconditionally at plan() entry
+        # QUERY event — fires unconditionally at plan() entry (Issue #258)
         _emit_plan_query(
             trace, goal, _coherence, _affective, _planetary,
             _session_mode, len(_cycle_memory), _canon_hint,
