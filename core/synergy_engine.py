@@ -10,9 +10,9 @@ the relational stage and surfaces alchemical framing for the system
 prompt.
 
 plan() adds the agentic reasoning layer: given a goal and a LoopContext,
-it integrates biometric, affective, planetary, and task signals into a
-structured next-action decision — fulfilling the AgenticLoop's _reason()
-phase.
+it integrates biometric, affective, planetary, task, and **Canon** signals
+into a structured next-action decision — fulfilling the AgenticLoop's
+_reason() phase.
 
 Canon Ref:
   C01  — Sovereignty: plan() proposes, ActionGate disposes.
@@ -40,6 +40,7 @@ Trace integration (GAIATrace / AsyncGAIATrace):
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
@@ -123,6 +124,110 @@ _HIGH_SYNERGY_THRESHOLD = 0.70
 _HISTORY_CAP = 20
 
 _TRACE_CANON_REFS = ["C32", "C42", "C04"]
+
+# ---------------------------------------------------------------------------
+# Canon-keyword → register nudge table  (C32 — multi-signal integration)
+# ---------------------------------------------------------------------------
+# If the canon_context string contains any of these keywords (case-insensitive)
+# the engine will nudge the action register toward the mapped value — *unless*
+# coherence is already below the depletion threshold (minimal always wins).
+#
+# Keywords are checked in definition order; first match wins.
+_CANON_REGISTER_KEYWORDS: List[Tuple[str, str, str]] = [
+    # (keyword_pattern,       target_register, short_label)
+    (r"grief|overwhelm|trauma|loss|distress",   "reflective", "canon:grief-signal"),
+    (r"storm|severe|crisis|emergency",           "reflective", "canon:storm-signal"),
+    (r"integrate|synthesise|synthesize|review", "reflective", "canon:integration-signal"),
+    (r"research|explore|build|create|write",    "executive",  "canon:executive-signal"),
+    (r"rest|pause|sleep|minimal|lightweight",   "minimal",    "canon:rest-signal"),
+]
+
+# Maximum chars of canon_context kept in audit rationale (C30 — no silent data)
+_CANON_EXCERPT_LEN = 300
+
+
+# ---------------------------------------------------------------------------
+# CanonPlanHint — structured result of Canon-context analysis
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CanonPlanHint:
+    """
+    Structured summary of what the Canon context tells the planner.
+
+    Produced once per plan() call from the raw canon_context string.
+    Forwarded into the rationale string (C30 audit trail) and used to
+    nudge the action register (C32 multi-signal integration).
+
+    Fields
+    ------
+    present        : True if non-empty canon_context was supplied.
+    char_count     : Length of the raw canon_context string.
+    excerpt        : First _CANON_EXCERPT_LEN chars (for audit logs).
+    register_nudge : Optional register override suggested by Canon keywords.
+    nudge_label    : Short human-readable label for the matched keyword group.
+    canon_refs     : Canon reference IDs found in the context (e.g. ['C01']).
+    """
+    present:        bool
+    char_count:     int
+    excerpt:        str
+    register_nudge: Optional[str] = None
+    nudge_label:    str            = ""
+    canon_refs:     List[str]      = field(default_factory=list)
+
+    def to_rationale_fragment(self) -> str:
+        """One-line description for inclusion in the plan rationale."""
+        if not self.present:
+            return "Canon context: none."
+        refs_s = ", ".join(self.canon_refs) if self.canon_refs else "(none detected)"
+        nudge_s = (
+            f" Register nudge: {self.register_nudge!r} ({self.nudge_label})."
+            if self.register_nudge else ""
+        )
+        return (
+            f"Canon context: {self.char_count} chars, refs=[{refs_s}].{nudge_s}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Canon-context analysis (pure function — independently testable)
+# ---------------------------------------------------------------------------
+
+def _analyse_canon_context(canon_context: str) -> CanonPlanHint:
+    """
+    Analyse *canon_context* and return a CanonPlanHint.
+
+    This is a **pure function** — no I/O, no side effects.  Call it once
+    at the start of _plan_internal() and pass the result downstream.
+
+    Canon refs are extracted via a simple C\\d+ pattern.  The first
+    keyword match from _CANON_REGISTER_KEYWORDS wins for register_nudge.
+    """
+    stripped = (canon_context or "").strip()
+    if not stripped:
+        return CanonPlanHint(present=False, char_count=0, excerpt="")
+
+    # Extract Canon ref IDs (e.g. C01, C32)
+    canon_refs = sorted(set(re.findall(r"\bC\d+\b", stripped)))
+
+    # Check for keyword-based register nudge
+    register_nudge: Optional[str] = None
+    nudge_label: str = ""
+    lower = stripped.lower()
+    for pattern, target, label in _CANON_REGISTER_KEYWORDS:
+        if re.search(pattern, lower):
+            register_nudge = target
+            nudge_label    = label
+            break
+
+    return CanonPlanHint(
+        present=True,
+        char_count=len(stripped),
+        excerpt=stripped[:_CANON_EXCERPT_LEN],
+        register_nudge=register_nudge,
+        nudge_label=nudge_label,
+        canon_refs=canon_refs,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -384,16 +489,22 @@ def _confidence_from_signals(
     coherence: float,
     register: str,
     has_failures: bool,
+    canon_present: bool = False,
 ) -> float:
     """
     Compute a planning confidence score [0.05, 1.0] from ambient signals.
 
-    Higher coherence + executive register + no recent failures → higher confidence.
+    Higher coherence + executive register + no recent failures + Canon
+    context present → higher confidence.
+
+    canon_present adds a small boost (0.05) because a grounded plan is
+    more reliable than a purely heuristic one.
     """
     base = coherence * 0.6
     register_bonus = {"executive": 0.30, "reflective": 0.20, "minimal": 0.10}.get(register, 0.15)
     failure_penalty = 0.15 if has_failures else 0.0
-    return max(0.05, min(1.0, base + register_bonus - failure_penalty))
+    canon_bonus     = 0.05 if canon_present else 0.0
+    return max(0.05, min(1.0, base + register_bonus - failure_penalty + canon_bonus))
 
 
 # ---------------------------------------------------------------------------
@@ -708,8 +819,23 @@ class SynergyEngine:
           4. biometric_coherence — minimal register if coherence < 0.4
           5. affective_state     — reflective register on grief/overwhelm
           6. planetary_label     — reflective register on storm
-          7. Heuristic goal decomposition fallback
-          8. Progress-based completion heuristic (10+ cycles, ≥ 0.8)
+          7. **canon_context**   — Canon-grounded register nudge (NEW)
+          8. Heuristic goal decomposition fallback
+          9. Progress-based completion heuristic (10+ cycles, >= 0.8)
+
+        Canon context integration (C32):
+          canon_context is read from LoopContext via getattr (duck-typed
+          so legacy callers without the field are unaffected).  It is
+          analysed by _analyse_canon_context() which produces a
+          CanonPlanHint.  The hint can nudge the action register and is
+          always included in the rationale (C30 — no silent context).
+
+          Register priority (highest to lowest):
+            1. biometric depletion (minimal — always wins)
+            2. affective/planetary (reflective)
+            3. canon_context keyword nudge (nudges toward reflective,
+               executive, or minimal based on passage content)
+            4. default executive
 
         Canon refs:
           C01 — Sovereignty: plan() proposes, ActionGate disposes.
@@ -722,13 +848,14 @@ class SynergyEngine:
         Returns
         -------
         dict with keys:
-            action       : str        — action_type forwarded to ActionGate
-            tool         : str | None — tool/module to invoke
-            args         : dict       — arguments for the tool
-            rationale    : str        — why this action was chosen (C30 audit trail)
-            confidence   : float      — 0.0–1.0
-            summary      : str        — one-liner for the cycle log
-            goal_complete: bool       — True signals the loop to halt (goal achieved)
+            action        : str        — action_type forwarded to ActionGate
+            tool          : str | None — tool/module to invoke
+            args          : dict       — arguments for the tool
+            rationale     : str        — why this action was chosen (C30 audit trail)
+            confidence    : float      — 0.0–1.0
+            summary       : str        — one-liner for the cycle log
+            goal_complete : bool       — True signals the loop to halt (goal achieved)
+            canon_hint    : dict       — CanonPlanHint summary (for tracing/tests)
         """
         try:
             return await self._plan_internal(goal, context)
@@ -741,6 +868,7 @@ class SynergyEngine:
                 "confidence":    0.0,
                 "summary":       "PLANNING_FAILED — see rationale",
                 "goal_complete": False,
+                "canon_hint":    {"present": False, "char_count": 0, "excerpt": ""},
             }
 
     async def _plan_internal(self, goal: str, context: "LoopContext") -> dict:
@@ -765,6 +893,7 @@ class SynergyEngine:
                         "confidence":    1.0,
                         "summary":       "Goal complete via TaskGraph.",
                         "goal_complete": True,
+                        "canon_hint":    {"present": False, "char_count": 0, "excerpt": ""},
                     }
             except Exception:  # noqa: BLE001
                 pass
@@ -775,16 +904,22 @@ class SynergyEngine:
             if context.biometric_coherence is not None
             else 0.5
         )
-        affective: str  = getattr(context, "affective_state", "unknown").lower()
-        planetary: str  = getattr(context, "planetary_label",  "unknown").lower()
-        session_mode: str = getattr(context, "session_mode",   "default").lower()
-        cycle_memory: list = getattr(context, "cycle_memory",  [])
+        affective: str    = getattr(context, "affective_state",  "unknown").lower()
+        planetary: str    = getattr(context, "planetary_label",  "unknown").lower()
+        session_mode: str = getattr(context, "session_mode",     "default").lower()
+        cycle_memory: list = getattr(context, "cycle_memory",    [])
 
-        # ── 2. Determine action register ─────────────────────────────
+        # ── 2. Analyse Canon context (C32 — new signal)  ─────────────
+        raw_canon: str = getattr(context, "canon_context", "") or ""
+        canon_hint: CanonPlanHint = _analyse_canon_context(raw_canon)
+
+        # ── 3. Determine action register ─────────────────────────────
         #
-        # "executive"  — active, tool-invoking (research / write / build)
-        # "reflective" — pause, summarise, integrate, journal
-        # "minimal"    — single lightweight step (biometric depletion guard)
+        # Priority (highest → lowest):
+        #   a) biometric depletion → minimal  (always overrides)
+        #   b) affective/planetary grief/storm → reflective
+        #   c) Canon keyword nudge (if present and no higher override)
+        #   d) default → executive
         #
         low_coherence   = coherence < 0.4
         grief_state     = affective in ("grief", "overwhelm", "exhaustion", "distress")
@@ -802,20 +937,30 @@ class SynergyEngine:
                 f"affective_state={affective!r}, planetary_label={planetary!r} — "
                 "preferring reflective over executive actions"
             )
+        elif canon_hint.present and canon_hint.register_nudge is not None:
+            # Canon context is present and contains a keyword suggesting a
+            # specific register.  Apply the nudge (C32 — multi-signal).
+            register = canon_hint.register_nudge
+            register_reason = (
+                f"Canon context nudge ({canon_hint.nudge_label}) — "
+                f"register overridden to {register!r}"
+            )
         else:
             register = "executive"
             register_reason = (
                 f"coherence={coherence:.2f}, affective={affective!r}, "
                 f"planetary={planetary!r} — full executive capacity"
             )
+            if canon_hint.present:
+                register_reason += ". Canon context present (no keyword nudge)."
 
-        # ── 3. Build failed-action dedup set (last 5 cycles) ─────────
+        # ── 4. Build failed-action dedup set (last 5 cycles) ─────────
         failed_actions: set = set()
         for entry in cycle_memory[-5:]:
             if not entry.get("success", True):
                 failed_actions.add(entry.get("action", ""))
 
-        # ── 4. TaskGraph next pending node ────────────────────────────
+        # ── 5. TaskGraph next pending node ────────────────────────────
         if task_graph is not None:
             try:
                 # Walk _nodes in topological order; pick first PENDING node
@@ -843,7 +988,8 @@ class SynergyEngine:
                         rationale = (
                             f"TaskGraph selected engine_id={node.engine_id!r} "
                             f"(inputs={node.inputs}). "
-                            f"Register: {register} ({register_reason})."
+                            f"Register: {register} ({register_reason}). "
+                            f"{canon_hint.to_rationale_fragment()}"
                         )
                         return {
                             "action":        action,
@@ -853,18 +999,20 @@ class SynergyEngine:
                             "confidence":    round(confidence, 3),
                             "summary":       f"TaskGraph → {node.engine_id}",
                             "goal_complete": False,
+                            "canon_hint":    {
+                                "present":        canon_hint.present,
+                                "char_count":     canon_hint.char_count,
+                                "excerpt":        canon_hint.excerpt,
+                                "register_nudge": canon_hint.register_nudge,
+                                "nudge_label":    canon_hint.nudge_label,
+                                "canon_refs":     canon_hint.canon_refs,
+                            },
                         }
-                    else:
-                        rationale_skip = (
-                            f"TaskGraph proposed engine_id={node.engine_id!r} "
-                            f"but action={action!r} recently failed — "
-                            "falling through to decomposition (C30 dedup)."
-                        )
-                        # Continue loop; try next eligible node
+                    # else: action failed recently — fall through to next node
             except Exception:  # noqa: BLE001
                 pass  # TaskGraph introspection failed — fall through
 
-        # ── 5. Goal decomposition fallback ────────────────────────────
+        # ── 6. Goal decomposition fallback ────────────────────────────
         action, tool, args, decomp_note = _decompose_goal(
             goal=goal,
             register=register,
@@ -873,9 +1021,9 @@ class SynergyEngine:
             cycle_count=len(cycle_memory),
         )
 
-        # ── 6. Progress-based completion heuristic ────────────────────
+        # ── 7. Progress-based completion heuristic ────────────────────
         # If we've cycled 10+ times without a TaskGraph and recent
-        # progress is consistently ≥ 0.8, declare completion rather
+        # progress is consistently >= 0.8, declare completion rather
         # than looping indefinitely (C30 — no runaway loops).
         goal_complete = False
         if len(cycle_memory) >= 10:
@@ -886,14 +1034,18 @@ class SynergyEngine:
                 tool          = None
                 args          = {}
                 decomp_note   = (
-                    "Progress consistently ≥ 0.8 over last 5 cycles — "
+                    "Progress consistently >= 0.8 over last 5 cycles — "
                     "goal achieved (C30 completion heuristic)."
                 )
 
-        confidence = _confidence_from_signals(coherence, register, bool(failed_actions))
+        confidence = _confidence_from_signals(
+            coherence, register, bool(failed_actions),
+            canon_present=canon_hint.present,
+        )
         rationale = (
             f"Goal decomposition selected action={action!r} tool={tool!r}. "
             f"Register: {register} ({register_reason}). "
+            f"{canon_hint.to_rationale_fragment()} "
             f"{decomp_note}"
         )
 
@@ -905,4 +1057,12 @@ class SynergyEngine:
             "confidence":    round(confidence, 3),
             "summary":       f"Decomposition → {action}",
             "goal_complete": goal_complete,
+            "canon_hint": {
+                "present":        canon_hint.present,
+                "char_count":     canon_hint.char_count,
+                "excerpt":        canon_hint.excerpt,
+                "register_nudge": canon_hint.register_nudge,
+                "nudge_label":    canon_hint.nudge_label,
+                "canon_refs":     canon_hint.canon_refs,
+            },
         }
