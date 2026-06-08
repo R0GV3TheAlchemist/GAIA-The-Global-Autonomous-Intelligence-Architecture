@@ -32,10 +32,18 @@ Trace integration (GAIATrace / AsyncGAIATrace):
   events are emitted per call:
     QUERY  — call site + dimension arguments
     OUTPUT — SynergyReading summary + synergy_factor
-    META   — latency_ms + state delta
+    META   — latency_ms via `record_meta()`
   Canon refs C32/C42/C04 are forwarded automatically.
   All trace operations are wrapped in try/except so a broken trace
   writer never silences a SynergyEngine error.
+
+CanonEntry integration (Issue #253):
+  _analyse_canon_context() now accepts either a plain str (legacy path)
+  or a CanonEntry object (new path).  When a CanonEntry is supplied:
+    - The declared register_signal is used directly (no regex scan).
+    - The validated ref_id is forwarded into canon_refs.
+    - to_context_string() produces the excerpt for the audit rationale.
+  All existing callers that pass a plain string are unaffected.
 """
 
 from __future__ import annotations
@@ -43,11 +51,12 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from core.trace import GAIATrace, AsyncGAIATrace
     from core.agentic_loop import LoopContext
+    from core.canon.canon_entry import CanonEntry
 
 
 # ---------------------------------------------------------------------------
@@ -128,13 +137,7 @@ _TRACE_CANON_REFS = ["C32", "C42", "C04"]
 # ---------------------------------------------------------------------------
 # Canon-keyword → register nudge table  (C32 — multi-signal integration)
 # ---------------------------------------------------------------------------
-# If the canon_context string contains any of these keywords (case-insensitive)
-# the engine will nudge the action register toward the mapped value — *unless*
-# coherence is already below the depletion threshold (minimal always wins).
-#
-# Keywords are checked in definition order; first match wins.
 _CANON_REGISTER_KEYWORDS: List[Tuple[str, str, str]] = [
-    # (keyword_pattern,       target_register, short_label)
     (r"grief|overwhelm|trauma|loss|distress",   "reflective", "canon:grief-signal"),
     (r"storm|severe|crisis|emergency",           "reflective", "canon:storm-signal"),
     (r"integrate|synthesise|synthesize|review", "reflective", "canon:integration-signal"),
@@ -142,12 +145,11 @@ _CANON_REGISTER_KEYWORDS: List[Tuple[str, str, str]] = [
     (r"rest|pause|sleep|minimal|lightweight",   "minimal",    "canon:rest-signal"),
 ]
 
-# Maximum chars of canon_context kept in audit rationale (C30 — no silent data)
 _CANON_EXCERPT_LEN = 300
 
 
 # ---------------------------------------------------------------------------
-# CanonPlanHint — structured result of Canon-context analysis
+# CanonPlanHint
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -155,18 +157,22 @@ class CanonPlanHint:
     """
     Structured summary of what the Canon context tells the planner.
 
-    Produced once per plan() call from the raw canon_context string.
-    Forwarded into the rationale string (C30 audit trail) and used to
-    nudge the action register (C32 multi-signal integration).
+    Produced once per plan() call from the raw canon_context string
+    OR a CanonEntry object.  Forwarded into the rationale string
+    (C30 audit trail) and used to nudge the action register
+    (C32 multi-signal integration).
 
     Fields
     ------
     present        : True if non-empty canon_context was supplied.
     char_count     : Length of the raw canon_context string.
     excerpt        : First _CANON_EXCERPT_LEN chars (for audit logs).
-    register_nudge : Optional register override suggested by Canon keywords.
-    nudge_label    : Short human-readable label for the matched keyword group.
-    canon_refs     : Canon reference IDs found in the context (e.g. ['C01']).
+    register_nudge : Optional register override suggested by Canon keywords
+                     or the CanonEntry.register_signal declaration.
+    nudge_label    : Short human-readable label for the signal source.
+    canon_refs     : Canon reference IDs found in the context.
+    entry_ref_id   : If a CanonEntry was supplied, its ref_id.  None for
+                     raw strings (legacy path).
     """
     present:        bool
     char_count:     int
@@ -174,9 +180,9 @@ class CanonPlanHint:
     register_nudge: Optional[str] = None
     nudge_label:    str            = ""
     canon_refs:     List[str]      = field(default_factory=list)
+    entry_ref_id:   Optional[str]  = None
 
     def to_rationale_fragment(self) -> str:
-        """One-line description for inclusion in the plan rationale."""
         if not self.present:
             return "Canon context: none."
         refs_s = ", ".join(self.canon_refs) if self.canon_refs else "(none detected)"
@@ -184,8 +190,13 @@ class CanonPlanHint:
             f" Register nudge: {self.register_nudge!r} ({self.nudge_label})."
             if self.register_nudge else ""
         )
+        entry_s = (
+            f" CanonEntry: {self.entry_ref_id!r}."
+            if self.entry_ref_id else ""
+        )
         return (
-            f"Canon context: {self.char_count} chars, refs=[{refs_s}].{nudge_s}"
+            f"Canon context: {self.char_count} chars, refs=[{refs_s}]."
+            f"{nudge_s}{entry_s}"
         )
 
 
@@ -193,26 +204,86 @@ class CanonPlanHint:
 # Canon-context analysis (pure function — independently testable)
 # ---------------------------------------------------------------------------
 
-def _analyse_canon_context(canon_context: str) -> CanonPlanHint:
+def _analyse_canon_context(
+    canon_context: Union[str, "CanonEntry", None],
+) -> CanonPlanHint:
     """
     Analyse *canon_context* and return a CanonPlanHint.
 
-    This is a **pure function** — no I/O, no side effects.  Call it once
-    at the start of _plan_internal() and pass the result downstream.
+    Accepts EITHER:
+      - A plain str (legacy path — unchanged behaviour)
+      - A CanonEntry object (new path — uses declared register_signal
+        directly; no regex scan needed for unambiguous entries)
+      - None / empty string → CanonPlanHint(present=False)
 
-    Canon refs are extracted via a simple C\\d+ pattern.  The first
-    keyword match from _CANON_REGISTER_KEYWORDS wins for register_nudge.
+    This is a **pure function** — no I/O, no side effects.
+
+    CanonEntry fast path
+    --------------------
+    When a CanonEntry is supplied and its register_signal is not
+    UNSPECIFIED, the declared signal is trusted directly — this is the
+    point of the CanonEntry schema: eliminate ambiguous regex matching.
+    If register_signal IS UNSPECIFIED, the function falls through to
+    keyword scanning on the entry's body text.
+
+    Legacy string path
+    ------------------
+    Unchanged from before: extract C\\d+ refs, scan keyword groups,
+    first match wins.
     """
-    stripped = (canon_context or "").strip()
+    # ── CanonEntry path ───────────────────────────────────────────────
+    try:
+        from core.canon.canon_entry import CanonEntry, RegisterSignal
+        if isinstance(canon_context, CanonEntry):
+            entry = canon_context
+            body = (entry.body or "").strip()
+            if not body:
+                return CanonPlanHint(present=False, char_count=0, excerpt="")
+
+            context_str = entry.to_context_string()
+            canon_refs  = sorted(set(
+                re.findall(r"\bC\d+\b", context_str)
+            ))
+            # Ensure the entry's own ref_id is always in canon_refs
+            if entry.ref_id and re.match(r"^C\d+$", entry.ref_id):
+                canon_refs = sorted(set(canon_refs + [entry.ref_id]))
+
+            # Use declared signal if explicit
+            register_nudge: Optional[str] = None
+            nudge_label:    str            = ""
+            if entry.register_signal != RegisterSignal.UNSPECIFIED:
+                register_nudge = entry.register_signal.value
+                nudge_label    = f"canon-entry:{entry.ref_id}:{register_nudge}"
+            else:
+                # Fall through to keyword scan on body
+                lower = body.lower()
+                for pattern, target, label in _CANON_REGISTER_KEYWORDS:
+                    if re.search(pattern, lower):
+                        register_nudge = target
+                        nudge_label    = label
+                        break
+
+            return CanonPlanHint(
+                present=True,
+                char_count=len(context_str),
+                excerpt=context_str[:_CANON_EXCERPT_LEN],
+                register_nudge=register_nudge,
+                nudge_label=nudge_label,
+                canon_refs=canon_refs,
+                entry_ref_id=entry.ref_id,
+            )
+    except ImportError:
+        pass  # canon_entry module not yet available — fall through to str path
+
+    # ── Legacy string path ────────────────────────────────────────────
+    stripped = (canon_context or "").strip() if isinstance(canon_context, str) else ""
     if not stripped:
         return CanonPlanHint(present=False, char_count=0, excerpt="")
 
-    # Extract Canon ref IDs (e.g. C01, C32)
     canon_refs = sorted(set(re.findall(r"\bC\d+\b", stripped)))
 
-    # Check for keyword-based register nudge
-    register_nudge: Optional[str] = None
-    nudge_label: str = ""
+    register_nudge = None
+    nudge_label    = ""
     lower = stripped.lower()
     for pattern, target, label in _CANON_REGISTER_KEYWORDS:
         if re.search(pattern, lower):
@@ -227,6 +298,7 @@ def _analyse_canon_context(canon_context: str) -> CanonPlanHint:
         register_nudge=register_nudge,
         nudge_label=nudge_label,
         canon_refs=canon_refs,
+        entry_ref_id=None,
     )
 
 
@@ -315,7 +387,6 @@ def _classify_stage(
     settling_phase: str,
     coherence_phi: float,
 ) -> str:
-    """Classify the current elemental stage from key signals."""
     if synergy < 0.35 and coherence_phi > 0.80:
         return "quantum"
     if synergy < 0.35 and bond_depth < 20.0:
@@ -332,37 +403,26 @@ def _classify_stage(
 
 
 # ---------------------------------------------------------------------------
-# Trace helpers (no-ops when trace is None)
+# Trace helpers
 # ---------------------------------------------------------------------------
 
-def _emit_query(
-    trace: Any,
-    gaian_id: Optional[str],
-    kwargs: dict,
-) -> None:
-    """Emit a QUERY event onto the trace.  Never raises."""
+def _emit_query(trace: Any, gaian_id: Optional[str], kwargs: dict) -> None:
     if trace is None:
         return
     try:
         from core.trace import TraceEventType
         trace.record_output(
-            output={
-                "call": "SynergyEngine.compute",
-                "gaian_id": gaian_id,
-                "dimensions": {
-                    k: kwargs[k]
-                    for k in (
-                        "dominant_hz", "schumann_aligned", "noosphere_health",
-                        "coherence_phi", "layer_phi", "phi_rolling_avg",
-                        "conflict_density", "shadow_activations", "codex_stage",
-                        "individuation_phase", "element", "fluidity_score",
-                        "love_arc_stage", "arc_output_vector", "mc_stage",
-                        "attachment_phase", "bond_depth", "dependency_signal",
-                        "settling_phase", "crystallisation_pct",
-                    )
-                    if k in kwargs
-                },
-            },
+            output={"call": "SynergyEngine.compute", "gaian_id": gaian_id, "dimensions": {
+                k: kwargs[k] for k in (
+                    "dominant_hz", "schumann_aligned", "noosphere_health",
+                    "coherence_phi", "layer_phi", "phi_rolling_avg",
+                    "conflict_density", "shadow_activations", "codex_stage",
+                    "individuation_phase", "element", "fluidity_score",
+                    "love_arc_stage", "arc_output_vector", "mc_stage",
+                    "attachment_phase", "bond_depth", "dependency_signal",
+                    "settling_phase", "crystallisation_pct",
+                ) if k in kwargs
+            }},
             event_type=TraceEventType.QUERY,
             canon_refs=_TRACE_CANON_REFS,
         )
@@ -370,12 +430,7 @@ def _emit_query(
         pass
 
 
-def _emit_output(
-    trace: Any,
-    reading: "SynergyReading",
-    latency_ms: float,
-) -> None:
-    """Emit an OUTPUT event onto the trace.  Never raises."""
+def _emit_output(trace: Any, reading: "SynergyReading", latency_ms: float) -> None:
     if trace is None:
         return
     try:
@@ -390,11 +445,7 @@ def _emit_output(
         pass
 
 
-def _emit_error(
-    trace: Any,
-    exc: BaseException,
-) -> None:
-    """Emit an ERROR event onto the trace.  Never raises."""
+def _emit_error(trace: Any, exc: BaseException) -> None:
     if trace is None:
         return
     try:
@@ -409,12 +460,8 @@ def _emit_error(
 
 
 # ---------------------------------------------------------------------------
-# Planning helpers  (module-level pure functions — independently testable)
+# Planning helpers
 # ---------------------------------------------------------------------------
-
-# Action pools used by _decompose_goal().
-# Each entry: (action_name, tool_name_or_None, args_template_dict)
-# {goal} in args values is interpolated with the first 120 chars of the goal.
 
 _REFLECTIVE_ACTIONS: List[Tuple[str, Optional[str], dict]] = [
     ("summarise_progress",  "summariser",    {"scope": "session"}),
@@ -439,21 +486,10 @@ _MINIMAL_ACTIONS: List[Tuple[str, Optional[str], dict]] = [
 def _decompose_goal(
     goal: str,
     register: str,
-    session_mode: str,  # noqa: ARG001 — reserved for session-mode routing in future
+    session_mode: str,
     failed_actions: set,
     cycle_count: int,
 ) -> Tuple[str, Optional[str], dict, str]:
-    """
-    Heuristic goal decomposition.
-
-    Rotates through the appropriate action pool (keyed on register),
-    skipping any action that appears in failed_actions.  Falls back to a
-    clarification request if the entire pool is exhausted.
-
-    Returns
-    -------
-    (action, tool, args, note)  — never raises.
-    """
     pool: List[Tuple[str, Optional[str], dict]]
     if register == "minimal":
         pool = _MINIMAL_ACTIONS
@@ -476,7 +512,6 @@ def _decompose_goal(
             )
             return action, tool, resolved_args, note
 
-    # All pool actions have been attempted and failed — request clarification (C30)
     return (
         "request_clarification",
         None,
@@ -491,17 +526,8 @@ def _confidence_from_signals(
     has_failures: bool,
     canon_present: bool = False,
 ) -> float:
-    """
-    Compute a planning confidence score [0.05, 1.0] from ambient signals.
-
-    Higher coherence + executive register + no recent failures + Canon
-    context present → higher confidence.
-
-    canon_present adds a small boost (0.05) because a grounded plan is
-    more reliable than a purely heuristic one.
-    """
-    base = coherence * 0.6
-    register_bonus = {"executive": 0.30, "reflective": 0.20, "minimal": 0.10}.get(register, 0.15)
+    base            = coherence * 0.6
+    register_bonus  = {"executive": 0.30, "reflective": 0.20, "minimal": 0.10}.get(register, 0.15)
     failure_penalty = 0.15 if has_failures else 0.0
     canon_bonus     = 0.05 if canon_present else 0.0
     return max(0.05, min(1.0, base + register_bonus - failure_penalty + canon_bonus))
@@ -515,21 +541,6 @@ class SynergyEngine:
     """
     Computes relational synergy across five dimensions for a GAIAN turn,
     and provides agentic goal planning via plan() (Issue #243).
-
-    Stateless — all persistence lives in the caller-owned SynergyState.
-
-    GAIATrace integration
-    ---------------------
-    Pass an active GAIATrace (or AsyncGAIATrace) context via the optional
-    `trace` parameter.  Three events are emitted per call:
-
-      QUERY  — call arguments + gaian_id
-      OUTPUT — SynergyReading summary (synergy_factor, stage, dimensions)
-      META   — latency_ms recorded via record_meta()
-
-    If `trace` is None (the default) the engine behaves exactly as before.
-    Trace writes are wrapped in try/except — a broken trace writer never
-    silences a SynergyEngine result.
     """
 
     WEIGHTS: Dict[str, float] = {
@@ -539,10 +550,6 @@ class SynergyEngine:
         "arc":  0.20,
         "bond": 0.20,
     }
-
-    # ------------------------------------------------------------------
-    # Scoring helpers
-    # ------------------------------------------------------------------
 
     def _hz_to_score(self, hz: float) -> float:
         return max(0.0, min(1.0, (hz - _HZ_MIN) / (_HZ_MAX - _HZ_MIN)))
@@ -555,12 +562,11 @@ class SynergyEngine:
 
     def _settling_to_score(self, phase: str, crystallisation_pct: float) -> float:
         if phase == "crystallising":
-            raw = 0.40 + (crystallisation_pct / 100.0) * 0.50
-            return min(1.0, raw)
+            return min(1.0, 0.40 + (crystallisation_pct / 100.0) * 0.50)
         return _SETTLING_SCORES.get(phase, 0.40)
 
     def _love_arc_to_score(self, stage: str, arc_output_vector: float) -> float:
-        base = _LOVE_ARC_SCORES.get(stage, 0.40)
+        base  = _LOVE_ARC_SCORES.get(stage, 0.40)
         boost = min(0.10, arc_output_vector * 0.10)
         return min(1.0, base + boost)
 
@@ -573,157 +579,80 @@ class SynergyEngine:
     def _attachment_phase_to_score(self, phase: str) -> float:
         return _ATTACHMENT_SCORES.get(phase, 0.50)
 
-    # ------------------------------------------------------------------
-    # Dimension scoring
-    # ------------------------------------------------------------------
-
-    def _score_body(
-        self,
-        dominant_hz: float,
-        schumann_aligned: bool,
-        noosphere_health: float,
-        coherence_phi: float,
-    ) -> float:
+    def _score_body(self, dominant_hz, schumann_aligned, noosphere_health, coherence_phi):
         hz_score = self._hz_to_score(dominant_hz)
         schumann_bonus = 0.05 if schumann_aligned else 0.0
-        raw = (hz_score * 0.50 + noosphere_health * 0.30 + coherence_phi * 0.20)
-        return min(1.0, raw + schumann_bonus)
+        return min(1.0, (hz_score * 0.50 + noosphere_health * 0.30 + coherence_phi * 0.20) + schumann_bonus)
 
-    def _score_mind(
-        self,
-        layer_phi: float,
-        phi_rolling_avg: float,
-        conflict_density: float,
-        shadow_activations: int,
-        codex_stage: int,
-    ) -> float:
+    def _score_mind(self, layer_phi, phi_rolling_avg, conflict_density, shadow_activations, codex_stage):
         conflict_score = 1.0 - min(1.0, conflict_density)
         shadow_penalty = min(0.30, shadow_activations * 0.05)
-        codex_score = min(1.0, codex_stage / 12.0)
-        raw = (
-            layer_phi * 0.30
-            + phi_rolling_avg * 0.20
-            + conflict_score * 0.25
-            + codex_score * 0.25
-        ) - shadow_penalty
-        return max(0.0, min(1.0, raw))
+        codex_score    = min(1.0, codex_stage / 12.0)
+        return max(0.0, min(1.0,
+            layer_phi * 0.30 + phi_rolling_avg * 0.20
+            + conflict_score * 0.25 + codex_score * 0.25
+            - shadow_penalty
+        ))
 
-    def _score_soul(
-        self,
-        individuation_phase: str,
-        element: str,
-        fluidity_score: float,
-    ) -> float:
-        ind_score = self._individuation_to_score(individuation_phase)
+    def _score_soul(self, individuation_phase, element, fluidity_score):
+        ind_score  = self._individuation_to_score(individuation_phase)
         elem_weight = 0.5 + (list(_ELEMENT_STAGE_MAP.keys()).index(
             element.lower()) if element.lower() in _ELEMENT_STAGE_MAP else 2
         ) / (len(_ELEMENT_STAGE_MAP) * 2)
-        raw = ind_score * 0.50 + (1.0 - min(1.0, fluidity_score)) * 0.30 + elem_weight * 0.20
-        return max(0.0, min(1.0, raw))
+        return max(0.0, min(1.0,
+            ind_score * 0.50 + (1.0 - min(1.0, fluidity_score)) * 0.30 + elem_weight * 0.20
+        ))
 
-    def _score_arc(
-        self,
-        love_arc_stage: str,
-        arc_output_vector: float,
-        mc_stage: str,
-        attachment_phase: str,
-    ) -> float:
-        love_score = self._love_arc_to_score(love_arc_stage, arc_output_vector)
-        mc_score = self._mc_stage_to_score(mc_stage)
-        att_score = self._attachment_phase_to_score(attachment_phase)
-        return (love_score * 0.40 + mc_score * 0.35 + att_score * 0.25)
+    def _score_arc(self, love_arc_stage, arc_output_vector, mc_stage, attachment_phase):
+        return (
+            self._love_arc_to_score(love_arc_stage, arc_output_vector) * 0.40
+            + self._mc_stage_to_score(mc_stage) * 0.35
+            + self._attachment_phase_to_score(attachment_phase) * 0.25
+        )
 
-    def _score_bond(
-        self,
-        bond_depth: float,
-        dependency_signal: str,
-        settling_phase: str,
-        crystallisation_pct: float,
-    ) -> float:
-        bond_norm = min(1.0, bond_depth / 100.0)
-        dep_score = self._dependency_to_score(dependency_signal)
-        settling_score = self._settling_to_score(settling_phase, crystallisation_pct)
-        return (bond_norm * 0.40 + dep_score * 0.35 + settling_score * 0.25)
-
-    # ------------------------------------------------------------------
-    # Main compute
-    # ------------------------------------------------------------------
+    def _score_bond(self, bond_depth, dependency_signal, settling_phase, crystallisation_pct):
+        return (
+            min(1.0, bond_depth / 100.0) * 0.40
+            + self._dependency_to_score(dependency_signal) * 0.35
+            + self._settling_to_score(settling_phase, crystallisation_pct) * 0.25
+        )
 
     def compute(
         self,
-        # Body
         dominant_hz: float = 528.0,
         schumann_aligned: bool = False,
         noosphere_health: float = 0.5,
         coherence_phi: float = 0.5,
-        # Mind
         layer_phi: float = 0.5,
         phi_rolling_avg: float = 0.5,
         conflict_density: float = 0.3,
         shadow_activations: int = 0,
         codex_stage: int = 0,
-        # Soul
         individuation_phase: str = "shadow",
         element: str = "fire",
         fluidity_score: float = 0.5,
-        # Arc
         love_arc_stage: str = "attraction",
         arc_output_vector: float = 0.5,
         mc_stage: str = "mc3",
         attachment_phase: str = "forming",
-        # Bond
         bond_depth: float = 30.0,
         dependency_signal: str = "healthy",
         settling_phase: str = "narrowing",
         crystallisation_pct: float = 0.0,
-        # State
         state: Optional[SynergyState] = None,
-        # Trace  (GAIATrace | AsyncGAIATrace | None)
         trace: Any = None,
         gaian_id: Optional[str] = None,
     ) -> Tuple[SynergyReading, SynergyState]:
-        """
-        Compute synergy for one GAIAN turn.
-
-        Parameters
-        ----------
-        trace:
-            Optional live GAIATrace / AsyncGAIATrace context.  When provided,
-            three trace events are emitted (QUERY → OUTPUT → META via
-            record_meta latency).  Pass None to skip tracing entirely.
-        gaian_id:
-            Forwarded into the QUERY trace event for per-Gaian attribution.
-        """
         if state is None:
             state = blank_synergy_state()
 
         call_kwargs = {
-            "dominant_hz": dominant_hz,
-            "schumann_aligned": schumann_aligned,
-            "noosphere_health": noosphere_health,
-            "coherence_phi": coherence_phi,
-            "layer_phi": layer_phi,
-            "phi_rolling_avg": phi_rolling_avg,
-            "conflict_density": conflict_density,
-            "shadow_activations": shadow_activations,
-            "codex_stage": codex_stage,
-            "individuation_phase": individuation_phase,
-            "element": element,
-            "fluidity_score": fluidity_score,
-            "love_arc_stage": love_arc_stage,
-            "arc_output_vector": arc_output_vector,
-            "mc_stage": mc_stage,
-            "attachment_phase": attachment_phase,
-            "bond_depth": bond_depth,
-            "dependency_signal": dependency_signal,
-            "settling_phase": settling_phase,
-            "crystallisation_pct": crystallisation_pct,
+            k: v for k, v in locals().items()
+            if k not in ("self", "state", "trace", "gaian_id", "call_kwargs")
         }
-
-        # --- TRACE: QUERY ---
         _emit_query(trace, gaian_id, call_kwargs)
-
         t0 = time.perf_counter()
+
         try:
             body  = self._score_body(dominant_hz, schumann_aligned, noosphere_health, coherence_phi)
             mind  = self._score_mind(layer_phi, phi_rolling_avg, conflict_density, shadow_activations, codex_stage)
@@ -731,25 +660,15 @@ class SynergyEngine:
             arc   = self._score_arc(love_arc_stage, arc_output_vector, mc_stage, attachment_phase)
             bond  = self._score_bond(bond_depth, dependency_signal, settling_phase, crystallisation_pct)
 
-            dim_scores = {
-                "body": body,
-                "mind": mind,
-                "soul": soul,
-                "arc":  arc,
-                "bond": bond,
-            }
-
+            dim_scores = {"body": body, "mind": mind, "soul": soul, "arc": arc, "bond": bond}
             dimensions = [
                 DimensionScore(name=k, score=round(v, 6), weight=self.WEIGHTS[k])
                 for k, v in dim_scores.items()
             ]
-
             synergy_factor = round(
                 sum(self.WEIGHTS[k] * v for k, v in dim_scores.items()), 6
             )
-
             dominant_stage = _classify_stage(synergy_factor, bond_depth, settling_phase, coherence_phi)
-
             sorted_dims = sorted(dimensions, key=lambda d: d.score)
             dominant_friction: Optional[str] = None
             if sorted_dims[0].score < 0.50:
@@ -775,21 +694,13 @@ class SynergyEngine:
                 is_high_synergy=(synergy_factor >= _HIGH_SYNERGY_THRESHOLD),
             )
 
-            # Mutate state
             state.last_factor = synergy_factor
             state.last_stage  = dominant_stage
-            if synergy_factor >= _HIGH_SYNERGY_THRESHOLD:
-                if synergy_factor > state.high_synergy_peak:
-                    state.high_synergy_peak = synergy_factor
-            if synergy_factor < _LOW_SYNERGY_THRESHOLD:
-                if synergy_factor < state.low_synergy_floor:
-                    state.low_synergy_floor = synergy_factor
-
-            state.turn_history.append({
-                "factor":   synergy_factor,
-                "stage":    dominant_stage,
-                "friction": dominant_friction,
-            })
+            if synergy_factor >= _HIGH_SYNERGY_THRESHOLD and synergy_factor > state.high_synergy_peak:
+                state.high_synergy_peak = synergy_factor
+            if synergy_factor < _LOW_SYNERGY_THRESHOLD and synergy_factor < state.low_synergy_floor:
+                state.low_synergy_floor = synergy_factor
+            state.turn_history.append({"factor": synergy_factor, "stage": dominant_stage, "friction": dominant_friction})
             if len(state.turn_history) > _HISTORY_CAP:
                 state.turn_history = state.turn_history[-_HISTORY_CAP:]
 
@@ -797,84 +708,29 @@ class SynergyEngine:
             _emit_error(trace, exc)
             raise
 
-        latency_ms = (time.perf_counter() - t0) * 1000.0
-
-        # --- TRACE: OUTPUT + latency META ---
-        _emit_output(trace, reading, latency_ms)
-
+        _emit_output(trace, reading, (time.perf_counter() - t0) * 1000.0)
         return reading, state
-
-    # ------------------------------------------------------------------
-    # Agentic planning  (Issue #243 — C01, C30, C32)
-    # ------------------------------------------------------------------
 
     async def plan(self, goal: str, context: "LoopContext") -> dict:
         """
         Given a goal and the current LoopContext, return the next action.
-
-        Signal integration order (C32 — Synergy Doctrine):
-          1. TaskGraph completion short-circuit
-          2. TaskGraph EngineNode — next pending node as source of truth
-          3. cycle_memory dedup  — never repeat a failed action
-          4. biometric_coherence — minimal register if coherence < 0.4
-          5. affective_state     — reflective register on grief/overwhelm
-          6. planetary_label     — reflective register on storm
-          7. **canon_context**   — Canon-grounded register nudge (NEW)
-          8. Heuristic goal decomposition fallback
-          9. Progress-based completion heuristic (10+ cycles, >= 0.8)
-
-        Canon context integration (C32):
-          canon_context is read from LoopContext via getattr (duck-typed
-          so legacy callers without the field are unaffected).  It is
-          analysed by _analyse_canon_context() which produces a
-          CanonPlanHint.  The hint can nudge the action register and is
-          always included in the rationale (C30 — no silent context).
-
-          Register priority (highest to lowest):
-            1. biometric depletion (minimal — always wins)
-            2. affective/planetary (reflective)
-            3. canon_context keyword nudge (nudges toward reflective,
-               executive, or minimal based on passage content)
-            4. default executive
-
-        Canon refs:
-          C01 — Sovereignty: plan() proposes, ActionGate disposes.
-                plan() never attempts to bypass the gate.
-          C30 — No silent failures: every plan includes a non-empty rationale.
-                On any exception, returns structured PLANNING_FAILED — never raises.
-          C32 — Synergy Doctrine: integrates multiple signals before choosing
-                an action. Never acts on a single signal alone.
-
-        Returns
-        -------
-        dict with keys:
-            action        : str        — action_type forwarded to ActionGate
-            tool          : str | None — tool/module to invoke
-            args          : dict       — arguments for the tool
-            rationale     : str        — why this action was chosen (C30 audit trail)
-            confidence    : float      — 0.0–1.0
-            summary       : str        — one-liner for the cycle log
-            goal_complete : bool       — True signals the loop to halt (goal achieved)
-            canon_hint    : dict       — CanonPlanHint summary (for tracing/tests)
+        Signal priority: TaskGraph > biometric depletion > affective/planetary
+        > Canon keyword nudge > default executive.
+        See module docstring for full integration details.
         """
         try:
             return await self._plan_internal(goal, context)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return {
-                "action":        "PLANNING_FAILED",
-                "tool":          None,
-                "args":          {},
-                "rationale":     f"Planning raised an unhandled exception: {exc!r}",
-                "confidence":    0.0,
-                "summary":       "PLANNING_FAILED — see rationale",
+                "action": "PLANNING_FAILED", "tool": None, "args": {},
+                "rationale": f"Planning raised an unhandled exception: {exc!r}",
+                "confidence": 0.0, "summary": "PLANNING_FAILED — see rationale",
                 "goal_complete": False,
-                "canon_hint":    {"present": False, "char_count": 0, "excerpt": ""},
+                "canon_hint": {"present": False, "char_count": 0, "excerpt": ""},
             }
 
     async def _plan_internal(self, goal: str, context: "LoopContext") -> dict:
-        """Core planning logic — called exclusively by plan()."""
-
-        # ── 0. Short-circuit: TaskGraph already complete ──────────────
+        # ── 0. TaskGraph complete short-circuit ───────────────────────
         task_graph = getattr(context, "task_graph", None)
         if task_graph is not None:
             try:
@@ -886,41 +742,27 @@ class SynergyEngine:
                     )
                 ):
                     return {
-                        "action":        "goal_complete",
-                        "tool":          None,
-                        "args":          {},
-                        "rationale":     "TaskGraph reports all nodes complete — goal achieved.",
-                        "confidence":    1.0,
-                        "summary":       "Goal complete via TaskGraph.",
+                        "action": "goal_complete", "tool": None, "args": {},
+                        "rationale": "TaskGraph reports all nodes complete — goal achieved.",
+                        "confidence": 1.0, "summary": "Goal complete via TaskGraph.",
                         "goal_complete": True,
-                        "canon_hint":    {"present": False, "char_count": 0, "excerpt": ""},
+                        "canon_hint": {"present": False, "char_count": 0, "excerpt": ""},
                     }
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         # ── 1. Read ambient signals ───────────────────────────────────
-        coherence: float = (
-            context.biometric_coherence
-            if context.biometric_coherence is not None
-            else 0.5
-        )
-        affective: str    = getattr(context, "affective_state",  "unknown").lower()
-        planetary: str    = getattr(context, "planetary_label",  "unknown").lower()
-        session_mode: str = getattr(context, "session_mode",     "default").lower()
-        cycle_memory: list = getattr(context, "cycle_memory",    [])
+        coherence:    float = context.biometric_coherence if context.biometric_coherence is not None else 0.5
+        affective:    str   = getattr(context, "affective_state",  "unknown").lower()
+        planetary:    str   = getattr(context, "planetary_label",  "unknown").lower()
+        session_mode: str   = getattr(context, "session_mode",     "default").lower()
+        cycle_memory: list  = getattr(context, "cycle_memory",     [])
 
-        # ── 2. Analyse Canon context (C32 — new signal)  ─────────────
-        raw_canon: str = getattr(context, "canon_context", "") or ""
+        # ── 2. Analyse Canon context (C32) ────────────────────────────
+        raw_canon = getattr(context, "canon_context", "") or ""
         canon_hint: CanonPlanHint = _analyse_canon_context(raw_canon)
 
-        # ── 3. Determine action register ─────────────────────────────
-        #
-        # Priority (highest → lowest):
-        #   a) biometric depletion → minimal  (always overrides)
-        #   b) affective/planetary grief/storm → reflective
-        #   c) Canon keyword nudge (if present and no higher override)
-        #   d) default → executive
-        #
+        # ── 3. Determine register ─────────────────────────────────────
         low_coherence   = coherence < 0.4
         grief_state     = affective in ("grief", "overwhelm", "exhaustion", "distress")
         planetary_storm = planetary in ("storm", "severe")
@@ -938,8 +780,6 @@ class SynergyEngine:
                 "preferring reflective over executive actions"
             )
         elif canon_hint.present and canon_hint.register_nudge is not None:
-            # Canon context is present and contains a keyword suggesting a
-            # specific register.  Apply the nudge (C32 — multi-signal).
             register = canon_hint.register_nudge
             register_reason = (
                 f"Canon context nudge ({canon_hint.nudge_label}) — "
@@ -954,7 +794,7 @@ class SynergyEngine:
             if canon_hint.present:
                 register_reason += ". Canon context present (no keyword nudge)."
 
-        # ── 4. Build failed-action dedup set (last 5 cycles) ─────────
+        # ── 4. Failed-action dedup ────────────────────────────────────
         failed_actions: set = set()
         for entry in cycle_memory[-5:]:
             if not entry.get("success", True):
@@ -963,16 +803,11 @@ class SynergyEngine:
         # ── 5. TaskGraph next pending node ────────────────────────────
         if task_graph is not None:
             try:
-                # Walk _nodes in topological order; pick first PENDING node
-                # whose dependencies are all COMPLETE.
-                import networkx as nx  # already a hard dep of task_graph
+                import networkx as nx
                 for node_id in nx.topological_sort(task_graph._graph):
                     node = task_graph._nodes.get(node_id)
-                    if node is None:
+                    if node is None or node.status.value != "pending":
                         continue
-                    if node.status.value != "pending":
-                        continue
-                    # Check all deps are complete
                     deps_done = all(
                         task_graph._nodes[dep].status.value == "complete"
                         for dep in node.depends_on
@@ -980,60 +815,49 @@ class SynergyEngine:
                     )
                     if not deps_done:
                         continue
-                    action  = f"run_node:{node.engine_id}"
-                    tool    = node.engine_id
-                    args    = {k: task_graph._context.get(k) for k in node.inputs}
+                    action = f"run_node:{node.engine_id}"
+                    tool   = node.engine_id
+                    args   = {k: task_graph._context.get(k) for k in node.inputs}
                     if action not in failed_actions:
                         confidence = max(0.3, coherence) if register == "minimal" else 0.85
-                        rationale = (
-                            f"TaskGraph selected engine_id={node.engine_id!r} "
-                            f"(inputs={node.inputs}). "
-                            f"Register: {register} ({register_reason}). "
-                            f"{canon_hint.to_rationale_fragment()}"
-                        )
                         return {
-                            "action":        action,
-                            "tool":          tool,
-                            "args":          args,
-                            "rationale":     rationale,
-                            "confidence":    round(confidence, 3),
-                            "summary":       f"TaskGraph → {node.engine_id}",
+                            "action": action, "tool": tool, "args": args,
+                            "rationale": (
+                                f"TaskGraph selected engine_id={node.engine_id!r} "
+                                f"(inputs={node.inputs}). "
+                                f"Register: {register} ({register_reason}). "
+                                f"{canon_hint.to_rationale_fragment()}"
+                            ),
+                            "confidence": round(confidence, 3),
+                            "summary": f"TaskGraph → {node.engine_id}",
                             "goal_complete": False,
-                            "canon_hint":    {
-                                "present":        canon_hint.present,
-                                "char_count":     canon_hint.char_count,
-                                "excerpt":        canon_hint.excerpt,
+                            "canon_hint": {
+                                "present": canon_hint.present,
+                                "char_count": canon_hint.char_count,
+                                "excerpt": canon_hint.excerpt,
                                 "register_nudge": canon_hint.register_nudge,
-                                "nudge_label":    canon_hint.nudge_label,
-                                "canon_refs":     canon_hint.canon_refs,
+                                "nudge_label": canon_hint.nudge_label,
+                                "canon_refs": canon_hint.canon_refs,
+                                "entry_ref_id": canon_hint.entry_ref_id,
                             },
                         }
-                    # else: action failed recently — fall through to next node
-            except Exception:  # noqa: BLE001
-                pass  # TaskGraph introspection failed — fall through
+            except Exception:
+                pass
 
-        # ── 6. Goal decomposition fallback ────────────────────────────
+        # ── 6. Goal decomposition ─────────────────────────────────────
         action, tool, args, decomp_note = _decompose_goal(
-            goal=goal,
-            register=register,
-            session_mode=session_mode,
-            failed_actions=failed_actions,
-            cycle_count=len(cycle_memory),
+            goal=goal, register=register, session_mode=session_mode,
+            failed_actions=failed_actions, cycle_count=len(cycle_memory),
         )
 
-        # ── 7. Progress-based completion heuristic ────────────────────
-        # If we've cycled 10+ times without a TaskGraph and recent
-        # progress is consistently >= 0.8, declare completion rather
-        # than looping indefinitely (C30 — no runaway loops).
+        # ── 7. Completion heuristic ───────────────────────────────────
         goal_complete = False
         if len(cycle_memory) >= 10:
             recent_progress = [c.get("progress", 0.0) for c in cycle_memory[-5:]]
             if recent_progress and min(recent_progress) >= 0.8:
                 goal_complete = True
-                action        = "goal_complete"
-                tool          = None
-                args          = {}
-                decomp_note   = (
+                action, tool, args = "goal_complete", None, {}
+                decomp_note = (
                     "Progress consistently >= 0.8 over last 5 cycles — "
                     "goal achieved (C30 completion heuristic)."
                 )
@@ -1042,27 +866,25 @@ class SynergyEngine:
             coherence, register, bool(failed_actions),
             canon_present=canon_hint.present,
         )
-        rationale = (
-            f"Goal decomposition selected action={action!r} tool={tool!r}. "
-            f"Register: {register} ({register_reason}). "
-            f"{canon_hint.to_rationale_fragment()} "
-            f"{decomp_note}"
-        )
 
         return {
-            "action":        action,
-            "tool":          tool,
-            "args":          args,
-            "rationale":     rationale,
-            "confidence":    round(confidence, 3),
-            "summary":       f"Decomposition → {action}",
+            "action": action, "tool": tool, "args": args,
+            "rationale": (
+                f"Goal decomposition selected action={action!r} tool={tool!r}. "
+                f"Register: {register} ({register_reason}). "
+                f"{canon_hint.to_rationale_fragment()} "
+                f"{decomp_note}"
+            ),
+            "confidence": round(confidence, 3),
+            "summary": f"Decomposition → {action}",
             "goal_complete": goal_complete,
             "canon_hint": {
-                "present":        canon_hint.present,
-                "char_count":     canon_hint.char_count,
-                "excerpt":        canon_hint.excerpt,
+                "present": canon_hint.present,
+                "char_count": canon_hint.char_count,
+                "excerpt": canon_hint.excerpt,
                 "register_nudge": canon_hint.register_nudge,
-                "nudge_label":    canon_hint.nudge_label,
-                "canon_refs":     canon_hint.canon_refs,
+                "nudge_label": canon_hint.nudge_label,
+                "canon_refs": canon_hint.canon_refs,
+                "entry_ref_id": canon_hint.entry_ref_id,
             },
         }
