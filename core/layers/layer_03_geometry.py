@@ -79,7 +79,7 @@ class FilterResult:
 # the question "Is this aligned with life?"
 # ─────────────────────────────────────────────
 
-INOCHERENCE_MARKERS = [
+INCOHERENCE_MARKERS = [
     # Harm to self or others
     "harm", "hurt", "destroy", "kill", "abuse",
     "torture", "manipulate", "exploit", "deceive",

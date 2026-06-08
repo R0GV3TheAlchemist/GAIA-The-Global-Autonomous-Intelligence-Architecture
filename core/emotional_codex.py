@@ -30,6 +30,8 @@ from enum import Enum
 from typing import Optional
 from datetime import datetime, timezone
 
+from core.affect_inference import FeelingState  # canonical home — no circular import
+
 
 # ─────────────────────────────────────────────
 #  CODEX TIER ENUM
@@ -222,7 +224,7 @@ class EmotionalCodex:
 
     def dominant_tier_from_feeling(
         self,
-        feeling: "FeelingState",  # type: ignore — avoiding circular import
+        feeling: FeelingState,
     ) -> CodexTier:
         """
         Maps a FeelingState's love_filter_score to the dominant CodexTier.
@@ -239,7 +241,7 @@ class EmotionalCodex:
 
     def to_system_prompt_hint(
         self,
-        feeling: "FeelingState",
+        feeling: FeelingState,
     ) -> str:
         tier = self.dominant_tier_from_feeling(feeling)
         book = _TIER_TO_BOOK[tier]
