@@ -1,7 +1,7 @@
 """
 api/crypto.py — P6 Part 1: Post-Quantum Encryption Layer
 
-GAIA\u2019s memory vault is encrypted at rest using NIST-finalised (2024)
+GAIA's memory vault is encrypted at rest using NIST-finalised (2024)
 post-quantum cryptography standards:
 
   ML-KEM-768  (CRYSTALS-Kyber)   — key encapsulation
@@ -25,7 +25,6 @@ Libraries:
 from __future__ import annotations
 
 import base64
-import hashlib
 import logging
 import os
 from typing import Optional
@@ -53,9 +52,9 @@ except ImportError:
     _KEYRING_AVAILABLE = False
     log.warning("[GAIA Crypto] keyring not installed — keys stored in env (dev only)")
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # noqa: E402
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF  # noqa: E402
+from cryptography.hazmat.primitives import hashes  # noqa: E402
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
