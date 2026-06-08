@@ -21,6 +21,8 @@ Canon Ref: C17 (Persistent Memory and Identity Architecture)
 
 from __future__ import annotations
 
+import datetime
+import hashlib
 import math
 from typing import Any
 
@@ -112,7 +114,6 @@ def _recency_score(idx: int, total: int, metadata: dict[str, Any]) -> float:
     ts = metadata.get("timestamp") or metadata.get("created_at")
     if ts:
         try:
-            import datetime
             dt = datetime.datetime.fromisoformat(str(ts))
             age_hours = (datetime.datetime.utcnow() - dt).total_seconds() / 3600
             # Half-life: 7 days → score 0.5 at 168 hours; recent → 1.0
@@ -197,8 +198,6 @@ def memory_store_endpoint(req: StoreMemoryRequest):
     chroma = get_chroma()
     if not chroma.available:
         return {"status": "skipped", "reason": "ChromaDB not available"}
-    import hashlib
-    import datetime
     uid = hashlib.sha256(
         f"{req.gaian_slug}:{req.session_id}:{req.text[:64]}:{datetime.datetime.utcnow().isoformat()}".encode()
     ).hexdigest()[:16]
