@@ -244,17 +244,13 @@ async def get_earth_health():
 
     # ─ CO2 from NOAA GML (latest monthly mean) ────────────────────────
     co2_ppm: float | None = None
-    co2_data = await _fetch(
-        "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_weekly_mlo.csv",
-        timeout=10,
-    )
     # co2_data will be None since it returns CSV not JSON; use direct text fetch
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(
                 "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_weekly_mlo.csv"
             )
-            lines = [l for l in r.text.splitlines() if not l.startswith("#") and l.strip()]
+            lines = [ln for ln in r.text.splitlines() if not ln.startswith("#") and ln.strip()]
             if lines:
                 last = lines[-1].split(",")
                 co2_ppm = float(last[4]) if len(last) > 4 else None
