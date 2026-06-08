@@ -77,23 +77,28 @@ class _DimensionalEngine:
         self._updated_at: float = time.time()
 
     def update_d1(self, **kw) -> None:
-        for k, v in kw.items(): setattr(self.D1, k, v)
+        for k, v in kw.items():
+            setattr(self.D1, k, v)
         self._touch()
 
     def update_d2(self, **kw) -> None:
-        for k, v in kw.items(): setattr(self.D2, k, v)
+        for k, v in kw.items():
+            setattr(self.D2, k, v)
         self._touch()
 
     def update_d3(self, **kw) -> None:
-        for k, v in kw.items(): setattr(self.D3, k, v)
+        for k, v in kw.items():
+            setattr(self.D3, k, v)
         self._touch()
 
     def update_d4(self, **kw) -> None:
-        for k, v in kw.items(): setattr(self.D4, k, v)
+        for k, v in kw.items():
+            setattr(self.D4, k, v)
         self._touch()
 
     def update_d5(self, **kw) -> None:
-        for k, v in kw.items(): setattr(self.D5, k, v)
+        for k, v in kw.items():
+            setattr(self.D5, k, v)
         self._touch()
 
     def _touch(self) -> None:
