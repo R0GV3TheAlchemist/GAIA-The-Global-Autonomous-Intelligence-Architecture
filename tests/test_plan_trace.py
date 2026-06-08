@@ -35,8 +35,18 @@ _PLAN_CANON_REFS = ["C01", "C30", "C32"]
 
 
 def _run(coro):
-    """Run an async coroutine in a blocking context."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    """Run an async coroutine in a blocking context.
+
+    Creates a fresh event loop for each call so this helper works
+    correctly in Python 3.10+, where asyncio.get_event_loop() raises
+    RuntimeError when no loop exists in the current thread.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 def _make_context(
