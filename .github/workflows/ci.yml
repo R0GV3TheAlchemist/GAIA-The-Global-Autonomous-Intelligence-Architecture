@@ -1,5 +1,5 @@
 # GAIA-OS CI — runs on every push and PR targeting main
-# Gate: py_compile (syntax) → pytest (correctness)
+# Gate: ruff (lint) → py_compile (syntax) → manifest-validate → pytest
 # Nothing merges to main unless this workflow is green.
 
 name: GAIA-OS CI
@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint-and-test:
-    name: Syntax check + Pytest
+    name: Lint + Syntax + Manifest + Pytest
     runs-on: ubuntu-latest
 
     steps:
@@ -71,6 +71,95 @@ jobs:
           TRANSFORMERS_OFFLINE: "0"
           SENTENCE_TRANSFORMERS_HOME: ~/.cache/huggingface/sentence_transformers
 
+      # ── 5.5 Ruff lint ─────────────────────────────────────────────────────────────
+      #    Runs BEFORE pytest so lint failures surface immediately without
+      #    waiting for the full test suite. Checks core/, api/, gaia/ only —
+      #    scripts/ and simulation/ are excluded (generated / research code).
+      #    Config lives in pyproject.toml [tool.ruff].
+      - name: Lint with ruff
+        run: |
+          echo '🔍  Running ruff lint...'
+          ruff check core/ api/ gaia/ --output-format=github
+          echo '✅  Ruff passed'
+
+      # ── 5.6 Manifest validation ───────────────────────────────────────────────────
+      #    Validates meta/CANON_MANIFEST.json before tests run.
+      #    Checks: required fields, valid domain enum, no duplicate IDs,
+      #    weight in [0,1], tags non-empty, every path exists on disk.
+      #    Skips gracefully if meta/CANON_MANIFEST.json does not exist yet.
+      - name: Validate CANON_MANIFEST.json
+        run: |
+          python - <<'PYEOF'
+          import json, sys, os
+          from pathlib import Path
+
+          manifest_path = Path("meta/CANON_MANIFEST.json")
+          if not manifest_path.exists():
+              print("ℹ️  meta/CANON_MANIFEST.json not found — skipping validation (Task 2/3 not yet complete)")
+              sys.exit(0)
+
+          REQUIRED_FIELDS = {"id", "path", "title", "domain", "weight", "tags"}
+          VALID_DOMAINS = {
+              "identity", "governance", "cognition", "memory", "ethics",
+              "consciousness", "architecture", "canon", "simulation",
+              "noosphere", "soul", "security", "api", "ui", "research"
+          }
+
+          errors = []
+          with open(manifest_path) as f:
+              manifest = json.load(f)
+
+          documents = manifest.get("documents", [])
+          if not documents:
+              print("ℹ️  No documents array found in manifest — nothing to validate.")
+              sys.exit(0)
+
+          seen_ids = {}
+          for i, doc in enumerate(documents):
+              loc = f"documents[{i}] (id={doc.get('id','<missing>')})"
+
+              # Required fields
+              missing = REQUIRED_FIELDS - set(doc.keys())
+              if missing:
+                  errors.append(f"{loc}: missing required fields: {missing}")
+
+              # Domain enum
+              domain = doc.get("domain", "")
+              if domain not in VALID_DOMAINS:
+                  errors.append(f"{loc}: invalid domain '{domain}'. Valid: {sorted(VALID_DOMAINS)}")
+
+              # Duplicate ID check
+              doc_id = doc.get("id")
+              if doc_id:
+                  if doc_id in seen_ids:
+                      errors.append(f"{loc}: duplicate id '{doc_id}' (first seen at index {seen_ids[doc_id]})")
+                  else:
+                      seen_ids[doc_id] = i
+
+              # Weight range
+              weight = doc.get("weight")
+              if weight is not None and not (0.0 <= float(weight) <= 1.0):
+                  errors.append(f"{loc}: weight {weight} out of range [0.0, 1.0]")
+
+              # Tags non-empty
+              tags = doc.get("tags", [])
+              if not tags:
+                  errors.append(f"{loc}: tags array is empty — at least one tag required")
+
+              # Path exists on disk
+              doc_path = doc.get("path", "")
+              if doc_path and not Path(doc_path).exists():
+                  errors.append(f"{loc}: path '{doc_path}' does not exist on disk")
+
+          if errors:
+              print(f"❌  CANON_MANIFEST.json validation failed — {len(errors)} error(s):")
+              for e in errors:
+                  print(f"   • {e}")
+              sys.exit(1)
+          else:
+              print(f"✅  CANON_MANIFEST.json valid — {len(documents)} documents, {len(seen_ids)} unique IDs")
+          PYEOF
+
       # ── 6. Syntax check ───────────────────────────────────────────────────────────
       - name: Syntax check (py_compile)
         run: |
@@ -79,7 +168,7 @@ jobs:
             echo '::error::Syntax errors found in core/ — fix before merging'
             exit 1
           fi
-          echo '\u2705  All core/ files compile cleanly'
+          echo '✅  All core/ files compile cleanly'
 
       # ── 7. Pytest ────────────────────────────────────────────────────────────────
       #    PYTHONPATH is set explicitly here AND in pyproject.toml AND in

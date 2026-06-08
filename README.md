@@ -7,9 +7,9 @@
 > Server Version: `2.0.0` (Sprint G-8)  
 > App Release: `v0.1.0` (Windows x64)
 
+[![CI](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/ci.yml/badge.svg)](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/ci.yml)
 [![Build](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/build.yml/badge.svg)](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/build.yml)
 [![Windows Build](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/build-windows.yml/badge.svg)](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/build-windows.yml)
-[![Tests](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/test.yml/badge.svg)](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/test.yml)
 [![Release](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/release.yml/badge.svg)](https://github.com/R0GV3TheAlchemist/GAIA-OS/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/R0GV3TheAlchemist/GAIA-OS?include_prereleases&label=release&color=teal)](https://github.com/R0GV3TheAlchemist/GAIA-OS/releases)
 
@@ -59,6 +59,9 @@ GAIA-OS/
 │       ├── CANON_*.md           # Authoritative canon documents
 │       ├── *_SPEC.md            # Implementation specifications
 │       └── *_REPORT.md          # Research & background knowledge
+├── meta/                        # Manifest + schema (canon routing metadata)
+│   ├── CANON_MANIFEST.json      # Authoritative canon document index
+│   └── SCHEMA.md                # Manifest schema definition
 ├── specs/                       # Additional technical specifications
 ├── tests/                       # Test suite (pytest)
 ├── simulation/                  # ⏳ Phase 2 — OS layer (do not build yet)
