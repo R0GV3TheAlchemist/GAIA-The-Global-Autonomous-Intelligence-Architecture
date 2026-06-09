@@ -177,7 +177,7 @@ class GAIAKernel:
             "12-layer routing engine ready. ❆"
         )
 
-    def process(self, intention: str, context: dict = None) -> KernelResult:
+    def process(self, intention: str, context: Optional[dict] = None) -> KernelResult:
         """
         Primary processing method.
         Called by the API layer (FastAPI routes).
@@ -430,7 +430,7 @@ class GAIAKernel:
 kernel = GAIAKernel()
 
 
-def process_intention(intention: str, context: dict = None) -> KernelResult:
+def process_intention(intention: str, context: Optional[dict] = None) -> KernelResult:
     """
     Public interface for the kernel.
     Called by FastAPI routes.
