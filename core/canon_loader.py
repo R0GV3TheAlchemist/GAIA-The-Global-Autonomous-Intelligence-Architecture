@@ -11,6 +11,8 @@ Do not add new logic here — use core.rag.canon_loader directly.
 from core.rag.canon_loader import (  # noqa: F401  (re-export)
     CanonLoader,
     _tokenize,
+    _term_freq,
+    _chunk_text,
 )
 
-__all__ = ["CanonLoader", "_tokenize"]
+__all__ = ["CanonLoader", "_tokenize", "_term_freq", "_chunk_text"]

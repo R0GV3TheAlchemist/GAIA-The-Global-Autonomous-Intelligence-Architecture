@@ -22,6 +22,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import Iterator, List, Optional
@@ -91,6 +92,37 @@ def _tokenize(text: str) -> List[str]:
     Tokens shorter than 2 characters are discarded to reduce noise.
     """
     return [tok for tok in re.findall(r"[a-z0-9]+", text.lower()) if len(tok) > 1]
+
+
+def _term_freq(text: str) -> dict[str, float]:
+    """
+    Return relative term frequencies for *text*.
+
+    Each token's frequency is its count divided by the total number of
+    tokens, giving a value in the range (0, 1].  An empty or
+    whitespace-only string returns an empty dict.
+
+    Example::
+
+        >>> _term_freq("sovereignty sovereignty canon")
+        {'sovereignty': 0.6666..., 'canon': 0.3333...}
+    """
+    tokens = _tokenize(text)
+    if not tokens:
+        return {}
+    total = len(tokens)
+    return {term: count / total for term, count in Counter(tokens).items()}
+
+
+def _chunk_text(text: str, max_chars: int = _MAX_CHUNK_CHARS) -> List[str]:
+    """
+    Split *text* into non-empty chunks of at most *max_chars* characters.
+
+    Splits first on paragraph boundaries (double newline), then on
+    single newlines for oversized paragraphs.  Chunks shorter than
+    ``_MIN_CHUNK_CHARS`` are silently dropped to avoid noise.
+    """
+    return _split_into_chunks(text, max_chars=max_chars)
 
 
 def _fetch_text(url: str) -> Optional[str]:
