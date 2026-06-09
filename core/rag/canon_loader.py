@@ -1,6 +1,6 @@
 """
-canon_loader.py
-~~~~~~~~~~~~~~~
+core/rag/canon_loader.py
+~~~~~~~~~~~~~~~~~~~~~~~~
 Loads every Canon document from the canon/ directory of the GAIA-OS
 GitHub repository, splits each file into paragraph-level chunks, and
 returns a list of CanonChunk objects ready for vector-store ingestion.
@@ -9,29 +9,28 @@ Design decisions
 ----------------
 * Uses the GitHub raw-content URL so the loader works both in CI and at
   runtime without requiring a local checkout.
-* Splits on double-newline (paragraph boundary) rather than fixed token
-  windows so Canon headings stay attached to their first paragraph —
-  this preserves semantic coherence for embedding.
+* Splits on double-newline (paragraph boundary) so Canon headings stay
+  attached to their first paragraph — preserves semantic coherence.
 * Deduplicates by (canon_id, chunk_index) so re-ingestion is idempotent.
-* Gracefully skips files that return non-200 HTTP status rather than
-  raising, so a single bad file never blocks the full corpus load.
+* Gracefully skips files that return non-200 HTTP status.
 """
 
 from __future__ import annotations
 
 import logging
+import math
 import re
 import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-from typing import Iterator, List, Optional
+from typing import Dict, Iterator, List, Optional
 
 try:
     import httpx
     _HTTP_CLIENT = "httpx"
 except ImportError:  # pragma: no cover
-    import urllib.request as _urllib
+    import urllib.request as _urllib  # type: ignore[import]
     _HTTP_CLIENT = "urllib"
 
 logger = logging.getLogger(__name__)
@@ -48,10 +47,10 @@ _GITHUB_API_TREE = (
     "https://api.github.com/repos/R0GV3TheAlchemist/GAIA-OS/"
     "git/trees/{ref}?recursive=1"
 )
-_DEFAULT_REF = "main"
+_DEFAULT_REF    = "main"
 _MIN_CHUNK_CHARS = 80
 _MAX_CHUNK_CHARS = 4000
-_REQUEST_DELAY = 0.05
+_REQUEST_DELAY   = 0.05
 
 
 # ---------------------------------------------------------------------------
@@ -78,26 +77,16 @@ class CanonChunk:
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Internal text helpers
 # ---------------------------------------------------------------------------
 
 def _tokenize(text: str) -> List[str]:
-    """
-    Tokenise *text* into lowercase alphanumeric tokens.
-
-    Tokens shorter than 2 characters are discarded to reduce noise.
-    """
+    """Tokenise *text* into lowercase alphanumeric tokens (len > 1)."""
     return [tok for tok in re.findall(r"[a-z0-9]+", text.lower()) if len(tok) > 1]
 
 
-def _term_freq(text: str) -> dict[str, float]:
-    """
-    Return relative term frequencies for *text*.
-
-    Each token's frequency is its count divided by the total number of
-    tokens, giving a value in the range (0, 1].  An empty or
-    whitespace-only string returns an empty dict.
-    """
+def _term_freq(text: str) -> Dict[str, float]:
+    """Return relative term frequencies for *text* (values in (0, 1])."""
     tokens = _tokenize(text)
     if not tokens:
         return {}
@@ -106,13 +95,7 @@ def _term_freq(text: str) -> dict[str, float]:
 
 
 def _chunk_text(text: str, max_chars: int = _MAX_CHUNK_CHARS) -> List[str]:
-    """
-    Split *text* into non-empty chunks of at most *max_chars* characters.
-
-    Splits first on paragraph boundaries (double newline), then on
-    single newlines for oversized paragraphs.  Chunks shorter than
-    ``_MIN_CHUNK_CHARS`` are silently dropped to avoid noise.
-    """
+    """Split *text* into non-empty chunks of at most *max_chars* characters."""
     return _split_into_chunks(text, max_chars=max_chars)
 
 
@@ -127,20 +110,6 @@ def _best_excerpt(
     Scans *text* in overlapping windows of *window* characters and returns
     the window with the highest number of query token hits.  Falls back to
     the first *window* characters when no tokens match.
-
-    Parameters
-    ----------
-    text:
-        The full chunk or document text to excerpt from.
-    query_tokens:
-        Pre-tokenised query terms (lowercase alphanumeric).
-    window:
-        Character width of the excerpt window.
-
-    Returns
-    -------
-    str
-        Best-matching excerpt, stripped of leading/trailing whitespace.
     """
     if not text:
         return ""
@@ -150,17 +119,145 @@ def _best_excerpt(
     token_set = set(query_tokens)
     best_start = 0
     best_score = -1
-
     step = max(1, window // 4)
     for start in range(0, len(text) - window + 1, step):
         snippet = text[start : start + window].lower()
-        score = sum(1 for tok in token_set if tok in snippet)
+        score   = sum(1 for tok in token_set if tok in snippet)
         if score > best_score:
             best_score = score
             best_start = start
-
     return text[best_start : best_start + window].strip()
 
+
+def _split_into_chunks(text: str, max_chars: int = _MAX_CHUNK_CHARS) -> List[str]:
+    raw_paras = re.split(r"\n{2,}", text)
+    chunks: List[str] = []
+    for para in raw_paras:
+        para = para.strip()
+        if not para or len(para) < _MIN_CHUNK_CHARS:
+            continue
+        if len(para) <= max_chars:
+            chunks.append(para)
+        else:
+            for sub in para.split("\n"):
+                sub = sub.strip()
+                if len(sub) >= _MIN_CHUNK_CHARS:
+                    chunks.append(sub[:max_chars])
+    return chunks
+
+
+# ---------------------------------------------------------------------------
+# TF-IDF Index
+# ---------------------------------------------------------------------------
+
+class _TFIDFIndex:
+    """
+    Lightweight in-memory TF-IDF index over a list of CanonChunk objects.
+
+    Supports BM25-style term-frequency saturation and inverse document
+    frequency weighting.  Used by test_canon_search and the RAGPipeline
+    keyword-search fallback when a vector store is unavailable.
+
+    Usage::
+
+        index = _TFIDFIndex(chunks)
+        results = index.search("nigredo shadow integration", top_k=5)
+        for chunk, score in results:
+            print(chunk.uid, score)
+    """
+
+    # BM25 hyperparameters
+    _K1: float = 1.5
+    _B:  float = 0.75
+
+    def __init__(self, chunks: List[CanonChunk]) -> None:
+        self._chunks  = list(chunks)
+        self._index:  Dict[str, Dict[int, float]] = {}  # term → {doc_idx: tf}
+        self._df:     Dict[str, int]  = {}              # term → document freq
+        self._dl:     List[int]       = []              # doc lengths (token count)
+        self._avg_dl: float           = 0.0
+        self._n_docs: int             = len(self._chunks)
+        self._build()
+
+    # ------------------------------------------------------------------
+    # Build
+    # ------------------------------------------------------------------
+
+    def _build(self) -> None:
+        if not self._chunks:
+            return
+
+        for idx, chunk in enumerate(self._chunks):
+            tokens = _tokenize(chunk.text)
+            self._dl.append(len(tokens))
+            tf = Counter(tokens)
+            for term, count in tf.items():
+                if term not in self._index:
+                    self._index[term] = {}
+                self._index[term][idx] = count
+                self._df[term] = self._df.get(term, 0) + 1
+
+        self._avg_dl = sum(self._dl) / max(1, len(self._dl))
+
+    # ------------------------------------------------------------------
+    # Search
+    # ------------------------------------------------------------------
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 10,
+    ) -> List[tuple]:
+        """
+        Search the index for *query* using BM25 scoring.
+
+        Returns
+        -------
+        List[Tuple[CanonChunk, float]]
+            Up to *top_k* ``(chunk, score)`` pairs, sorted by score descending.
+        """
+        query_tokens = _tokenize(query)
+        if not query_tokens or not self._chunks:
+            return []
+
+        scores: Dict[int, float] = {}
+        n = self._n_docs
+
+        for term in set(query_tokens):
+            if term not in self._index:
+                continue
+            df    = self._df.get(term, 0)
+            idf   = math.log((n - df + 0.5) / (df + 0.5) + 1.0)
+            for doc_idx, tf_raw in self._index[term].items():
+                dl  = self._dl[doc_idx]
+                tf  = (tf_raw * (self._K1 + 1)) / (
+                    tf_raw + self._K1 * (1 - self._B + self._B * dl / max(1, self._avg_dl))
+                )
+                scores[doc_idx] = scores.get(doc_idx, 0.0) + idf * tf
+
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        return [(self._chunks[idx], score) for idx, score in ranked[:top_k]]
+
+    # ------------------------------------------------------------------
+    # Inspection helpers
+    # ------------------------------------------------------------------
+
+    def vocab_size(self) -> int:
+        """Return number of unique terms in the index."""
+        return len(self._index)
+
+    def doc_count(self) -> int:
+        """Return number of indexed documents."""
+        return self._n_docs
+
+    def term_doc_freq(self, term: str) -> int:
+        """Return document frequency for *term* (0 if not indexed)."""
+        return self._df.get(term.lower(), 0)
+
+
+# ---------------------------------------------------------------------------
+# HTTP helpers
+# ---------------------------------------------------------------------------
 
 def _fetch_text(url: str) -> Optional[str]:
     try:
@@ -202,42 +299,25 @@ def _canon_id_from_path(path: str) -> str:
     return PurePosixPath(path).stem
 
 
-def _split_into_chunks(text: str, max_chars: int = _MAX_CHUNK_CHARS) -> List[str]:
-    raw_paras = re.split(r"\n{2,}", text)
-    chunks: List[str] = []
-    for para in raw_paras:
-        para = para.strip()
-        if not para or len(para) < _MIN_CHUNK_CHARS:
-            continue
-        if len(para) <= max_chars:
-            chunks.append(para)
-        else:
-            for sub in para.split("\n"):
-                sub = sub.strip()
-                if len(sub) >= _MIN_CHUNK_CHARS:
-                    chunks.append(sub[:max_chars])
-    return chunks
-
-
 # ---------------------------------------------------------------------------
-# Public API
+# CanonLoader
 # ---------------------------------------------------------------------------
 
 class CanonLoader:
     """
     Discovers and loads all Canon documents from the GAIA-OS repository.
 
-    Usage
-    -----
-    >>> loader = CanonLoader(ref="main")
-    >>> chunks = loader.load()          # or loader.load_all()
-    >>> print(len(chunks), "chunks loaded")
+    Usage::
+
+        loader = CanonLoader(ref="main")
+        chunks = loader.load()          # or loader.load_all()
+        print(len(chunks), "chunks loaded")
     """
 
     def __init__(self, ref: str = _DEFAULT_REF) -> None:
-        self.ref      = ref
-        self._loaded: bool           = False
-        self._chunks: List[CanonChunk] = []
+        self.ref       = ref
+        self._loaded: bool              = False
+        self._chunks:  List[CanonChunk] = []
 
     def _list_canon_files(self) -> List[dict]:
         url  = _GITHUB_API_TREE.format(ref=self.ref)
@@ -281,20 +361,22 @@ class CanonLoader:
         time.sleep(_REQUEST_DELAY)
 
     def load_all(self, force: bool = False) -> List[CanonChunk]:
-        """
-        Load all Canon chunks.  Cached after first call unless *force=True*.
-        """
+        """Load all Canon chunks (cached after first call unless force=True)."""
         if self._loaded and not force:
             return self._chunks
 
         entries = self._list_canon_files()
         if not entries:
-            logger.warning("canon_loader: no Canon files discovered — check ref=%s", self.ref)
+            logger.warning(
+                "canon_loader: no Canon files discovered — check ref=%s", self.ref
+            )
             return []
 
-        logger.info("canon_loader: discovered %d Canon files on ref=%s", len(entries), self.ref)
+        logger.info(
+            "canon_loader: discovered %d Canon files on ref=%s", len(entries), self.ref
+        )
 
-        seen_uids: set        = set()
+        seen_uids: set           = set()
         chunks: List[CanonChunk] = []
         for entry in entries:
             for chunk in self._load_file(entry):
@@ -304,9 +386,11 @@ class CanonLoader:
                 chunks.append(chunk)
 
         chunks.sort(key=lambda c: (c.canon_id, c.chunk_index))
-        self._chunks  = chunks
-        self._loaded  = True
-        logger.info("canon_loader: loaded %d chunks from %d files", len(chunks), len(entries))
+        self._chunks = chunks
+        self._loaded = True
+        logger.info(
+            "canon_loader: loaded %d chunks from %d files", len(chunks), len(entries)
+        )
         return self._chunks
 
     def load(self, force: bool = False) -> List[CanonChunk]:
@@ -322,3 +406,9 @@ class CanonLoader:
 
     def sources(self) -> List[str]:
         return sorted({c.canon_id for c in self._chunks})
+
+    def build_index(self) -> _TFIDFIndex:
+        """Build and return a TF-IDF index over the loaded chunks."""
+        if not self._loaded:
+            self.load_all()
+        return _TFIDFIndex(self._chunks)
