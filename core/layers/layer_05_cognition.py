@@ -264,15 +264,20 @@ class CognitionLayer:
             score += 2
         elif word_count > 20:
             score += 1
-        if question_count > 2: score += 2
-        elif question_count > 1: score += 1
+        if question_count > 2:
+            score += 2
+        elif question_count > 1:
+            score += 1
         if is_multi_part:
             score += 1
         if domain in (KnowledgeDomain.PHILOSOPHICAL, KnowledgeDomain.SPIRITUAL):
             score += 1
-        if score >= 5: return ComplexityLevel.DEEP
-        if score >= 3: return ComplexityLevel.COMPLEX
-        if score >= 1: return ComplexityLevel.MODERATE
+        if score >= 5:
+            return ComplexityLevel.DEEP
+        if score >= 3:
+            return ComplexityLevel.COMPLEX
+        if score >= 1:
+            return ComplexityLevel.MODERATE
         return ComplexityLevel.SIMPLE
 
     def _select_reasoning_mode(

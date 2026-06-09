@@ -241,7 +241,8 @@ class SocietasLayer:
             return ImpactRadius.COMMUNITY
         if any(s in lower for s in team_signals):
             return ImpactRadius.TEAM
-        if any(s in lower for s in relational_signals): return ImpactRadius.RELATIONAL
+        if any(s in lower for s in relational_signals):
+            return ImpactRadius.RELATIONAL
         return ImpactRadius.SELF
 
     def status(self) -> dict:
