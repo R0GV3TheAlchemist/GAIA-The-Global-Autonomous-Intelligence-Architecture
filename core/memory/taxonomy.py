@@ -7,14 +7,14 @@ Canon refs: C34, C01
 """
 from __future__ import annotations
 
+import enum
 import time as _time
 from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
-class MemoryKind(str, Enum):
+class MemoryKind(enum.StrEnum):
     """Semantic category of a stored memory item."""
 
     MESSAGE    = "message"
@@ -29,8 +29,8 @@ class MemoryKind(str, Enum):
     NOTE       = "note"
 
 
-class MemoryTier(str, Enum):
-    """Lifetime tier — controls pruning priority.
+class MemoryTier(enum.StrEnum):
+    """Lifetime tier -- controls pruning priority.
 
     String values allow transparent storage in SQL / JSON without a
     separate mapping table.  Use ``.value`` to get the string for DB writes.
@@ -45,15 +45,20 @@ class MemoryTier(str, Enum):
     PERMANENT  = "permanent"
 
 
-def _to_datetime(value: Any, default_factory=datetime.utcnow) -> datetime:
+def _now_utc() -> datetime:
+    """Return the current UTC time as a timezone-aware datetime."""
+    return datetime.now(UTC)
+
+
+def _to_datetime(value: Any, default_factory=_now_utc) -> datetime:
     """Coerce *value* to a :class:`datetime`, regardless of its type.
 
     Accepted input types
     --------------------
-    - ``datetime``      → returned as-is
-    - ``int`` / ``float`` → treated as a UTC epoch (seconds since 1970-01-01)
-    - ``str``           → parsed with ``datetime.fromisoformat``
-    - anything else     → ``default_factory()`` is called and returned
+    - ``datetime``      -- returned as-is (naive treated as UTC)
+    - ``int`` / ``float`` -- treated as a UTC epoch (seconds since 1970-01-01)
+    - ``str``           -- parsed with ``datetime.fromisoformat``
+    - anything else     -- ``default_factory()`` is called and returned
 
     This is the single normalisation point for all timestamp fields on
     :class:`MemoryItem`.  Centralising the logic here means neither
@@ -67,7 +72,7 @@ def _to_datetime(value: Any, default_factory=datetime.utcnow) -> datetime:
         # SQLite stores timestamps as integer epoch seconds (or millis).
         # Heuristic: values > 1e10 are milliseconds, otherwise seconds.
         epoch_s = value / 1000.0 if value > 1e10 else float(value)
-        return datetime.utcfromtimestamp(epoch_s)
+        return datetime.fromtimestamp(epoch_s, tz=UTC)
     if isinstance(value, str):
         try:
             return datetime.fromisoformat(value)
@@ -97,41 +102,41 @@ class MemoryItem:
     """
 
     content:     str
-    kind:        MemoryKind          = MemoryKind.MESSAGE
-    tier:        MemoryTier          = MemoryTier.SHORT_TERM
-    importance:  float               = 0.5
-    user_id:     Optional[str]       = None
-    gaian_id:    Optional[str]       = None
-    session_id:  Optional[str]       = None
-    role:        Optional[str]       = None
-    tags:        List[str]           = field(default_factory=list)
-    metadata:    Dict[str, Any]      = field(default_factory=dict)
-    created_at:  datetime            = field(default_factory=datetime.utcnow)
-    updated_at:  Optional[datetime]  = None
-    id:          Optional[str]       = None
-    topic_tag:   Optional[str]       = None   # ← explicit field for test/store compat
-    ttl_seconds: Optional[int]       = None   # ← explicit field for TTL support
+    kind:        MemoryKind              = MemoryKind.MESSAGE
+    tier:        MemoryTier              = MemoryTier.SHORT_TERM
+    importance:  float                   = 0.5
+    user_id:     str | None              = None
+    gaian_id:    str | None              = None
+    session_id:  str | None              = None
+    role:        str | None              = None
+    tags:        list[str]               = field(default_factory=list)
+    metadata:    dict[str, Any]          = field(default_factory=dict)
+    created_at:  datetime                = field(default_factory=_now_utc)
+    updated_at:  datetime | None         = None
+    id:          str | None              = None
+    topic_tag:   str | None              = None   # explicit field for test/store compat
+    ttl_seconds: int | None              = None   # explicit field for TTL support
 
     def __init__(
         self,
         content: str = "",
         *,
-        text:        Optional[str]       = None,   # ← alias for content
-        kind:        MemoryKind          = MemoryKind.MESSAGE,
-        tier:        MemoryTier          = MemoryTier.SHORT_TERM,
-        importance:  float               = 0.5,
-        user_id:     Optional[str]       = None,
-        gaian_id:    Optional[str]       = None,
-        session_id:  Optional[str]       = None,
-        role:        Optional[str]       = None,
-        tags:        Optional[List[str]] = None,
-        metadata:    Optional[Dict[str, Any]] = None,
-        created_at:  Any                 = None,   # int | float | str | datetime | None
-        updated_at:  Any                 = None,   # int | float | str | datetime | None
-        id:          Optional[str]       = None,
-        topic_tag:   Optional[str]       = None,
-        ttl_seconds: Optional[int]       = None,
-        deleted:     bool                = False,
+        text:        str | None              = None,   # alias for content
+        kind:        MemoryKind              = MemoryKind.MESSAGE,
+        tier:        MemoryTier              = MemoryTier.SHORT_TERM,
+        importance:  float                   = 0.5,
+        user_id:     str | None              = None,
+        gaian_id:    str | None              = None,
+        session_id:  str | None              = None,
+        role:        str | None              = None,
+        tags:        list[str] | None        = None,
+        metadata:    dict[str, Any] | None   = None,
+        created_at:  Any                     = None,   # int | float | str | datetime | None
+        updated_at:  Any                     = None,   # int | float | str | datetime | None
+        id:          str | None              = None,
+        topic_tag:   str | None              = None,
+        ttl_seconds: int | None              = None,
+        deleted:     bool                    = False,
     ) -> None:
         # Accept ``text`` as an alias for ``content``
         self.content     = text if text is not None else content
@@ -144,11 +149,11 @@ class MemoryItem:
         self.role        = role
         self.tags        = tags if tags is not None else []
         self.metadata    = metadata if metadata is not None else {}
-        # Normalise timestamps to datetime on ingestion — this is the
+        # Normalise timestamps to datetime on ingestion -- this is the
         # single place where int/float/str timestamps from SQLite or any
         # other storage layer are converted, so the rest of the codebase
         # can safely assume created_at is always a datetime object.
-        self.created_at  = _to_datetime(created_at) if created_at is not None else datetime.utcnow()
+        self.created_at  = _to_datetime(created_at) if created_at is not None else _now_utc()
         self.updated_at  = _to_datetime(updated_at) if updated_at is not None else None
         self.id          = id
         self.topic_tag   = topic_tag
@@ -172,7 +177,7 @@ class MemoryItem:
         """Return created_at as a UTC epoch integer."""
         if isinstance(self.created_at, datetime):
             return int(self.created_at.timestamp())
-        return int(self.created_at)  # fallback — should never reach here post-normalisation
+        return int(self.created_at)  # fallback -- should never reach here post-normalisation
 
     def age_seconds(self) -> int:
         """Return age of this item in whole seconds since created_at."""
@@ -194,7 +199,7 @@ class MemoryItem:
         Higher = more important to keep / surface first.
         Decays to ~36.8 % of its initial value after 24 h.
         """
-        _TIER_WEIGHTS: Dict[MemoryTier, float] = {
+        _TIER_WEIGHTS: dict[MemoryTier, float] = {
             MemoryTier.EPHEMERAL:  0.5,
             MemoryTier.WORKING:    1.0,
             MemoryTier.SHORT_TERM: 1.2,
@@ -212,7 +217,7 @@ class MemoryItem:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _ts_to_iso(ts: Any) -> Optional[str]:
+    def _ts_to_iso(ts: Any) -> str | None:
         """Belt-and-suspenders: convert any timestamp representation to ISO-8601.
 
         After normalisation in ``__init__``, ``created_at`` and ``updated_at``
@@ -226,12 +231,12 @@ class MemoryItem:
             return ts.isoformat()
         if isinstance(ts, (int, float)):
             epoch_s = ts / 1000.0 if ts > 1e10 else float(ts)
-            return datetime.utcfromtimestamp(epoch_s).isoformat()
+            return datetime.fromtimestamp(epoch_s, tz=UTC).isoformat()
         if isinstance(ts, str):
             return ts  # already ISO-8601
-        return datetime.utcnow().isoformat()
+        return datetime.now(UTC).isoformat()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id":          self.id,
             "content":     self.content,
@@ -251,7 +256,7 @@ class MemoryItem:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryItem":
+    def from_dict(cls, data: dict[str, Any]) -> MemoryItem:
         return cls(
             content     = data.get("content", data.get("text", "")),
             kind        = MemoryKind(data.get("kind", "message")),
