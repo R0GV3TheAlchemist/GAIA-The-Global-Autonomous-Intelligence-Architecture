@@ -27,7 +27,7 @@ __author__ = "Kyle Steen"
 __canon_ref__ = "https://github.com/R0GV3TheAlchemist/GAIA"
 
 from .rag.canon_loader import CanonLoader
-from .action_gate import ActionGate, RiskTier
+from .infra.action_gate import ActionGate, RiskTier  # Phase C migration: real impl lives in core/infra/
 from .consent_ledger import ConsentLedger
 from .memory_store import MemoryStore
 from .subtle_body_engine import (
