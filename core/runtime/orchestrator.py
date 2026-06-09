@@ -159,7 +159,7 @@ class GAIAOrchestrator:
     async def async_init(self) -> None:
         """Async initialisation — call once from FastAPI lifespan."""
         try:
-            MemoryStore, MemoryItem, MemoryKind, MemoryTier, OllamaEmbedder, FallbackEmbedder = _import_memory()
+            MemoryStore, _MemoryItem, _MemoryKind, _MemoryTier, OllamaEmbedder, FallbackEmbedder = _import_memory()
             if self._embedder_type == "ollama":
                 try:
                     embedder = OllamaEmbedder()
@@ -195,8 +195,8 @@ class GAIAOrchestrator:
             log.error("[Orchestrator] Planner init failed: %s", exc)
 
         try:
-            ActionLedger, AuditEvent, EventType = _import_audit()
-            self.ledger = ActionLedger(
+            _ActionLedger, _AuditEvent, _EventType = _import_audit()
+            self.ledger = _ActionLedger(
                 db_path=os.path.join(self._db_dir, "gaia_audit.sqlite")
             )
             log.info("[Orchestrator] ActionLedger ready.")
@@ -214,7 +214,7 @@ class GAIAOrchestrator:
         """Return existing kernel or create one for this session."""
         if session_id not in self._kernels:
             try:
-                QuantumKernel, GAIA_BASIS_LABELS, *_ = _import_quantum()
+                QuantumKernel, _GAIA_BASIS_LABELS, *_ = _import_quantum()
                 self._kernels[session_id] = QuantumKernel(
                     user_id=user_id,
                     session_id=session_id,
@@ -232,7 +232,7 @@ class GAIAOrchestrator:
         self,
         user_id:      str,
         user_message: str,
-        session_id:   Optional[str] = None,
+        session_id:   str | None = None,
     ) -> TurnContext:
         """
         Run all pre-LLM steps for one conversation turn.
@@ -331,7 +331,7 @@ class GAIAOrchestrator:
         # ── 1. Remember user message ───────────────────────────────────
         if self.memory:
             try:
-                MemoryStore, MemoryItem, MemoryKind, MemoryTier, *_ = _import_memory()
+                _MemoryStore, _MemoryItem, MemoryKind, _MemoryTier, *_ = _import_memory()
                 uid = await self.memory.remember(
                     user_id=user_id,
                     text=user_message,
@@ -347,7 +347,7 @@ class GAIAOrchestrator:
         # ── 2. Remember GAIA reply ─────────────────────────────────────
         if self.memory:
             try:
-                MemoryStore, MemoryItem, MemoryKind, MemoryTier, *_ = _import_memory()
+                _MemoryStore, _MemoryItem, MemoryKind, _MemoryTier, *_ = _import_memory()
                 rid = await self.memory.remember(
                     user_id=user_id,
                     text=gaia_reply,
@@ -363,7 +363,7 @@ class GAIAOrchestrator:
         # ── 3. Quantum kernel: emotion + intention step ────────────────
         if ctx.kernel:
             try:
-                _, GAIA_BASIS_LABELS, _, make_emotion_pipeline, make_intention_pipeline = _import_quantum()
+                _, GAIA_BASIS_LABELS, _, make_emotion_pipeline, _make_intention_pipeline = _import_quantum()
                 # Neutral affect — real affect engine values would come from
                 # the GAIANRuntime state snapshot in a future integration pass.
                 neutral_affect = {
@@ -387,7 +387,7 @@ class GAIAOrchestrator:
         # ── 5. Run scheduler batch (non-blocking fire-and-forget) ──────
         if self.scheduler:
             try:
-                asyncio.create_task(self.scheduler.run_once())
+                _task = asyncio.create_task(self.scheduler.run_once())
             except Exception as exc:
                 log.warning("[Orchestrator] Scheduler tick failed: %s", exc)
 
@@ -422,13 +422,13 @@ class GAIAOrchestrator:
         text:       str,
         kind_str:   str = "note",
         importance: float = 0.5,
-        session_id: Optional[str] = None,
-    ) -> Optional[int]:
+        session_id: str | None = None,
+    ) -> int | None:
         """Store one memory item.  Returns the new row id, or None on error."""
         if not self.memory:
             return None
         try:
-            MemoryStore, MemoryItem, MemoryKind, MemoryTier, *_ = _import_memory()
+            _MemoryStore, _MemoryItem, MemoryKind, _MemoryTier, *_ = _import_memory()
             kind = MemoryKind(kind_str) if kind_str in MemoryKind._value2member_map_ else MemoryKind.NOTE
             return await self.memory.remember(
                 user_id=user_id,
@@ -499,19 +499,19 @@ class GAIAOrchestrator:
         self,
         event_type_str: str,
         actor:          str,
-        user_id:        Optional[str]  = None,
-        session_id:     Optional[str]  = None,
-        action:         Optional[str]  = None,
-        outcome:        Optional[str]  = None,
+        user_id:        str | None  = None,
+        session_id:     str | None  = None,
+        action:         str | None  = None,
+        outcome:        str | None  = None,
         justification:  str            = "",
         memory_refs:    list           = None,
-        state_ref:      Optional[str]  = None,
+        state_ref:      str | None  = None,
         metadata:       dict           = None,
     ) -> None:
         if not self.ledger:
             return
         try:
-            ActionLedger, AuditEvent, EventType = _import_audit()
+            _ActionLedger, AuditEvent, EventType = _import_audit()
             et = EventType(event_type_str) if event_type_str in EventType._value2member_map_ else EventType.SYSTEM_EVENT
             event = AuditEvent(
                 event_type=et,

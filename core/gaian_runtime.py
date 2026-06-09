@@ -347,11 +347,10 @@ def _build_spiritu_block(reading: SpirituReading) -> str:
 
 
 def _build_quantum_block(qs: QuantumState) -> str:
-    _, dominant_label, dominant_prob = qs.dominant()
+    _, dominant_label, _dominant_prob = qs.dominant()
     lines = [
         "[QUANTUM STATE KERNEL — PHASE 3]",
         f"Dominant basis state : {dominant_label}",
-        f"Dominant probability : {dominant_prob:.4f}",
         f"State purity         : {qs.purity:.4f}",
         f"Dimensions           : {qs.dim}",
         "[END QUANTUM STATE KERNEL]",
@@ -535,7 +534,7 @@ class GAIANRuntime:
         qs: QuantumState = self._quantum_kernel._state.clone()
 
         # ── 5–11: Soul engines (unchanged) ───────────────────────────────────
-        self.love_arc_state, love_hint = self._love_arc.update(
+        self.love_arc_state, _love_hint = self._love_arc.update(
             state=self.love_arc_state, bond_depth=self.attachment.bond_depth,
             feeling=feeling,
         )
@@ -603,7 +602,7 @@ class GAIANRuntime:
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
         # ── 17. Policy gate ★ ─────────────────────────────────────────────────
-        _, dominant_label, dominant_prob = qs.dominant()
+        _, dominant_label, _dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
             "coherence_phi":    feeling.coherence_phi,
@@ -849,10 +848,14 @@ class GAIANRuntime:
                           "\n[END MEMORIES]")
         notes = self._memory.get("session_notes", [])
         if notes:
-            blocks.append("[SESSION CONTEXT]\n" +
-                          "\n".join("  Session {}: {}".format(n["session"], n["note"])
-                                    for n in notes[-5:]) +
-                          "\n[END SESSION CONTEXT]")
+            blocks.append(
+                "[SESSION CONTEXT]\n"
+                + "\n".join(
+                    f"  Session {n['session']}: {n['note']}"
+                    for n in notes[-5:]
+                )
+                + "\n[END SESSION CONTEXT]"
+            )
         return "\n\n".join(blocks)
 
     def _load_memory(self) -> dict:
