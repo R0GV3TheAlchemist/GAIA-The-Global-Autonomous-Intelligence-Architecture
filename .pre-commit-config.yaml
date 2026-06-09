@@ -1,0 +1,27 @@
+# .pre-commit-config.yaml
+# GAIA-OS local lint gate — runs before every commit.
+#
+# One-time setup (run once after cloning):
+#   pip install pre-commit
+#   pre-commit install
+#
+# To run manually across all files:
+#   pre-commit run --all-files
+#
+# This mirrors the exact Ruff command used in CI (.github/workflows/)
+# so a green pre-commit == a green CI lint step.
+# Canon Ref: C30 (No silent failures)
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Pin to match pyproject.toml minimum: ruff>=0.5.0
+    rev: v0.5.0
+    hooks:
+      # 1. Lint — catches F401, E701, I, UP, RUF, W violations
+      #    --fix applies safe auto-fixes (unused imports, import ordering)
+      #    Review the diff after --fix runs before committing.
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+      # 2. Format — enforces consistent code formatting (Ruff's black-compatible formatter)
+      - id: ruff-format

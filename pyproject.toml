@@ -34,7 +34,8 @@ dev = [
   "pytest-timeout>=2.3.0",
   "pytest-mock>=3.14.0",
   "ruff>=0.5.0",
-  "mypy>=1.10.0"
+  "mypy>=1.10.0",
+  "pre-commit>=3.7.0"
 ]
 # Local/research only — do NOT install in CI (requires ~1-2 GB PyTorch)
 ml = [
@@ -55,6 +56,22 @@ timeout = 60
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+# Rule sets enforced for GAIA-OS
+# E  — pycodestyle errors        (style correctness)
+# W  — pycodestyle warnings      (style warnings)
+# F  — Pyflakes                  (unused imports, undefined names)
+# I  — isort                     (import ordering)
+# UP — pyupgrade                 (modernize to py311 syntax)
+# RUF — Ruff-native rules        (patterns pyflakes/pycodestyle miss)
+select = ["E", "W", "F", "I", "UP", "RUF"]
+ignore = [
+  # Add specific rule codes here only when a rule is intentionally
+  # suppressed for GAIA-OS. Always include a comment explaining why.
+  # Example:
+  # "RUF012",  # mutable class var annotation — intentional in layer dataclasses
+]
 
 [tool.setuptools.packages.find]
 include = ["core*", "api*", "gaia*"]
