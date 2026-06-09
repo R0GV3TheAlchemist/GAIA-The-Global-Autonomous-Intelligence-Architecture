@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# ── Path setup ────────────────────────────────────────────────────────────────────
+# ── Path setup ────────────────────────────────────────────────────────────────────────────────
 if getattr(sys, 'frozen', False):
     ROOT = sys._MEIPASS
 else:
@@ -30,6 +30,7 @@ from api.routers import gaian as gaian_router
 from api.routers import memory as memory_router
 from api.routers import alignment as alignment_router
 from api.routers import pair_programmer as pair_programmer_router
+from api.routers.observability import router as observability_router   # Issue #265
 from api.notifications import router as notifications_router
 from api.atlas import router as atlas_router
 from api.crypto import router as crypto_router
@@ -40,7 +41,7 @@ log = logging.getLogger("gaia")
 
 _START_TIME = time.time()
 
-# ── Graceful shutdown ────────────────────────────────────────────────────────────────────────
+# ── Graceful shutdown ───────────────────────────────────────────────────────────────────────────────
 
 _shutdown_event = asyncio.Event()
 
@@ -77,7 +78,7 @@ async def _flush_state() -> None:
     log.info("[GAIA] Shutdown complete.")
 
 
-# ── Ollama health probe ──────────────────────────────────────────────────────────────────────
+# ── Ollama health probe ─────────────────────────────────────────────────────────────────────────────
 
 OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("GAIA_MODEL", "llama3")
@@ -117,13 +118,13 @@ async def _check_ollama() -> dict:
         return {"ready": False, "model": None, "error": str(e)}
 
 
-# ── FastAPI lifespan ────────────────────────────────────────────────────────────────────────
+# ── FastAPI lifespan ─────────────────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     log.info("[GAIA] Backend starting up — port 8008")
 
-    # ── Encryption layer ───────────────────────────────────────────────────────
+    # ── Encryption layer ──────────────────────────────────────────────────────────────
     from api.crypto import get_symmetric_key
     try:
         get_symmetric_key()
@@ -131,7 +132,7 @@ async def lifespan(application: FastAPI):
     except Exception as e:
         log.warning(f"[GAIA] Encryption init warning: {e}")
 
-    # ── Runtime orchestrator ─────────────────────────────────────────────────
+    # ── Runtime orchestrator ───────────────────────────────────────────────────────────
     from core.runtime import GAIAOrchestrator, init_orchestrator
     try:
         init_orchestrator()
@@ -144,11 +145,11 @@ async def lifespan(application: FastAPI):
 
     yield
 
-    # ── Teardown ────────────────────────────────────────────────────────────────────────
+    # ── Teardown ─────────────────────────────────────────────────────────────────────────────────
     await _flush_state()
 
 
-# ── App ────────────────────────────────────────────────────────────────────────────
+# ── App ──────────────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="GAIA Backend",
@@ -171,7 +172,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ────────────────────────────────────────────────────────────────────────────
+# ── Routers ─────────────────────────────────────────────────────────────────────────────────────
 
 app.include_router(auth_router)                                        # /auth/*
 app.include_router(zodiac.router,                   prefix="/api/zodiac",          tags=["Zodiac"])
@@ -184,9 +185,10 @@ app.include_router(notifications_router)
 app.include_router(atlas_router)
 app.include_router(crypto_router)
 app.include_router(safety_router)                                      # /safety/*
+app.include_router(observability_router)                               # /metrics + /health/detailed  (Issue #265)
 
 
-# ── Core endpoints ───────────────────────────────────────────────────────────────────────
+# ── Core endpoints ───────────────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
@@ -221,7 +223,7 @@ async def get_state():
     }
 
 
-# ── Launch ────────────────────────────────────────────────────────────────────────────
+# ── Launch ──────────────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.environ.get("GAIA_PORT", 8008))
