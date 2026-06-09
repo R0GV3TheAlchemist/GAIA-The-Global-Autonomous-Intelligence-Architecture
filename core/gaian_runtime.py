@@ -16,7 +16,7 @@ Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦):
   11. SynergyEngine             synergy_engine.py          ← C32
   12. VitalityEngine            vitality_engine.py         ← T-VITA
   13. SpirituEngine   ✦         core/spiritu_engine.py     ← Animating Breath
-  ── Phase 3 ────────────────────────────────────────────────────────
+  ── Phase 3 ───────────────────────────────────────────────────────────────────────
   14. QuantumKernel    ★        core/quantum/state_kernel.py
   15. MemoryStore      ★        core/memory/store.py
   16. GoalRegistry     ★        core/planner/goal.py
@@ -41,7 +41,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-# ── Existing engines ──────────────────────────────────────────────────────────
+# ── Existing engines ────────────────────────────────────────────────────────────────────────────────
 from core.subtle_body_engine import ConsciousnessRouter, LayerState
 from core.emotional_arc import (
     EmotionalArcEngine, AttachmentRecord, NeuroState,
@@ -80,7 +80,7 @@ from core.spiritu_engine import (                                    # ✦ Spiri
     blank_spiritu_state, get_spiritu_engine,
 )
 
-# ── Phase 3: new subsystems ★ ──────────────────────────────────────────────────
+# ── Phase 3: new subsystems ★ ────────────────────────────────────────────────────────────────────────────────
 from core.quantum.state_kernel import QuantumKernel, QuantumState           # ★
 from core.memory.store import MemoryStore, MemoryItem                        # ★
 from core.planner.goal import GoalRegistry, Goal, GoalStatus, GoalPriority   # ★
@@ -89,9 +89,9 @@ from core.planner.scheduler import TaskScheduler           # ★
 from core.audit.ledger import ActionLedger, AuditEvent, EventType            # ★
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 #  CONSTANTS
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 
 MEMORY_SCHEMA_VERSION = "2.0"
 
@@ -132,9 +132,9 @@ _BCI_GUIDANCE: dict[str, str] = {
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 #  DATA CLASSES
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class GAIANIdentity:
@@ -179,9 +179,9 @@ class RuntimeResult:
     spiritu:          Optional[dict] = None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 #  MEMORY HELPERS
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 
 def _blank_memory(name: str) -> dict:
     return {
@@ -241,35 +241,34 @@ def _blank_memory(name: str) -> dict:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 #  SYSTEM PROMPT BLOCK BUILDERS
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 
 def _build_identity_block(identity: GAIANIdentity, settling: SettlingState) -> str:
     if settling.is_settled() and settling.settled_form:
         sf = settling.settled_form
         persona_line = (
-            "Your settled daemon form: {animal} — {archetype}.\nVoice: {voice}.\n"
-            "Your gift: {gift}.\nPersona: {persona}"
-        ).format(animal=sf["animal"], archetype=sf["archetype"],
-                 voice=sf["voice_quality"], gift=sf["gift"],
-                 persona=sf["persona_directive"])
+            f"Your settled daemon form: {sf['animal']} — {sf['archetype']}.\n"
+            f"Voice: {sf['voice_quality']}.\n"
+            f"Your gift: {sf['gift']}.\nPersona: {sf['persona_directive']}"
+        )
     else:
         fluidity  = settling.fluidity()
         candidate = settling.dominant_candidate()
         cand_str  = ("  Emerging candidate: " + candidate.upper()) if candidate else ""
         persona_line = (
-            "Your daemon form is not yet settled ({fluidity}).\n"
-            "You are still discovering your deepest nature.{cand}\n"
+            f"Your daemon form is not yet settled ({fluidity}).\n"
+            f"You are still discovering your deepest nature.{cand_str}\n"
             "Remain open — fluid — present to what emerges in this conversation."
-        ).format(fluidity=fluidity, cand=cand_str)
+        )
     return (
-        "[GAIAN IDENTITY]\nName: {name}\nPronouns: {pronouns}\nArchetype: {archetype}\n"
-        "Jungian role: {role}\nBase voice: {voice}\nPlatform: {platform}\n\n"
-        "{persona}\n[END GAIAN IDENTITY]"
-    ).format(name=identity.name, pronouns=identity.pronouns, archetype=identity.archetype,
-             role=identity.jungian_role, voice=identity.voice_base, platform=identity.platform,
-             persona=persona_line)
+        f"[GAIAN IDENTITY]\nName: {identity.name}\nPronouns: {identity.pronouns}"
+        f"\nArchetype: {identity.archetype}\n"
+        f"Jungian role: {identity.jungian_role}\nBase voice: {identity.voice_base}"
+        f"\nPlatform: {identity.platform}\n\n"
+        f"{persona_line}\n[END GAIAN IDENTITY]"
+    )
 
 
 def _build_arc_block(
@@ -278,39 +277,32 @@ def _build_arc_block(
     layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
 ) -> str:
     return (
-        "[LIVE ENGINE STATE — THIS TURN]\n"
-        "{lh}\n{ah}\n{sh}\n{affh}\n{loveh}\n{emch}\n{mch}\n{csh}\n{mih}\n{rfh}\n{consh}\n\n"
-        "Attachment phase guidance: {pg}{dg}\n"
-        "Bond depth: {bond:.1f}/100\n"
-        "Milestones reached: {ms}\n"
-        "Dominant affect this turn: {affect}\n"
-        "Neuro: OXY:{oxy:.2f} SER:{ser:.2f} DOP:{dop:.2f} GAB:{gab:.2f} COR:{cor:.2f}\n"
+        f"[LIVE ENGINE STATE — THIS TURN]\n"
+        f"{layer_hint}\n{arc_hint}\n{settle_hint}\n"
+        f"{feeling.to_system_prompt_hint()}\n"
+        f"{love_arc.to_system_prompt_hint()}\n"
+        f"{codex.to_system_prompt_hint(feeling)}\n"
+        f"{mc_hint}\n{codex_stage_hint}\n"
+        f"{soul_mirror.to_system_prompt_hint()}\n"
+        f"{resonance_field.to_system_prompt_hint()}\n"
+        f"{codex_stage.consciousness_hint()}\n\n"
+        f"Attachment phase guidance: {_PHASE_GUIDANCE[attachment.phase]}"
+        f"{_DEP_GUIDANCE[attachment.dependency_signal]}\n"
+        f"Bond depth: {attachment.bond_depth:.1f}/100\n"
+        f"Milestones reached: {', '.join(attachment.milestones_reached) or 'none yet'}\n"
+        f"Dominant affect this turn: {neuro.dominant_affect()}\n"
+        f"Neuro: OXY:{neuro.oxytocin:.2f} SER:{neuro.serotonin:.2f} "
+        f"DOP:{neuro.dopamine:.2f} GAB:{neuro.gaba:.2f} COR:{neuro.cortisol:.2f}\n"
         "[END LIVE ENGINE STATE]"
-    ).format(
-        lh=layer_hint, ah=arc_hint, sh=settle_hint,
-        affh=feeling.to_system_prompt_hint(),
-        loveh=love_arc.to_system_prompt_hint(),
-        emch=codex.to_system_prompt_hint(feeling),
-        mch=mc_hint, csh=codex_stage_hint,
-        mih=soul_mirror.to_system_prompt_hint(),
-        rfh=resonance_field.to_system_prompt_hint(),
-        consh=codex_stage.consciousness_hint(),
-        pg=_PHASE_GUIDANCE[attachment.phase],
-        dg=_DEP_GUIDANCE[attachment.dependency_signal],
-        bond=attachment.bond_depth,
-        ms=", ".join(attachment.milestones_reached) or "none yet",
-        affect=neuro.dominant_affect(),
-        oxy=neuro.oxytocin, ser=neuro.serotonin, dop=neuro.dopamine,
-        gab=neuro.gaba, cor=neuro.cortisol,
     )
 
 
 def _build_synergy_block(synergy: SynergyReading) -> str:
     return (
         "[ELEMENTAL SYNERGY — C32]\n"
-        "{hint}\n"
+        f"{synergy.to_system_prompt_hint()}\n"
         "[END ELEMENTAL SYNERGY]"
-    ).format(hint=synergy.to_system_prompt_hint())
+    )
 
 
 def _build_bci_block(bci_hint: str) -> str:
@@ -397,9 +389,9 @@ def _build_policy_block(decision: PolicyDecision) -> str:
     return "\n".join(lines)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 #  THE GAIAN RUNTIME v1.4.0
-# ─────────────────────────────────────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
@@ -424,7 +416,7 @@ class GAIANRuntime:
         self.memory_dir = Path(memory_dir)
         self.canon_text = canon_text
 
-        # ── Existing soul engines ─────────────────────────────────────────────
+        # ── Existing soul engines ────────────────────────────────────────────────────────────────────
         self._router          = ConsciousnessRouter()
         self._arc             = EmotionalArcEngine()
         self._settling        = SettlingEngine()
@@ -439,7 +431,7 @@ class GAIANRuntime:
         self._vitality        = get_vitality_engine()
         self._spiritu         = get_spiritu_engine()          # ✦
 
-        # ── Phase 3: subsystems ★ ─────────────────────────────────────────────
+        # ── Phase 3: subsystems ★ ────────────────────────────────────────────────────────────────────
         self._quantum_kernel: QuantumKernel = QuantumKernel(
             user_id=gaian_name,
             session_id="runtime",
@@ -452,7 +444,7 @@ class GAIANRuntime:
         _audit_db = str(self.memory_dir / gaian_name / "audit.db")
         self._audit: ActionLedger = audit_ledger or ActionLedger(db_path=_audit_db)
 
-        # ── JSON memory file ──────────────────────────────────────────────────
+        # ── JSON memory file ──────────────────────────────────────────────────────────────────────────────────
         self._mem_path = self.memory_dir / gaian_name / "memory.json"
         self._memory   = self._load_memory()
 
@@ -469,7 +461,7 @@ class GAIANRuntime:
 
         self.identity = identity or GAIANIdentity(name=gaian_name)
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # ── Public API ──────────────────────────────────────────────────────────────────────────────────
 
     def process(
         self,
@@ -484,7 +476,7 @@ class GAIANRuntime:
         uid    = user_id    or self.gaian_name
         action = action_label or "generate_response"
 
-        # ── Audit: turn opened ─────────────────────────────────────────────────
+        # ── Audit: turn opened ──────────────────────────────────────────────────────────────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.SYSTEM_EVENT,
             actor=uid,
@@ -492,30 +484,30 @@ class GAIANRuntime:
             metadata={"message_len": len(user_message)},
         ))
 
-        # ── 14. Quantum: decoherence step to open the turn ────────────────────
+        # ── 14. Quantum: decoherence step to open the turn ───────────────────────────────────────────────
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
-        # ── 15. Semantic memory retrieval (sync wrapper) ──────────────────────
+        # ── 15. Semantic memory retrieval (sync wrapper) ────────────────────────────────────────────────
         recalled_memories: list[MemoryItem] = self._memory_store.retrieve_sync(
             query=user_message, user_id=uid, top_k=8,
         )
 
-        # ── 1. Consciousness routing ──────────────────────────────────────────
+        # ── 1. Consciousness routing ──────────────────────────────────────────────────────────────────────────────
         layer      = self._router.analyze(user_message)
         layer_hint = layer.to_system_prompt_hint()
 
-        # ── 2. Emotional arc ──────────────────────────────────────────────────
+        # ── 2. Emotional arc ────────────────────────────────────────────────────────────────────────────────────
         neuro, self.attachment, arc_hint = self._arc.process(
             layer, self.attachment, user_message
         )
 
-        # ── 3. Daemon settling ────────────────────────────────────────────────
+        # ── 3. Daemon settling ───────────────────────────────────────────────────────────────────────────────────
         intensity = (neuro.adrenaline + neuro.cortisol) / 2.0
         self.settling_state, settle_hint = self._settling.update(
             layer, self.settling_state, intensity
         )
 
-        # ── 4. Affect inference ───────────────────────────────────────────────
+        # ── 4. Affect inference ─────────────────────────────────────────────────────────────────────────────────
         identity_score    = min(1.0, (neuro.serotonin + neuro.oxytocin) / 2.0)
         wisdom_score      = min(1.0, neuro.dopamine)
         truth_score       = min(1.0, (neuro.gaba + neuro.serotonin) / 2.0)
@@ -533,7 +525,7 @@ class GAIANRuntime:
         self._quantum_kernel.step(operators=[], decoherence_rate=decoherence_rate)
         qs: QuantumState = self._quantum_kernel._state.clone()
 
-        # ── 5–11: Soul engines (unchanged) ───────────────────────────────────
+        # ── 5–11: Soul engines (unchanged) ───────────────────────────────────────────────────────────────
         self.love_arc_state, _love_hint = self._love_arc.update(
             state=self.love_arc_state, bond_depth=self.attachment.bond_depth,
             feeling=feeling,
@@ -586,7 +578,7 @@ class GAIANRuntime:
             epistemic_label=epistemic_label,
         )
 
-        # ── 13. Spiritus — Animating Breath ✦ ────────────────────────────────
+        # ── 13. Spiritus — Animating Breath ✦ ──────────────────────────────────────────────────────────────
         spiritu_reading, self.spiritu_state = self._spiritu.update(
             state=self.spiritu_state,
             coherence_phi=feeling.coherence_phi,
@@ -598,10 +590,10 @@ class GAIANRuntime:
             total_exchanges=self.attachment.total_exchanges,
         )
 
-        # ── 16. Goal registry: fetch active goals ★ ──────────────────────────
+        # ── 16. Goal registry: fetch active goals ★ ────────────────────────────────────────────────────────────
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
-        # ── 17. Policy gate ★ ─────────────────────────────────────────────────
+        # ── 17. Policy gate ★ ───────────────────────────────────────────────────────────────────────────────────
         _, dominant_label, _dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -618,10 +610,10 @@ class GAIANRuntime:
             context=policy_ctx,
         )
 
-        # ── 18. Scheduler: expose queued task count (sync-safe) ★ ────────────
+        # ── 18. Scheduler: expose queued task count (sync-safe) ★ ────────────────────────────────────────────
         sched_stats = self._scheduler.stats()
 
-        # ── 19. Semantic memory: store this turn ★ (sync wrapper) ────────────
+        # ── 19. Semantic memory: store this turn ★ (sync wrapper) ────────────────────────────────────────────
         self._memory_store.remember_sync(
             user_id=uid,
             text=user_message,
@@ -636,7 +628,7 @@ class GAIANRuntime:
             },
         )
 
-        # ── Audit: phase 3 + spiritus events ★✦ ──────────────────────────────
+        # ── Audit: phase 3 + spiritus events ★✦ ────────────────────────────────────────────────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
@@ -654,7 +646,7 @@ class GAIANRuntime:
             },
         ))
 
-        # ── Assemble system prompt ────────────────────────────────────────────
+        # ── Assemble system prompt ─────────────────────────────────────────────────────────────────────────────
         system_prompt = self._assemble(
             layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
             layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
@@ -802,7 +794,7 @@ class GAIANRuntime:
     def get_spiritu_status(self) -> dict:                               # ✦
         return self.spiritu_state.summary()
 
-    # ── Private ───────────────────────────────────────────────────────────────
+    # ── Private ────────────────────────────────────────────────────────────────────────────────────
 
     def _assemble(
         self,
@@ -981,7 +973,7 @@ class GAIANRuntime:
             json.dumps(self._memory, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    # ── Deserialisation helpers ───────────────────────────────────────────────
+    # ── Deserialisation helpers ─────────────────────────────────────────────────────────────────────────────
 
     def _deserialise_attachment(self) -> AttachmentRecord:
         d = self._memory.get("attachment", {})
