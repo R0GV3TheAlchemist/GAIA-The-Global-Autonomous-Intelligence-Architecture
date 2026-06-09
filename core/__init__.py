@@ -26,7 +26,7 @@ __version__ = "0.6.0"
 __author__ = "Kyle Steen"
 __canon_ref__ = "https://github.com/R0GV3TheAlchemist/GAIA"
 
-from .canon_loader import CanonLoader
+from .rag.canon_loader import CanonLoader
 from .action_gate import ActionGate, RiskTier
 from .consent_ledger import ConsentLedger
 from .memory_store import MemoryStore
