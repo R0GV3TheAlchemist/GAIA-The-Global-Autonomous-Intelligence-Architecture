@@ -230,9 +230,9 @@ class SocietasLayer:
         )
 
     def _assess_radius(self, lower: str) -> ImpactRadius:
-        world_signals     = ["humanity", "civilization", "planet", "world", "everyone", "future generations", "black swan", "extinction", "pandemic", "save humanity"]
-        community_signals = ["community", "society", "public", "city", "country", "nation", "culture", "movement"]
-        team_signals      = ["team", "group", "project", "organization", "company", "crew", "colleagues"]
+        world_signals      = ["humanity", "civilization", "planet", "world", "everyone", "future generations", "black swan", "extinction", "pandemic", "save humanity"]
+        community_signals  = ["community", "society", "public", "city", "country", "nation", "culture", "movement"]
+        team_signals       = ["team", "group", "project", "organization", "company", "crew", "colleagues"]
         relational_signals = ["we", "us", "together", "you and i", "partner", "friend", "family"]
 
         if any(s in lower for s in world_signals):
