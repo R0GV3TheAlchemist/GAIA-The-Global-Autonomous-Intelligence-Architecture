@@ -80,6 +80,19 @@ class CanonChunk:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def _tokenize(text: str) -> List[str]:
+    """
+    Tokenise *text* into lowercase alphanumeric tokens.
+
+    Used by core.canon_loader (backward-compat shim) and any other
+    module that needs lightweight BM25-style tokenisation without
+    pulling in a full NLP dependency.
+
+    Tokens shorter than 2 characters are discarded to reduce noise.
+    """
+    return [tok for tok in re.findall(r"[a-z0-9]+", text.lower()) if len(tok) > 1]
+
+
 def _fetch_text(url: str) -> Optional[str]:
     try:
         if _HTTP_CLIENT == "httpx":
