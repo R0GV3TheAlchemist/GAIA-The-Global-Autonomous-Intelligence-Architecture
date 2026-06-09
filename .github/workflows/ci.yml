@@ -100,9 +100,23 @@ jobs:
 
           REQUIRED_FIELDS = {"id", "path", "title", "domain", "weight", "tags"}
           VALID_DOMAINS = {
-              "identity", "governance", "cognition", "memory", "ethics",
-              "consciousness", "architecture", "canon", "simulation",
-              "noosphere", "soul", "security", "api", "ui", "research"
+              "FOUNDATION",
+              "CONSCIOUSNESS",
+              "BIOLOGY",
+              "GOVERNANCE",
+              "AVATAR",
+              "LANGUAGE",
+              "METAPHYSICS",
+              "CHARTER",
+              "ECONOMICS",
+              "TELEMETRY",
+              "MEMORY",
+              "TOOLS",
+              "BCI",
+              "IDENTITY",
+              "PLANETARY",
+              "SOCIAL",
+              "MINERALS",
           }
 
           errors = []
