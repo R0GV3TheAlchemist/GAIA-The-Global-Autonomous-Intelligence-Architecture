@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — ConfigMap
+# Non-secret runtime configuration for the GAIA backend.
+# Secrets (API keys, encryption keys) must be stored in a Kubernetes Secret,
+# never in a ConfigMap. See .env.example for the full variable reference.
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gaia-config
+  namespace: gaia
+  labels:
+    app.kubernetes.io/name: gaia-backend
+data:
+  GAIA_PORT: "8008"
+  GAIA_ROUTING_MODE: "local-first"
+  CHROMA_HOST: "gaia-chromadb"
+  CHROMA_PORT: "8000"
+  REDIS_URL: "redis://gaia-redis:6379/0"
+  OLLAMA_BASE_URL: "http://gaia-ollama:11434"

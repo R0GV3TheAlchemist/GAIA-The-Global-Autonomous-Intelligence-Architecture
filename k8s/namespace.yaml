@@ -1,0 +1,11 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — Namespace
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gaia
+  labels:
+    app.kubernetes.io/name: gaia-os
+    app.kubernetes.io/managed-by: kubectl

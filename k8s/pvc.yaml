@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — PersistentVolumeClaims
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+
+# GAIA state (emrys_state.json, session logs, tombstones)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gaia-data
+  namespace: gaia
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+
+# ChromaDB vector store
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chroma-data
+  namespace: gaia
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+
+# Redis append-only log
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: gaia
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,0 +1,52 @@
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+
+# ── Python artifacts ──────────────────────────────────────────────────────────
+__pycache__
+*.py[cod]
+*.pyo
+.mypy_cache
+.ruff_cache
+.pytest_cache
+*.egg-info
+dist/
+build/
+.venv/
+venv/
+env/
+
+# ── Test fixtures & local data ────────────────────────────────────────────────
+tests/
+results/
+
+# ── Dev artifacts ─────────────────────────────────────────────────────────────
+*.md
+docs/
+specs/
+canon/
+meta/
+
+# ── Node / frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+.pnpm-store/
+ui/node_modules/
+src/
+src-tauri/
+
+# ── Local key material & secrets ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.secret
+
+# ── OS / editor artifacts ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

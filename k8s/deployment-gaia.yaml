@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — GAIA Backend Deployment
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gaia-backend
+  namespace: gaia
+  labels:
+    app: gaia-backend
+    app.kubernetes.io/name: gaia-backend
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gaia-backend
+  template:
+    metadata:
+      labels:
+        app: gaia-backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port:   "8008"
+        prometheus.io/path:   "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: gaia-backend
+          image: gaia-prod:latest    # replace with your registry image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8008
+              name: http
+          envFrom:
+            - configMapRef:
+                name: gaia-config
+          # Mount secrets separately:
+          # - secretRef:
+          #     name: gaia-secrets
+          volumeMounts:
+            - name: gaia-data
+              mountPath: /app/data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8008
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: gaia-data
+          persistentVolumeClaim:
+            claimName: gaia-data

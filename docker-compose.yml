@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS — Docker Compose (development)
+# Tracks: Issue #265
+#
+# Services:
+#   gaia        — FastAPI backend (dev target, hot-reload)
+#   chromadb    — Vector memory store
+#   redis       — Session state / event bus
+#
+# Optional (uncomment to enable):
+#   ollama      — Local LLM inference (requires GPU or CPU build)
+#
+# Usage:
+#   docker-compose up            # start all services
+#   docker-compose up gaia       # backend only
+#   docker-compose logs -f gaia  # follow logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  gaia:
+    build:
+      context: .
+      target: dev
+    image: gaia-dev:latest
+    container_name: gaia-backend
+    ports:
+      - "8008:8008"
+    volumes:
+      # Hot-reload: mount source into container
+      - .:/app
+      # Persist state between restarts
+      - gaia-data:/app/data
+    environment:
+      - GAIA_PORT=8008
+      - GAIA_ROUTING_MODE=local-first
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env.example   # override with .env in dev
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: gaia-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: gaia-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Optional: local Ollama inference ────────────────────────────────────────
+  # Uncomment if you want a containerised Ollama alongside GAIA.
+  # For GPU: add `deploy.resources.reservations.devices` (NVIDIA runtime required).
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: gaia-ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   restart: unless-stopped
+
+volumes:
+  gaia-data:
+  chroma-data:
+  redis-data:
+  # ollama-models:

@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — Services
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+
+# GAIA Backend
+apiVersion: v1
+kind: Service
+metadata:
+  name: gaia-backend
+  namespace: gaia
+  labels:
+    app: gaia-backend
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port:   "8008"
+    prometheus.io/path:   "/metrics"
+spec:
+  selector:
+    app: gaia-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8008
+  type: ClusterIP
+
+---
+
+# ChromaDB
+apiVersion: v1
+kind: Service
+metadata:
+  name: gaia-chromadb
+  namespace: gaia
+spec:
+  selector:
+    app: gaia-chromadb
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+
+---
+
+# Redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: gaia-redis
+  namespace: gaia
+spec:
+  selector:
+    app: gaia-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP

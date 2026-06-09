@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — Redis Deployment
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gaia-redis
+  namespace: gaia
+  labels:
+    app: gaia-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gaia-redis
+  template:
+    metadata:
+      labels:
+        app: gaia-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - 256mb
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - containerPort: 6379
+              name: redis
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "512Mi"
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data

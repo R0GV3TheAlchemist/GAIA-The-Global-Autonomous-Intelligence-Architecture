@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GAIA-OS Kubernetes — ChromaDB Deployment
+# Tracks: Issue #265
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gaia-chromadb
+  namespace: gaia
+  labels:
+    app: gaia-chromadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gaia-chromadb
+  template:
+    metadata:
+      labels:
+        app: gaia-chromadb
+    spec:
+      containers:
+        - name: chromadb
+          image: chromadb/chroma:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: IS_PERSISTENT
+              value: "TRUE"
+            - name: ANONYMIZED_TELEMETRY
+              value: "FALSE"
+          volumeMounts:
+            - name: chroma-data
+              mountPath: /chroma/chroma
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/heartbeat
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+      volumes:
+        - name: chroma-data
+          persistentVolumeClaim:
+            claimName: chroma-data
