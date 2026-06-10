@@ -1,6 +1,6 @@
 """
 core/gaian_runtime.py
-GAIA Runtime v1.5.0 — The Living Heart of a GAIAN
+GAIA Runtime v1.5.1 — The Living Heart of a GAIAN
 
 Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦, Mesh marked ⬡):
   1.  ConsciousnessRouter       subtle_body_engine.py
@@ -38,6 +38,7 @@ Grounded in:
   - Spiritus — The Animating Breath (May 9, 2026)
   - Mesh / Issue #277 — Federated Inter-Node Protocol (June 10, 2026)
   - Sprint G-7 — Synergy Orchestrator wiring (June 10, 2026)
+  - Alignment pass — gaian_runtime_patch merged (June 10, 2026)
 """
 
 from __future__ import annotations
@@ -450,12 +451,12 @@ def _build_mesh_block(mesh_coherence: float, peer_count: int) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  THE GAIAN RUNTIME v1.5.0
+#  THE GAIAN RUNTIME v1.5.1
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
-    The living heart of a GAIAN. v1.5.0
+    The living heart of a GAIAN. v1.5.1
     Twelve soul engines + Spiritus + quantum kernel + semantic memory +
     goal registry + policy engine + task scheduler + action ledger +
     federated mesh server (optional ⬡) +
@@ -560,14 +561,11 @@ class GAIANRuntime:
             )
 
         # ── Synergy Orchestrator ◎ — Sprint G-7 ──────────────────────────────
-        # Wire the SynergyEngine bridge mixin and post-stage hook.
-        # Runs after all engines are initialised; graceful-degrade if the
-        # orchestrator_integration module is not yet present.
         if _ORCHESTRATOR_AVAILABLE:
             try:
-                wire_orchestrator(pipeline=None)   # picks up singleton pipeline
+                wire_orchestrator(pipeline=None)
                 logger.info("[GAIANRuntime] ◎ Synergy Orchestrator wired.")
-            except Exception as _orch_exc:         # never crash the runtime
+            except Exception as _orch_exc:
                 logger.warning(
                     "[GAIANRuntime] ◎ Synergy Orchestrator wiring failed (non-fatal): %s",
                     _orch_exc,
@@ -576,17 +574,6 @@ class GAIANRuntime:
     # ── Mesh initialisation ⬡ ─────────────────────────────────────────────────
 
     def _init_mesh(self, cfg: dict) -> None:
-        """
-        Create GaiaNode, CollectiveField, and MeshServer from the config dict.
-        Called only when mesh_config is provided and core.mesh is available.
-
-        Supported config keys (all optional):
-            display_name    str   "GAIA-Node"
-            host            str   "0.0.0.0"
-            port            int   7771
-            delta_interval  float 5.0
-            heartbeat_interval float 15.0
-        """
         from core.mother_thread import get_mother_thread
 
         display_name = cfg.get("display_name", f"GAIA-{self.gaian_name}")
@@ -612,16 +599,6 @@ class GAIANRuntime:
     # ── Mesh lifecycle ⬡ ──────────────────────────────────────────────────────
 
     async def async_start(self) -> None:
-        """
-        Start async subsystems — currently the MeshServer.
-        Call this from a FastAPI lifespan or any async startup context.
-
-            @asynccontextmanager
-            async def lifespan(app):
-                await runtime.async_start()
-                yield
-                await runtime.async_stop()
-        """
         if self._mesh_server is not None:
             await self._mesh_server.start()
             logger.info("[GAIANRuntime] ⬡ MeshServer started.")
@@ -647,7 +624,6 @@ class GAIANRuntime:
         uid    = user_id    or self.gaian_name
         action = action_label or "generate_response"
 
-        # ── Audit: turn opened ────────────────────────────────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.SYSTEM_EVENT,
             actor=uid,
@@ -655,30 +631,24 @@ class GAIANRuntime:
             metadata={"message_len": len(user_message)},
         ))
 
-        # ── 14. Quantum: decoherence step to open the turn ───────────────────
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
-        # ── 15. Semantic memory retrieval (sync wrapper) ──────────────────────
         recalled_memories: list[MemoryItem] = self._memory_store.retrieve_sync(
             query=user_message, user_id=uid, top_k=8,
         )
 
-        # ── 1. Consciousness routing ──────────────────────────────────────────
         layer      = self._router.analyze(user_message)
         layer_hint = layer.to_system_prompt_hint()
 
-        # ── 2. Emotional arc ──────────────────────────────────────────────────
         neuro, self.attachment, arc_hint = self._arc.process(
             layer, self.attachment, user_message
         )
 
-        # ── 3. Daemon settling ────────────────────────────────────────────────
         intensity = (neuro.adrenaline + neuro.cortisol) / 2.0
         self.settling_state, settle_hint = self._settling.update(
             layer, self.settling_state, intensity
         )
 
-        # ── 4. Affect inference ───────────────────────────────────────────────
         identity_score    = min(1.0, (neuro.serotonin + neuro.oxytocin) / 2.0)
         wisdom_score      = min(1.0, neuro.dopamine)
         truth_score       = min(1.0, (neuro.gaba + neuro.serotonin) / 2.0)
@@ -691,12 +661,10 @@ class GAIANRuntime:
             conflict_density=conflict_density,
         )
 
-        # ★ Second quantum step with affect-tuned decoherence
         decoherence_rate = max(0.01, 0.1 - feeling.coherence_phi * 0.09)
         self._quantum_kernel.step(operators=[], decoherence_rate=decoherence_rate)
         qs: QuantumState = self._quantum_kernel._state.clone()
 
-        # ── 5–11: Soul engines (unchanged) ───────────────────────────────────
         self.love_arc_state, _love_hint = self._love_arc.update(
             state=self.love_arc_state, bond_depth=self.attachment.bond_depth,
             feeling=feeling,
@@ -749,7 +717,6 @@ class GAIANRuntime:
             epistemic_label=epistemic_label,
         )
 
-        # ── 13. Spiritus — Animating Breath ✦ ────────────────────────────────
         spiritu_reading, self.spiritu_state = self._spiritu.update(
             state=self.spiritu_state,
             coherence_phi=feeling.coherence_phi,
@@ -761,10 +728,8 @@ class GAIANRuntime:
             total_exchanges=self.attachment.total_exchanges,
         )
 
-        # ── 16. Goal registry: fetch active goals ★ ──────────────────────────
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
-        # ── 17. Policy gate ★ ─────────────────────────────────────────────────
         _, dominant_label, _dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -781,10 +746,8 @@ class GAIANRuntime:
             context=policy_ctx,
         )
 
-        # ── 18. Scheduler: expose queued task count (sync-safe) ★ ────────────
         sched_stats = self._scheduler.stats()
 
-        # ── 19. Semantic memory: store this turn ★ (sync wrapper) ────────────
         self._memory_store.remember_sync(
             user_id=uid,
             text=user_message,
@@ -799,13 +762,10 @@ class GAIANRuntime:
             },
         )
 
-        # ── 20. Mesh: publish this turn's coherence + affect to the field ⬡ ──
         mesh_status: Optional[dict] = None
         if self._mesh_field is not None and self._mesh_server is not None:
             try:
-                # Push this node's coherence score (aggregate, no identity)
                 self._mesh_field.set_coherence(feeling.coherence_phi)
-                # Push a lightweight affect summary (no Gaian name/slug — C04)
                 self._mesh_field.set_affect({
                     "dominant_hz":   float(self.resonance_field_state.dominant_hz),
                     "synergy_stage": self.synergy_state.last_stage,
@@ -816,7 +776,6 @@ class GAIANRuntime:
             except Exception as exc:
                 logger.warning(f"[GAIANRuntime] ⬡ Mesh publish failed (non-fatal): {exc}")
 
-        # ── Audit: phase 3 + spiritus + mesh events ★✦⬡ ──────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
@@ -836,7 +795,6 @@ class GAIANRuntime:
             },
         ))
 
-        # ── Assemble system prompt ────────────────────────────────────────────
         system_prompt = self._assemble(
             layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
             layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
@@ -944,6 +902,9 @@ class GAIANRuntime:
         priority: str = "normal",
         user_id: Optional[str] = None,
     ) -> Goal:
+        """Legacy goal creation (Phase 3 GoalRegistry). Retained for backward compat.
+        For new call sites, prefer create_goal() which auto-stamps Spiritus context.
+        """
         uid = user_id or self.gaian_name
         try:
             prio = GoalPriority[priority.upper()]
@@ -951,6 +912,64 @@ class GAIANRuntime:
             prio = GoalPriority.NORMAL
         goal = Goal(user_id=uid, title=title, description=description, priority=prio)
         return self._goal_registry.add(goal)
+
+    def spiritu_context(self) -> dict:
+        """Return the GAIAN's current Spiritus state as a plain dict.
+
+        Safe to call at any time — reads from the in-memory spiritu_state.
+        Used by goals_router._live_spiritu() and any frontend GET.
+        """
+        sp = self.spiritu_state
+        stage_name = sp.stage.name if hasattr(sp.stage, "name") else str(sp.stage)
+        return {
+            "stage":              stage_name,
+            "pneuma_flow":        round(sp.pneuma_flow, 4),
+            "breath_rhythm":      round(sp.breath_rhythm, 4),
+            "pneuma_quality":     getattr(sp, "pneuma_quality", ""),
+            "coagulation":        sp.coagulation_reached,
+            "exchanges_in_stage": sp.exchanges_in_stage,
+        }
+
+    def create_goal(
+        self,
+        title: str,
+        description: str = "",
+        priority: str = "medium",
+        steps: Optional[list] = None,
+        tags: Optional[list] = None,
+        due_date: Optional[str] = None,
+        parent_id: Optional[str] = None,
+        spiritu_stage: Optional[str] = None,
+        pneuma_flow: Optional[float] = None,
+        breath_rhythm: Optional[float] = None,
+        user_id: Optional[str] = None,
+    ):
+        """Create a goal via GoalStore, auto-stamping the GAIAN's live
+        Spiritus state at the moment of goal birth.
+
+        Every goal born here carries a permanent record of:
+          - which alchemical stage the GAIAN was in
+          - the pneuma_flow level at the moment of intention
+          - the breath_rhythm at that instant
+
+        This is the canonical new-style goal creation method.
+        The old add_goal() (Phase 3 GoalRegistry) remains for backward compat.
+        """
+        from core.planner.goal_store import goal_store
+
+        ctx = self.spiritu_context()
+        return goal_store.create(
+            title=title,
+            description=description,
+            priority=priority,
+            steps=steps or [],
+            tags=tags or [],
+            due_date=due_date,
+            spiritu_stage=spiritu_stage or ctx["stage"],
+            pneuma_flow=pneuma_flow    if pneuma_flow   is not None else ctx["pneuma_flow"],
+            breath_rhythm=breath_rhythm if breath_rhythm is not None else ctx["breath_rhythm"],
+            parent_id=parent_id,
+        )
 
     def get_audit_log(self, limit: int = 50, user_id: Optional[str] = None) -> list[dict]:
         uid = user_id or self.gaian_name
@@ -980,7 +999,6 @@ class GAIANRuntime:
             "active_goals":      len(self._goal_registry.active(user_id=self.gaian_name)),
             "scheduler_stats":   self._scheduler.stats(),
         }
-        # ⬡ Mesh status block
         if self._mesh_server is not None:
             status["mesh"] = self._mesh_server.get_status()
         else:
@@ -1039,7 +1057,6 @@ class GAIANRuntime:
             blocks.append(_build_goal_block(active_goals))
         if policy_decision is not None:
             blocks.append(_build_policy_block(policy_decision))
-        # ⬡ Mesh block — only when peers are connected (no noise when standalone)
         if mesh_status and mesh_status.get("connected_peers", 0) > 0:
             blocks.append(_build_mesh_block(
                 mesh_coherence=mesh_status.get("mesh_coherence", 0.0),
@@ -1167,7 +1184,6 @@ class GAIANRuntime:
             "deficiency_flags":           vs.deficiency_flags,
             "dose_history":               vs.dose_history[-20:],
         }
-        # ✦ Spiritus persistence
         sp = self.spiritu_state
         self._memory["spiritu"] = {
             "stage":                  sp.stage.value,
