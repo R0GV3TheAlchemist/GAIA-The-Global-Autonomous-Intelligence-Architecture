@@ -26,12 +26,13 @@ from .types import (
     ShadowArchetype,
     ShadowObservation,
     ObservationFeedback,
+    ValuesBehaviorGap,          # was missing — caused F821 crash (Issue #279)
 )
 
 
-# ─────────────────────────────────────────────
-# Shared helpers
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
+Shared helpers
+# ───────────────────────────────────────────────
 
 def _new_id() -> str:
     return str(uuid.uuid4())
@@ -59,9 +60,9 @@ def _keywords(text: str, top_n: int = 8) -> List[str]:
     return [w for w, _ in freq.most_common(top_n)]
 
 
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 # 1. RecurringThemeDetector
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 
 @dataclass
 class ThemeCluster:
@@ -126,9 +127,9 @@ class RecurringThemeDetector:
         return clusters[:self.top_themes]
 
 
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 # 2. BehavioralLoopDetector
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 
 # Known loop signatures:  ordered list of tag tokens that must appear
 # in sequence across consecutive decision/event episodes.
@@ -138,7 +139,7 @@ _LOOP_SIGNATURES: list[dict] = [
         "tokens"     : ["goal", "avoid", "abandon"],
         "archetype"  : ShadowArchetype.WANDERER,
         "description": (
-            "It looks like there’s a recurring pattern: you set a goal, "
+            "It looks like there's a recurring pattern: you set a goal, "
             "then find reasons to delay, and eventually let it go — "
             "often before giving it a real chance."
         ),
@@ -233,9 +234,9 @@ class BehavioralLoopDetector:
         return results
 
 
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 # 3. ContradictionDetector
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 
 # Contradiction value↔behavior keyword pairs.
 # key = canonical value label, value = list of behaviorally-opposing keywords
@@ -277,13 +278,12 @@ class ContradictionDetector:
         stated_values : List[str],   # canonical value labels (lowercase)
         episodes      : List[dict],  # [{id, preview, tags}]
         principal_id  : str,
-    ) -> tuple[List[ShadowObservation], "ValuesBehaviorGap | None"]:
+    ) -> tuple[List[ShadowObservation], Optional[ValuesBehaviorGap]]:
         """
         Returns:
             observations — one ShadowObservation per detected contradiction
             gap           — ValuesBehaviorGap summary (or None if no values stated)
         """
-        from .types import ValuesBehaviorGap  # local import to avoid circular
         now = _now_ms()
         observations: list[ShadowObservation] = []
         value_gap_scores: dict[str, float] = {}
@@ -302,8 +302,8 @@ class ContradictionDetector:
                 if any(opp in combined for opp in opposites):
                     evidence_eps.append(ep["id"])
 
-            gap = min(1.0, len(evidence_eps) / self.gap_saturation)
-            value_gap_scores[value] = gap
+            gap_score = min(1.0, len(evidence_eps) / self.gap_saturation)
+            value_gap_scores[value] = gap_score
 
             if len(evidence_eps) < self.min_evidence:
                 continue
@@ -322,11 +322,11 @@ class ContradictionDetector:
                 first_detected_at=now,
                 times_observed=len(evidence_eps),
                 surfaced_at=None,
-                confidence=round(gap, 3),
+                confidence=round(gap_score, 3),
             ))
 
         # Build ValuesBehaviorGap summary
-        gap_obj = None
+        gap_obj: Optional[ValuesBehaviorGap] = None
         if value_gap_scores:
             most_aligned  = min(value_gap_scores, key=value_gap_scores.get)
             least_aligned = max(value_gap_scores, key=value_gap_scores.get)
@@ -340,30 +340,32 @@ class ContradictionDetector:
                 gap_score=overall_gap,
                 episode_ids=all_eps,
                 computed_at=now,
+                per_value_scores=value_gap_scores,
             )
 
         return observations, gap_obj
 
 
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 # 4. ArchetypeClassifier
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────
 
 @dataclass
 class ArchetypeResult:
-    archetype  : ShadowArchetype
-    intensity  : float             # 0.0 – 1.0
-    recommended_practice: str
+    archetype            : ShadowArchetype
+    intensity            : float             # 0.0 – 1.0
+    recommended_practice : str
 
 
 # Recommended practices per archetype
 _ARCHETYPE_PRACTICES: dict[ShadowArchetype, str] = {
-    ShadowArchetype.NONE            : "Continue as you are. No active shadow pattern detected.",
-    ShadowArchetype.ORPHAN          : "Inner child work: write a letter to the part of you that feels abandoned.",
-    ShadowArchetype.MARTYR          : "Boundary exploration: identify one situation where you give beyond what’s healthy.",
-    ShadowArchetype.WANDERER        : "Grounding ritual: commit to one small, completable goal today.",
-    ShadowArchetype.DESTROYER       : "Transmutation: channel today’s intensity into physical movement or creation.",
-    ShadowArchetype.WOUNDED_HEALER  : "Integration: acknowledge that your wound is also your gift.",
+    ShadowArchetype.NONE           : "Continue as you are. No active shadow pattern detected.",
+    ShadowArchetype.ORPHAN         : "Inner child work: write a letter to the part of you that feels abandoned.",
+    ShadowArchetype.MARTYR         : "Boundary exploration: identify one situation where you give beyond what’s healthy.",
+    ShadowArchetype.WANDERER       : "Grounding ritual: commit to one small, completable goal today.",
+    ShadowArchetype.DESTROYER      : "Transmutation: channel today’s intensity into physical movement or creation.",
+    ShadowArchetype.WOUNDED_HEALER : "Integration: acknowledge that your wound is also your gift.",
+    ShadowArchetype.SABOTEUR       : "Witness work: notice when you undermine yourself before it happens.",
 }
 
 
@@ -391,16 +393,15 @@ class ArchetypeClassifier:
         Returns:
             ArchetypeResult with archetype, intensity, and recommended_practice
         """
-        emotion      = arc_trend.get("dominant_emotion", "neutral")
-        volatile     = arc_trend.get("is_volatile", False)
-        low_energy   = arc_trend.get("low_energy_flag", False)
-        momentum     = arc_trend.get("mood_momentum", 0.0)
-        val_trend    = arc_trend.get("valence_trend", 0.0)
-        stability    = arc_trend.get("arc_stability", 1.0)
+        emotion    = arc_trend.get("dominant_emotion", "neutral")
+        volatile   = arc_trend.get("is_volatile", False)
+        low_energy = arc_trend.get("low_energy_flag", False)
+        momentum   = arc_trend.get("mood_momentum", 0.0)
+        val_trend  = arc_trend.get("valence_trend", 0.0)
+        stability  = arc_trend.get("arc_stability", 1.0)
 
         kw_set = set(episode_keywords)
 
-        # Rule priority: most specific first
         archetype = ShadowArchetype.NONE
         intensity = 0.0
 
