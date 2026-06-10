@@ -421,7 +421,7 @@ class AgenticLoop:
         if self._rag is not None:
             try:
                 canon_context = self._rag.retrieve(state.summary())
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _sl_warning(f"rag.retrieve failed — {exc}")
         return self._planner(state, canon_context=canon_context)
 
@@ -503,7 +503,7 @@ class AgenticLoop:
                             ),
                             policy_record_id=result_eval.record_id,
                         )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 # Trust gate import/config error — fail safe
                 self._log_error(
                     f"trust_gate.error [{tool_name}]: {exc}",
@@ -544,7 +544,7 @@ class AgenticLoop:
                 registry_version=registry_version,
                 permission_scope=permission_scope,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._tel_record(f"tool.{tool_name}", time.monotonic() - t0, error=True)
             return ActionResult(
                 tool=tool_name, output=None, success=False, error=str(exc),
@@ -591,7 +591,7 @@ class AgenticLoop:
                 f"canon.ingest.{'warm' if warm else 'cold'}_start_complete",
                 meta={"session_id": session_id, **report},
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log_error(f"canon.ingest.failed — {exc}",
                 meta={"session_id": session_id, "error": str(exc)})
 
@@ -752,7 +752,7 @@ class AgenticLoop:
                     state.error = f"max_iterations ({self._max_iterations}) reached"
                     halt = HaltCondition.MAX_ITERATIONS
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             state.error = str(exc)
             halt = HaltCondition.ERROR
             self._log_error(f"agentic_loop.session.error — {exc}",
