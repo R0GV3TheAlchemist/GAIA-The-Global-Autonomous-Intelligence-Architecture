@@ -65,11 +65,13 @@ testpaths = ["tests"]
 #   - UP006/007/035/045: typing modernisation — ignore until migration sprint
 #   - F401: unused imports — ignored globally; many are conditional/re-exports
 #   - PL rules added for pylint-equivalent checks (PLR complexity etc.)
-#   - target-version py312 = strictest UP checks; all suppressed below safely
+#   - target-version py311 = matches CI runtime (python-version: "3.11")
+#   - preview = false (stable rules only) — preview was silently activating
+#     experimental rules on every Ruff release, causing phantom violations.
 # ============================================================================
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py311"
 
 # First-party source roots — resolves `from core.xxx import ...` correctly.
 src = [".", "core", "src-python"]
@@ -103,7 +105,8 @@ extend-exclude = [
 # PL   — Pylint-equivalent (complexity, convention, refactor, error)
 select = ["E", "W", "F", "I", "N", "B", "C4", "SIM", "UP", "S", "RUF", "PL"]
 
-preview = true
+# preview = false (default) — stable rules only. Do NOT re-enable without a
+# full triage pass; preview rules activate silently on every Ruff version bump.
 
 ignore = [
   # ── Style / formatting ──────────────────────────────────────────────
