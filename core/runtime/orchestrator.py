@@ -43,6 +43,7 @@ import asyncio
 import logging
 import os
 import time
+import weakref
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -144,6 +145,10 @@ class GAIAOrchestrator:
 
         self._ready   = False
         self._embedder_type = embedder_type
+
+        # WeakSet to anchor background asyncio tasks — prevents GC dropping
+        # fire-and-forget tasks before they complete (RUF006)
+        self._background_tasks: weakref.WeakSet = weakref.WeakSet()
 
         # These are set in async_init()
         self.memory:    object = None
@@ -385,9 +390,13 @@ class GAIAOrchestrator:
                 log.warning("[Orchestrator] Goal auto-advance failed: %s", exc)
 
         # ── 5. Run scheduler batch (non-blocking fire-and-forget) ──────
+        # Task is anchored to self._background_tasks to prevent GC dropping
+        # it before completion. WeakSet auto-discards on done. (RUF006)
         if self.scheduler:
             try:
-                _task = asyncio.create_task(self.scheduler.run_once())
+                task = asyncio.create_task(self.scheduler.run_once())
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
             except Exception as exc:
                 log.warning("[Orchestrator] Scheduler tick failed: %s", exc)
 
