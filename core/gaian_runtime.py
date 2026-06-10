@@ -25,6 +25,8 @@ Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦, Mesh m
   19. ActionLedger     ★        core/audit/ledger.py
   ── Mesh ⬡ ────────────────────────────────────────────────────────────────────
   20. MeshServer       ⬡        core/mesh/server.py        ← Federated Inter-Node
+  ── Orchestrator ──────────────────────────────────────────────────────────────
+  21. SynergyOrchestrator ◎     core/orchestrator_integration.py ← Sprint G-7
 
 Memory schema version: 2.0
 Grounded in:
@@ -35,6 +37,7 @@ Grounded in:
   - Phase 3 — Runtime Integration (May 6, 2026)
   - Spiritus — The Animating Breath (May 9, 2026)
   - Mesh / Issue #277 — Federated Inter-Node Protocol (June 10, 2026)
+  - Sprint G-7 — Synergy Orchestrator wiring (June 10, 2026)
 """
 
 from __future__ import annotations
@@ -103,6 +106,17 @@ except ImportError:
     logger.info(
         "[GAIANRuntime] core.mesh not importable — mesh disabled. "
         "Ensure websockets + cryptography are installed to enable."
+    )
+
+# ── Orchestrator ◎ — optional, graceful-degrade if module not present ─────────
+try:
+    from core.orchestrator_integration import wire_orchestrator              # ◎ Sprint G-7
+    _ORCHESTRATOR_AVAILABLE = True
+except ImportError:
+    _ORCHESTRATOR_AVAILABLE = False
+    logger.info(
+        "[GAIANRuntime] core.orchestrator_integration not importable — "
+        "Synergy Orchestrator disabled."
     )
 
 
@@ -444,7 +458,8 @@ class GAIANRuntime:
     The living heart of a GAIAN. v1.5.0
     Twelve soul engines + Spiritus + quantum kernel + semantic memory +
     goal registry + policy engine + task scheduler + action ledger +
-    federated mesh server (optional ⬡).
+    federated mesh server (optional ⬡) +
+    Synergy Orchestrator (optional ◎, Sprint G-7).
 
     Mesh usage
     ----------
@@ -543,6 +558,20 @@ class GAIANRuntime:
                 "[GAIANRuntime] mesh_config provided but core.mesh is not importable. "
                 "Install: pip install websockets cryptography zeroconf"
             )
+
+        # ── Synergy Orchestrator ◎ — Sprint G-7 ──────────────────────────────
+        # Wire the SynergyEngine bridge mixin and post-stage hook.
+        # Runs after all engines are initialised; graceful-degrade if the
+        # orchestrator_integration module is not yet present.
+        if _ORCHESTRATOR_AVAILABLE:
+            try:
+                wire_orchestrator(pipeline=None)   # picks up singleton pipeline
+                logger.info("[GAIANRuntime] ◎ Synergy Orchestrator wired.")
+            except Exception as _orch_exc:         # never crash the runtime
+                logger.warning(
+                    "[GAIANRuntime] ◎ Synergy Orchestrator wiring failed (non-fatal): %s",
+                    _orch_exc,
+                )
 
     # ── Mesh initialisation ⬡ ─────────────────────────────────────────────────
 
