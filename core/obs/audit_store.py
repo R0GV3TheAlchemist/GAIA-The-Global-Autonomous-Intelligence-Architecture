@@ -21,22 +21,48 @@ Design
   before modifying the file.
 * AuditReader  — read-only interface for third-party auditors.
 
+StorageBackend mirror (Issue #281)
+----------------------------------
+The NDJSON file is the canonical ledger — its hash-chain, HMAC, and
+fsync guarantees cannot be replicated by a generic KV store.  The
+StorageBackend is a *secondary mirror* that enables:
+
+  • Mesh-wide audit queries across nodes
+    (key prefix: audit:<gaian_id>:<iso_ts>:<seq>)
+  • Pluggable backend swap via GAIA_STORAGE_BACKEND env var
+    (SQLite by default → CockroachDB in Phase 2)
+  • Health check via AuditStore.backend_ping()
+
+Dual-write strategy: NDJSON write always happens first.  Backend mirror
+failures are caught and logged but never propagate — the local ledger
+is always the source of truth.
+
 Usage
 -----
     from core.obs.audit_store import AuditStore, AuditReader
 
+    # Existing usage — unchanged, backend auto-configured from env
     store = AuditStore(store_dir=Path(".gaia/audit"), passphrase="secret")
     store.record(event_type="agent.action", actor="planner",
                  action="call_tool", outcome="ok")
+
+    # Inject a specific backend (e.g. MemoryBackend for tests)
+    from core.storage import MemoryBackend
+    store = AuditStore(store_dir=Path(".gaia/audit"), backend=MemoryBackend())
+
+    # Cross-node mesh audit query (async)
+    entries = await store.query_backend(prefix="audit:luna:")
 
     reader = AuditReader(store_dir=Path(".gaia/audit"), passphrase="secret")
     ok, errors = reader.verify()
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import threading
@@ -51,17 +77,31 @@ except ImportError:  # standalone / test usage
     def get_current_trace_id() -> Optional[str]:  # type: ignore[misc]
         return None
 
+try:
+    from core.storage import StorageBackend, get_backend
+    _STORAGE_AVAILABLE = True
+except ImportError:
+    _STORAGE_AVAILABLE = False
+    StorageBackend = object  # type: ignore[misc,assignment]
+
+logger = logging.getLogger("gaia.obs.audit_store")
+
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-NDJSON_FILENAME  = "audit.ndjson"
-KEY_FILENAME     = "audit.key"
-SALT_FILENAME    = "audit.salt"
+NDJSON_FILENAME   = "audit.ndjson"
+KEY_FILENAME      = "audit.key"
+SALT_FILENAME     = "audit.salt"
 
 PBKDF2_ITERATIONS = 260_000   # OWASP 2023 recommendation for HMAC-SHA256
 KEY_BYTES         = 32
+
+# Key prefix for all audit entries in the StorageBackend
+# Format: audit:<gaian_id>:<iso_ts>:<seq>
+# Allows mesh-wide prefix scan: query_backend(prefix="audit:luna:")
+BACKEND_KEY_PREFIX = "audit"
 
 JSONLD_CONTEXT = {
     "@vocab": "https://gaia-os.dev/audit#",
@@ -125,10 +165,19 @@ class StoredAuditEntry:
         return json.dumps(asdict(self), sort_keys=True,
                           separators=(",", ":"), default=str)
 
+    def to_bytes(self) -> bytes:
+        """Serialise to bytes for StorageBackend.put()."""
+        return self.to_line().encode("utf-8")
+
     @staticmethod
     def from_line(line: str) -> "StoredAuditEntry":
         d = json.loads(line)
         return StoredAuditEntry(**{k: d.get(k) for k in StoredAuditEntry.__dataclass_fields__})
+
+    @staticmethod
+    def from_bytes(data: bytes) -> "StoredAuditEntry":
+        """Deserialise from StorageBackend.get() bytes."""
+        return StoredAuditEntry.from_line(data.decode("utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -177,12 +226,49 @@ def _verify_sig(entry: StoredAuditEntry, key: bytes) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# StorageBackend mirror helpers
+# ---------------------------------------------------------------------------
+
+def _backend_key(gaian_id: str, entry: StoredAuditEntry) -> str:
+    """
+    Build the backend key for a single audit entry.
+    Format: audit:<gaian_id>:<iso_ts>:<seq>
+
+    ISO timestamp is URL-safe (colons replaced with hyphens) so the key
+    sorts chronologically and is safe as a prefix in query().
+    """
+    safe_ts = entry.ts.replace(":", "-").replace("+", "Z")
+    return f"{BACKEND_KEY_PREFIX}:{gaian_id}:{safe_ts}:{entry.seq:010d}"
+
+
+def _mirror_sync(backend: Any, key: str, value: bytes, ttl: Optional[int]) -> None:
+    """
+    Fire-and-forget mirror write.  Runs `backend.put()` in a background
+    thread so the synchronous record() call is never delayed by async I/O.
+    The NDJSON write has already succeeded before this is called.
+    """
+    def _run() -> None:
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(backend.put(key, value, ttl=ttl))
+            loop.close()
+        except Exception as exc:
+            logger.warning(
+                f"[AuditStore] ⚠ Backend mirror write failed (non-fatal): "
+                f"key={key!r} err={exc}"
+            )
+    t = threading.Thread(target=_run, daemon=True, name="audit-mirror")
+    t.start()
+
+
+# ---------------------------------------------------------------------------
 # AuditStore — write + read
 # ---------------------------------------------------------------------------
 
 class AuditStore:
     """
-    Append-only, signed, hash-chained audit log backed by an NDJSON file.
+    Append-only, signed, hash-chained audit log backed by an NDJSON file,
+    with an optional StorageBackend mirror for mesh-wide queries.
 
     Parameters
     ----------
@@ -192,23 +278,62 @@ class AuditStore:
     max_days   : retention policy in days.  Entries older than this are
                  pruned on open and when apply_retention() is called.
                  0 = no retention limit.
+    backend    : optional StorageBackend for secondary mirror persistence.
+                 Defaults to get_backend() (SQLite) when core.storage is
+                 available.  Pass None to disable mirroring entirely.
+    gaian_id   : identifier used as the namespace in backend keys.
+                 Defaults to 'unknown'.  Set to the Gaian's name/slug.
+    backend_ttl: TTL in seconds for backend mirror entries.  None = no expiry.
+                 Useful for telemetry-style audit entries that don't need
+                 indefinite backend retention.  The NDJSON file is unaffected.
     """
 
     def __init__(
         self,
-        store_dir:  Path,
-        passphrase: Optional[str] = None,
-        max_days:   int           = 0,
+        store_dir:   Path,
+        passphrase:  Optional[str]     = None,
+        max_days:    int               = 0,
+        backend:     Optional[Any]     = ...,   # ... sentinel = "use default"
+        gaian_id:    str               = "unknown",
+        backend_ttl: Optional[int]     = None,
     ) -> None:
         self._dir      = Path(store_dir)
         self._path     = self._dir / NDJSON_FILENAME
         self._max_days = max_days
-        self._lock     = threading.RLock()  # RLock: purge() calls record() which also acquires the lock
+        self._lock     = threading.RLock()
         self._seq      = 0
         self._prev_hash: Optional[str] = None
+        self._gaian_id  = gaian_id
+        self._backend_ttl = backend_ttl
 
         self._dir.mkdir(parents=True, exist_ok=True)
         self._key = _load_or_create_key(self._dir, passphrase)
+
+        # ── StorageBackend setup ───────────────────────────────────────
+        # Three cases:
+        #   backend=...  (sentinel) → use module default (SQLite)
+        #   backend=None            → mirroring disabled
+        #   backend=<instance>      → use the supplied backend
+        if backend is ...:
+            if _STORAGE_AVAILABLE:
+                try:
+                    self._backend: Optional[Any] = get_backend()
+                except Exception as exc:
+                    logger.warning(
+                        f"[AuditStore] Could not initialise default backend: {exc}. "
+                        "Mirroring disabled."
+                    )
+                    self._backend = None
+            else:
+                self._backend = None
+        else:
+            self._backend = backend
+
+        if self._backend is not None:
+            logger.debug(
+                f"[AuditStore] Backend mirror: {self._backend!r} "
+                f"(gaian_id={gaian_id!r})"
+            )
 
         # Hydrate seq and prev_hash from existing file
         self._hydrate()
@@ -287,13 +412,14 @@ class AuditStore:
         event_type: str,
         actor:      str,
         action:     str,
-        outcome:    str                  = "ok",
-        resource:   Optional[str]        = None,
+        outcome:    str                      = "ok",
+        resource:   Optional[str]            = None,
         meta:       Optional[Dict[str, Any]] = None,
-        trace_id:   Optional[str]        = None,
+        trace_id:   Optional[str]            = None,
     ) -> StoredAuditEntry:
         """
-        Append a signed, hash-chained audit entry to the NDJSON store.
+        Append a signed, hash-chained audit entry to the NDJSON store,
+        then mirror it to the StorageBackend (non-blocking, non-fatal).
         Thread-safe.  Returns the created entry.
         """
         with self._lock:
@@ -311,9 +437,18 @@ class AuditStore:
             )
             entry.signature = _sign(entry.canonical_json(), self._key)
             line = entry.to_line()
+
+            # 1. NDJSON write — always first, always fsync’d, always wins.
             self._append_line(line)
             self._prev_hash = hashlib.sha256(line.encode()).hexdigest()
             self._seq += 1
+
+        # 2. Backend mirror — fire-and-forget, never blocks record().
+        #    Runs outside the lock so it cannot cause a deadlock.
+        if self._backend is not None:
+            bkey = _backend_key(self._gaian_id, entry)
+            _mirror_sync(self._backend, bkey, entry.to_bytes(), self._backend_ttl)
+
         return entry
 
     # ------------------------------------------------------------------
@@ -336,8 +471,6 @@ class AuditStore:
         always durable and cannot be erased by the purge itself.
         Returns number of entries deleted.
         """
-        # record() acquires self._lock; purge() then also acquires it below.
-        # Both succeed because self._lock is an RLock.
         self.record(
             event_type = "audit.purge",
             actor      = "gaian",
@@ -351,7 +484,6 @@ class AuditStore:
             removed_count = len(pairs) - len(kept)
             if removed_count:
                 self._rewrite(kept)
-        # Log completion with the actual removed count for a complete audit trail.
         self.record(
             event_type = "audit.purge",
             actor      = "gaian",
@@ -370,7 +502,7 @@ class AuditStore:
             self._prev_hash = None
 
     # ------------------------------------------------------------------
-    # Read API (also exposed on AuditReader)
+    # Local read API (sync, from NDJSON file)
     # ------------------------------------------------------------------
 
     def query(
@@ -380,7 +512,7 @@ class AuditStore:
         outcome:    Optional[str] = None,
         since:      Optional[str] = None,
     ) -> List[StoredAuditEntry]:
-        """Filter entries by optional criteria.  Returns a copy."""
+        """Filter entries by optional criteria from the local NDJSON file."""
         results = [e for _, e in self._read_all_entries()]
         if event_type:
             results = [e for e in results if e.event_type == event_type]
@@ -419,8 +551,8 @@ class AuditStore:
     def verify(self) -> Tuple[bool, List[str]]:
         """
         Walk the full entry list and verify:
-          1. Each entry's HMAC signature is valid.
-          2. Each entry's prev_hash matches SHA-256 of the previous raw line.
+          1. Each entry’s HMAC signature is valid.
+          2. Each entry’s prev_hash matches SHA-256 of the previous raw line.
 
         Returns (all_ok: bool, errors: List[str]).
         """
@@ -429,12 +561,10 @@ class AuditStore:
 
         prev_raw: Optional[str] = None
         for raw, entry in pairs:
-            # Signature check
             if not _verify_sig(entry, self._key):
                 errors.append(
                     f"seq={entry.seq} ts={entry.ts}: invalid signature"
                 )
-            # Hash-chain check
             expected_prev = (
                 hashlib.sha256(prev_raw.encode()).hexdigest()
                 if prev_raw else None
@@ -451,6 +581,75 @@ class AuditStore:
     def count(self) -> int:
         return len(self._read_all_entries())
 
+    # ------------------------------------------------------------------
+    # Distributed backend API (async — for mesh-wide audit queries)
+    # ------------------------------------------------------------------
+
+    async def query_backend(
+        self,
+        prefix:    Optional[str] = None,
+        limit:     int           = 200,
+    ) -> List[StoredAuditEntry]:
+        """
+        Query the StorageBackend for audit entries matching a key prefix.
+
+        This enables mesh-wide audit queries: entries from all nodes that
+        share the same backend (e.g. CockroachDB) are visible here.
+
+        Args:
+            prefix: Key prefix to scan.  Defaults to
+                    f"{BACKEND_KEY_PREFIX}:{self._gaian_id}:"
+                    to return all entries for this Gaian.
+                    Use "audit:" to scan across all Gaians on the mesh.
+            limit:  Maximum entries to return.
+
+        Returns:
+            List of StoredAuditEntry, sorted by backend key (chronological).
+            Returns [] if the backend is unavailable.
+
+        Example::
+
+            # All entries for this Gaian:
+            entries = await store.query_backend()
+
+            # All entries for 'luna' since today (ISO prefix scan):
+            entries = await store.query_backend(prefix="audit:luna:2026-06-10")
+
+            # All entries across the entire mesh:
+            entries = await store.query_backend(prefix="audit:")
+        """
+        if self._backend is None:
+            logger.debug("[AuditStore] query_backend called but no backend configured.")
+            return []
+
+        scan_prefix = prefix or f"{BACKEND_KEY_PREFIX}:{self._gaian_id}:"
+        try:
+            rows = await self._backend.query(scan_prefix, limit=limit)
+        except Exception as exc:
+            logger.warning(f"[AuditStore] ⚠ query_backend failed: {exc}")
+            return []
+
+        entries: List[StoredAuditEntry] = []
+        for _key, raw_bytes in rows:
+            try:
+                entries.append(StoredAuditEntry.from_bytes(raw_bytes))
+            except Exception as exc:
+                logger.debug(f"[AuditStore] Skipping undecodable backend entry: {exc}")
+        return entries
+
+    async def backend_ping(self) -> bool:
+        """
+        Health-check the StorageBackend.
+        Returns True if reachable, False if unavailable or not configured.
+        Used by the mesh server health endpoint.
+        """
+        if self._backend is None:
+            return False
+        try:
+            return await self._backend.ping()
+        except Exception:
+            return False
+
 
 # ---------------------------------------------------------------------------
 # AuditReader — read-only scoped interface for third-party auditors
@@ -459,7 +658,8 @@ class AuditStore:
 class AuditReader:
     """
     Read-only view of an AuditStore.  Hand this to external auditors.
-    Exposes: query, export_json, export_jsonld, verify, count.
+    Exposes: query, export_json, export_jsonld, verify, count,
+             query_backend (async), backend_ping (async).
     Does NOT expose: record, purge, delete_store, apply_retention.
     """
 
@@ -467,9 +667,15 @@ class AuditReader:
         self,
         store_dir:  Path,
         passphrase: Optional[str] = None,
+        gaian_id:   str           = "unknown",
+        backend:    Optional[Any] = ...,
     ) -> None:
-        # Internally uses AuditStore but we only surface read methods
-        self._store = AuditStore(store_dir=store_dir, passphrase=passphrase)
+        self._store = AuditStore(
+            store_dir=store_dir,
+            passphrase=passphrase,
+            gaian_id=gaian_id,
+            backend=backend,
+        )
 
     def query(self, **kwargs) -> List[StoredAuditEntry]:
         return self._store.query(**kwargs)
@@ -485,3 +691,14 @@ class AuditReader:
 
     def count(self) -> int:
         return self._store.count()
+
+    async def query_backend(
+        self,
+        prefix: Optional[str] = None,
+        limit:  int           = 200,
+    ) -> List[StoredAuditEntry]:
+        """Async mesh-wide audit query — passes through to AuditStore."""
+        return await self._store.query_backend(prefix=prefix, limit=limit)
+
+    async def backend_ping(self) -> bool:
+        return await self._store.backend_ping()
