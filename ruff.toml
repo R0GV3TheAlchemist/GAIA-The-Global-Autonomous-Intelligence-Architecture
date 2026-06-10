@@ -1,6 +1,6 @@
 # GAIA-OS Ruff configuration
 # Applied to fix widespread legacy-style type annotation warnings across the codebase.
-# These rules (UP006, UP017, UP035, UP037, UP042, UP045, I001, E501, RUF001, RUF002, RUF022, RUF100)
+# These rules (UP006, UP007, UP017, UP035, UP037, UP042, I001, E501, RUF001, RUF002, RUF022, RUF100)
 # are suppressed globally until a full modernization pass is completed.
 
 target-version = "py311"
@@ -11,11 +11,10 @@ select = ["E", "F", "W", "UP", "I", "RUF"]
 ignore = [
     # Legacy typing module usage (Optional, Dict, List, Set, Tuple, Callable, Iterator)
     "UP006",   # Use `dict` instead of `Dict`
-    "UP007",   # Use `X | Y` instead of `Union[X, Y]`
+    "UP007",   # Use `X | Y` instead of `Union[X, Y]`  — also covers Optional[X] suppression
     "UP035",   # Deprecated typing imports
     "UP037",   # Remove quotes from type annotation
     "UP042",   # StrEnum inheritance pattern
-    "UP045",   # Use `X | None` instead of `Optional[X]`
     "UP017",   # Use `datetime.UTC` alias
     # Import sorting — will be addressed in a dedicated formatting pass
     "I001",
@@ -33,6 +32,8 @@ ignore = [
     "RUF012",
     # Operator precedence parenthesization
     "RUF021",
+    # RUF013: implicit Optional — suppress until annotation modernization pass
+    "RUF013",
     # UP032 / UP038 kept enabled — these are safe modernizations
 ]
 
