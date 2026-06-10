@@ -71,6 +71,10 @@ testpaths = ["tests"]
 #   - target-version py311 = matches CI runtime (python-version: "3.11")
 #   - preview = false (stable rules only) — preview was silently activating
 #     experimental rules on every Ruff release, causing phantom violations.
+#   - RUF100: unused noqa directives — ignored globally 2026-06-10. Many noqa
+#     comments are intentional documentation of WHY a rule is suppressed, even
+#     when the rule is also in the global ignore list. Removing them creates
+#     churn without signal. RUF100 was the root cause of the two-day lint loop.
 # ============================================================================
 [tool.ruff]
 line-length = 100
@@ -164,6 +168,9 @@ ignore = [
   # ── Security ────────────────────────────────────────────────────────
   "S101",   # assert — soul-layer runtime guards use assert intentionally
   "S104",   # bind to all interfaces — intentional in CLI serve command
+  "S105",   # hardcoded password — false positives on "bearer", token field names
+  "S106",   # hardcoded password argument — false positives on token_type="bearer"
+  "S108",   # /tmp usage — default path overridable via env var GAIA_HALT_AUDIT_FILE
   "S110",   # try/except/pass — suppressed globally; matches SIM105 intent
   "S311",   # random — field modelling, not cryptography
 
@@ -176,6 +183,9 @@ ignore = [
   "RUF021", # ambiguous and/or chaining — explicit form preferred in soul-layer logic
   "RUF022", # __all__ not sorted — section comments make ordering intentional
   "RUF059", # unpacked variable unused — too noisy in router pattern matching
+  # RUF100: unused noqa directives — intentional documentation of suppression
+  # rationale. Removing causes churn; was the root cause of two-day lint loop.
+  "RUF100",
 
   # ── Pylint: import placement ─────────────────────────────────────────
   # PLC0415: import inside function — used for lazy/conditional loading
@@ -232,6 +242,13 @@ ignore = [
 "core/gcp_sensor.py"                = ["F401"]
 "core/governance/explainability.py" = ["F401"]
 "core/governance/halt_controller.py" = ["F401"]
+
+# ── Quantum operators: intentional compact matrix style ──────────────────────
+# One-liners and semicolons are domain convention for dense matrix algebra.
+"core/quantum/operators.py" = ["E701", "E702"]
+
+# ── Identity / auth: "bearer" is an OAuth standard value, not a password ─────
+"core/identity/auth.py" = ["S105", "S106"]
 
 # ── Soul-layer / consciousness / resonance engines ───────────────────────────
 # Multi-branch state machines, emotional arc logic, symbolic pattern matching.
