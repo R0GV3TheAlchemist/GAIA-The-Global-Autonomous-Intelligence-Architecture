@@ -14,6 +14,7 @@ Engines mounted
   /schumann — SchumannEngine   (Earth resonance alignment layer)
   /crystal  — CrystalCore      (coherence synthesis, orb params, persona tone)
   /persona  — PersonaStability (Oxford/Anthropic drift prevention, anchor injection)
+  /mesh     — Mesh layer       (distributed state health, /mesh/status)
 
 Usage (development)
 -------------------
@@ -27,10 +28,13 @@ Usage (Tauri sidecar — production)
 
 Environment variables
 ---------------------
-  GAIA_SIDECAR_PORT   TCP port to listen on            (default: 52000)
-  GAIA_DB_PATH        Path to soul_mirror.db            (default: <app_data>/gaia/memory.db)
-  GAIA_AFFECT_BACKEND NLP backend for affect analysis  (default: heuristic)
-  GAIA_LOG_LEVEL      Python log level string           (default: INFO)
+  GAIA_SIDECAR_PORT      TCP port to listen on             (default: 52000)
+  GAIA_DB_PATH           Path to soul_mirror.db            (default: <app_data>/gaia/memory.db)
+  GAIA_AFFECT_BACKEND    NLP backend for affect analysis   (default: heuristic)
+  GAIA_LOG_LEVEL         Python log level string           (default: INFO)
+  GAIA_STORAGE_BACKEND   Storage driver for mesh mirror    (default: sqlite)
+                           Options: sqlite | cockroachdb | scylla
+  GAIA_NODE_ID           Mesh node identifier              (default: local)
 """
 
 from __future__ import annotations
@@ -46,7 +50,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# ── Engine imports ────────────────────────────────────────────────────────────
+# ── Engine imports ────────────────────────────────────────────────────
 from sovereign_memory import SovereignMemory
 from sovereign_memory.router import memory_router, init_memory
 
@@ -69,8 +73,16 @@ from crystal.router import router as crystal_router, init_crystal_core
 from persona_stability.engine import PersonaStabilityEngine
 from persona_stability.router import router as persona_router, init_persona_engine
 
+from crisis_engine.engine import CrisisEngine, EngineConfig
 
-# ── Logging setup ─────────────────────────────────────────────────────────────
+from sidecar.telemetry.telemetry_collector import TelemetryCollector
+
+from core.obs.audit_store import AuditStore
+
+from mesh.router import router as mesh_router, init_mesh_router
+
+
+# ── Logging setup ────────────────────────────────────────────────────
 _log_level = os.environ.get("GAIA_LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     level=_log_level,
@@ -81,7 +93,7 @@ logging.basicConfig(
 logger = logging.getLogger("gaia.sidecar")
 
 
-# ── Database path ─────────────────────────────────────────────────────────────
+# ── Database path ────────────────────────────────────────────────────
 def _resolve_db_path() -> Path:
     """
     Determine the path to soul_mirror.db.
@@ -101,7 +113,7 @@ def _resolve_db_path() -> Path:
     return dev_path.resolve()
 
 
-# ── Application lifespan ──────────────────────────────────────────────────────
+# ── Application lifespan ────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -116,38 +128,32 @@ async def lifespan(app: FastAPI):
     memory.open()
     logger.info("SovereignMemory opened ✓")
 
-    # ── 2. Affect Engine ──────────────────────────────────────────────────────
+    # ── 2. Affect Engine ─────────────────────────────────────────────────
     affect_backend = os.environ.get("GAIA_AFFECT_BACKEND", "heuristic")
     affect_engine = AffectEngine(memory=memory)
     init_affect_engine(affect_engine, backend_name=affect_backend)
     logger.info("AffectEngine initialised (backend=%s) ✓", affect_backend)
 
-    # ── 3. Stage Engine + WindowTracker ──────────────────────────────────────
+    # ── 3. Stage Engine + WindowTracker ────────────────────────────────────
     stage_engine = StageEngine(memory=memory)
     window_tracker = WindowTracker()
     init_stage_engine(memory=memory, engine=stage_engine, tracker=window_tracker)
     logger.info("StageEngine + WindowTracker initialised ✓")
 
-    # ── 4. Shadow Engine ──────────────────────────────────────────────────────
-    # ShadowEngine is self-contained (fetches from /affect and /stage internally).
-    # It is instantiated as a module-level singleton inside shadow_engine/router.py,
-    # so no explicit init injection is required here.
+    # ── 4. Shadow Engine ─────────────────────────────────────────────────
     logger.info("ShadowEngine online ✓")
 
-    # ── 5. Schumann Engine ───────────────────────────────────────────────────
+    # ── 5. Schumann Engine ───────────────────────────────────────────────
     schumann_engine = SchumannEngine()
     init_schumann_engine(schumann_engine)
     logger.info("SchumannEngine initialised ✓")
 
-    # ── 6. Crystal Core ──────────────────────────────────────────────────────
+    # ── 6. Crystal Core ─────────────────────────────────────────────────
     crystal_core = CrystalCore(base_url="http://127.0.0.1:52000")
     init_crystal_core(crystal_core)
     logger.info("CrystalCore initialised ✓")
 
-    # ── 7. Persona Stability Engine ──────────────────────────────────────────
-    # Oxford/Anthropic drift prevention — monitors cosine similarity between
-    # LLM responses and the archetype voice baseline, injects persona anchors
-    # on schedule or on drift detection, writes PersonaTrace to SovereignMemory.
+    # ── 7. Persona Stability Engine ────────────────────────────────────
     persona_engine = PersonaStabilityEngine(memory=memory)
     init_persona_engine(persona_engine)
     logger.info("PersonaStabilityEngine initialised ✓")
@@ -156,33 +162,58 @@ async def lifespan(app: FastAPI):
     init_memory(memory)
     logger.info("SovereignMemory router initialised ✓")
 
+    # ── 9. Telemetry Collector ───────────────────────────────────────────
+    telemetry = TelemetryCollector()
+    logger.info("TelemetryCollector initialised ✓")
+
+    # ── 10. Crisis Engine ───────────────────────────────────────────────
+    principal_id = os.environ.get("GAIA_PRINCIPAL_ID", "local-gaian")
+    crisis_engine = CrisisEngine(
+        EngineConfig(principal_id=principal_id)
+    )
+    logger.info("CrisisEngine initialised (principal=%s) ✓", principal_id)
+
+    # ── 11. Audit Store ─────────────────────────────────────────────────
+    audit_store = AuditStore()
+    logger.info("AuditStore initialised ✓")
+
+    # ── 12. Mesh router — inject all four store instances ───────────────────
+    init_mesh_router(
+        audit_store=audit_store,
+        sovereign_memory=memory,
+        telemetry=telemetry,
+        crisis_engine=crisis_engine,
+    )
+    logger.info("Mesh router initialised – /mesh/status ready ✓")
+
     logger.info("━━━ GAIA sidecar ready — all engines online ━━━")
 
-    yield  # ── application runs ──────────────────────────────────────────────
+    yield  # ── application runs ───────────────────────────────────────────
 
-    # ── Shutdown ──────────────────────────────────────────────────────────────
+    # ── Shutdown ────────────────────────────────────────────────────────
     logger.info("GAIA sidecar shutting down…")
     memory.close()
     logger.info("SovereignMemory closed. Goodbye. 💚")
 
 
-# ── FastAPI application ───────────────────────────────────────────────────────
+# ── FastAPI application ──────────────────────────────────────────────────
 app = FastAPI(
     title="GAIA-OS Sidecar",
-    version="0.4.0",
+    version="0.5.0",
     description=(
         "Local-first inference sidecar for GAIA-OS. "
         "Serves Soul Mirror memory, affect analysis, stage evaluation, "
         "shadow archetype detection, Schumann resonance alignment, "
-        "Crystal Core coherence synthesis, and Persona Stability "
-        "drift prevention to the Tauri frontend over localhost."
+        "Crystal Core coherence synthesis, Persona Stability "
+        "drift prevention, and distributed mesh health "
+        "to the Tauri frontend over localhost."
     ),
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
 )
 
-# ── CORS — allow only localhost origins (Tauri WebView + dev server) ──────────
+# ── CORS — allow only localhost origins (Tauri WebView + dev server) ────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -197,7 +228,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Mount routers ─────────────────────────────────────────────────────────────
+# ── Mount routers ─────────────────────────────────────────────────────
 app.include_router(memory_router,  prefix="/memory")
 app.include_router(affect_router,  prefix="/affect")
 app.include_router(stage_router,   prefix="/stage")
@@ -205,17 +236,22 @@ app.include_router(shadow_router)   # shadow_engine/router.py already sets prefi
 app.include_router(schumann_router) # schumann/router.py already sets its own prefix
 app.include_router(crystal_router)  # crystal/router.py sets prefix="/crystal"
 app.include_router(persona_router)  # persona_stability/router.py sets prefix="/persona"
+app.include_router(mesh_router)     # mesh/router.py sets prefix="/mesh"
 
 
-# ── Root health endpoint ──────────────────────────────────────────────────────
+# ── Root health endpoint ────────────────────────────────────────────────
 @app.get("/", tags=["sidecar"])
 async def root() -> JSONResponse:
     """Sidecar liveness probe — returns version and online engines."""
     return JSONResponse(content={
         "service": "gaia-sidecar",
-        "version": "0.4.0",
+        "version": "0.5.0",
         "status":  "online",
-        "engines": ["memory", "affect", "stage", "shadow", "schumann", "crystal", "persona"],
+        "engines": [
+            "memory", "affect", "stage", "shadow",
+            "schumann", "crystal", "persona",
+            "telemetry", "crisis", "mesh",
+        ],
     })
 
 
@@ -225,7 +261,7 @@ async def health() -> JSONResponse:
     return JSONResponse(content={"ok": True})
 
 
-# ── Dev entrypoint ────────────────────────────────────────────────────────────
+# ── Dev entrypoint ─────────────────────────────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("GAIA_SIDECAR_PORT", 52000))
     logger.info("Starting uvicorn on 127.0.0.1:%d", port)
