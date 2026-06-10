@@ -1,9 +1,24 @@
 # GAIA-APP ML / Embedding Requirements
 # Install for local vector search with real embeddings (Issue #66)
 # In CI, sovereign_memory degrades gracefully to time-ordered recall.
-# Do NOT include in CI — sentence-transformers pulls in torch (~1GB).
+# Do NOT include in CI — sentence-transformers pulls in torch (~1.5GB).
 #
 # Usage: pip install -r requirements-ml.txt
+#
+# Last audited: 2026-06-09 (GAIA-OS #282)
 
+# ── Embeddings ──────────────────────────────────────────────────────────────────────────────
 sentence-transformers>=2.7.0  # all-MiniLM-L6-v2 (384-dim) for sqlite-vec
-# earthengine-api>=0.1.390  # Google Earth Engine (run: earthengine authenticate)
+                               # Pulls torch ~1.5GB — do NOT add to requirements.txt
+fastembed>=0.3.0              # Lightweight ONNX-based embedding alternative (~50MB)
+                               # Drop-in replacement when torch is not available
+                               # Useful for CI or low-RAM nodes
+
+# ── Planetary / Earth Observation ────────────────────────────────────────────────────────
+astropy>=6.0.0               # Planetary coordinate transforms, orbital mechanics,
+                               # time standards (GAIA Issue #278 — sensor pipeline)
+                               # Required for: Mars targeting, satellite ephemeris,
+                               # converting Copernicus coordinates to GAIA affect schema
+earth engine-api>=0.1.390     # Google Earth Engine — satellite imagery analysis
+                               # Setup: run `earthengine authenticate` after install
+                               # Used for: long-term land-use + biosphere trend analysis

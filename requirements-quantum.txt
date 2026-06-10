@@ -3,7 +3,22 @@
 # Do NOT include in CI — install time is 15-25 minutes.
 #
 # Usage: pip install -r requirements-quantum.txt
+#
+# Last audited: 2026-06-09 (GAIA-OS #282)
+# Version caps: qiskit-nature and qiskit-aer are capped at <1.0 because
+# the 1.x releases removed QubitConverter (used in ysz.py / bts.py / alscn.py).
+# Upgrade path: migrate to QubitMapper API, then remove the <1.0 caps.
 
-qiskit-nature>=0.7.0        # Fermionic Hamiltonians, ElectronicStructureProblem
-qiskit-aer>=0.14.0          # AerSimulator statevector/CPU backend
-pyscf>=2.4.0                # PySCF ab-initio driver (Mole, RHF, CCSD)
+# ── Base Qiskit (explicit pin — was implicit transitive dep before) ──────────────────
+qiskit>=1.0.0,<2.0           # Base Qiskit SDK — explicit pin prevents silent breakage
+                               # from transitive version drift
+
+# ── Quantum Chemistry Stack ────────────────────────────────────────────────────────────────
+qiskit-nature>=0.7.0,<1.0   # Fermionic Hamiltonians, ElectronicStructureProblem
+                               # QubitConverter removed in 1.0 — DO NOT remove <1.0 cap
+                               # until ysz.py / bts.py / alscn.py migrate to QubitMapper
+qiskit-aer>=0.14.0,<1.0     # AerSimulator statevector/CPU backend
+                               # Statevector API changed in 1.x; cap until tested
+pyscf[geomopt]>=2.4.0       # PySCF ab-initio driver (Mole, RHF, CCSD)
+                               # [geomopt] extra needed for phonon Hessian in ysz.py
+                               # (requires geometric + pyberny)

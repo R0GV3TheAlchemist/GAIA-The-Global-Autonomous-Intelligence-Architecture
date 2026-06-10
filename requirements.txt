@@ -7,8 +7,10 @@
 # Opt-in extras (local/research only — do NOT install in CI):
 #   pip install -r requirements-quantum.txt   # Qiskit + PySCF (~15-25 min)
 #   pip install -r requirements-ml.txt        # local embeddings + torch (~1GB)
+#
+# Last audited: 2026-06-09 (GAIA-OS #282)
 
-# ── Core API ────────────────────────────────────────────────────────────────────
+# ── Core API ────────────────────────────────────────────────────────────────────────────────
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 pydantic>=2.0.0
@@ -16,38 +18,61 @@ python-dotenv>=1.0.0
 httpx>=0.27.0
 PyJWT>=2.8.0                # JWT auth layer (Sprint G-3)
 
-# ── Cryptography & Keychain (Sovereign Memory #66) ──────────────────
+# ── Real-Time Transport ────────────────────────────────────────────────────────────────────
+websockets>=12.0             # WebSocket transport for real-time Gaian state → UI
+                             # Explicit pin — uvicorn[standard] pulls it transitively
+                             # but an unversioned transitive dep can silently drop WS support
+
+# ── Async I/O ──────────────────────────────────────────────────────────────────────────────
+aiofiles>=23.2.0             # Async file I/O — sidecar telemetry writer + audit log
+aiohttp>=3.9.0               # Async streaming HTTP — Copernicus CDSE planetary connector
+                             # (httpx handles sync; aiohttp handles large async data streams)
+
+# ── Cryptography & Keychain (Sovereign Memory #66) ──────────────────────────────
 cryptography>=42.0.0        # AES-256-GCM + HKDF for sovereign_memory/crypto.py
 keyring>=25.0.0             # OS keychain (macOS Keychain / DPAPI / Secret Service)
 keyrings.alt>=4.0           # Plaintext/memory fallback keyring for headless CI
 argon2-cffi>=23.1.0         # Argon2id passphrase KDF (Linux keychain fallback)
+liboqs-python>=0.10.0       # ML-KEM / ML-DSA post-quantum crypto — REQUIRED when
+                             # GAIA_PQC_ENABLED=1 (default). Falls back to AES-256-GCM
+                             # gracefully only if this package is present but PQC disabled.
 
-# ── Scientific / Numerical ───────────────────────────────────────────────────────
+# ── Scientific / Numerical ────────────────────────────────────────────────────────────────────
 numpy>=1.26.0               # Matrix ops, spectral radius (criticality_monitor, viriditas)
 scipy>=1.13.0               # Eigenvalues, signal processing (criticality_monitor)
 networkx>=3.2.0             # Graph data structures — required by core/canon_graph.py
 
-# ── Web Scraping ────────────────────────────────────────────────────────────
+# ── Pub-Sub / Metrics ─────────────────────────────────────────────────────────────────────────
+redis>=5.0.0                # Pub-sub backbone for orchestrator <→ crisis_engine events
+                             # Also used for distributed task queue when k8s scales nodes
+prometheus-client>=0.20.0   # /metrics endpoint for Kubernetes telemetry scraping
+
+# ── Hardware / Physical Sensors ─────────────────────────────────────────────────────────────
+pyserial>=3.5               # USB/serial interface for local_sensor Schumann resonance
+                             # adapter (schumann/sources.py — physical magnetometer support)
+
+# ── Web Scraping ─────────────────────────────────────────────────────────────────────────────
 trafilatura>=1.8.0          # Best-in-class main-content extractor
 beautifulsoup4>=4.12.0      # Fallback HTML parser
 lxml>=5.0.0                 # Fast HTML/XML parsing backend
 
-# ── LLM Providers ───────────────────────────────────────────────────────────
+# ── LLM Providers ───────────────────────────────────────────────────────────────────────────
 openai>=1.20.0              # OpenAI GPT-4o-mini (set OPENAI_API_KEY)
 anthropic>=0.25.0           # Anthropic Claude   (set ANTHROPIC_API_KEY)
-# ollama                    # Ollama local models (set OLLAMA_MODEL=mistral)
+# ollama                    # Ollama local models (set OLLAMA_MODEL=gemma3:12b)
 
-# ── Search Providers (all optional — DDG works with no key) ─────────────
+# ── Search Providers (all optional — DDG works with no key) ──────────────────────
 # brave-search              # Brave Search API   (set BRAVE_API_KEY)
 # tavily-python             # Tavily AI Search   (set TAVILY_API_KEY)
 
-# ── Tokenization (BPE streaming) ──────────────────────────────────────────────
+# ── Tokenization (BPE streaming) ─────────────────────────────────────────────────────────────
 tiktoken>=0.7.0             # BPE tokenizer for real subword streaming (cl100k_base)
 
-# ── Vector Memory ───────────────────────────────────────────────────────────────
+# ── Vector Memory ──────────────────────────────────────────────────────────────────────────────
 sqlite-vec>=0.1.0           # SQLite vector extension — degrades gracefully if missing
-sentence-transformers>=2.2.0  # Semantic embeddings for sovereign_memory vector search
+# sentence-transformers → MOVED TO requirements-ml.txt (pulls ~1.5GB torch into CI)
+# Use fastembed (in requirements-ml.txt) as a lighter local alternative.
 
-# ── Test tooling ───────────────────────────────────────────────────────────────
+# ── Test tooling ─────────────────────────────────────────────────────────────────────────────
 pytest-asyncio>=0.23.0,<1.0  # async def test support — pinned below 1.x breaking change
 pytest-timeout>=2.3.0        # per-test timeout guard — prevents CI hangs
