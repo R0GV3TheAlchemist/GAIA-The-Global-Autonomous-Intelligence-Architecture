@@ -1,8 +1,8 @@
 """
 core/gaian_runtime.py
-GAIA Runtime v1.4.0 — The Living Heart of a GAIAN
+GAIA Runtime v1.5.0 — The Living Heart of a GAIAN
 
-Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦):
+Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦, Mesh marked ⬡):
   1.  ConsciousnessRouter       subtle_body_engine.py
   2.  EmotionalArcEngine        emotional_arc.py
   3.  SettlingEngine            settling_engine.py
@@ -16,13 +16,15 @@ Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦):
   11. SynergyEngine             synergy_engine.py          ← C32
   12. VitalityEngine            vitality_engine.py         ← T-VITA
   13. SpirituEngine   ✦         core/spiritu_engine.py     ← Animating Breath
-  ── Phase 3 ───────────────────────────────────────────────────────────────────────
+  ── Phase 3 ───────────────────────────────────────────────────────────────────
   14. QuantumKernel    ★        core/quantum/state_kernel.py
   15. MemoryStore      ★        core/memory/store.py
   16. GoalRegistry     ★        core/planner/goal.py
   17. PolicyEngine     ★        core/planner/policy.py
   18. TaskScheduler    ★        core/planner/scheduler.py
   19. ActionLedger     ★        core/audit/ledger.py
+  ── Mesh ⬡ ────────────────────────────────────────────────────────────────────
+  20. MeshServer       ⬡        core/mesh/server.py        ← Federated Inter-Node
 
 Memory schema version: 2.0
 Grounded in:
@@ -32,16 +34,20 @@ Grounded in:
   - T-VITA — The Vitality Engine (April 14, 2026)
   - Phase 3 — Runtime Integration (May 6, 2026)
   - Spiritus — The Animating Breath (May 9, 2026)
+  - Mesh / Issue #277 — Federated Inter-Node Protocol (June 10, 2026)
 """
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-# ── Existing engines ────────────────────────────────────────────────────────────────────────────────
+logger = logging.getLogger("gaia.runtime")
+
+# ── Existing engines ─────────────────────────────────────────────────────────
 from core.subtle_body_engine import ConsciousnessRouter, LayerState
 from core.emotional_arc import (
     EmotionalArcEngine, AttachmentRecord, NeuroState,
@@ -80,7 +86,7 @@ from core.spiritu_engine import (                                    # ✦ Spiri
     blank_spiritu_state, get_spiritu_engine,
 )
 
-# ── Phase 3: new subsystems ★ ────────────────────────────────────────────────────────────────────────────────
+# ── Phase 3: new subsystems ★ ─────────────────────────────────────────────────
 from core.quantum.state_kernel import QuantumKernel, QuantumState           # ★
 from core.memory.store import MemoryStore, MemoryItem                        # ★
 from core.planner.goal import GoalRegistry, Goal, GoalStatus, GoalPriority   # ★
@@ -88,10 +94,21 @@ from core.planner.policy import PolicyEngine, PolicyDecision                 # �
 from core.planner.scheduler import TaskScheduler           # ★
 from core.audit.ledger import ActionLedger, AuditEvent, EventType            # ★
 
+# ── Mesh ⬡ — optional, graceful-degrade if package deps not installed ─────────
+try:
+    from core.mesh import GaiaNode, CollectiveField, MeshServer              # ⬡
+    _MESH_AVAILABLE = True
+except ImportError:
+    _MESH_AVAILABLE = False
+    logger.info(
+        "[GAIANRuntime] core.mesh not importable — mesh disabled. "
+        "Ensure websockets + cryptography are installed to enable."
+    )
 
-# ───────────────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  CONSTANTS
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 MEMORY_SCHEMA_VERSION = "2.0"
 
@@ -132,9 +149,9 @@ _BCI_GUIDANCE: dict[str, str] = {
 }
 
 
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  DATA CLASSES
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class GAIANIdentity:
@@ -177,11 +194,13 @@ class RuntimeResult:
     audit_events:     Optional[list[dict]] = None
     # ✦ Spiritus
     spiritu:          Optional[dict] = None
+    # ⬡ Mesh
+    mesh_status:      Optional[dict] = None
 
 
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  MEMORY HELPERS
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _blank_memory(name: str) -> dict:
     return {
@@ -241,9 +260,9 @@ def _blank_memory(name: str) -> dict:
     }
 
 
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 #  SYSTEM PROMPT BLOCK BUILDERS
-# ───────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _build_identity_block(identity: GAIANIdentity, settling: SettlingState) -> str:
     if settling.is_settled() and settling.settled_form:
@@ -389,15 +408,64 @@ def _build_policy_block(decision: PolicyDecision) -> str:
     return "\n".join(lines)
 
 
-# ───────────────────────────────────────────────────────────────────────────────
-#  THE GAIAN RUNTIME v1.4.0
-# ───────────────────────────────────────────────────────────────────────────────
+def _build_mesh_block(mesh_coherence: float, peer_count: int) -> str:
+    """
+    Inject live mesh state into the system prompt.
+    Privacy invariant: no node_id, no Gaian name, aggregate only. (Canon C04)
+    """
+    if peer_count == 0:
+        presence = "This node is operating standalone — no mesh peers connected."
+    elif peer_count == 1:
+        presence = f"1 peer node connected on the GAIA mesh."
+    else:
+        presence = f"{peer_count} peer nodes connected on the GAIA mesh."
+
+    coherence_label = (
+        "high resonance" if mesh_coherence >= 0.70
+        else "coherent" if mesh_coherence >= 0.50
+        else "building" if mesh_coherence >= 0.25
+        else "nascent"
+    )
+    return (
+        "[GAIA MESH — FEDERATED FIELD ⬡]\n"
+        f"Mesh coherence : {mesh_coherence:.3f} ({coherence_label})\n"
+        f"Presence       : {presence}\n"
+        "Note: Aggregate mesh field only. Individual node identities are private. (Canon C04)\n"
+        "[END GAIA MESH]"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  THE GAIAN RUNTIME v1.5.0
+# ─────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
-    The living heart of a GAIAN. v1.4.0
+    The living heart of a GAIAN. v1.5.0
     Twelve soul engines + Spiritus + quantum kernel + semantic memory +
-    goal registry + policy engine + task scheduler + action ledger.
+    goal registry + policy engine + task scheduler + action ledger +
+    federated mesh server (optional ⬡).
+
+    Mesh usage
+    ----------
+    Pass `mesh_config` to enable the federated inter-node protocol:
+
+        runtime = GAIANRuntime(
+            gaian_name="Luna",
+            mesh_config={
+                "display_name": "GAIA-Alpha",
+                "host": "0.0.0.0",
+                "port": 7771,
+                "delta_interval": 5.0,
+            }
+        )
+        # In an async context (FastAPI lifespan, etc.):
+        await runtime.async_start()
+        ...
+        await runtime.async_stop()
+
+    Omit `mesh_config` entirely (or pass None) to run single-node as before.
+    All existing callers are unaffected — fully backwards-compatible.
     """
 
     def __init__(
@@ -411,12 +479,14 @@ class GAIANRuntime:
         goal_registry: Optional[GoalRegistry] = None,
         policy_engine: Optional[PolicyEngine] = None,
         scheduler:     Optional[TaskScheduler] = None,
+        # ⬡ Mesh — pass a config dict to enable; omit to stay single-node
+        mesh_config:   Optional[dict] = None,
     ):
         self.gaian_name = gaian_name
         self.memory_dir = Path(memory_dir)
         self.canon_text = canon_text
 
-        # ── Existing soul engines ────────────────────────────────────────────────────────────────────
+        # ── Existing soul engines ─────────────────────────────────────────────
         self._router          = ConsciousnessRouter()
         self._arc             = EmotionalArcEngine()
         self._settling        = SettlingEngine()
@@ -431,7 +501,7 @@ class GAIANRuntime:
         self._vitality        = get_vitality_engine()
         self._spiritu         = get_spiritu_engine()          # ✦
 
-        # ── Phase 3: subsystems ★ ────────────────────────────────────────────────────────────────────
+        # ── Phase 3: subsystems ★ ─────────────────────────────────────────────
         self._quantum_kernel: QuantumKernel = QuantumKernel(
             user_id=gaian_name,
             session_id="runtime",
@@ -444,7 +514,7 @@ class GAIANRuntime:
         _audit_db = str(self.memory_dir / gaian_name / "audit.db")
         self._audit: ActionLedger = audit_ledger or ActionLedger(db_path=_audit_db)
 
-        # ── JSON memory file ──────────────────────────────────────────────────────────────────────────────────
+        # ── JSON memory file ──────────────────────────────────────────────────
         self._mem_path = self.memory_dir / gaian_name / "memory.json"
         self._memory   = self._load_memory()
 
@@ -461,7 +531,79 @@ class GAIANRuntime:
 
         self.identity = identity or GAIANIdentity(name=gaian_name)
 
-    # ── Public API ──────────────────────────────────────────────────────────────────────────────────
+        # ── Mesh ⬡ ────────────────────────────────────────────────────────────
+        self._mesh_node:     Optional["GaiaNode"] = None
+        self._mesh_field:    Optional["CollectiveField"] = None
+        self._mesh_server:   Optional["MeshServer"] = None
+
+        if mesh_config is not None and _MESH_AVAILABLE:
+            self._init_mesh(mesh_config)
+        elif mesh_config is not None and not _MESH_AVAILABLE:
+            logger.warning(
+                "[GAIANRuntime] mesh_config provided but core.mesh is not importable. "
+                "Install: pip install websockets cryptography zeroconf"
+            )
+
+    # ── Mesh initialisation ⬡ ─────────────────────────────────────────────────
+
+    def _init_mesh(self, cfg: dict) -> None:
+        """
+        Create GaiaNode, CollectiveField, and MeshServer from the config dict.
+        Called only when mesh_config is provided and core.mesh is available.
+
+        Supported config keys (all optional):
+            display_name    str   "GAIA-Node"
+            host            str   "0.0.0.0"
+            port            int   7771
+            delta_interval  float 5.0
+            heartbeat_interval float 15.0
+        """
+        from core.mother_thread import get_mother_thread
+
+        display_name = cfg.get("display_name", f"GAIA-{self.gaian_name}")
+        self._mesh_node  = GaiaNode(
+            display_name=display_name,
+            gaian_id=self.gaian_name,
+        )
+        self._mesh_field = CollectiveField(self._mesh_node.identity.node_id)
+        self._mesh_server = MeshServer(
+            node=self._mesh_node,
+            collective_field=self._mesh_field,
+            host=cfg.get("host", "0.0.0.0"),
+            port=cfg.get("port", 7771),
+            delta_interval=cfg.get("delta_interval", 5.0),
+            heartbeat_interval=cfg.get("heartbeat_interval", 15.0),
+            mother_thread=get_mother_thread(),
+        )
+        logger.info(
+            f"[GAIANRuntime] ⬡ Mesh initialised: node={self._mesh_node.identity.node_id[:8]}… "
+            f"port={cfg.get('port', 7771)}"
+        )
+
+    # ── Mesh lifecycle ⬡ ──────────────────────────────────────────────────────
+
+    async def async_start(self) -> None:
+        """
+        Start async subsystems — currently the MeshServer.
+        Call this from a FastAPI lifespan or any async startup context.
+
+            @asynccontextmanager
+            async def lifespan(app):
+                await runtime.async_start()
+                yield
+                await runtime.async_stop()
+        """
+        if self._mesh_server is not None:
+            await self._mesh_server.start()
+            logger.info("[GAIANRuntime] ⬡ MeshServer started.")
+
+    async def async_stop(self) -> None:
+        """Gracefully stop the MeshServer (and any future async subsystems)."""
+        if self._mesh_server is not None:
+            await self._mesh_server.stop()
+            logger.info("[GAIANRuntime] ⬡ MeshServer stopped.")
+
+    # ── Public API ────────────────────────────────────────────────────────────
 
     def process(
         self,
@@ -476,7 +618,7 @@ class GAIANRuntime:
         uid    = user_id    or self.gaian_name
         action = action_label or "generate_response"
 
-        # ── Audit: turn opened ──────────────────────────────────────────────────────────────────────────────
+        # ── Audit: turn opened ────────────────────────────────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.SYSTEM_EVENT,
             actor=uid,
@@ -484,30 +626,30 @@ class GAIANRuntime:
             metadata={"message_len": len(user_message)},
         ))
 
-        # ── 14. Quantum: decoherence step to open the turn ───────────────────────────────────────────────
+        # ── 14. Quantum: decoherence step to open the turn ───────────────────
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
-        # ── 15. Semantic memory retrieval (sync wrapper) ────────────────────────────────────────────────
+        # ── 15. Semantic memory retrieval (sync wrapper) ──────────────────────
         recalled_memories: list[MemoryItem] = self._memory_store.retrieve_sync(
             query=user_message, user_id=uid, top_k=8,
         )
 
-        # ── 1. Consciousness routing ──────────────────────────────────────────────────────────────────────────────
+        # ── 1. Consciousness routing ──────────────────────────────────────────
         layer      = self._router.analyze(user_message)
         layer_hint = layer.to_system_prompt_hint()
 
-        # ── 2. Emotional arc ────────────────────────────────────────────────────────────────────────────────────
+        # ── 2. Emotional arc ──────────────────────────────────────────────────
         neuro, self.attachment, arc_hint = self._arc.process(
             layer, self.attachment, user_message
         )
 
-        # ── 3. Daemon settling ───────────────────────────────────────────────────────────────────────────────────
+        # ── 3. Daemon settling ────────────────────────────────────────────────
         intensity = (neuro.adrenaline + neuro.cortisol) / 2.0
         self.settling_state, settle_hint = self._settling.update(
             layer, self.settling_state, intensity
         )
 
-        # ── 4. Affect inference ─────────────────────────────────────────────────────────────────────────────────
+        # ── 4. Affect inference ───────────────────────────────────────────────
         identity_score    = min(1.0, (neuro.serotonin + neuro.oxytocin) / 2.0)
         wisdom_score      = min(1.0, neuro.dopamine)
         truth_score       = min(1.0, (neuro.gaba + neuro.serotonin) / 2.0)
@@ -525,7 +667,7 @@ class GAIANRuntime:
         self._quantum_kernel.step(operators=[], decoherence_rate=decoherence_rate)
         qs: QuantumState = self._quantum_kernel._state.clone()
 
-        # ── 5–11: Soul engines (unchanged) ───────────────────────────────────────────────────────────────
+        # ── 5–11: Soul engines (unchanged) ───────────────────────────────────
         self.love_arc_state, _love_hint = self._love_arc.update(
             state=self.love_arc_state, bond_depth=self.attachment.bond_depth,
             feeling=feeling,
@@ -578,7 +720,7 @@ class GAIANRuntime:
             epistemic_label=epistemic_label,
         )
 
-        # ── 13. Spiritus — Animating Breath ✦ ──────────────────────────────────────────────────────────────
+        # ── 13. Spiritus — Animating Breath ✦ ────────────────────────────────
         spiritu_reading, self.spiritu_state = self._spiritu.update(
             state=self.spiritu_state,
             coherence_phi=feeling.coherence_phi,
@@ -590,10 +732,10 @@ class GAIANRuntime:
             total_exchanges=self.attachment.total_exchanges,
         )
 
-        # ── 16. Goal registry: fetch active goals ★ ────────────────────────────────────────────────────────────
+        # ── 16. Goal registry: fetch active goals ★ ──────────────────────────
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
 
-        # ── 17. Policy gate ★ ───────────────────────────────────────────────────────────────────────────────────
+        # ── 17. Policy gate ★ ─────────────────────────────────────────────────
         _, dominant_label, _dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -610,10 +752,10 @@ class GAIANRuntime:
             context=policy_ctx,
         )
 
-        # ── 18. Scheduler: expose queued task count (sync-safe) ★ ────────────────────────────────────────────
+        # ── 18. Scheduler: expose queued task count (sync-safe) ★ ────────────
         sched_stats = self._scheduler.stats()
 
-        # ── 19. Semantic memory: store this turn ★ (sync wrapper) ────────────────────────────────────────────
+        # ── 19. Semantic memory: store this turn ★ (sync wrapper) ────────────
         self._memory_store.remember_sync(
             user_id=uid,
             text=user_message,
@@ -628,7 +770,24 @@ class GAIANRuntime:
             },
         )
 
-        # ── Audit: phase 3 + spiritus events ★✦ ────────────────────────────────────────────────────────────────
+        # ── 20. Mesh: publish this turn's coherence + affect to the field ⬡ ──
+        mesh_status: Optional[dict] = None
+        if self._mesh_field is not None and self._mesh_server is not None:
+            try:
+                # Push this node's coherence score (aggregate, no identity)
+                self._mesh_field.set_coherence(feeling.coherence_phi)
+                # Push a lightweight affect summary (no Gaian name/slug — C04)
+                self._mesh_field.set_affect({
+                    "dominant_hz":   float(self.resonance_field_state.dominant_hz),
+                    "synergy_stage": self.synergy_state.last_stage,
+                    "spiritu_stage": self.spiritu_state.stage.value,
+                    "pneuma_flow":   round(self.spiritu_state.pneuma_flow, 3),
+                })
+                mesh_status = self._mesh_server.get_status()
+            except Exception as exc:
+                logger.warning(f"[GAIANRuntime] ⬡ Mesh publish failed (non-fatal): {exc}")
+
+        # ── Audit: phase 3 + spiritus + mesh events ★✦⬡ ──────────────────────
         self._audit.append(AuditEvent(
             event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
@@ -643,10 +802,12 @@ class GAIANRuntime:
                 "spiritu_stage":    self.spiritu_state.stage.value,
                 "pneuma_flow":      round(self.spiritu_state.pneuma_flow, 4),
                 "spiritu_transition": spiritu_reading.stage_transition,
+                "mesh_peers":       mesh_status.get("connected_peers", 0) if mesh_status else 0,
+                "mesh_coherence":   round(mesh_status.get("mesh_coherence", 0.0), 4) if mesh_status else 0.0,
             },
         ))
 
-        # ── Assemble system prompt ─────────────────────────────────────────────────────────────────────────────
+        # ── Assemble system prompt ────────────────────────────────────────────
         system_prompt = self._assemble(
             layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
             layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
@@ -657,6 +818,7 @@ class GAIANRuntime:
             active_goals=active_goals,
             policy_decision=policy_decision,
             spiritu_reading=spiritu_reading,
+            mesh_status=mesh_status,
         )
 
         self._persist()
@@ -683,6 +845,7 @@ class GAIANRuntime:
             "active_goals":     len(active_goals),
             "policy_allowed":   policy_decision.allowed,
             "scheduler_stats":  sched_stats,
+            "mesh":             mesh_status,
         }
 
         return RuntimeResult(
@@ -709,6 +872,7 @@ class GAIANRuntime:
             scheduled_tasks=[],
             audit_events=[],
             spiritu=spiritu_reading.summary(),
+            mesh_status=mesh_status,
         )
 
     def begin_session(self) -> None:
@@ -765,7 +929,7 @@ class GAIANRuntime:
 
     def get_status(self) -> dict:
         _, dominant_label, _ = self._quantum_kernel._state.dominant()
-        return {
+        status = {
             "gaian":             self.gaian_name,
             "identity":          self.identity.__dict__,
             "attachment":        self.attachment.summary(),
@@ -787,6 +951,12 @@ class GAIANRuntime:
             "active_goals":      len(self._goal_registry.active(user_id=self.gaian_name)),
             "scheduler_stats":   self._scheduler.stats(),
         }
+        # ⬡ Mesh status block
+        if self._mesh_server is not None:
+            status["mesh"] = self._mesh_server.get_status()
+        else:
+            status["mesh"] = {"enabled": False}
+        return status
 
     def get_vitality_status(self) -> dict:
         return self.vitality_state.health_summary()
@@ -794,7 +964,13 @@ class GAIANRuntime:
     def get_spiritu_status(self) -> dict:                               # ✦
         return self.spiritu_state.summary()
 
-    # ── Private ────────────────────────────────────────────────────────────────────────────────────
+    def get_mesh_status(self) -> dict:                                  # ⬡
+        """Return the current mesh server status, or {'enabled': False} if mesh is off."""
+        if self._mesh_server is not None:
+            return self._mesh_server.get_status()
+        return {"enabled": False}
+
+    # ── Private ───────────────────────────────────────────────────────────────
 
     def _assemble(
         self,
@@ -807,6 +983,7 @@ class GAIANRuntime:
         active_goals:        Optional[list] = None,
         policy_decision:     Optional[PolicyDecision] = None,
         spiritu_reading:     Optional[SpirituReading] = None,           # ✦
+        mesh_status:         Optional[dict] = None,                     # ⬡
     ) -> str:
         blocks = [CONSTITUTIONAL_FLOOR]
         if self.canon_text:
@@ -833,6 +1010,12 @@ class GAIANRuntime:
             blocks.append(_build_goal_block(active_goals))
         if policy_decision is not None:
             blocks.append(_build_policy_block(policy_decision))
+        # ⬡ Mesh block — only when peers are connected (no noise when standalone)
+        if mesh_status and mesh_status.get("connected_peers", 0) > 0:
+            blocks.append(_build_mesh_block(
+                mesh_coherence=mesh_status.get("mesh_coherence", 0.0),
+                peer_count=mesh_status.get("connected_peers", 0),
+            ))
         mems = self._memory.get("visible_memories", [])
         if mems:
             blocks.append("[MEMORIES YOU HOLD]\n" +
@@ -973,7 +1156,7 @@ class GAIANRuntime:
             json.dumps(self._memory, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    # ── Deserialisation helpers ─────────────────────────────────────────────────────────────────────────────
+    # ── Deserialisation helpers ───────────────────────────────────────────────
 
     def _deserialise_attachment(self) -> AttachmentRecord:
         d = self._memory.get("attachment", {})
