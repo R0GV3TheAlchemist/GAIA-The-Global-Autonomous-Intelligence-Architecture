@@ -67,6 +67,30 @@ class ShadowReading:
         return self.to_dict()
 
 
+@dataclass
+class ShadowIntegrationRecord:
+    """
+    A structured record of a single shadow integration event.
+    Used by SoulLayer to track per-archetype shadow work.
+    """
+    archetype:         str
+    intensity:         float
+    depth:             IntegrationDepth = IntegrationDepth.SURFACE
+    patterns:          List[ShadowPattern] = field(default_factory=list)
+    directive:         str = ""
+    integration_score: float = 0.0
+
+    def to_dict(self) -> dict:
+        return {
+            "archetype":         self.archetype,
+            "intensity":         round(self.intensity, 4),
+            "depth":             self.depth.value,
+            "patterns":          [p.value for p in self.patterns],
+            "directive":         self.directive,
+            "integration_score": round(self.integration_score, 4),
+        }
+
+
 class ShadowIntegrationEngine:
     """Assesses and tracks shadow integration progress."""
 
@@ -79,6 +103,7 @@ class ShadowIntegrationEngine:
 
     def __init__(self) -> None:
         self._history: List[ShadowReading] = []
+        self._records: List[ShadowIntegrationRecord] = []
 
     def detect(self, context: dict) -> ShadowReading:
         """Detect shadow patterns from a context dict with optional 'turn_text'."""
@@ -94,8 +119,8 @@ class ShadowIntegrationEngine:
                     detected.append(pattern)
                     break
 
-        activation_score = min(1.0, len(detected) * 0.2)
-        integration_pct  = max(0.0, 100.0 - activation_score * 100.0)
+        activation_score  = min(1.0, len(detected) * 0.2)
+        integration_pct   = max(0.0, 100.0 - activation_score * 100.0)
         integration_score = integration_pct / 100.0
 
         if integration_pct < 25.0:
@@ -118,6 +143,29 @@ class ShadowIntegrationEngine:
         self._history.append(reading)
         return reading
 
+    def integrate(
+        self,
+        archetype: str,
+        intensity: float = 0.0,
+        context:   Optional[dict] = None,
+    ) -> ShadowIntegrationRecord:
+        """
+        Integrate a named shadow archetype at a given intensity.
+        Returns a ShadowIntegrationRecord for use by SoulLayer.
+        """
+        ctx = context or {"turn_text": archetype}
+        reading = self.detect(ctx)
+        record = ShadowIntegrationRecord(
+            archetype=archetype,
+            intensity=intensity,
+            depth=reading.depth,
+            patterns=reading.patterns,
+            directive=reading.directive,
+            integration_score=reading.integration_score,
+        )
+        self._records.append(record)
+        return record
+
     # Legacy method
     def assess(
         self,
@@ -129,6 +177,9 @@ class ShadowIntegrationEngine:
 
     def history(self) -> List[ShadowReading]:
         return list(self._history)
+
+    def records(self) -> List[ShadowIntegrationRecord]:
+        return list(self._records)
 
 
 _engine: Optional[ShadowIntegrationEngine] = None
