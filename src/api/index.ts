@@ -5,6 +5,8 @@
  *
  * Usage:
  *   import { memoryRecall, TauriMemoryClient, stageEvaluate } from '../api';
+ *   import { MeshStatusWidget, useMeshStatus } from '../api';
  */
 
-export * from './memory';
+export * from './memory'
+export * from '../mesh'
