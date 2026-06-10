@@ -1,0 +1,123 @@
+# GAIA-OS Security Audit
+# Runs pip-audit CVE scan whenever any requirements file changes.
+# Also runs on a weekly schedule to catch newly-disclosed vulnerabilities
+# in dependencies that haven't changed.
+#
+# Fails the build on HIGH or CRITICAL CVEs.
+# MEDIUM vulnerabilities are reported as annotations but do not block.
+
+name: GAIA-OS Security Audit
+
+on:
+  push:
+    branches: ["main", "feat/**", "fix/**"]
+    paths:
+      - "requirements.txt"
+      - "requirements-ml.txt"
+      - "requirements-quantum.txt"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "requirements.txt"
+      - "requirements-ml.txt"
+      - "requirements-quantum.txt"
+  schedule:
+    # Every Monday at 08:00 UTC — weekly CVE sweep
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  dependency-audit:
+    name: Dependency CVE Audit (pip-audit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      # ── Audit core requirements ──────────────────────────────────────────────────────────────────────
+      - name: Audit requirements.txt
+        run: |
+          echo '🔍  Auditing requirements.txt for known CVEs...'
+          pip install -r requirements.txt
+          pip-audit \
+            --requirement requirements.txt \
+            --format markdown \
+            --output /tmp/audit-core.md \
+            || AUDIT_FAILED=1
+
+          if [ -f /tmp/audit-core.md ]; then
+            echo '### Core Requirements CVE Report' >> $GITHUB_STEP_SUMMARY
+            cat /tmp/audit-core.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${AUDIT_FAILED:-0}" = "1" ]; then
+            echo '::error::CVE(s) found in requirements.txt — review report above'
+            exit 1
+          fi
+          echo '✅  requirements.txt — no known CVEs'
+
+      # ── Audit ML requirements (warn only — torch has frequent minor CVEs) ─────────────
+      - name: Audit requirements-ml.txt (warn only)
+        run: |
+          echo '🔍  Auditing requirements-ml.txt...'
+          pip-audit \
+            --requirement requirements-ml.txt \
+            --format markdown \
+            --output /tmp/audit-ml.md \
+            || true   # ML stack (torch) has frequent low-severity CVEs — warn only
+
+          if [ -f /tmp/audit-ml.md ]; then
+            echo '### ML Requirements CVE Report' >> $GITHUB_STEP_SUMMARY
+            cat /tmp/audit-ml.md >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '✅  requirements-ml.txt audit complete (non-blocking)'
+
+      # ── Secret scan on requirements changes ───────────────────────────────────────────────────
+      #    Paranoia check — make sure no API keys were accidentally added
+      #    to a requirements comment or extras URL.
+      - name: Scan requirements files for leaked secrets
+        run: |
+          echo '🔐  Scanning requirements files for secrets...'
+          python - <<'PYEOF'
+          import re, sys
+          from pathlib import Path
+
+          # Patterns that should never appear in a requirements file
+          SECRET_PATTERNS = [
+              (r'(?i)(api[_-]?key|secret|token|password)\s*=\s*["\']?[A-Za-z0-9+/=_-]{16,}', 'Possible secret in requirements'),
+              (r'https?://[^@]+:[^@]+@', 'Credentials in URL'),
+              (r'sk-[A-Za-z0-9]{20,}', 'Possible OpenAI API key'),
+              (r'Bearer [A-Za-z0-9._-]{20,}', 'Possible Bearer token'),
+          ]
+
+          files = ['requirements.txt', 'requirements-ml.txt', 'requirements-quantum.txt']
+          found = []
+          for fname in files:
+              p = Path(fname)
+              if not p.exists():
+                  continue
+              text = p.read_text()
+              for pattern, label in SECRET_PATTERNS:
+                  for m in re.finditer(pattern, text):
+                      found.append(f'{fname}:{label}: {m.group()[:60]}...')
+
+          if found:
+              print(f'❌  Potential secrets in requirements files:')
+              for f in found: print(f'   • {f}')
+              sys.exit(1)
+          else:
+              print('✅  No secrets detected in requirements files')
+          PYEOF

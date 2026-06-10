@@ -1,0 +1,122 @@
+# GAIA-OS Staging Deploy
+# Deploys to a staging environment after smoke tests pass on main.
+#
+# CURRENT STATUS: Infrastructure stubs are documented and ready.
+# Activate by:
+#   1. Choose a platform (Railway, Render, or Fly.io — all free tier)
+#   2. Add the deploy token as a GitHub Actions secret
+#   3. Uncomment the relevant deploy step below
+#
+# Railway  (recommended — simplest, auto-detects Python):
+#   Secret needed: RAILWAY_TOKEN
+#   Setup: railway.app → new project → link this repo → copy token
+#
+# Render:
+#   Secret needed: RENDER_DEPLOY_HOOK_URL
+#   Setup: render.com → new web service → copy deploy hook URL
+#
+# Fly.io:
+#   Secret needed: FLY_API_TOKEN
+#   Setup: fly.io → fly auth token → copy token
+
+name: GAIA-OS Staging Deploy
+
+on:
+  workflow_run:
+    workflows: ["GAIA-OS Smoke Tests"]
+    types: [completed]
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy even without smoke test run'
+        required: false
+        default: 'false'
+
+jobs:
+  staging-deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging   # Creates a GitHub Environment for approval gates + secrets
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log deploy intent
+        run: |
+          echo '🚀  GAIA-OS Staging Deploy'
+          echo 'Commit: ${{ github.sha }}'
+          echo 'Branch: ${{ github.ref_name }}'
+          echo 'Triggered by: ${{ github.event_name }}'
+
+      # ──────────────────────────────────────────────────────────────────────────────
+      # OPTION A: Railway (RECOMMENDED)
+      # Uncomment when RAILWAY_TOKEN secret is added.
+      # Railway auto-detects Python and uses requirements.txt automatically.
+      # ──────────────────────────────────────────────────────────────────────────────
+      # - name: Deploy to Railway
+      #   run: |
+      #     npm install -g @railway/cli
+      #     railway up --service gaia-staging --detach
+      #   env:
+      #     RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # ──────────────────────────────────────────────────────────────────────────────
+      # OPTION B: Render
+      # Uncomment when RENDER_DEPLOY_HOOK_URL secret is added.
+      # Get from: Render dashboard → your service → Settings → Deploy Hook
+      # ──────────────────────────────────────────────────────────────────────────────
+      # - name: Deploy to Render
+      #   run: |
+      #     curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+      #     echo 'Render deploy triggered — check https://dashboard.render.com'
+
+      # ──────────────────────────────────────────────────────────────────────────────
+      # OPTION C: Fly.io
+      # Uncomment when FLY_API_TOKEN secret is added.
+      # Requires a fly.toml in the repo root (we can generate this).
+      # ──────────────────────────────────────────────────────────────────────────────
+      # - name: Deploy to Fly.io
+      #   uses: superfly/flyctl-actions/setup-flyctl@master
+      # - run: flyctl deploy --remote-only
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # ── Placeholder until a platform is chosen ─────────────────────────────────────────────────
+      - name: Staging deploy ready (awaiting platform selection)
+        run: |
+          echo ''
+          echo '⏳  Staging deploy is configured and waiting.'
+          echo ''
+          echo 'To activate staging, choose one:'
+          echo '  • Railway : add RAILWAY_TOKEN secret, uncomment Option A above'
+          echo '  • Render  : add RENDER_DEPLOY_HOOK_URL secret, uncomment Option B'
+          echo '  • Fly.io  : add FLY_API_TOKEN secret, uncomment Option C'
+          echo ''
+          echo 'All three are free tier. Railway is the simplest — one click from:'
+          echo '  https://railway.app/new → Deploy from GitHub repo'
+          echo ''
+          echo 'Commit: ${{ github.sha }}'
+          echo '✅  Staging pipeline is wired and waiting'
+
+      # ── Post-deploy health check (activate alongside the deploy step) ─────────────────
+      # Uncomment this block once staging URL is known.
+      # Replace GAIA_STAGING_URL with your actual staging URL secret.
+      #
+      # - name: Post-deploy health check
+      #   run: |
+      #     echo 'Checking staging health...'
+      #     for i in $(seq 1 15); do
+      #       if curl -sf "${{ secrets.GAIA_STAGING_URL }}/health" > /dev/null 2>&1; then
+      #         echo "✅  Staging is alive at ${{ secrets.GAIA_STAGING_URL }}"
+      #         exit 0
+      #       fi
+      #       echo "  Attempt $i — staging not ready yet..."
+      #       sleep 10
+      #     done
+      #     echo '❌  Staging failed to respond after deploy'
+      #     exit 1

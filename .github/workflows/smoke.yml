@@ -1,0 +1,169 @@
+# GAIA-OS Smoke Tests
+# Boots the real GAIA FastAPI sidecar inside the CI runner and verifies
+# it actually comes alive end-to-end. Zero external infrastructure required.
+#
+# What this proves on every merge to main:
+#   ✔ All Python imports resolve (no missing modules crash startup)
+#   ✔ All engine initialisations succeed
+#   ✔ FastAPI mounts all 7 routers without error
+#   ✔ /health returns 200 {ok: true}
+#   ✔ / returns the engine manifest
+#   ✔ /docs (OpenAPI) is served
+#   ✔ /affect responds
+#   ✔ /shadow responds
+#
+# Triggers: after the main CI workflow succeeds on main
+
+name: GAIA-OS Smoke Tests
+
+on:
+  workflow_run:
+    workflows: ["GAIA-OS CI"]
+    types: [completed]
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Boot GAIA + Smoke Test Endpoints
+    runs-on: ubuntu-latest
+    # Only run if the triggering CI workflow succeeded
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+
+      # ── Boot GAIA sidecar in the background ─────────────────────────────────────────────────────
+      - name: Start GAIA sidecar
+        run: |
+          echo '🚀  Starting GAIA sidecar on port 52000...'
+          cd src-python
+          nohup uvicorn main:app \
+            --host 127.0.0.1 \
+            --port 52000 \
+            --log-level info \
+            > /tmp/gaia-sidecar.log 2>&1 &
+          echo "GAIA_PID=$!" >> $GITHUB_ENV
+          echo "Sidecar PID: $!"
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src-python
+          GAIA_SIDECAR_PORT: "52000"
+          GAIA_DB_PATH: "/tmp/gaia-smoke-test.db"
+          GAIA_AFFECT_BACKEND: "heuristic"
+          GAIA_LOG_LEVEL: "INFO"
+          CI: "true"
+
+      # ── Wait for GAIA to be ready ───────────────────────────────────────────────────────────────────────
+      #    Retries every 2 seconds for up to 45 seconds.
+      #    Prints the sidecar log if startup fails.
+      - name: Wait for GAIA /health
+        run: |
+          echo '⏳  Waiting for GAIA sidecar to be ready...'
+          for i in $(seq 1 22); do
+            if curl -sf http://127.0.0.1:52000/health > /dev/null 2>&1; then
+              echo "✅  GAIA is alive after ${i} attempts"
+              exit 0
+            fi
+            echo "  Attempt $i — not ready yet, waiting 2s..."
+            sleep 2
+          done
+          echo '❌  GAIA sidecar failed to start within 45 seconds'
+          echo '--- Sidecar log ---'
+          cat /tmp/gaia-sidecar.log || echo '(no log)'
+          exit 1
+
+      # ── Smoke test endpoints ──────────────────────────────────────────────────────────────────────────
+      - name: Run smoke tests
+        run: |
+          BASE="http://127.0.0.1:52000"
+          PASS=0
+          FAIL=0
+
+          smoke_check() {
+            local name="$1"
+            local url="$2"
+            local expected="$3"
+            local response
+            response=$(curl -sf -o /tmp/smoke-resp.json -w "%{http_code}" "$url" 2>/dev/null)
+            if [ "$response" = "$expected" ]; then
+              echo "✅  $name — HTTP $response"
+              PASS=$((PASS+1))
+            else
+              echo "❌  $name — expected HTTP $expected, got HTTP $response"
+              cat /tmp/smoke-resp.json 2>/dev/null || true
+              FAIL=$((FAIL+1))
+            fi
+          }
+
+          echo ''
+          echo '💨  GAIA-OS Smoke Tests'
+          echo '=========================================='
+
+          smoke_check "Root manifest"          "$BASE/"           200
+          smoke_check "Health check"           "$BASE/health"      200
+          smoke_check "OpenAPI docs"           "$BASE/docs"        200
+          smoke_check "Affect engine"          "$BASE/affect"      200
+          smoke_check "Shadow engine"          "$BASE/shadow"      200
+          smoke_check "Schumann engine"        "$BASE/schumann"    200
+          smoke_check "Stage engine"           "$BASE/stage"       200
+          smoke_check "Crystal core"           "$BASE/crystal"     200
+          smoke_check "Persona stability"      "$BASE/persona"     200
+          smoke_check "Sovereign memory"       "$BASE/memory"      200
+
+          echo '=========================================='
+          echo "📊 Results: $PASS passed, $FAIL failed"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo ''
+            echo '--- Sidecar log ---'
+            cat /tmp/gaia-sidecar.log || echo '(no log)'
+            exit 1
+          fi
+
+          echo '✅  All smoke tests passed — GAIA is alive and well'
+
+      # ── Verify engine manifest ───────────────────────────────────────────────────────────────────────────
+      - name: Verify engine manifest response
+        run: |
+          echo '🧠  Verifying engine manifest...'
+          response=$(curl -sf http://127.0.0.1:52000/ 2>/dev/null)
+          echo "Response: $response"
+
+          python - <<PYEOF
+          import json, sys
+          response = json.loads('$response')
+          required_engines = ['memory', 'affect', 'stage', 'shadow', 'schumann', 'crystal', 'persona']
+          listed = response.get('engines', [])
+          missing = [e for e in required_engines if e not in listed]
+          if missing:
+              print(f'❌  Missing engines in manifest: {missing}')
+              sys.exit(1)
+          if response.get('status') != 'online':
+              print(f'❌  Status is not online: {response.get("status")}')
+              sys.exit(1)
+          print(f'✅  All {len(required_engines)} engines listed in manifest')
+          print(f'✅  Status: {response.get("status")}')
+          PYEOF
+
+      # ── Teardown ────────────────────────────────────────────────────────────────────────────────────
+      - name: Teardown sidecar
+        if: always()
+        run: |
+          if [ -n "$GAIA_PID" ]; then
+            kill $GAIA_PID 2>/dev/null && echo '🛑  Sidecar stopped cleanly' || echo 'Sidecar already stopped'
+          fi

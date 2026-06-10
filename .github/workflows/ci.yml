@@ -1,5 +1,5 @@
 # GAIA-OS CI — runs on every push and PR targeting main
-# Gate: ruff (lint) → py_compile (syntax) → manifest-validate → pytest
+# Gate: ruff → mypy → bandit → py_compile → manifest-validate → pytest
 # Nothing merges to main unless this workflow is green.
 
 name: GAIA-OS CI
@@ -12,24 +12,22 @@ on:
 
 jobs:
   lint-and-test:
-    name: Lint + Syntax + Manifest + Pytest
+    name: Lint + Type + Security + Syntax + Manifest + Pytest
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout ─────────────────────────────────────────────────────────────────
+      # ── 1. Checkout ──────────────────────────────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Python setup ───────────────────────────────────────────────────────────
+      # ── 2. Python setup ─────────────────────────────────────────────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      # ── 3. Cache HuggingFace models ───────────────────────────────────────────────
-      #    Prevents 429 rate-limit failures on HuggingFace Hub.
-      #    Cache keyed to requirements.txt — busts only when deps change.
+      # ── 3. Cache HuggingFace models ───────────────────────────────────────────────────────────
       - name: Cache HuggingFace models
         uses: actions/cache@v4
         with:
@@ -38,21 +36,15 @@ jobs:
           restore-keys: |
             huggingface-all-minilm-
 
-      # ── 4. Install dependencies ─────────────────────────────────────────────────
+      # ── 4. Install dependencies ──────────────────────────────────────────────────────────────────
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
+          pip install -r requirements.txt
           pip install -e ".[dev]"
-          pip install pytest-cov pytest-mock
+          pip install pytest-cov pytest-mock mypy bandit[toml]
 
-      # ── 5. Pre-download embedding model ──────────────────────────────────────────
-      #    Downloads all-MiniLM-L6-v2 once before tests run.
-      #    On cache hit this is a no-op (model already on disk).
-      #    On cache miss this runs once and populates the cache.
-      #    Skips gracefully if sentence-transformers is not installed.
+      # ── 5. Pre-download embedding model ──────────────────────────────────────────────────────────
       - name: Pre-download HuggingFace embedding model
         run: |
           python -c "
@@ -71,22 +63,51 @@ jobs:
           TRANSFORMERS_OFFLINE: "0"
           SENTENCE_TRANSFORMERS_HOME: ~/.cache/huggingface/sentence_transformers
 
-      # ── 5.5 Ruff lint ─────────────────────────────────────────────────────────────
-      #    Runs BEFORE pytest so lint failures surface immediately without
-      #    waiting for the full test suite. Checks core/, api/, gaia/ only —
-      #    scripts/ and simulation/ are excluded (generated / research code).
-      #    Config lives in pyproject.toml [tool.ruff].
+      # ── 5.5 Ruff lint ──────────────────────────────────────────────────────────────────────────────────
       - name: Lint with ruff
         run: |
           echo '🔍  Running ruff lint...'
           ruff check core/ api/ gaia/ --output-format=github
           echo '✅  Ruff passed'
 
-      # ── 5.6 Manifest validation ───────────────────────────────────────────────────
-      #    Validates meta/CANON_MANIFEST.json before tests run.
-      #    Checks: required fields, valid domain enum, no duplicate IDs,
-      #    weight in [0,1], tags non-empty, every path exists on disk.
-      #    Skips gracefully if meta/CANON_MANIFEST.json does not exist yet.
+      # ── 5.6 mypy type checking ──────────────────────────────────────────────────────────────────────────
+      #    Runs after ruff so style errors surface first.
+      #    --ignore-missing-imports: third-party stubs are not required yet.
+      #    --no-error-summary: cleaner output in GitHub annotations.
+      #    Scope: core/ + src-python/ (where all data contracts live).
+      #    Graduated enforcement: warnings-only on first run (|| true),
+      #    remove || true once the baseline is clean.
+      - name: Type check with mypy
+        run: |
+          echo '🔍  Running mypy type check...'
+          mypy core/ src-python/ \
+            --ignore-missing-imports \
+            --no-error-summary \
+            --pretty \
+            --python-version 3.11 \
+            || true   # graduated: warn-only until baseline is clean
+          echo '✅  mypy complete (see annotations above for type errors)'
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src-python
+
+      # ── 5.7 bandit SAST security scan ────────────────────────────────────────────────────────────
+      #    Static Application Security Testing.
+      #    Scans for: hardcoded secrets, use of eval/exec, SQL injection,
+      #    unsafe deserialization, weak cryptography, shell injection.
+      #    Severity: MEDIUM and HIGH only (LOW excluded to reduce noise).
+      #    Scope: core/ + src-python/ — scripts/ excluded (research code).
+      - name: Security scan with bandit
+        run: |
+          echo '🔐  Running bandit SAST scan...'
+          bandit -r core/ src-python/ \
+            --severity-level medium \
+            --confidence-level medium \
+            --format txt \
+            --exclude src-python/tests \
+            || true   # graduated: warn-only — harden to exit 1 after triage
+          echo '✅  Bandit scan complete (review findings above)'
+
+      # ── 5.8 Manifest validation ─────────────────────────────────────────────────────────────────────
       - name: Validate CANON_MANIFEST.json
         run: |
           python - <<'PYEOF'
@@ -95,28 +116,15 @@ jobs:
 
           manifest_path = Path("meta/CANON_MANIFEST.json")
           if not manifest_path.exists():
-              print("ℹ️  meta/CANON_MANIFEST.json not found — skipping validation (Task 2/3 not yet complete)")
+              print("ℹ️  meta/CANON_MANIFEST.json not found — skipping validation")
               sys.exit(0)
 
           REQUIRED_FIELDS = {"id", "path", "title", "domain", "weight", "tags"}
           VALID_DOMAINS = {
-              "FOUNDATION",
-              "CONSCIOUSNESS",
-              "BIOLOGY",
-              "GOVERNANCE",
-              "AVATAR",
-              "LANGUAGE",
-              "METAPHYSICS",
-              "CHARTER",
-              "ECONOMICS",
-              "TELEMETRY",
-              "MEMORY",
-              "TOOLS",
-              "BCI",
-              "IDENTITY",
-              "PLANETARY",
-              "SOCIAL",
-              "MINERALS",
+              "FOUNDATION", "CONSCIOUSNESS", "BIOLOGY", "GOVERNANCE",
+              "AVATAR", "LANGUAGE", "METAPHYSICS", "CHARTER", "ECONOMICS",
+              "TELEMETRY", "MEMORY", "TOOLS", "BCI", "IDENTITY",
+              "PLANETARY", "SOCIAL", "MINERALS",
           }
 
           errors = []
@@ -125,56 +133,43 @@ jobs:
 
           documents = manifest.get("documents", [])
           if not documents:
-              print("ℹ️  No documents array found in manifest — nothing to validate.")
+              print("ℹ️  No documents array found — nothing to validate.")
               sys.exit(0)
 
           seen_ids = {}
           for i, doc in enumerate(documents):
               loc = f"documents[{i}] (id={doc.get('id','<missing>')})"
-
-              # Required fields
               missing = REQUIRED_FIELDS - set(doc.keys())
               if missing:
                   errors.append(f"{loc}: missing required fields: {missing}")
-
-              # Domain enum
               domain = doc.get("domain", "")
               if domain not in VALID_DOMAINS:
-                  errors.append(f"{loc}: invalid domain '{domain}'. Valid: {sorted(VALID_DOMAINS)}")
-
-              # Duplicate ID check
+                  errors.append(f"{loc}: invalid domain '{domain}'")
               doc_id = doc.get("id")
               if doc_id:
                   if doc_id in seen_ids:
-                      errors.append(f"{loc}: duplicate id '{doc_id}' (first seen at index {seen_ids[doc_id]})")
+                      errors.append(f"{loc}: duplicate id '{doc_id}'")
                   else:
                       seen_ids[doc_id] = i
-
-              # Weight range
               weight = doc.get("weight")
               if weight is not None and not (0.0 <= float(weight) <= 1.0):
-                  errors.append(f"{loc}: weight {weight} out of range [0.0, 1.0]")
-
-              # Tags non-empty
+                  errors.append(f"{loc}: weight {weight} out of [0.0, 1.0]")
               tags = doc.get("tags", [])
               if not tags:
-                  errors.append(f"{loc}: tags array is empty — at least one tag required")
-
-              # Path exists on disk
+                  errors.append(f"{loc}: tags array is empty")
               doc_path = doc.get("path", "")
               if doc_path and not Path(doc_path).exists():
-                  errors.append(f"{loc}: path '{doc_path}' does not exist on disk")
+                  errors.append(f"{loc}: path '{doc_path}' not on disk")
 
           if errors:
-              print(f"❌  CANON_MANIFEST.json validation failed — {len(errors)} error(s):")
-              for e in errors:
-                  print(f"   • {e}")
+              print(f"❌  CANON_MANIFEST.json — {len(errors)} error(s):")
+              for e in errors: print(f"   • {e}")
               sys.exit(1)
           else:
-              print(f"✅  CANON_MANIFEST.json valid — {len(documents)} documents, {len(seen_ids)} unique IDs")
+              print(f"✅  CANON_MANIFEST.json valid — {len(documents)} documents")
           PYEOF
 
-      # ── 6. Syntax check ───────────────────────────────────────────────────────────
+      # ── 6. Syntax check ─────────────────────────────────────────────────────────────────────────────────
       - name: Syntax check (py_compile)
         run: |
           python -m compileall -q core/ 2>&1 | tee /tmp/compile.log
@@ -184,10 +179,7 @@ jobs:
           fi
           echo '✅  All core/ files compile cleanly'
 
-      # ── 7. Pytest ────────────────────────────────────────────────────────────────
-      #    PYTHONPATH is set explicitly here AND in pyproject.toml AND in
-      #    conftest.py (self-healing). Triple-redundant so no branch config
-      #    drift can ever break collection again.
+      # ── 7. Pytest ───────────────────────────────────────────────────────────────────────────────────
       - name: Run pytest
         run: |
           python -m pytest tests/ \
