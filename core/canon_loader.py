@@ -31,7 +31,7 @@ _STOP_WORDS: frozenset = frozenset({
     "the", "and", "for", "are", "but", "not", "you", "all",
     "can", "her", "was", "one", "our", "out", "day", "get",
     "has", "him", "his", "how", "its", "had", "may", "new",
-    "now", "old", "see", "two", "way", "who", "did", "its",
+    "now", "old", "see", "two", "way", "who", "did",
     "let", "put", "too", "use", "with", "this", "that", "from",
     "have", "they", "will", "what", "when", "your", "said",
     "each", "she", "been", "than", "then", "were", "also",
