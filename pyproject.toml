@@ -44,7 +44,7 @@ ml = [
 
 [tool.pytest.ini_options]
 # ── Paths ──────────────────────────────────────────────────────────────────
-pythonpath = [".", "src-python"]
+pythonpath = [".", "core", "src-python"]
 
 # ── Async ──────────────────────────────────────────────────────────────────
 asyncio_mode = "auto"
@@ -53,25 +53,77 @@ asyncio_default_fixture_loop_scope = "session"
 # ── Guards ─────────────────────────────────────────────────────────────────
 timeout = 60
 
+# ── Test discovery ─────────────────────────────────────────────────────────
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 
+# Tell ruff where first-party source roots live so it can resolve
+# `from core.xxx import ...` correctly instead of treating them as third-party.
+src = [".", "core", "src-python"]
+
+# Dirs that should never be linted (generated, vendored, migration artifacts)
+extend-exclude = [
+  ".venv",
+  "venv",
+  "__pycache__",
+  "*.egg-info",
+  "dist",
+  "build",
+  "migrations",
+]
+
 [tool.ruff.lint]
 # Rule sets enforced for GAIA-OS
-# E  — pycodestyle errors        (style correctness)
-# W  — pycodestyle warnings      (style warnings)
-# F  — Pyflakes                  (unused imports, undefined names)
-# I  — isort                     (import ordering)
-# UP — pyupgrade                 (modernize to py311 syntax)
-# RUF — Ruff-native rules        (patterns pyflakes/pycodestyle miss)
-select = ["E", "W", "F", "I", "UP", "RUF"]
+# E   — pycodestyle errors        (style correctness)
+# W   — pycodestyle warnings      (style warnings)
+# F   — Pyflakes                  (unused imports, undefined names)
+# I   — isort                     (import ordering)
+# N   — pep8-naming               (class/function/variable naming conventions)
+# UP  — pyupgrade                 (modernise to py311 syntax)
+# S   — flake8-bandit             (security anti-patterns)
+# RUF — Ruff-native rules         (patterns pyflakes/pycodestyle miss)
+select = ["E", "W", "F", "I", "N", "UP", "S", "RUF"]
+
 ignore = [
-  # Add specific rule codes here only when a rule is intentionally
-  # suppressed for GAIA-OS. Always include a comment explaining why.
-  # Example:
-  # "RUF012",  # mutable class var annotation — intentional in layer dataclasses
+  # S101 — assert statements are intentional in tests and soul-layer guards
+  # (overridden per-file below; keeping here as documentation)
+
+  # RUF012 — mutable class-var annotation: intentional in layer dataclasses
+  "RUF012",
+
+  # E501 is handled by the formatter (line-length = 100 above); no need to
+  # also lint it or you get duplicate noise.
+  "E501",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# __init__.py files use wildcard re-exports; F401 (unused import) is a
+# false positive there. F403 (star import) is intentional.
+"__init__.py" = ["F401", "F403"]
+
+# Test files: asserts are required (S101), type annotations optional,
+# docstrings not enforced, and bandit security rules too strict for fixtures.
+"tests/**/*.py" = ["S101", "S105", "S106", "ANN", "D"]
+
+# Soul-mirror test scaffold: same relaxation as above
+"tests/soul_mirror/**/*.py" = ["S101", "S105", "S106", "ANN", "D"]
+"tests/governance/**/*.py"  = ["S101", "S105", "S106", "ANN", "D"]
+
+[tool.ruff.lint.isort]
+# Declare first-party packages so isort groups them correctly and doesn't
+# misclassify `from core.xxx` as a third-party import.
+known-first-party = ["core", "gaia", "api"]
+split-on-trailing-comma = true
+force-sort-within-sections = true
+
+[tool.ruff.format]
+# Use double quotes everywhere (matches Black convention across the codebase)
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
 
 [tool.setuptools.packages.find]
 include = ["core*", "api*", "gaia*"]
