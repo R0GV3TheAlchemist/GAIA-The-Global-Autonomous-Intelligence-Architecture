@@ -1,5 +1,7 @@
 """CrisisEngine — main orchestrator for multi-turn crisis synthesis.
 
+GAIA-OS Issue #281 — StorageBackend mirror added.
+
 Usage:
     from crisis_engine import CrisisEngine, EngineConfig
 
@@ -9,16 +11,35 @@ Usage:
     if snapshot.requires_action:
         message = engine.get_intervention_message()
         # inject message into GAIA's response pipeline
+
+StorageBackend mirror
+---------------------
+Local SQLite is the safety-critical primary store — HANDOFF-tier records
+in particular must never be lossy.  The StorageBackend is a secondary
+mirror for mesh-wide visibility and Phase 2 planetary persistence.
+
+HANDOFF records are mirrored *synchronously* (awaited) before build_handoff()
+returns, so that no handoff event can be lost due to a daemon thread race.
+All other record types (snapshots, session records) use fire-and-forget.
+
+Key prefixes:
+  crisis:<principal_id>:snapshot:<safe_iso_ts>   — CrisisSnapshot
+  crisis:<principal_id>:session:<session_id>      — SessionRiskRecord
+  crisis:<principal_id>:handoff:<safe_iso_ts>     — HandoffRecord (sync)
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
 import sqlite3
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from .escalation import (
     build_handoff_record,
@@ -34,27 +55,136 @@ from .types import (
     RiskLevel,
 )
 
+try:
+    from core.storage import get_backend as _get_storage_backend
+    _STORAGE_AVAILABLE = True
+except ImportError:
+    _STORAGE_AVAILABLE = False
+    _get_storage_backend = None  # type: ignore[assignment]
+
+logger = logging.getLogger("gaia.crisis_engine")
+
+_BACKEND_KEY_PREFIX = "crisis"
+
+
+# ---------------------------------------------------------------------------
+# Backend mirror helpers
+# ---------------------------------------------------------------------------
+
+def _backend_key(principal_id: str, record_type: str, discriminator: str) -> str:
+    """
+    Build the backend mirror key.
+    Format: crisis:<principal_id>:<record_type>:<discriminator>
+
+    discriminator is a safe ISO timestamp (colons → hyphens) for
+    snapshot/handoff, or the session_id for session records.
+    """
+    safe_disc = discriminator.replace(":", "-").replace("+", "Z")
+    return f"{_BACKEND_KEY_PREFIX}:{principal_id}:{record_type}:{safe_disc}"
+
+
+def _mirror(
+    backend: Any,
+    key: str,
+    payload: bytes,
+    ttl: Optional[int] = None,
+) -> None:
+    """
+    Fire-and-forget mirror write for non-critical records.
+    Launches a daemon thread; never blocks the caller.
+    """
+    def _run() -> None:
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(backend.put(key, payload, ttl=ttl))
+            loop.close()
+        except Exception as exc:
+            logger.warning(
+                f"[CrisisEngine] ⚠ Backend mirror write failed (non-fatal): "
+                f"key={key!r} err={exc}"
+            )
+    threading.Thread(target=_run, daemon=True, name="crisis-mirror").start()
+
+
+async def _mirror_sync(
+    backend: Any,
+    key: str,
+    payload: bytes,
+    ttl: Optional[int] = None,
+) -> None:
+    """
+    Synchronous (awaited) mirror write for HANDOFF-tier records.
+    HANDOFF events must be durable before build_handoff() returns.
+    Failure is logged but never propagated — local SQLite already committed.
+    """
+    try:
+        await backend.put(key, payload, ttl=ttl)
+    except Exception as exc:
+        logger.error(
+            f"[CrisisEngine] ❌ HANDOFF backend mirror failed: key={key!r} err={exc}. "
+            "Local SQLite record is authoritative."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Config + Engine
+# ---------------------------------------------------------------------------
 
 @dataclass
 class EngineConfig:
-    principal_id:   str
-    db_path:        Optional[Path] = None   # defaults to :memory: if None
-    window_size:    int            = 14     # sessions in rolling window
-    state_callback: Optional[object] = None  # callable(snapshot) on state change
+    principal_id:    str
+    db_path:         Optional[Path]   = None    # defaults to :memory: if None
+    window_size:     int              = 14      # sessions in rolling window
+    state_callback:  Optional[object] = None   # callable(snapshot) on state change
+    # StorageBackend mirror ──────────────────────────────
+    storage_backend: Any              = field(default=..., repr=False)
+    # ... sentinel = use default (SQLite singleton)
+    # None         = mirroring disabled
+    # <instance>   = use the supplied backend
+    backend_ttl:     Optional[int]    = None    # TTL for mirror entries (seconds)
 
 
 class CrisisEngine:
-    """Orchestrates crisis signal detection, trajectory synthesis, and escalation.
+    """
+    Orchestrates crisis signal detection, trajectory synthesis, and escalation.
 
     Thread-safety: Not thread-safe. Each Gaian instance should own its own
     CrisisEngine. For concurrent access, wrap in an asyncio lock.
+
+    HANDOFF records are mirrored synchronously to the StorageBackend before
+    build_handoff() returns.  All other mirror writes are fire-and-forget.
+    Local SQLite is always the safety-critical source of truth.
     """
 
-    def __init__(self, config: EngineConfig):
-        self._config    = config
+    def __init__(self, config: EngineConfig) -> None:
+        self._config     = config
         self._trajectory = TrajectoryModel(window_size=config.window_size)
-        self._db_path   = config.db_path or Path(":memory:")
+        self._db_path    = config.db_path or Path(":memory:")
         self._last_snapshot: Optional[CrisisSnapshot] = None
+
+        # ── StorageBackend setup (same sentinel pattern as AuditStore) ──
+        sb = config.storage_backend
+        if sb is ...:
+            if _STORAGE_AVAILABLE and _get_storage_backend is not None:
+                try:
+                    self._backend: Optional[Any] = _get_storage_backend()
+                except Exception as exc:
+                    logger.warning(
+                        f"[CrisisEngine] Could not initialise default backend: {exc}. "
+                        "Mirroring disabled."
+                    )
+                    self._backend = None
+            else:
+                self._backend = None
+        else:
+            self._backend = sb
+
+        if self._backend is not None:
+            logger.debug(
+                f"[CrisisEngine] Backend mirror: {self._backend!r} "
+                f"(principal={config.principal_id!r})"
+            )
+
         self._init_db()
         self._restore_window()
 
@@ -68,9 +198,9 @@ class CrisisEngine:
         session_id: str,
         turn_index: int = 0,
     ) -> CrisisSnapshot:
-        """Evaluate one turn of user text and return the current risk snapshot.
-
-        This is the primary integration point for GAIA's chat pipeline.
+        """
+        Evaluate one turn of user text and return the current risk snapshot.
+        Primary integration point for GAIA's chat pipeline.
         Call once per user turn, before generating GAIA's response.
         """
         # 1. Classify this turn
@@ -87,7 +217,7 @@ class CrisisEngine:
         snapshot = CrisisSnapshot(
             principal_id=self._config.principal_id,
             current_risk=synthesised_risk,
-            escalation_tier=EscalationTier.MONITOR,  # placeholder — set below
+            escalation_tier=EscalationTier.MONITOR,
             trajectory_slope=slope,
             sessions_in_distress=consecutive,
             peak_risk_72h=peak_72h,
@@ -95,32 +225,31 @@ class CrisisEngine:
         )
         snapshot.escalation_tier = determine_escalation_tier(snapshot)
 
-        # 4. Persist
+        # 4. Persist to SQLite (primary, synchronous)
         self._persist_snapshot(snapshot)
         self._last_snapshot = snapshot
 
-        # 5. Callback
+        # 5. State callback — never let it crash the safety pipeline
         if self._config.state_callback and callable(self._config.state_callback):
             try:
                 self._config.state_callback(snapshot)
             except Exception:
-                pass  # never let callback crash the safety pipeline
+                pass
 
         return snapshot
 
     def close_session(
         self,
-        session_id: str,
-        peak_risk:  RiskLevel = RiskLevel.NONE,
-        signal_count: int     = 0,
-        has_explicit: bool    = False,
-        has_masked:   bool    = False,
+        session_id:   str,
+        peak_risk:    RiskLevel = RiskLevel.NONE,
+        signal_count: int       = 0,
+        has_explicit: bool      = False,
+        has_masked:   bool      = False,
     ) -> None:
-        """Call at the end of each session to commit the session risk record.
-
-        If evaluate() was called during the session, pass the aggregated
-        peak_risk from those evaluations. The trajectory window is updated
-        here so that GRADUAL signals are visible in the next session.
+        """
+        Call at the end of each session to commit the session risk record.
+        The trajectory window is updated here so GRADUAL signals are
+        visible in the next session.
         """
         record = SessionRiskRecord(
             session_id=session_id,
@@ -138,14 +267,42 @@ class CrisisEngine:
             return ""
         return get_intervention_message(self._last_snapshot.escalation_tier)
 
-    def build_handoff(self) -> Optional[HandoffRecord]:
-        """Build a HandoffRecord if the current state warrants handoff."""
+    async def build_handoff(self) -> Optional[HandoffRecord]:
+        """
+        Build a HandoffRecord if the current state warrants handoff.
+
+        NOTE: This method is now async so that HANDOFF records can be
+        mirrored synchronously to the StorageBackend before returning.
+        Callers that previously used this synchronously should await it.
+        Local SQLite write still happens synchronously first.
+        """
         if not self._last_snapshot:
             return None
         if self._last_snapshot.escalation_tier != EscalationTier.HANDOFF:
             return None
         record = build_handoff_record(self._last_snapshot)
+
+        # 1. SQLite write — always first, always authoritative
         self._persist_handoff(record)
+
+        # 2. Synchronous backend mirror — awaited before returning
+        #    so no HANDOFF event is ever lost in-flight
+        if self._backend is not None:
+            payload = json.dumps(
+                {
+                    "principal_id":    record.principal_id,
+                    "resource_type":   record.resource_type,
+                    "resource_detail": record.resource_detail,
+                    "message_sent":    record.message_sent,
+                    "handed_off_at":   record.handed_off_at.isoformat(),
+                },
+                separators=(",", ":"),
+            ).encode("utf-8")
+            bkey = _backend_key(
+                record.principal_id, "handoff", record.handed_off_at.isoformat()
+            )
+            await _mirror_sync(self._backend, bkey, payload, self._config.backend_ttl)
+
         return record
 
     def history(self, limit: int = 30) -> list[dict]:
@@ -156,8 +313,20 @@ class CrisisEngine:
                 "WHERE principal_id = ? ORDER BY evaluated_at DESC LIMIT ?",
                 (self._config.principal_id, limit),
             ).fetchall()
-        import json
         return [json.loads(r[0]) for r in rows]
+
+    async def backend_ping(self) -> bool:
+        """
+        Health-check the StorageBackend.
+        Consistent with AuditStore / SovereignMemory / TelemetryCollector
+        for the mesh server health endpoint.
+        """
+        if self._backend is None:
+            return False
+        try:
+            return await self._backend.ping()
+        except Exception:
+            return False
 
     # ------------------------------------------------------------------
     # Internal — database
@@ -209,7 +378,6 @@ class CrisisEngine:
             conn.close()
 
     def _persist_snapshot(self, snapshot: CrisisSnapshot) -> None:
-        import json
         with self._conn() as conn:
             conn.execute(
                 "INSERT INTO crisis_snapshots "
@@ -223,6 +391,15 @@ class CrisisEngine:
                     snapshot.evaluated_at.isoformat(),
                 ),
             )
+        # Fire-and-forget mirror — snapshots are informational
+        if self._backend is not None:
+            payload = json.dumps(
+                snapshot.to_dict(), separators=(",", ":"), default=str
+            ).encode("utf-8")
+            bkey = _backend_key(
+                snapshot.principal_id, "snapshot", snapshot.evaluated_at.isoformat()
+            )
+            _mirror(self._backend, bkey, payload, self._config.backend_ttl)
 
     def _persist_session_record(self, record: SessionRiskRecord) -> None:
         with self._conn() as conn:
@@ -240,8 +417,27 @@ class CrisisEngine:
                     record.recorded_at.isoformat(),
                 ),
             )
+        # Fire-and-forget mirror — session records are informational
+        if self._backend is not None:
+            payload = json.dumps(
+                {
+                    "principal_id": self._config.principal_id,
+                    "session_id":   record.session_id,
+                    "peak_risk":    record.peak_risk.value,
+                    "signal_count": record.signal_count,
+                    "has_explicit": record.has_explicit,
+                    "has_masked":   record.has_masked,
+                    "recorded_at":  record.recorded_at.isoformat(),
+                },
+                separators=(",", ":"),
+            ).encode("utf-8")
+            bkey = _backend_key(
+                self._config.principal_id, "session", record.session_id
+            )
+            _mirror(self._backend, bkey, payload, self._config.backend_ttl)
 
     def _persist_handoff(self, record: HandoffRecord) -> None:
+        """SQLite write only — backend mirror is handled in build_handoff() (async, sync)."""
         with self._conn() as conn:
             conn.execute(
                 "INSERT INTO crisis_handoffs "
