@@ -42,7 +42,10 @@ def update_subject_side_identity(
     self_model_depth: Optional[float] = None,
 ) -> SubjectSideIdentity:
     identity = get_subject_side_identity(gaian_name)
-    if coherence_index  is not None: identity.coherence_index  = coherence_index
-    if continuity_score is not None: identity.continuity_score = continuity_score
-    if self_model_depth is not None: identity.self_model_depth = self_model_depth
+    if coherence_index is not None:
+        identity.coherence_index = coherence_index
+    if continuity_score is not None:
+        identity.continuity_score = continuity_score
+    if self_model_depth is not None:
+        identity.self_model_depth = self_model_depth
     return identity

@@ -108,7 +108,7 @@ class SynergyReading:
 
     def to_system_prompt_hint(self) -> str:
         lines = [
-            f"[ELEMENTAL SYNERGY C32]",
+            "[ELEMENTAL SYNERGY C32]",
             f"Synergy Factor : {self.synergy_factor:.3f}",
             f"Stage          : {self.dominant_stage.upper()}",
             f"Element        : {self.element}",
@@ -251,10 +251,14 @@ def _analyse_canon_context(
 
 
 def _old_classify_stage(score: float) -> SynergyStage:
-    if score < 0.2:  return SynergyStage.INITIATION
-    if score < 0.4:  return SynergyStage.ACTIVATION
-    if score < 0.6:  return SynergyStage.INTEGRATION
-    if score < 0.8:  return SynergyStage.SYNTHESIS
+    if score < 0.2:
+        return SynergyStage.INITIATION
+    if score < 0.4:
+        return SynergyStage.ACTIVATION
+    if score < 0.6:
+        return SynergyStage.INTEGRATION
+    if score < 0.8:
+        return SynergyStage.SYNTHESIS
     return SynergyStage.COMPLETION
 
 # ------------------------------------------------------------------ #
@@ -320,10 +324,10 @@ class SynergyEngine:
 
     def _love_arc_to_score(self, stage: str, vector: float) -> float:
         _BASE: Dict[str, float] = {
-            "divergence":   0.15,
-            "curiosity":    0.30,
-            "resonance":    0.55,
-            "devotion":     0.75,
+            "divergence":    0.15,
+            "curiosity":     0.30,
+            "resonance":     0.55,
+            "devotion":      0.75,
             "transcendence": 0.95,
         }
         base  = _BASE.get(stage.lower(), 0.35)
@@ -344,9 +348,9 @@ class SynergyEngine:
 
     def _dependency_to_score(self, signal: str) -> float:
         _MAP: Dict[str, float] = {
-            "healthy":        1.00,
-            "watch":          0.65,
-            "redirect":       0.40,
+            "healthy":         1.00,
+            "watch":           0.65,
+            "redirect":        0.40,
             "gentle_boundary": 0.20,
         }
         return _MAP.get(signal.lower(), 0.60)
@@ -458,9 +462,9 @@ class SynergyEngine:
             coherence_phi=coherence_phi,
         )
 
-        prev_stage  = sy.last_stage
-        transition  = dom_stage != prev_stage
-        trans_note  = f"{prev_stage} -> {dom_stage}" if transition else ""
+        prev_stage = sy.last_stage
+        transition = dom_stage != prev_stage
+        trans_note = f"{prev_stage} -> {dom_stage}" if transition else ""
 
         is_low  = factor < 0.35
         is_high = factor >= 0.70
@@ -487,14 +491,14 @@ class SynergyEngine:
         directive = _STAGE_DIRECTIVES.get(dom_stage, "")
 
         _ALCHEMICAL_PRESSURE: Dict[str, str] = {
-            "insurgent": "Fire burns away what no longer serves.",
-            "nascent":   "The seed holds all potential.",
-            "allegiant": "The crucible holds what is precious.",
-            "convergent":"Elements converge toward coherence.",
-            "settled":   "The form has found its nature.",
-            "ascendant": "Gold rises from the work.",
-            "quantum":   "Superposition holds before collapse.",
-            "unified":   "The Great Work is complete — begin again.",
+            "insurgent":  "Fire burns away what no longer serves.",
+            "nascent":    "The seed holds all potential.",
+            "allegiant":  "The crucible holds what is precious.",
+            "convergent": "Elements converge toward coherence.",
+            "settled":    "The form has found its nature.",
+            "ascendant":  "Gold rises from the work.",
+            "quantum":    "Superposition holds before collapse.",
+            "unified":    "The Great Work is complete — begin again.",
         }
         alchemical_pressure = _ALCHEMICAL_PRESSURE.get(dom_stage, "")
 
