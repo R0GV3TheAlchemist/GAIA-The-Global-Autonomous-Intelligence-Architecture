@@ -56,6 +56,11 @@ timeout = 60
 # ── Test discovery ─────────────────────────────────────────────────────────
 testpaths = ["tests"]
 
+# ============================================================================
+# RUFF — Linter + Formatter
+# Philosophy: signal over noise. Real bugs and patterns loudly; style gently.
+# Soul-layer / consciousness / resonance modules get complexity headroom.
+# ============================================================================
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -64,7 +69,7 @@ target-version = "py311"
 # `from core.xxx import ...` correctly instead of treating them as third-party.
 src = [".", "core", "src-python"]
 
-# Dirs that should never be linted (generated, vendored, migration artifacts)
+# Dirs that should never be linted (generated, vendored, notebooks, migration)
 extend-exclude = [
   ".venv",
   "venv",
@@ -73,54 +78,102 @@ extend-exclude = [
   "dist",
   "build",
   "migrations",
+  "*.ipynb",
+  "canon/generated",
+  "core/canon/generated",
 ]
 
 [tool.ruff.lint]
-# Rule sets enforced for GAIA-OS
+# Rule sets — ordered by signal value for GAIA-OS
 # E   — pycodestyle errors        (style correctness)
 # W   — pycodestyle warnings      (style warnings)
 # F   — Pyflakes                  (unused imports, undefined names)
 # I   — isort                     (import ordering)
-# N   — pep8-naming               (class/function/variable naming conventions)
+# N   — pep8-naming               (class/function/variable naming)
+# B   — flake8-bugbear            (likely bugs & design issues)
+# C4  — flake8-comprehensions     (cleaner list/dict/set comprehensions)
+# SIM — flake8-simplify           (simplifiable constructs)
 # UP  — pyupgrade                 (modernise to py311 syntax)
 # S   — flake8-bandit             (security anti-patterns)
-# RUF — Ruff-native rules         (patterns pyflakes/pycodestyle miss)
-select = ["E", "W", "F", "I", "N", "UP", "S", "RUF"]
+# RUF — Ruff-native rules         (patterns others miss)
+select = ["E", "W", "F", "I", "N", "B", "C4", "SIM", "UP", "S", "RUF"]
+
+# Enable preview rules — surfaces newer patterns ruff has identified but not
+# yet stabilised. Worth the occasional false positive for the extra signal.
+preview = true
 
 ignore = [
-  # S101 — assert statements are intentional in tests and soul-layer guards
-  # (overridden per-file below; keeping here as documentation)
+  # E501 — line too long: handled by formatter at line-length = 100.
+  # Canon docs and soul-layer symbolic expressions often need the space.
+  "E501",
+
+  # ANN — type annotations: relaxed globally. Consciousness/soul modules
+  # often have expressive signatures that annotations obscure more than help.
+  # Re-enable per-module once the API stabilises post-Phase C.
+  "ANN001", "ANN002", "ANN003", "ANN101", "ANN102", "ANN201", "ANN202",
+  "ANN204", "ANN205", "ANN206",
 
   # RUF012 — mutable class-var annotation: intentional in layer dataclasses
+  # and engine state containers.
   "RUF012",
 
-  # E501 is handled by the formatter (line-length = 100 above); no need to
-  # also lint it or you get duplicate noise.
-  "E501",
+  # B905 — zip() without strict=: too noisy during rapid iteration.
+  "B905",
+
+  # SIM108 — ternary instead of if-else: sometimes the explicit form is
+  # clearer in multi-branch soul-layer logic.
+  "SIM108",
+
+  # S101 — assert: overridden per-file below for tests; globally kept off
+  # because soul-layer runtime guards use assert intentionally.
+  "S101",
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# __init__.py files use wildcard re-exports; F401 (unused import) is a
-# false positive there. F403 (star import) is intentional.
+# __init__.py — wildcard re-exports are intentional; F401/F403 are false positives.
 "__init__.py" = ["F401", "F403"]
 
-# Test files: asserts are required (S101), type annotations optional,
-# docstrings not enforced, and bandit security rules too strict for fixtures.
-"tests/**/*.py" = ["S101", "S105", "S106", "ANN", "D"]
+# All test files — asserts required, annotations optional, docs not enforced,
+# bandit hardcoded-value rules too strict for test fixtures.
+"tests/**/*.py"                = ["S101", "S105", "S106", "S311", "ANN", "D", "N802"]
+"tests/soul_mirror/**/*.py"    = ["S101", "S105", "S106", "S311", "ANN", "D", "N802"]
+"tests/governance/**/*.py"     = ["S101", "S105", "S106", "S311", "ANN", "D", "N802"]
 
-# Soul-mirror test scaffold: same relaxation as above
-"tests/soul_mirror/**/*.py" = ["S101", "S105", "S106", "ANN", "D"]
-"tests/governance/**/*.py"  = ["S101", "S105", "S106", "ANN", "D"]
+# Soul-layer / consciousness / resonance engine modules — these modules have
+# inherently high McCabe complexity (multi-branch state machines, emotional
+# arc logic, symbolic pattern matching). Silence C901 complexity warnings
+# here; they are not bugs.
+"core/soul_mirror_engine.py"   = ["C901", "PLR0912", "PLR0915"]
+"core/shadow_integration.py"   = ["C901", "PLR0912", "PLR0915"]
+"core/shadow_engine.py"        = ["C901", "PLR0912", "PLR0915"]
+"core/transpersonal_engine.py" = ["C901", "PLR0912", "PLR0915"]
+"core/individuation.py"        = ["C901", "PLR0912", "PLR0915"]
+"core/dream_weaver.py"         = ["C901", "PLR0912", "PLR0915"]
+"core/gaian_runtime.py"        = ["C901", "PLR0912", "PLR0915"]
+"core/agentic_loop.py"         = ["C901", "PLR0912", "PLR0915"]
+"core/affect_inference.py"     = ["C901", "PLR0912", "PLR0915"]
+"core/canon_graph.py"          = ["C901", "PLR0912", "PLR0915"]
+"core/cultural_calibration.py" = ["C901", "PLR0912", "PLR0915"]
+"core/mineral_profile.py"      = ["C901", "PLR0912", "PLR0915"]
+"core/somatic_interface.py"    = ["C901", "PLR0912", "PLR0915"]
+
+# Phase C sprint — F401 (unused import) temporarily relaxed in core/ while
+# modules are actively being wired together. Remove this line post-sprint.
+"core/**/*.py" = ["F401"]
+
+[tool.ruff.lint.mccabe]
+# Default is 10. Raised to 15 for engine modules (exempted further above).
+# This prevents false complexity alarms on legitimate orchestration code.
+max-complexity = 15
 
 [tool.ruff.lint.isort]
-# Declare first-party packages so isort groups them correctly and doesn't
-# misclassify `from core.xxx` as a third-party import.
+# Declare first-party packages so isort groups them correctly.
 known-first-party = ["core", "gaia", "api"]
 split-on-trailing-comma = true
 force-sort-within-sections = true
 
 [tool.ruff.format]
-# Use double quotes everywhere (matches Black convention across the codebase)
+# Double quotes everywhere — matches Black convention across the codebase.
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
