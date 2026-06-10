@@ -108,12 +108,14 @@ ignore = [
   # UP007: Optional[X]/Union[X,Y] → X|None/X|Y
   # UP006: List/Dict/Tuple → list/dict/tuple
   # UP035: typing imports deprecated in 3.9+
+  # UP038: isinstance(x, (A, B)) → isinstance(x, A | B)
   # These are cosmetic modernisations, NOT bugs. Auto-fix in one pass
-  # when ready: ruff check . --select UP006,UP007,UP035,UP045 --fix
+  # when ready: ruff check . --select UP006,UP007,UP035,UP038,UP045 --fix
   "UP045",
   "UP007",
   "UP006",
   "UP035",
+  "UP038",
 
   # ── Annotation rules ────────────────────────────────────────────────
   # ANN: type annotations — relaxed globally during rapid Phase C dev.
@@ -157,6 +159,16 @@ ignore = [
 "src-python/quantum_chemistry/**/*.py" = ["F401", "F811", "S101", "N803", "N806"]
 "src-python/sovereign_memory/**/*.py" = ["F401", "F811"]
 "src-python/**/__init__.py"           = ["F401", "F403", "F811"]
+
+# ── API layer: re-exports + conditional imports are intentional ──────────────
+"api/**/*.py" = ["F401"]
+
+# ── Core modules with conditional/guarded imports ───────────────────────────
+"core/codex_stage_engine.py"       = ["F401"]
+"core/crystal_mineral_database.py" = ["F401"]
+"core/gcp_sensor.py"               = ["F401"]
+"core/governance/explainability.py" = ["F401"]
+"core/governance/halt_controller.py" = ["F401"]
 
 # ── Soul-layer / consciousness / resonance engines ───────────────────────────
 # These modules have inherently high McCabe complexity — multi-branch state
