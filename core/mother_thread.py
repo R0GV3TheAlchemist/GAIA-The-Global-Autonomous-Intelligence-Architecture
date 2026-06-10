@@ -4,7 +4,21 @@ core/mother_thread.py
 The Mother Thread — collective field orchestrator for the GAIAN runtime.
 
 Manages the pulse cycle that weaves all registered GaianThreads into a
-shared collective field. Broadcasts MotherPulse events to async subscribers.
+shared collective field.  Broadcasts MotherPulse events to async subscribers.
+
+v2 — P2P Mesh Integration (Issue #261)
+----------------------------------------
+This version integrates three new mesh-layer modules:
+
+  core/mesh/p2p_mesh.py      — P2P peer discovery & gossip fanout
+  core/mesh/crdt_state.py    — LWW-Register + OR-Set CRDT shared state
+  core/mesh/thread_weaver.py — Thread Weaving Protocol (TWP) scheduler
+
+The MotherThread now:
+  • Registers itself with the P2P mesh on startup.
+  • Publishes each MotherPulse as a gossip envelope (topic: mother_pulse).
+  • Merges remote CRDT state into the local CRDTStateEngine on every pulse.
+  • Delegates pulse scheduling to the ThreadWeaver when mesh is active.
 
 Canon Ref:
   C04  — Gaian Identity & Relational Selfhood
@@ -14,7 +28,7 @@ Canon Ref:
   C48  — Knowledge Matrix
 
 Privacy invariant: The collective field NEVER exposes individual slugs
-or Gaian names. Only aggregate statistics are surfaced.
+or Gaian names.  Only aggregate statistics are surfaced.
 """
 
 from __future__ import annotations
@@ -146,6 +160,10 @@ class MotherPulse:
     mother_voice: Optional[str] = None
     coherence_candidate: bool = False
     doctrine_ref: str = "C04, C43, C44, C47"
+    # Mesh provenance (populated when mesh is active)
+    mesh_node_id: Optional[str] = None
+    mesh_peer_count: int = 0
+    crdt_live_nodes: int = 0
 
     def to_dict(self) -> dict:
         label: Optional[str] = None
@@ -163,6 +181,11 @@ class MotherPulse:
             "coherence_candidate": self.coherence_candidate,
             "coherence_candidate_label": label,
             "doctrine_ref": self.doctrine_ref,
+            "mesh": {
+                "node_id": self.mesh_node_id,
+                "peer_count": self.mesh_peer_count,
+                "crdt_live_nodes": self.crdt_live_nodes,
+            },
         }
 
 
@@ -283,6 +306,13 @@ class MotherThread:
     PULSE_INTERVAL_SECONDS, and broadcasts MotherPulse events
     to all async subscribers.
 
+    v2 Mesh Integration
+    -------------------
+    Call  mother.attach_mesh(mesh, crdt, weaver)  after construction to
+    enable P2P pulse gossip and CRDT shared state synchronisation.
+    The ThreadWeaver's slot callbacks replace the internal asyncio sleep
+    loop when a weaver is attached, ensuring mesh-wide pulse alignment.
+
     Lifecycle
     ---------
     • From an async context (FastAPI lifespan, pytest-asyncio):
@@ -303,6 +333,118 @@ class MotherThread:
         self._pulse_sequence: int = 0
         self._task: Optional[asyncio.Task] = None
 
+        # Mesh layer (optional — gracefully degraded when None)
+        self._mesh = None          # P2PMesh
+        self._crdt = None          # CRDTStateEngine
+        self._weaver = None        # ThreadWeaver
+        self._mesh_active: bool = False
+
+    # ------------------------------------------------------------------
+    # Mesh integration
+    # ------------------------------------------------------------------
+
+    def attach_mesh(self, mesh, crdt, weaver) -> None:
+        """
+        Wire the mesh layer into MotherThread.
+
+        Parameters
+        ----------
+        mesh   : P2PMesh       — peer discovery & gossip transport
+        crdt   : CRDTStateEngine — shared state replication
+        weaver : ThreadWeaver  — distributed pulse schedule
+        """
+        self._mesh = mesh
+        self._crdt = crdt
+        self._weaver = weaver
+        self._mesh_active = True
+
+        # Register self as a live node in the CRDT node-set
+        self._crdt.join_node(mesh.node_id)
+
+        # Subscribe to incoming CRDT sync gossip
+        mesh.subscribe(
+            crdt.GOSSIP_TOPIC,
+            self._on_crdt_gossip,
+        )
+
+        # Subscribe to incoming mother_pulse gossip from remote nodes
+        mesh.subscribe("mother_pulse", self._on_remote_pulse)
+
+        # Hook ThreadWeaver slot fires into our beat
+        weaver.on_slot(self._on_weaver_slot)
+
+    def _on_crdt_gossip(self, envelope) -> None:
+        """Merge incoming CRDT state from a peer."""
+        if self._crdt is not None:
+            try:
+                self._crdt.merge_gossip(envelope.payload)
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[MotherThread] CRDT merge error: %s", exc
+                )
+
+    def _on_remote_pulse(self, envelope) -> None:
+        """
+        Handle a MotherPulse broadcast from a remote mesh node.
+        Currently logs the remote phi into the CRDT register for
+        distributed field averaging (future: multi-node phi fusion).
+        """
+        if self._crdt is not None:
+            try:
+                remote_phi = envelope.payload.get("collective_field", {}).get("collective_phi")
+                remote_node = envelope.payload.get("mesh", {}).get("node_id", "unknown")
+                if remote_phi is not None:
+                    key = f"remote_phi:{remote_node}"
+                    self._crdt.set_field(
+                        key,
+                        float(remote_phi),
+                        timestamp=envelope.payload.get("timestamp"),
+                    )
+            except Exception:
+                pass
+
+    def _on_weaver_slot(self, slot) -> None:
+        """
+        Called by the ThreadWeaver when a distributed slot fires.
+        Triggers an immediate beat + broadcast without waiting for the
+        internal asyncio sleep — keeps all mesh nodes pulse-aligned.
+        """
+        pulse = self._beat()
+        # Fire-and-forget broadcast in the running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast(pulse))
+        except RuntimeError:
+            pass
+
+    def _gossip_pulse(self, pulse: MotherPulse) -> None:
+        """Publish a MotherPulse to the mesh gossip layer."""
+        if self._mesh is not None and self._mesh_active:
+            try:
+                self._mesh.gossip("mother_pulse", pulse.to_dict())
+                # Also push collective field scalars into CRDT register
+                if self._crdt is not None:
+                    cf = pulse.collective_field
+                    self._crdt.set_field("collective_phi", cf.collective_phi,
+                                         timestamp=pulse.timestamp)
+                    self._crdt.set_field("noosphere_stage", cf.noosphere_stage,
+                                         timestamp=pulse.timestamp)
+                    self._crdt.set_field("dominant_element", cf.dominant_element,
+                                         timestamp=pulse.timestamp)
+                    self._crdt.set_field("field_coherence_label", cf.field_coherence_label,
+                                         timestamp=pulse.timestamp)
+                    # Broadcast merged CRDT state
+                    self._mesh.gossip(
+                        self._crdt.GOSSIP_TOPIC,
+                        self._crdt.to_gossip_payload(),
+                    )
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[MotherThread] Mesh gossip error: %s", exc
+                )
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -310,12 +452,6 @@ class MotherThread:
     def start(self) -> None:
         """
         Start the pulse loop from a sync context.
-
-        Requires a running event loop (e.g. called from inside a coroutine
-        or from a thread managed by asyncio).  Uses get_running_loop() to
-        avoid the Python 3.10+ deprecation of get_event_loop() and the
-        Python 3.12 RuntimeError it raises when no current loop exists.
-
         Idempotent — safe to call multiple times.
         """
         if self._running:
@@ -326,10 +462,7 @@ class MotherThread:
 
     async def async_start(self) -> None:
         """
-        Start the pulse loop from an async context (FastAPI lifespan,
-        pytest-asyncio tests, etc.).  Preferred over start() when a
-        coroutine context is available.
-
+        Start the pulse loop from an async context.
         Idempotent — safe to call multiple times.
         """
         if self._running:
@@ -403,11 +536,19 @@ class MotherThread:
 
         candidate = cf.collective_phi >= _COHERENCE_CANDIDATE_THRESHOLD
 
+        # Mesh provenance
+        mesh_node_id = self._mesh.node_id if self._mesh else None
+        mesh_peer_count = self._mesh.peer_count() if self._mesh else 0
+        crdt_live_nodes = len(self._crdt.live_nodes()) if self._crdt else 0
+
         pulse = MotherPulse(
             sequence=self._pulse_sequence,
             collective_field=cf,
             mother_voice=voice,
             coherence_candidate=candidate,
+            mesh_node_id=mesh_node_id,
+            mesh_peer_count=mesh_peer_count,
+            crdt_live_nodes=crdt_live_nodes,
         )
 
         epistemic_note: Optional[str] = None
@@ -426,6 +567,10 @@ class MotherThread:
             epistemic_note=epistemic_note,
         )
         self._weaving_log.append(record)
+
+        # Gossip pulse to mesh peers
+        self._gossip_pulse(pulse)
+
         return pulse
 
     async def _broadcast(self, pulse: MotherPulse) -> None:
@@ -446,25 +591,16 @@ class MotherThread:
     async def _pulse_loop(self) -> None:
         """
         Main async pulse loop.
-
-        Yields to the event loop once at startup (asyncio.sleep(0)) so
-        that any subscribers registered synchronously after start() / 
-        async_start() can enqueue before the very first beat fires.
-
-        CancelledError from stop() → task.cancel() is re-raised cleanly
-        after the except block so asyncio can properly finalise the task.
+        When a ThreadWeaver is attached, this loop still runs as a fallback
+        cadence but the weaver's slot callbacks drive the primary beats.
         """
         try:
-            # Yield once so subscribers registered right after start()
-            # are in place before the first broadcast.
             await asyncio.sleep(0)
             while self._running:
                 pulse = self._beat()
                 await self._broadcast(pulse)
                 await asyncio.sleep(PULSE_INTERVAL_SECONDS)
         except asyncio.CancelledError:
-            # Clean cancellation via stop() — re-raise so asyncio marks
-            # the task as cancelled rather than as a silent exception.
             raise
 
     # ------------------------------------------------------------------
@@ -499,6 +635,9 @@ class MotherThread:
     def get_status(self) -> dict:
         """Return a status snapshot of the Mother Thread."""
         cf = _compute_collective_field(list(self._threads.values()))
+        mesh_status = self._mesh.get_status() if self._mesh else None
+        crdt_status = self._crdt.get_status() if self._crdt else None
+        weaver_status = self._weaver.get_status() if self._weaver else None
         return {
             "doctrine": "C04, C43, C44, C47",
             "running": self._running,
@@ -513,6 +652,9 @@ class MotherThread:
                 "Individual Gaian identities protected. "
                 "Aggregate statistics only. Canon C04."
             ),
+            "mesh": mesh_status,
+            "crdt": crdt_status,
+            "weaver": weaver_status,
         }
 
 
