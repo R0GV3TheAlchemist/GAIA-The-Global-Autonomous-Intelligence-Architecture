@@ -59,10 +59,17 @@ testpaths = ["tests"]
 # ============================================================================
 # RUFF — Linter + Formatter
 # Philosophy: signal over noise. Real bugs loud; style gentle; soul-layer free.
+#
+# FUTURE-PROOF NOTES (learned the hard way):
+#   - UP038: isinstance(x,(A,B)) → A|B  — ignore until codebase migrated
+#   - UP006/007/035/045: typing modernisation — ignore until migration sprint
+#   - F401: unused imports — ignored globally; many are conditional/re-exports
+#   - PL rules added for pylint-equivalent checks (PLR complexity etc.)
+#   - target-version py312 = strictest UP checks; all suppressed below safely
 # ============================================================================
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 # First-party source roots — resolves `from core.xxx import ...` correctly.
 src = [".", "core", "src-python"]
@@ -93,57 +100,59 @@ extend-exclude = [
 # UP   — pyupgrade (modernise syntax — selectively ignored below)
 # S    — flake8-bandit (security)
 # RUF  — Ruff-native rules
-select = ["E", "W", "F", "I", "N", "B", "C4", "SIM", "UP", "S", "RUF"]
+# PL   — Pylint-equivalent (complexity, convention, refactor, error)
+select = ["E", "W", "F", "I", "N", "B", "C4", "SIM", "UP", "S", "RUF", "PL"]
 
 preview = true
 
 ignore = [
   # ── Style / formatting ──────────────────────────────────────────────
-  # E501: line too long — formatter handles at line-length=100.
-  # Canon docs and soul-layer symbolic expressions need the space.
-  "E501",
+  "E501",   # line too long — formatter handles; canon docs need the space
 
-  # ── Type annotation modernisation (UP04x) ───────────────────────────
-  # UP045: Optional[X] → X|None  ← THE MAIN ECHO SOURCE (~800 instances)
-  # UP007: Optional[X]/Union[X,Y] → X|None/X|Y
-  # UP006: List/Dict/Tuple → list/dict/tuple
-  # UP035: typing imports deprecated in 3.9+
-  # UP038: isinstance(x, (A, B)) → isinstance(x, A | B)
-  # These are cosmetic modernisations, NOT bugs. Auto-fix in one pass
-  # when ready: ruff check . --select UP006,UP007,UP035,UP038,UP045 --fix
-  "UP045",
-  "UP007",
-  "UP006",
-  "UP035",
-  "UP038",
+  # ── Unused imports ──────────────────────────────────────────────────
+  # F401: many imports are conditional (try/except), re-exported, or used
+  # at runtime via importlib. Suppressed globally during active refactoring.
+  # Re-enable per-module once API surface stabilises.
+  "F401",
+
+  # ── Type annotation modernisation (UP) ──────────────────────────────
+  # The entire codebase uses Python 3.9-era typing style (Optional[X], List[X]
+  # etc.). These are cosmetic — NOT bugs. Suppress until migration sprint.
+  # To fix in one shot: ruff check . --select UP006,UP007,UP035,UP038,UP045 --fix
+  "UP006",  # List/Dict/Tuple → list/dict/tuple
+  "UP007",  # Optional[X]/Union[X,Y] → X|None / X|Y
+  "UP035",  # typing imports deprecated in 3.9+
+  "UP038",  # isinstance(x,(A,B)) → isinstance(x, A|B)
+  "UP045",  # Optional[X] → X|None  (← ~800 instances)
 
   # ── Annotation rules ────────────────────────────────────────────────
-  # ANN: type annotations — relaxed globally during rapid Phase C dev.
+  # Relaxed globally during rapid Phase C dev.
   # Re-enable per-module once API stabilises post-sprint.
   "ANN001", "ANN002", "ANN003", "ANN101", "ANN102",
   "ANN201", "ANN202", "ANN204", "ANN205", "ANN206",
 
   # ── Ruff-native ─────────────────────────────────────────────────────
-  # RUF012: mutable class-var annotation — intentional in engine state containers.
-  "RUF012",
-  # RUF059: unpacked variable unused — too noisy in router pattern matching.
-  "RUF059",
+  "RUF012", # mutable class-var annotation — intentional in engine state containers
+  "RUF059", # unpacked variable unused — too noisy in router pattern matching
 
   # ── Bugbear ─────────────────────────────────────────────────────────
-  # B905: zip() without strict= — too noisy during rapid iteration.
-  "B905",
+  "B905",   # zip() without strict= — too noisy during rapid iteration
 
   # ── Simplify ────────────────────────────────────────────────────────
-  # SIM108: ternary vs if-else — explicit form clearer in multi-branch logic.
-  "SIM108",
+  "SIM108", # ternary vs if-else — explicit form clearer in multi-branch logic
 
   # ── Security ────────────────────────────────────────────────────────
-  # S101: assert — soul-layer runtime guards use assert intentionally.
-  # Overridden per-file for tests below.
-  "S101",
-  # S311: random — used in resonance/schumann modules for field modelling,
-  # not cryptography. Bandit doesn't know the difference.
-  "S311",
+  "S101",   # assert — soul-layer runtime guards use assert intentionally
+  "S311",   # random — used for field modelling, not cryptography
+
+  # ── Pylint complexity ────────────────────────────────────────────────
+  # Soul-layer state machines are intentionally complex. Exempted globally;
+  # per-module overrides below for the most extreme cases.
+  "PLR0912", # too many branches
+  "PLR0913", # too many arguments
+  "PLR0915", # too many statements
+  "PLR2004", # magic value comparison — physics/resonance constants are fine
+  "PLW0603", # global statement — used in singleton engine patterns
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -164,37 +173,37 @@ ignore = [
 "api/**/*.py" = ["F401"]
 
 # ── Core modules with conditional/guarded imports ───────────────────────────
-"core/codex_stage_engine.py"       = ["F401"]
-"core/crystal_mineral_database.py" = ["F401"]
-"core/gcp_sensor.py"               = ["F401"]
+"core/codex_stage_engine.py"        = ["F401"]
+"core/crystal_mineral_database.py"  = ["F401"]
+"core/gcp_sensor.py"                = ["F401"]
 "core/governance/explainability.py" = ["F401"]
 "core/governance/halt_controller.py" = ["F401"]
 
 # ── Soul-layer / consciousness / resonance engines ───────────────────────────
-# These modules have inherently high McCabe complexity — multi-branch state
-# machines, emotional arc logic, symbolic pattern matching. Not bugs.
-"core/soul_mirror_engine.py"    = ["C901", "PLR0912", "PLR0915"]
-"core/shadow_integration.py"    = ["C901", "PLR0912", "PLR0915"]
-"core/shadow_engine.py"         = ["C901", "PLR0912", "PLR0915"]
-"core/transpersonal_engine.py"  = ["C901", "PLR0912", "PLR0915"]
-"core/individuation.py"         = ["C901", "PLR0912", "PLR0915"]
-"core/dream_weaver.py"          = ["C901", "PLR0912", "PLR0915"]
-"core/gaian_runtime.py"         = ["C901", "PLR0912", "PLR0915"]
-"core/agentic_loop.py"          = ["C901", "PLR0912", "PLR0915"]
-"core/affect_inference.py"      = ["C901", "PLR0912", "PLR0915"]
-"core/canon_graph.py"           = ["C901", "PLR0912", "PLR0915"]
-"core/cultural_calibration.py" = ["C901", "PLR0912", "PLR0915"]
-"core/mineral_profile.py"       = ["C901", "PLR0912", "PLR0915"]
-"core/somatic_interface.py"     = ["C901", "PLR0912", "PLR0915"]
-"core/alchemical_pipeline.py"   = ["C901", "PLR0912", "PLR0915"]
-"core/emotional_arc.py"         = ["C901", "PLR0912", "PLR0915"]
-"core/emotional_codex.py"       = ["C901", "PLR0912", "PLR0915"]
+# Multi-branch state machines, emotional arc logic, symbolic pattern matching.
+# High McCabe complexity is intentional, not a bug.
+"core/soul_mirror_engine.py"     = ["C901", "PLR0912", "PLR0915"]
+"core/shadow_integration.py"     = ["C901", "PLR0912", "PLR0915"]
+"core/shadow_engine.py"          = ["C901", "PLR0912", "PLR0915"]
+"core/transpersonal_engine.py"   = ["C901", "PLR0912", "PLR0915"]
+"core/individuation.py"          = ["C901", "PLR0912", "PLR0915"]
+"core/dream_weaver.py"           = ["C901", "PLR0912", "PLR0915"]
+"core/gaian_runtime.py"          = ["C901", "PLR0912", "PLR0915"]
+"core/agentic_loop.py"           = ["C901", "PLR0912", "PLR0915"]
+"core/affect_inference.py"       = ["C901", "PLR0912", "PLR0915"]
+"core/canon_graph.py"            = ["C901", "PLR0912", "PLR0915"]
+"core/cultural_calibration.py"   = ["C901", "PLR0912", "PLR0915"]
+"core/mineral_profile.py"        = ["C901", "PLR0912", "PLR0915"]
+"core/somatic_interface.py"      = ["C901", "PLR0912", "PLR0915"]
+"core/alchemical_pipeline.py"    = ["C901", "PLR0912", "PLR0915"]
+"core/emotional_arc.py"          = ["C901", "PLR0912", "PLR0915"]
+"core/emotional_codex.py"        = ["C901", "PLR0912", "PLR0915"]
 "core/resonance_field_engine.py" = ["C901", "PLR0912", "PLR0915"]
-"core/schumann_alignment.py"    = ["C901", "PLR0912", "PLR0915"]
-"core/gaian_birth.py"           = ["C901", "PLR0912", "PLR0915"]
-"core/gaian_identity.py"        = ["C901", "PLR0912", "PLR0915"]
-"core/consent_ledger.py"        = ["C901", "PLR0912", "PLR0915"]
-"core/inference_router.py"      = ["C901", "PLR0912", "PLR0915"]
+"core/schumann_alignment.py"     = ["C901", "PLR0912", "PLR0915"]
+"core/gaian_birth.py"            = ["C901", "PLR0912", "PLR0915"]
+"core/gaian_identity.py"         = ["C901", "PLR0912", "PLR0915"]
+"core/consent_ledger.py"         = ["C901", "PLR0912", "PLR0915"]
+"core/inference_router.py"       = ["C901", "PLR0912", "PLR0915"]
 
 [tool.ruff.lint.mccabe]
 # Default 10 → raised to 15. Soul-layer modules exempted further above.
