@@ -115,42 +115,61 @@ ignore = [
   # ── Unused imports ──────────────────────────────────────────────────
   # F401: many imports are conditional (try/except), re-exported, or used
   # at runtime via importlib. Suppressed globally during active refactoring.
-  # Re-enable per-module once API surface stabilises.
   "F401",
 
+  # ── Import ordering (isort) ─────────────────────────────────────────
+  # I001: import block sorting — codebase uses intentional grouping with
+  # comments and conditional blocks. Auto-sort would break crypto/optional
+  # import guards. Enable per-module when ready for migration sprint.
+  "I001",
+
   # ── Type annotation modernisation (UP) ──────────────────────────────
-  # The entire codebase uses Python 3.9-era typing style (Optional[X], List[X]
-  # etc.). These are cosmetic — NOT bugs. Suppress until migration sprint.
-  # To fix in one shot: ruff check . --select UP006,UP007,UP035,UP038,UP045 --fix
+  # Entire codebase uses Python 3.9-era typing. Cosmetic, not bugs.
   "UP006",  # List/Dict/Tuple → list/dict/tuple
   "UP007",  # Optional[X]/Union[X,Y] → X|None / X|Y
+  "UP017",  # timezone.utc → datetime.UTC  (hundreds of instances)
   "UP035",  # typing imports deprecated in 3.9+
+  "UP037",  # quoted type annotations
   "UP038",  # isinstance(x,(A,B)) → isinstance(x, A|B)
-  "UP045",  # Optional[X] → X|None  (← ~800 instances)
+  "UP042",  # class X(str, Enum) → StrEnum  (suppress until migration sprint)
+  "UP045",  # Optional[X] → X|None  (~800 instances)
 
   # ── Annotation rules ────────────────────────────────────────────────
-  # Relaxed globally during rapid Phase C dev.
-  # Re-enable per-module once API stabilises post-sprint.
   "ANN001", "ANN002", "ANN003", "ANN101", "ANN102",
   "ANN201", "ANN202", "ANN204", "ANN205", "ANN206",
 
-  # ── Ruff-native ─────────────────────────────────────────────────────
-  "RUF012", # mutable class-var annotation — intentional in engine state containers
-  "RUF059", # unpacked variable unused — too noisy in router pattern matching
+  # ── Naming ──────────────────────────────────────────────────────────
+  # N806: uppercase variable in function — physics/cache constants (KEY, UTC)
+  # are intentionally uppercase for readability in API handlers.
+  "N806",
 
   # ── Bugbear ─────────────────────────────────────────────────────────
+  "B008",   # Depends() in default args — standard FastAPI dependency injection pattern
+  "B904",   # raise X inside except without `from` — suppressed during active dev
   "B905",   # zip() without strict= — too noisy during rapid iteration
 
   # ── Simplify ────────────────────────────────────────────────────────
+  "SIM105", # contextlib.suppress — try/except/pass is explicit and intentional
   "SIM108", # ternary vs if-else — explicit form clearer in multi-branch logic
 
   # ── Security ────────────────────────────────────────────────────────
   "S101",   # assert — soul-layer runtime guards use assert intentionally
-  "S311",   # random — used for field modelling, not cryptography
+  "S110",   # try/except/pass — suppressed globally; matches SIM105 intent
+  "S311",   # random — field modelling, not cryptography
+
+  # ── Ruff-native ─────────────────────────────────────────────────────
+  "RUF001", # ambiguous unicode in strings (EN DASH) — intentional in UX copy
+  "RUF002", # ambiguous unicode in docstrings — intentional in documentation
+  "RUF012", # mutable class-var annotation — intentional in engine state containers
+  "RUF021", # ambiguous and/or chaining — explicit form preferred in soul-layer logic
+  "RUF059", # unpacked variable unused — too noisy in router pattern matching
+
+  # ── Pylint: import placement ─────────────────────────────────────────
+  # PLC0415: import inside function — used for lazy/conditional loading
+  # (e.g. re, uuid, math imported inside validators to avoid circular deps)
+  "PLC0415",
 
   # ── Pylint complexity ────────────────────────────────────────────────
-  # Soul-layer state machines are intentionally complex. Exempted globally;
-  # per-module overrides below for the most extreme cases.
   "PLR0912", # too many branches
   "PLR0913", # too many arguments
   "PLR0915", # too many statements
