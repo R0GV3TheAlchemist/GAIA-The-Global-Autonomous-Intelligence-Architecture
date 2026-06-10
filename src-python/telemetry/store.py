@@ -71,8 +71,8 @@ class TelemetryStore:
         """Append a single TelemetryEvent. Never updates existing rows."""
         d = event.to_dict()
         d["degraded"] = int(d["degraded"])  # SQLite has no bool
-        cols = ", ".join(d.keys())
-        placeholders = ", ".join(f":{k}" for k in d.keys())
+        cols = ", ".join(d)
+        placeholders = ", ".join(f":{k}" for k in d)
         sql = f"INSERT OR IGNORE INTO telemetry_events ({cols}) VALUES ({placeholders})"
         with self._conn:
             self._conn.execute(sql, d)
