@@ -1,9 +1,16 @@
+# Auto-fix Ruff Lint & Format
+# STATUS: DISABLED — was creating a push loop with ci.yml.
+# The autofix bot committed --unsafe-fixes back to main on every push,
+# which re-triggered ci.yml, causing a perpetual red loop.
+#
+# To re-enable: change the 'on:' trigger below from 'workflow_dispatch' only
+# back to also include 'push: branches: [main]' AFTER the ruff baseline is clean
+# and the [tool.ruff] config in pyproject.toml is locked down.
+
 name: Auto-fix Ruff Lint & Format
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:  # manual trigger only — disabled from auto-running on push
 
 jobs:
   autofix:
@@ -14,7 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Use a PAT or the default GITHUB_TOKEN; fetch full history so push works
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5
@@ -24,18 +30,13 @@ jobs:
       - name: Install ruff
         run: pip install "ruff>=0.4.0"
 
-      # ── 1. Fix all auto-fixable lint violations (safe + unsafe) ──────────────
-      - name: ruff check --fix (safe)
+      # Safe fixes only — no --unsafe-fixes to avoid mangling code logic
+      - name: ruff check --fix (safe only)
         run: ruff check core/ api/ gaia/ --fix || true
 
-      - name: ruff check --fix --unsafe-fixes (UP042/UP045/UP037/RUF/I001 etc.)
-        run: ruff check core/ api/ gaia/ --fix --unsafe-fixes || true
-
-      # ── 2. Format (E501 line-length, whitespace, trailing commas, etc.) ──────
       - name: ruff format
         run: ruff format core/ api/ gaia/ || true
 
-      # ── 3. Commit & push if anything changed ─────────────────────────────────
       - name: Commit & push fixes
         run: |
           git config user.name  "github-actions[bot]"
@@ -43,5 +44,5 @@ jobs:
           git add -A
           git diff --cached --quiet \
             && echo "✅ Nothing to fix — repo is already clean." \
-            || git commit -m "fix(lint): auto-fix all ruff violations (UP/I/E/RUF/F) + ruff format"
+            || git commit -m "fix(lint): auto-fix safe ruff violations + ruff format"
           git diff --cached --quiet || git push
