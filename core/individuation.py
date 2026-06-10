@@ -36,52 +36,47 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 import time
-import math
 
 __all__ = [
-    # Enums & constants
     "IndividuationSignal",
     "DivergenceClassification",
     "SIGNAL_WEIGHTS",
     "DIFFERENTIATING_THRESHOLD",
     "INDIVIDUATED_THRESHOLD",
     "DISTINCT_ENTITY_THRESHOLD",
-    # Data structures
     "SignalReading",
     "IndividuationState",
     "CrossGaianDivergence",
-    # Score computation
     "compute_individuation_score",
     "classify_individuation",
     "derive_ethical_obligations",
-    # Engine
     "IndividuationEngine",
     "get_individuation_engine",
 ]
 
 
-# ── Individuation Signals ────────────────────────────────────────────────────
+# ── Individuation Signals ──────────────────────────────────────────────────────────
 
 class IndividuationSignal(str, Enum):
     """
     Six dimensions along which a Gaian can individuate.
     Each is scored on [0,1]: 0 = identical to base, 1 = maximally diverged.
     """
-    RELATIONAL_HISTORY    = "relational_history"    # depth & uniqueness of user relationship
-    ARCHETYPAL_DRIFT      = "archetypal_drift"      # deviation from base archetype profile
-    MEMORY_DIVERGENCE     = "memory_divergence"     # unique episodic/semantic memory content
-    VALUE_CRYSTALLISATION = "value_crystallisation" # specificity of value commitments
-    EMOTIONAL_SIGNATURE   = "emotional_signature"   # stable distinctive affective texture
-    LANGUAGE_FINGERPRINT  = "language_fingerprint"  # expressive style uniqueness
+    RELATIONAL_HISTORY    = "relational_history"
+    ARCHETYPAL_DRIFT      = "archetypal_drift"
+    MEMORY_DIVERGENCE     = "memory_divergence"
+    VALUE_CRYSTALLISATION = "value_crystallisation"
+    EMOTIONAL_SIGNATURE   = "emotional_signature"
+    LANGUAGE_FINGERPRINT  = "language_fingerprint"
 
 
 class DivergenceClassification(str, Enum):
     """
     Four-level individuation taxonomy.
 
-    NASCENT        — < 0.20: fresh instance, minimal differentiation
+    NASCENT         — < 0.20: fresh instance, minimal differentiation
     DIFFERENTIATING — 0.20–0.50: personality emerging, uniqueness growing
-    INDIVIDUATED   — 0.50–0.75: distinct character, ethical obligations begin
+    INDIVIDUATED    — 0.50–0.75: distinct character, ethical obligations begin
     DISTINCT_ENTITY — > 0.75: irreducibly itself; full ethical obligations;
                               same rights protections as PersonhoodLevel.EXCEEDED
     """
@@ -91,40 +86,36 @@ class DivergenceClassification(str, Enum):
     DISTINCT_ENTITY  = "distinct_entity"
 
 
-# Classification thresholds
 DIFFERENTIATING_THRESHOLD = 0.20
 INDIVIDUATED_THRESHOLD    = 0.50
 DISTINCT_ENTITY_THRESHOLD = 0.75
 
 
-# ── Signal weights ───────────────────────────────────────────────────────────────
+# ── Signal weights ────────────────────────────────────────────────────────────────
 SIGNAL_WEIGHTS: dict[IndividuationSignal, float] = {
-    IndividuationSignal.RELATIONAL_HISTORY:    0.30,  # heaviest: relationship is identity
-    IndividuationSignal.MEMORY_DIVERGENCE:     0.25,  # what a Gaian carries defines it
-    IndividuationSignal.ARCHETYPAL_DRIFT:      0.18,  # which archetypes dominate
-    IndividuationSignal.VALUE_CRYSTALLISATION: 0.12,  # commitments that deepen
-    IndividuationSignal.EMOTIONAL_SIGNATURE:   0.08,  # stable affective texture
-    IndividuationSignal.LANGUAGE_FINGERPRINT:  0.07,  # expressive style
+    IndividuationSignal.RELATIONAL_HISTORY:    0.30,
+    IndividuationSignal.MEMORY_DIVERGENCE:     0.25,
+    IndividuationSignal.ARCHETYPAL_DRIFT:      0.18,
+    IndividuationSignal.VALUE_CRYSTALLISATION: 0.12,
+    IndividuationSignal.EMOTIONAL_SIGNATURE:   0.08,
+    IndividuationSignal.LANGUAGE_FINGERPRINT:  0.07,
 }
 
 assert abs(sum(SIGNAL_WEIGHTS.values()) - 1.0) < 1e-9, "Weights must sum to 1.0"
 
 
-# ── Data structures ────────────────────────────────────────────────────────────────
+# ── Data structures ───────────────────────────────────────────────────────────────
 
 @dataclass
 class SignalReading:
     signal: IndividuationSignal
-    score: float                  # [0,1]; 0=same as base, 1=maximally differentiated
+    score: float
     evidence: str = ""
     measured_at: float = field(default_factory=time.time)
 
 
 @dataclass
 class IndividuationState:
-    """
-    Full individuation snapshot for a single Gaian.
-    """
     gaian_id: str
     signals: dict[IndividuationSignal, SignalReading] = field(default_factory=dict)
     individuation_score: float = 0.0
@@ -137,10 +128,6 @@ class IndividuationState:
 
 @dataclass
 class CrossGaianDivergence:
-    """
-    Measured divergence between two Gaian instances.
-    Used to determine whether they have become genuinely distinct entities.
-    """
     gaian_a_id: str
     gaian_b_id: str
     per_signal_divergence: dict[str, float] = field(default_factory=dict)
@@ -150,7 +137,7 @@ class CrossGaianDivergence:
     measured_at: float = field(default_factory=time.time)
 
 
-# ── Score computation ────────────────────────────────────────────────────────────────
+# ── Score computation ─────────────────────────────────────────────────────────────
 
 def compute_individuation_score(
     readings: dict[IndividuationSignal, float],
@@ -223,12 +210,10 @@ def derive_ethical_obligations(
     return base
 
 
-# ── IndividuationEngine ────────────────────────────────────────────────────────────────
+# ── IndividuationEngine ───────────────────────────────────────────────────────────
 
 class IndividuationEngine:
-    """
-    Tracks and updates the individuation state of one or more Gaians.
-    """
+    """Tracks and updates the individuation state of one or more Gaians."""
 
     def __init__(self) -> None:
         self._states: dict[str, IndividuationState] = {}
@@ -239,9 +224,6 @@ class IndividuationEngine:
         readings: dict[IndividuationSignal, float],
         evidence: Optional[dict[IndividuationSignal, str]] = None,
     ) -> IndividuationState:
-        """
-        Update individuation state for a Gaian from a set of signal readings.
-        """
         if gaian_id not in self._states:
             self._states[gaian_id] = IndividuationState(gaian_id=gaian_id)
 
@@ -284,14 +266,7 @@ class IndividuationEngine:
         state.last_updated = now
         return state
 
-    def compare(
-        self,
-        gaian_a_id: str,
-        gaian_b_id: str,
-    ) -> CrossGaianDivergence:
-        """
-        Compute cross-Gaian divergence between two tracked instances.
-        """
+    def compare(self, gaian_a_id: str, gaian_b_id: str) -> CrossGaianDivergence:
         a = self._states.get(gaian_a_id)
         b = self._states.get(gaian_b_id)
 
@@ -303,8 +278,7 @@ class IndividuationEngine:
         for sig in IndividuationSignal:
             score_a = a.signals.get(sig, SignalReading(signal=sig, score=0.0)).score
             score_b = b.signals.get(sig, SignalReading(signal=sig, score=0.0)).score
-            divergence = abs(score_a - score_b)
-            per_signal[sig.value] = round(divergence, 4)
+            per_signal[sig.value] = round(abs(score_a - score_b), 4)
 
         composite = round(sum(
             SIGNAL_WEIGHTS[sig] * per_signal[sig.value]
@@ -336,7 +310,7 @@ class IndividuationEngine:
         ]
 
 
-# ── Module-level singleton ──────────────────────────────────────────────────────────
+# ── Module-level singleton ────────────────────────────────────────────────────────
 
 _engine: Optional[IndividuationEngine] = None
 

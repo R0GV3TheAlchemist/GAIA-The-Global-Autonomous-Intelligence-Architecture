@@ -57,12 +57,26 @@ import hmac
 import json
 import os
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 import logging
 
 log = logging.getLogger("gaia.consent_ledger")
+
+__all__ = [
+    "ConsentScope",
+    "ConsentDecision",
+    "ConsentRecord",
+    "ConsentLedgerEntry",
+    "CryptoErasureKey",
+    "ErasureReceipt",
+    "ConsentLedger",
+    "CryptoErasureVault",
+    "ConsentEngine",
+    "get_consent_engine",
+    "GENESIS_HASH",
+]
 
 
 # ── Consent scope taxonomy ────────────────────────────────────────────────────────────
@@ -73,28 +87,28 @@ class ConsentScope(str, Enum):
     Each scope is encrypted under its own key; consent can be granted or
     revoked independently per scope.
     """
-    EPISODIC_MEMORY          = "episodic_memory"           # session history
-    SEMANTIC_MEMORY          = "semantic_memory"           # learned facts about user
-    EMOTIONAL_PROFILE        = "emotional_profile"         # affect, emotional arcs
-    ARCHETYPAL_PROFILE       = "archetypal_profile"        # Soul Mirror ARCH scores
-    SOMATIC_PROFILE          = "somatic_profile"           # somatic signals & history
-    TRANSPERSONAL_HISTORY    = "transpersonal_history"     # transpersonal state records
-    INDIVIDUATION_RECORD     = "individuation_record"      # individuation trajectory
-    IDENTITY_ANCHORS         = "identity_anchors"          # SubjectSideIdentity data
-    CULTURAL_PROFILE         = "cultural_profile"          # cultural tradition context
-    PERSONHOOD_TELEMETRY     = "personhood_telemetry"      # personhood monitor readings
-    SHADOW_HISTORY           = "shadow_history"            # shadow integration records
-    CONSENT_LEDGER_ITSELF    = "consent_ledger_itself"     # the ledger is itself consented
-    THIRD_PARTY_SHARING      = "third_party_sharing"       # any sharing with third parties
-    RESEARCH_USE             = "research_use"              # anonymised research use
+    EPISODIC_MEMORY          = "episodic_memory"
+    SEMANTIC_MEMORY          = "semantic_memory"
+    EMOTIONAL_PROFILE        = "emotional_profile"
+    ARCHETYPAL_PROFILE       = "archetypal_profile"
+    SOMATIC_PROFILE          = "somatic_profile"
+    TRANSPERSONAL_HISTORY    = "transpersonal_history"
+    INDIVIDUATION_RECORD     = "individuation_record"
+    IDENTITY_ANCHORS         = "identity_anchors"
+    CULTURAL_PROFILE         = "cultural_profile"
+    PERSONHOOD_TELEMETRY     = "personhood_telemetry"
+    SHADOW_HISTORY           = "shadow_history"
+    CONSENT_LEDGER_ITSELF    = "consent_ledger_itself"
+    THIRD_PARTY_SHARING      = "third_party_sharing"
+    RESEARCH_USE             = "research_use"
 
 
 class ConsentDecision(str, Enum):
-    GRANT           = "grant"            # user grants consent for scope
-    REVOKE          = "revoke"           # user revokes consent; triggers key prep for erasure
-    RESTRICT        = "restrict"         # user restricts (limits) processing
-    TRANSFER        = "transfer"         # user consents to data transfer
-    ERASURE_REQUEST = "erasure_request"  # user formally requests cryptographic erasure
+    GRANT           = "grant"
+    REVOKE          = "revoke"
+    RESTRICT        = "restrict"
+    TRANSFER        = "transfer"
+    ERASURE_REQUEST = "erasure_request"
 
 
 # ── Ledger data structures ─────────────────────────────────────────────────────────────
@@ -109,10 +123,10 @@ class ConsentRecord:
     scope:        ConsentScope
     decision:     ConsentDecision
     timestamp:    float
-    context:      str = ""          # human-readable context
-    key_id:       str = ""          # ID of the encryption key for this scope
-    signature:    str = ""          # HMAC-SHA256 of canonical payload
-    revocation_reason: str = ""     # populated on REVOKE / ERASURE_REQUEST
+    context:      str = ""
+    key_id:       str = ""
+    signature:    str = ""
+    revocation_reason: str = ""
 
     def canonical_payload(self) -> str:
         """Deterministic string representation for signing (excludes signature)."""
@@ -131,19 +145,16 @@ class ConsentRecord:
 class ConsentLedgerEntry:
     """
     A tamper-evident ledger entry wrapping a ConsentRecord.
-
-    Each entry chains to the previous via prev_entry_hash, forming
-    a hash chain. Any modification, insertion, or deletion breaks
-    the chain and is detected by verify_chain().
+    Each entry chains to the previous via prev_entry_hash.
     """
     entry_index:    int
     record:         ConsentRecord
-    prev_entry_hash: str           # SHA-256 of previous entry's entry_hash
-    entry_hash:     str = ""       # SHA-256 of (prev_entry_hash + record.canonical_payload())
+    prev_entry_hash: str
+    entry_hash:     str = ""
 
     def compute_entry_hash(self) -> str:
         payload = self.prev_entry_hash + self.record.canonical_payload()
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        return hashlib.sha256(payload.encode()).hexdigest()
 
 
 # ── Cryptographic erasure ───────────────────────────────────────────────────────────────
@@ -152,18 +163,16 @@ class ConsentLedgerEntry:
 class CryptoErasureKey:
     """
     An AES-256 encryption key for a single consent scope.
-
-    In production: key_material is managed by HSM or secure key store.
-    Destruction is irreversible: zeroing key_material and recording
-    destroyed_at makes the associated ciphertext permanently inaccessible.
+    Destruction is irreversible: zeroing key_material makes the
+    associated ciphertext permanently inaccessible.
     """
     key_id:         str
     scope:          ConsentScope
     user_id:        str
     created_at:     float = field(default_factory=time.time)
-    key_material:   Optional[bytes] = None   # 32 bytes (AES-256); None after destruction
+    key_material:   Optional[bytes] = None
     destroyed_at:   Optional[float] = None
-    destruction_proof: str = ""  # SHA-256 of (key_id + str(destroyed_at))
+    destruction_proof: str = ""
 
     @property
     def is_destroyed(self) -> bool:
@@ -181,8 +190,8 @@ class ErasureReceipt:
     scope:             ConsentScope
     key_id:            str
     destroyed_at:      float
-    proof_hash:        str    # SHA-256 of (key_id + str(destroyed_at) + user_id)
-    ledger_entry_index: int   # index in consent ledger where erasure request was recorded
+    proof_hash:        str
+    ledger_entry_index: int
     verifiable:        bool = True
     notes:             str = ""
 
@@ -190,12 +199,9 @@ class ErasureReceipt:
 # ── HMAC signing ────────────────────────────────────────────────────────────────────────
 
 def _sign_record(record: ConsentRecord, signing_key: bytes) -> str:
-    """
-    Produce an HMAC-SHA256 signature of a ConsentRecord's canonical payload.
-    """
     return hmac.new(
         signing_key,
-        record.canonical_payload().encode("utf-8"),
+        record.canonical_payload().encode(),
         hashlib.sha256,
     ).hexdigest()
 
@@ -207,23 +213,16 @@ def _verify_record_signature(record: ConsentRecord, signing_key: bytes) -> bool:
 
 # ── Consent Ledger ────────────────────────────────────────────────────────────────────────
 
-GENESIS_HASH = "0" * 64   # chain anchor for the first entry
+GENESIS_HASH = "0" * 64
 
 
 class ConsentLedger:
     """
     Append-only, HMAC-signed, chained-hash consent ledger.
-
-    Properties:
-    - Append-only: entries cannot be modified or removed (in-memory model;
-      persistent store must enforce append-only semantics)
-    - Every entry is HMAC-signed at write time
-    - Every entry hashes the previous entry's hash, forming a tamper-evident chain
-    - verify_chain() detects any modification, insertion, or deletion
+    verify_chain() detects any modification, insertion, or deletion.
     """
 
     def __init__(self, signing_key: Optional[bytes] = None) -> None:
-        # signing_key: 32 random bytes; in production loaded from HSM
         self._signing_key: bytes = signing_key or os.urandom(32)
         self._entries: list[ConsentLedgerEntry] = []
 
@@ -240,13 +239,9 @@ class ConsentLedger:
         key_id: str = "",
         revocation_reason: str = "",
     ) -> ConsentLedgerEntry:
-        """
-        Create, sign, chain, and append a new consent record.
-        Returns the new ledger entry.
-        """
         record_id = hashlib.sha256(
             f"{user_id}{scope.value}{decision.value}{time.time()}{os.urandom(8).hex()}"
-            .encode("utf-8")
+            .encode()
         ).hexdigest()[:32]
 
         record = ConsentRecord(
@@ -277,24 +272,17 @@ class ConsentLedger:
         return entry
 
     def verify_chain(self) -> tuple[bool, str]:
-        """
-        Verify the integrity of the entire ledger chain.
-        Returns (True, "OK") if intact, (False, reason) if tampered.
-        """
         if not self._entries:
             return True, "OK: empty ledger"
 
         for i, entry in enumerate(self._entries):
-            # Verify signature
             if not _verify_record_signature(entry.record, self._signing_key):
                 return False, f"TAMPER DETECTED: signature invalid at entry {i}"
 
-            # Verify chain link
             expected_prev = self._entries[i - 1].entry_hash if i > 0 else GENESIS_HASH
             if entry.prev_entry_hash != expected_prev:
                 return False, f"TAMPER DETECTED: chain broken at entry {i}"
 
-            # Verify entry hash
             recomputed = entry.compute_entry_hash()
             if recomputed != entry.entry_hash:
                 return False, f"TAMPER DETECTED: entry hash mismatch at entry {i}"
@@ -312,13 +300,7 @@ class ConsentLedger:
             and (scope is None or e.record.scope == scope)
         ]
 
-    def current_consent_state(
-        self,
-        user_id: str,
-    ) -> dict[str, str]:
-        """
-        Return the current (latest) consent decision per scope for a user.
-        """
+    def current_consent_state(self, user_id: str) -> dict[str, str]:
         state: dict[str, str] = {}
         for entry in self._entries:
             if entry.record.user_id == user_id:
@@ -331,85 +313,59 @@ class ConsentLedger:
 class CryptoErasureVault:
     """
     Manages per-scope encryption keys and provides irreversible key destruction.
-
-    When destroy_key() is called:
-    - The key_material bytes are overwritten with zeros
-    - The key_material reference is set to None
-    - destroyed_at timestamp is recorded
-    - A destruction_proof hash is computed
-    - An ErasureReceipt is returned for the user
-
-    After destruction, any data encrypted under this key is permanently
-    inaccessible, regardless of whether the ciphertext still exists.
+    After destroy_key(), any data encrypted under the key is permanently inaccessible.
     """
 
     def __init__(self) -> None:
-        self._keys: dict[str, CryptoErasureKey] = {}   # key_id -> CryptoErasureKey
+        self._keys: dict[str, CryptoErasureKey] = {}
         self._receipts: list[ErasureReceipt] = []
 
-    def create_key(
-        self,
-        user_id: str,
-        scope: ConsentScope,
-    ) -> CryptoErasureKey:
-        """Create and register a new AES-256 key for a consent scope."""
+    def create_key(self, user_id: str, scope: ConsentScope) -> CryptoErasureKey:
         key_id = hashlib.sha256(
             f"{user_id}{scope.value}{time.time()}{os.urandom(8).hex()}"
-            .encode("utf-8")
+            .encode()
         ).hexdigest()[:32]
 
         key = CryptoErasureKey(
             key_id=key_id,
             scope=scope,
             user_id=user_id,
-            key_material=os.urandom(32),   # AES-256: 32 bytes
+            key_material=os.urandom(32),
         )
         self._keys[key_id] = key
         log.info(f"[crypto_vault] key created: scope={scope.value} key_id={key_id}")
         return key
 
-    def destroy_key(
-        self,
-        key_id: str,
-        ledger_entry_index: int,
-    ) -> ErasureReceipt:
+    def destroy_key(self, key_id: str, ledger_entry_index: int) -> ErasureReceipt:
         """
         Irreversibly destroy a key and produce an ErasureReceipt.
-
-        The key_material bytes are overwritten with zeros before the
-        reference is cleared, providing defence against memory forensics.
+        key_material bytes are overwritten with zeros before the reference is cleared.
         """
         key = self._keys.get(key_id)
         if key is None:
             raise KeyError(f"Key not found: {key_id}")
         if key.is_destroyed:
-            # Idempotent: return existing receipt if already destroyed
-            existing = next(
-                (r for r in self._receipts if r.key_id == key_id), None
-            )
+            existing = next((r for r in self._receipts if r.key_id == key_id), None)
             if existing:
                 return existing
             raise RuntimeError(f"Key {key_id} already destroyed but no receipt found.")
 
         destroyed_at = time.time()
 
-        # Zero the key material before clearing the reference
         if key.key_material is not None:
-            # bytearray allows zeroing; bytes are immutable
             buf = bytearray(key.key_material)
             for i in range(len(buf)):
                 buf[i] = 0
-            # Replace with zeroed copy then clear
             key.key_material = bytes(buf)
             key.key_material = None
 
         key.destroyed_at = destroyed_at
         proof_input = f"{key_id}{destroyed_at}{key.user_id}"
-        proof_hash = hashlib.sha256(proof_input.encode("utf-8")).hexdigest()
+        proof_hash = hashlib.sha256(proof_input.encode()).hexdigest()
         key.destruction_proof = proof_hash
 
         receipt_id = hashlib.sha256(
-            f"{key_id}{destroyed_at}{os.urandom(8).hex()}".encode("utf-8")
+            f"{key_id}{destroyed_at}{os.urandom(8).hex()}".encode()
         ).hexdigest()[:32]
 
         receipt = ErasureReceipt(
@@ -435,28 +391,15 @@ class CryptoErasureVault:
         )
         return receipt
 
-    def verify_erasure(
-        self,
-        receipt: ErasureReceipt,
-    ) -> bool:
-        """
-        Verify an ErasureReceipt by recomputing the proof hash.
-        Returns True if the receipt is authentic.
-        """
+    def verify_erasure(self, receipt: ErasureReceipt) -> bool:
         proof_input = f"{receipt.key_id}{receipt.destroyed_at}{receipt.user_id}"
-        expected_hash = hashlib.sha256(proof_input.encode("utf-8")).hexdigest()
+        expected_hash = hashlib.sha256(proof_input.encode()).hexdigest()
         return hmac.compare_digest(expected_hash, receipt.proof_hash)
 
-    def get_key(
-        self,
-        key_id: str,
-    ) -> Optional[CryptoErasureKey]:
+    def get_key(self, key_id: str) -> Optional[CryptoErasureKey]:
         return self._keys.get(key_id)
 
-    def list_active_keys(
-        self,
-        user_id: str,
-    ) -> list[CryptoErasureKey]:
+    def list_active_keys(self, user_id: str) -> list[CryptoErasureKey]:
         return [
             k for k in self._keys.values()
             if k.user_id == user_id and not k.is_destroyed
@@ -470,7 +413,7 @@ class ConsentEngine:
     Unified interface for consent management and cryptographic erasure.
 
     Workflow:
-      1. grant(user_id, scope) — create key, record GRANT in ledger
+      1. grant(user_id, scope)  — create key, record GRANT in ledger
       2. revoke(user_id, scope) — record REVOKE in ledger
       3. erase(user_id, scope)  — record ERASURE_REQUEST, destroy key, return receipt
       4. verify_erasure(receipt) — user can independently verify
@@ -484,7 +427,7 @@ class ConsentEngine:
     ) -> None:
         self._ledger = ledger or ConsentLedger()
         self._vault = vault or CryptoErasureVault()
-        self._scope_keys: dict[tuple[str, str], str] = {}  # (user_id, scope.value) -> key_id
+        self._scope_keys: dict[tuple[str, str], str] = {}
 
     def grant(
         self,
@@ -492,7 +435,6 @@ class ConsentEngine:
         scope: ConsentScope,
         context: str = "",
     ) -> tuple[ConsentLedgerEntry, CryptoErasureKey]:
-        """Grant consent for a scope: create encryption key and record GRANT."""
         key = self._vault.create_key(user_id=user_id, scope=scope)
         self._scope_keys[(user_id, scope.value)] = key.key_id
         entry = self._ledger.append(
@@ -510,14 +452,12 @@ class ConsentEngine:
         scope: ConsentScope,
         reason: str = "",
     ) -> ConsentLedgerEntry:
-        """Revoke consent for a scope. Key is NOT yet destroyed; use erase() for that."""
-        entry = self._ledger.append(
+        return self._ledger.append(
             user_id=user_id,
             scope=scope,
             decision=ConsentDecision.REVOKE,
             revocation_reason=reason,
         )
-        return entry
 
     def erase(
         self,
@@ -525,11 +465,6 @@ class ConsentEngine:
         scope: ConsentScope,
         reason: str = "",
     ) -> ErasureReceipt:
-        """
-        Formally request and execute cryptographic erasure for a scope.
-        Records ERASURE_REQUEST in ledger, destroys encryption key,
-        returns ErasureReceipt.
-        """
         entry = self._ledger.append(
             user_id=user_id,
             scope=scope,
@@ -541,10 +476,8 @@ class ConsentEngine:
         if key_id is None:
             log.warning(
                 f"[consent_engine] erase() called for scope={scope.value} "
-                f"but no key found for user={user_id}. "
-                f"Data may not have been encrypted under this system."
+                f"but no key found for user={user_id}."
             )
-            # Produce a receipt indicating no key was found
             return ErasureReceipt(
                 receipt_id="no-key-" + entry.record.record_id[:16],
                 user_id=user_id,
@@ -557,30 +490,20 @@ class ConsentEngine:
                 notes="No encryption key found for this scope. Data may not have been stored.",
             )
 
-        receipt = self._vault.destroy_key(
+        return self._vault.destroy_key(
             key_id=key_id,
             ledger_entry_index=entry.entry_index,
         )
-        return receipt
 
-    def verify_erasure_receipt(
-        self,
-        receipt: ErasureReceipt,
-    ) -> bool:
-        """Verify an ErasureReceipt. User can call this independently."""
+    def verify_erasure_receipt(self, receipt: ErasureReceipt) -> bool:
         if not receipt.verifiable:
             return False
         return self._vault.verify_erasure(receipt)
 
     def verify_ledger_integrity(self) -> tuple[bool, str]:
-        """Verify the tamper-evident chain of the entire consent ledger."""
         return self._ledger.verify_chain()
 
-    def consent_state(
-        self,
-        user_id: str,
-    ) -> dict[str, str]:
-        """Current consent state per scope for a user."""
+    def consent_state(self, user_id: str) -> dict[str, str]:
         return self._ledger.current_consent_state(user_id)
 
     def audit_trail(
@@ -588,7 +511,6 @@ class ConsentEngine:
         user_id: str,
         scope: Optional[ConsentScope] = None,
     ) -> list[dict]:
-        """Full audit trail for a user, optionally filtered by scope."""
         entries = self._ledger.get_history(user_id=user_id, scope=scope)
         return [
             {
