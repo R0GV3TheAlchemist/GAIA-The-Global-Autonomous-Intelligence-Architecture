@@ -42,10 +42,10 @@
   cursor: pointer;
   transition: background 150ms ease;
 }
-.diag-btn:hover { background: #2d2c2a; }
+.diag-btn:hover  { background: #2d2c2a; }
 .diag-btn:active { background: #393836; }
 
-/* KPI grid */
+/* ── KPI grid ───────────────────────────────────────────────────────────────── */
 .diag-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -74,7 +74,117 @@
   color: #cdccca;
 }
 
-/* Log section */
+/* ── Mesh Status section ───────────────────────────────────────────────── */
+.diag-mesh-section {
+  flex-shrink: 0;
+  border-bottom: 1px solid #262523;
+}
+
+.diag-mesh-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 1rem;
+  background: #1c1b19;
+  border-bottom: 1px solid #222120;
+}
+
+.diag-mesh-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4f98a3;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.diag-mesh-badge {
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.diag-mesh-badge.ok       { background: rgba(67,122,34,0.2);  color: #6fcf3a; }
+.diag-mesh-badge.degraded { background: rgba(161,53,68,0.25); color: #dd6974; }
+
+.diag-mesh-meta {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: #5a5957;
+}
+
+.diag-mesh-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.diag-mesh-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid #1d1c1a;
+  transition: background 100ms ease;
+}
+.diag-mesh-row:last-child { border-bottom: none; }
+.diag-mesh-row:hover       { background: #1c1b19; }
+
+/* Status dot */
+.diag-mesh-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #5a5957;         /* default / loading */
+}
+.diag-mesh-dot.up   { background: #437a22; box-shadow: 0 0 4px #437a22; }
+.diag-mesh-dot.down { background: #a13544; }
+
+/* Store name */
+.diag-mesh-name {
+  min-width: 11rem;
+  color: #cdccca;
+  font-size: 0.78rem;
+}
+
+/* Latency bar */
+.diag-mesh-bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.diag-mesh-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  width: 0;
+  transition: width 0.35s ease;
+}
+.diag-mesh-bar-fill.bar-fast    { background: #437a22; }
+.diag-mesh-bar-fill.bar-ok      { background: #4f98a3; }
+.diag-mesh-bar-fill.bar-slow    { background: #d19900; }
+.diag-mesh-bar-fill.bar-unknown { background: rgba(255,255,255,0.08); width: 100% !important; }
+
+/* Latency value */
+.diag-mesh-val {
+  min-width: 5.5rem;
+  text-align: right;
+  font-size: 0.72rem;
+  color: #5a5957;
+}
+
+/* Footer */
+.diag-mesh-footer {
+  padding: 0.25rem 1rem;
+  font-size: 0.68rem;
+  color: #5a5957;
+  text-align: right;
+  background: #171614;
+}
+
+/* ── Log section ──────────────────────────────────────────────────────────────── */
 .diag-log-section {
   display: flex;
   flex-direction: column;
