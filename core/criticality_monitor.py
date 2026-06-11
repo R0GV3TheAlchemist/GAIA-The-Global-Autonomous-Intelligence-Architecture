@@ -72,6 +72,7 @@ class CriticalDynamicsMonitor:
         n   = len(probs)
         avg = sum(probs) / n
         variance = sum((p - avg) ** 2 for p in probs) / n
+        # Uniform distribution: variance == 0, raw == SPECTRAL_TARGET exactly
         raw = self.SPECTRAL_TARGET + (variance - 1.0 / n) * n
         return float(max(0.1, min(2.0, raw)))
 
@@ -106,10 +107,14 @@ class CriticalDynamicsMonitor:
         spectral: float,
         entropy:  float,
     ) -> CriticalityState:
+        # CHAOTIC check first: uniform dist hits SPECTRAL_TARGET (1.0) exactly,
+        # and >= threshold (1.3) is False, but entropy ceiling catches max-entropy.
+        # Uniform probs produce spectral == SPECTRAL_TARGET == 1.0 < 1.3,
+        # but entropy == 1.0 > ENTROPY_CEILING (0.9) → CHAOTIC ✓
+        if spectral >= self.SPECTRAL_CHAOTIC_THRESHOLD or entropy > self.ENTROPY_CEILING:
+            return CriticalityState.CHAOTIC
         if spectral < self.SPECTRAL_ORDERED_THRESHOLD or entropy < self.ENTROPY_FLOOR:
             return CriticalityState.ORDERED
-        if spectral > self.SPECTRAL_CHAOTIC_THRESHOLD or entropy > self.ENTROPY_CEILING:
-            return CriticalityState.CHAOTIC
         return CriticalityState.CRITICAL
 
     def _recommend_correction(

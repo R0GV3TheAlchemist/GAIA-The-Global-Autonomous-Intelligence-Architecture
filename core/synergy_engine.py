@@ -391,6 +391,9 @@ def _analyse_canon_context(context: Any) -> CanonPlanHint:
     canon_refs = _extract_canon_refs(body)
 
     if declared_register is not None:
+        # Ensure entry ref_id is always present in canon_refs
+        if not canon_refs and entry_ref_id:
+            canon_refs = [entry_ref_id]
         nudge_label = f"canon-entry:{entry_ref_id}:{declared_register}"
         return CanonPlanHint(
             present=True,

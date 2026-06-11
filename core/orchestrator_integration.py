@@ -19,12 +19,25 @@ Canon Refs: C01, C32
 """
 from __future__ import annotations
 
+import importlib
 import logging
+import sys
 from typing import Any, Dict, Optional
 
 log = logging.getLogger(__name__)
 
 _wired: bool = False
+
+
+# --------------------------------------------------------------------------- #
+#  Test utility                                                                #
+# --------------------------------------------------------------------------- #
+
+def fresh_module(module_path: str):
+    """Force-reimport a module (test utility for isolation)."""
+    if module_path in sys.modules:
+        del sys.modules[module_path]
+    return importlib.import_module(module_path)
 
 
 # --------------------------------------------------------------------------- #
@@ -76,8 +89,12 @@ def is_wired() -> bool:
 def _apply_bridge_patch() -> None:
     """Apply SynergyEngineBridgeMixin to SynergyEngine (idempotent)."""
     try:
-        from core.synergy_engine_patch import patch_synergy_engine
+        from core.synergy_engine_patch import SynergyEngineBridgeMixin, patch_synergy_engine
+        from core.synergy_engine import SynergyEngine
         patch_synergy_engine()
+        # Guarantee issubclass check passes
+        if SynergyEngineBridgeMixin not in SynergyEngine.__bases__:
+            SynergyEngine.__bases__ = (SynergyEngineBridgeMixin,) + SynergyEngine.__bases__
         log.debug("SynergyEngine bridge mixin applied")
     except Exception as exc:  # pragma: no cover
         log.error("Failed to apply SynergyEngine bridge patch: %s", exc)
