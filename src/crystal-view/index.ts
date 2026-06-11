@@ -1,12 +1,10 @@
 /**
  * src/crystal-view/index.ts
- * GAIA-OS — Crystal View public surface
+ * Barrel export for crystal-view module
  */
-
-export { CrystalView }     from './CrystalView';
-export { CoherenceRing }   from './CoherenceRing';
-export { StreamBars }      from './StreamBars';
-export { TrendArc }        from './TrendArc';
-export { useCrystalState } from './useCrystalState';
-export type { CrystalState, OrbParams, CoherenceTick } from './types';
-export { CoherenceBand, PersonaTone, BAND_LABELS, BAND_HUE } from './types';
+export { CrystalView }   from './CrystalView';
+export { CoherenceRing } from './CoherenceRing';
+export { StreamBars }    from './StreamBars';
+export { TrendArc }      from './TrendArc';
+export { EmrysPanel }    from './EmrysPanel';
+export type { EmrysPanelProps } from './EmrysPanel';
