@@ -27,11 +27,20 @@ Per C166.A4: physics and metaphysics are the same layer.
 from __future__ import annotations
 
 import sys
+from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
+
+from .models import (
+    EmrysFieldReportModel,
+    VibronicResonatorModel,
+    ColdStartStepModel,
+    GroundingProtocolModel,
+    L2_STATES,
+)
 
 # ---------------------------------------------------------------------------
 # Path resolution
@@ -51,14 +60,6 @@ except ImportError as e:
         f"ensure src/crystals/ exists and emryscycle.py + crystal_db.py "
         f"are present. Original error: {e}"
     ) from e
-
-from .models import (
-    EmrysFieldReportModel,
-    VibronicResonatorModel,
-    ColdStartStepModel,
-    GroundingProtocolModel,
-    L2_STATES,
-)
 
 # ---------------------------------------------------------------------------
 # Module-level singleton (initialised by init_emrys_engine)
@@ -249,8 +250,6 @@ async def get_state_crystal(
             ),
         )
 
-    # Convert dataclass to dict for response_model validation
-    from dataclasses import asdict
     return asdict(resonator)
 
 
@@ -271,7 +270,6 @@ async def get_state_crystal(
 async def get_crystals() -> list[dict]:
     cycle = _get_cycle()
     try:
-        from dataclasses import asdict
         return [asdict(r) for r in cycle.all_resonators()]
     except Exception as exc:
         raise HTTPException(
