@@ -1,0 +1,52 @@
+{
+  "crystal_id": "black-tourmaline",
+  "name": "Black Tourmaline",
+  "also_known_as": ["Schorl", "Iron Tourmaline"],
+  "mineral_class": "Cyclosilicate — Tourmaline group",
+  "crystal_system": "trigonal",
+  "mohs_hardness": { "min": 7.0, "max": 7.5 },
+  "specific_gravity": { "min": 3.06, "max": 3.26 },
+  "optical_properties": "Uniaxial (−); strongly pleochroic (very dark brown to black); vitreous lustre; opaque to subtranslucent",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": 4.0,
+    "pyroelectric": true,
+    "resonant_frequency_hz": { "min": 1000, "max": 100000 },
+    "raman_peaks_cm_inv": [162, 375, 462, 710, 1062],
+    "ir_absorption_profile": "Absorption bands characteristic of BO₃ triangles (~1250–1450 cm⁻¹) and Si-O-Si bridging (~1000–1100 cm⁻¹); iron content produces broad mid-IR absorption"
+  },
+  "septagram_nodes": ["Nature", "Operator"],
+  "consciousness_affect": [
+    {
+      "affect_state": "dissonance",
+      "direction": "dampens",
+      "confidence": 0.88,
+      "provenance": ["Cross-cultural protective mineral use (sub-Saharan, Andean, Germanic folk traditions)", "Modern EMF shielding research interest (anecdotal)"],
+      "mechanism_hypothesis": "Strong pyroelectric effect generates sustained surface charge; may interact with ambient electromagnetic environment to attenuate stray fields near the body",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "resonance",
+      "direction": "grounds",
+      "confidence": 0.85,
+      "provenance": ["Vedic mineral tradition; contemporary energetic practice consensus"],
+      "mechanism_hypothesis": "High iron content and dense trigonal lattice produce strong diamagnetic response; possible biofield grounding via magnetic field interaction",
+      "falsifiable": true
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Initiation", "Allegiance"],
+    "transition_guardian": true,
+    "transition_boundary": "Initiation→Allegiance",
+    "stage_function": "guardian"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": true,
+    "vibronic_coherence_mode": "Pyroelectric surface charge modulation; temperature-driven polarisation shifts align with Emrys thermal cycling protocol in L2 bridge; BTS-adjacent in polarisation mechanism",
+    "quantum_backbone_anchor": "BTS",
+    "reference_file": "data/mindat_bts_reference.json"
+  },
+  "gaianite_relation": "Primary protective node crystal in Gaianite boundary grids (C67); used to define the outer perimeter of Gaianite field architectures",
+  "notes": "The most widely cross-culturally attested protective crystal. High piezoelectric + pyroelectric coefficient makes this the Operator node's primary tool crystal. Transition guardian: Initiation→Allegiance. Seed set anchor for falsifiable prediction CDB-04.",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

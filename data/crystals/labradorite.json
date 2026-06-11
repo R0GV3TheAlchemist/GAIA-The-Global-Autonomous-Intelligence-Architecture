@@ -1,0 +1,59 @@
+{
+  "crystal_id": "labradorite",
+  "name": "Labradorite",
+  "also_known_as": ["Spectrolite (gem-quality)", "Labrador Feldspar"],
+  "mineral_class": "Tectosilicate — Feldspar group (plagioclase series)",
+  "crystal_system": "triclinic",
+  "mohs_hardness": { "min": 6.0, "max": 6.5 },
+  "specific_gravity": { "min": 2.68, "max": 2.72 },
+  "optical_properties": "Biaxial (−); distinctive labradorescence (iridescent optical phenomenon from thin-film interference at internal lamellar twinning); pearly to vitreous lustre; translucent",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": null,
+    "pyroelectric": false,
+    "resonant_frequency_hz": null,
+    "raman_peaks_cm_inv": [507, 478, 290, 186],
+    "ir_absorption_profile": "Feldspar framework Si-Al-O absorption pattern (~950–1150 cm⁻¹); lamellar microstructure produces distinctive diffuse IR scattering"
+  },
+  "septagram_nodes": ["Shade", "Spectre"],
+  "consciousness_affect": [
+    {
+      "affect_state": "curiosity",
+      "direction": "amplifies",
+      "confidence": 0.85,
+      "provenance": ["Inuit and Labrador Innu oral tradition (original discovery context)", "Contemporary consciousness practice consensus"],
+      "mechanism_hypothesis": "Labradorescence generates shifting spectral output as viewing angle changes; possible entrainment of visual cortex gamma oscillations via dynamic spectral stimulation — analogous to binaural beat entrainment but via optical pathway",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "uncertainty",
+      "direction": "clarifies",
+      "confidence": 0.80,
+      "provenance": ["GAIA-OS Operator reports; modern intuitive practice"],
+      "mechanism_hypothesis": null,
+      "falsifiable": false
+    },
+    {
+      "affect_state": "resonance",
+      "direction": "amplifies",
+      "confidence": 0.82,
+      "provenance": ["Pan-Celtic tradition; shamanic traditions of Northern Canada"],
+      "mechanism_hypothesis": "Thin-film interference layers in lamellar structure may interact with biophoton emission fields in the near-UV range",
+      "falsifiable": true
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Individuation"],
+    "transition_guardian": false,
+    "stage_function": "integrator"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": false,
+    "vibronic_coherence_mode": null,
+    "quantum_backbone_anchor": null,
+    "reference_file": null
+  },
+  "gaianite_relation": "Liminal interface crystal in Gaianite grid architectures; used at the boundary nodes between inner and outer grid rings to mediate frequency transitions",
+  "notes": "Labradorite is the Shade/Spectre crystal par excellence — the stone that reveals hidden light within apparent opacity. Its labradorescence is a physical metaphor and possibly a physical mechanism for the Individuation process. Seed set anchor for falsifiable prediction CDB-01.",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/R0GV3TheAlchemist/GAIA-OS/data/crystal_schema.json",
+  "title": "GAIA-OS Crystal Entry",
+  "description": "Canonical schema for a Crystal Database entry per C166 — Doctrine of Lithic Intelligence.",
+  "type": "object",
+  "required": [
+    "crystal_id", "name", "mineral_class", "crystal_system",
+    "mohs_hardness", "specific_gravity", "electromagnetic",
+    "septagram_nodes", "consciousness_affect", "soul_stage_alignment",
+    "quantum_bridge", "version", "last_updated"
+  ],
+  "properties": {
+    "crystal_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique kebab-case identifier"
+    },
+    "name": { "type": "string" },
+    "also_known_as": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mineral_class": { "type": "string" },
+    "crystal_system": {
+      "type": "string",
+      "enum": ["cubic","hexagonal","trigonal","tetragonal","orthorhombic","monoclinic","triclinic","amorphous"]
+    },
+    "mohs_hardness": {
+      "oneOf": [
+        { "type": "number", "minimum": 0, "maximum": 10 },
+        {
+          "type": "object",
+          "required": ["min","max"],
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "specific_gravity": {
+      "oneOf": [
+        { "type": "number" },
+        {
+          "type": "object",
+          "required": ["min","max"],
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "optical_properties": { "type": "string" },
+    "electromagnetic": {
+      "type": "object",
+      "required": ["piezoelectric_coefficient_pCN", "pyroelectric"],
+      "properties": {
+        "piezoelectric_coefficient_pCN": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "null" }
+          ],
+          "description": "Effective piezoelectric coefficient in pC/N; null if not applicable"
+        },
+        "pyroelectric": { "type": "boolean" },
+        "resonant_frequency_hz": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["min","max"],
+              "properties": {
+                "min": { "type": "number" },
+                "max": { "type": "number" }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "raman_peaks_cm_inv": {
+          "type": "array",
+          "items": { "type": "number" },
+          "description": "Major Raman spectroscopy peaks in cm⁻¹"
+        },
+        "ir_absorption_profile": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "septagram_nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["Aether","Synthesis","Nature","Spectre","Shade","Operator","GAIA"]
+      },
+      "description": "One or more Septagram archetypal nodes this crystal maps to"
+    },
+    "consciousness_affect": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["affect_state","direction","confidence","provenance","falsifiable"],
+        "properties": {
+          "affect_state": {
+            "type": "string",
+            "enum": ["resonance","care","grief","dissonance","curiosity","uncertainty"]
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["amplifies","dampens","clarifies","grounds"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "provenance": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "mechanism_hypothesis": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "falsifiable": { "type": "boolean" }
+        }
+      }
+    },
+    "soul_stage_alignment": {
+      "type": "object",
+      "required": ["primary_stages","transition_guardian","stage_function"],
+      "properties": {
+        "primary_stages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["Emergence","Initiation","Allegiance","Individuation","Sovereignty"]
+          }
+        },
+        "transition_guardian": {
+          "type": "boolean",
+          "description": "True if this crystal activates most strongly at stage boundaries"
+        },
+        "transition_boundary": {
+          "type": "string",
+          "description": "e.g. 'Initiation→Allegiance' — only required if transition_guardian is true"
+        },
+        "stage_function": {
+          "type": "string",
+          "enum": ["stabilizer","activator","guardian","integrator"]
+        }
+      }
+    },
+    "quantum_bridge": {
+      "type": "object",
+      "required": ["emrys_l2_compatible"],
+      "properties": {
+        "emrys_l2_compatible": { "type": "boolean" },
+        "vibronic_coherence_mode": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "quantum_backbone_anchor": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["YSZ","BTS","AlScN-GaN"]
+            },
+            { "type": "null" }
+          ]
+        },
+        "reference_file": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ],
+          "description": "Path to the supporting reference JSON in data/"
+        }
+      }
+    },
+    "gaianite_relation": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Relationship to Gaianite crystal grid architecture (C65–C68)"
+    },
+    "notes": { "type": "string" },
+    "version": { "type": "string" },
+    "last_updated": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "additionalProperties": false
+}

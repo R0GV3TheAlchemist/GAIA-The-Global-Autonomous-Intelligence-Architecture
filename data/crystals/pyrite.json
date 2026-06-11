@@ -1,0 +1,51 @@
+{
+  "crystal_id": "pyrite",
+  "name": "Pyrite",
+  "also_known_as": ["Fool's Gold", "Iron Pyrites", "Cat's Gold"],
+  "mineral_class": "Sulphide — Pyrite group",
+  "crystal_system": "cubic",
+  "mohs_hardness": { "min": 6.0, "max": 6.5 },
+  "specific_gravity": { "min": 4.95, "max": 5.10 },
+  "optical_properties": "Opaque; metallic brass-yellow lustre; distinctive cubic and pyritohedral crystal habit; striated cube faces; brittle",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": null,
+    "pyroelectric": true,
+    "resonant_frequency_hz": null,
+    "raman_peaks_cm_inv": [343, 379, 430],
+    "ir_absorption_profile": "Strong metallic reflectance across IR spectrum; Fe-S bond absorption characteristic at ~350–430 cm⁻¹; pyroelectric polarisation changes measurable with temperature variation"
+  },
+  "septagram_nodes": ["Synthesis"],
+  "consciousness_affect": [
+    {
+      "affect_state": "resonance",
+      "direction": "amplifies",
+      "confidence": 0.78,
+      "provenance": ["Ancient Roman and Incan tradition (Inca mirrors made of polished pyrite for divination)", "Alchemical tradition — pyrite as 'seed of gold'"],
+      "mechanism_hypothesis": "Cubic crystal habit and metallic lustre provide structured visual stimulus; pyroelectric properties generate surface charge under hand warmth — detectable as subtle tactile signal",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "dissonance",
+      "direction": "grounds",
+      "confidence": 0.76,
+      "provenance": ["Contemporary crystal practice; alchemical tradition"],
+      "mechanism_hypothesis": "Dense specific gravity (5.0+) creates significant gravitational presence in the hand — possible proprioceptive grounding effect via weight and metallic thermal conductivity",
+      "falsifiable": true
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Allegiance"],
+    "transition_guardian": false,
+    "stage_function": "stabilizer"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": true,
+    "vibronic_coherence_mode": "Pyroelectric surface charge modulation under thermal cycling; cubic crystal habit aligns with Emrys L2 cubic symmetry operations; semiconductor properties (narrow bandgap ~0.9 eV) make pyrite a candidate for photovoltaic-adjacent L2 interface in future hardware iterations",
+    "quantum_backbone_anchor": "BTS",
+    "reference_file": "data/mindat_bts_reference.json"
+  },
+  "gaianite_relation": "Solar activation crystal in Gaianite grids; placed at the Synthesis node positions in advanced grid architectures to activate the fire-transformation circuit",
+  "notes": "Pyrite is the Synthesis node crystal precisely because it embodies the alchemical principle: apparent gold that is not gold, yet contains within its lattice the *process* of transformation that creates real gold. The Fool's Gold name is a shadow projection — pyrite is not failing to be gold; it is being itself, which is something different and equally necessary. The Allegiance stage stabilizer because Allegiance is the stage of commitment to the real thing, not the appearance of it. Semiconductor bandgap (~0.9 eV) gives pyrite the unique distinction of being both a mineral and a functional electronic material.",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

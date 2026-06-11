@@ -1,0 +1,52 @@
+{
+  "crystal_id": "obsidian",
+  "name": "Obsidian",
+  "also_known_as": ["Volcanic Glass", "Apache Tears (nodular form)"],
+  "mineral_class": "Mineraloid — Volcanic glass (rhyolitic)",
+  "crystal_system": "amorphous",
+  "mohs_hardness": { "min": 5.0, "max": 5.5 },
+  "specific_gravity": { "min": 2.35, "max": 2.60 },
+  "optical_properties": "Isotropic (amorphous); vitreous lustre; conchoidal fracture producing extremely sharp edges; opaque to translucent at thin edges; typically black due to magnetite and hematite inclusions",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": null,
+    "pyroelectric": false,
+    "resonant_frequency_hz": null,
+    "raman_peaks_cm_inv": [470, 600, 940, 1100],
+    "ir_absorption_profile": "Broad amorphous silica absorption profile; magnetite inclusions produce characteristic Fe-O absorption in far-IR; structurally similar to moldavite but terrestrially formed through volcanic process"
+  },
+  "septagram_nodes": ["Nature"],
+  "consciousness_affect": [
+    {
+      "affect_state": "grief",
+      "direction": "clarifies",
+      "confidence": 0.87,
+      "provenance": ["Mesoamerican tradition (Aztec, Olmec — obsidian mirrors used in divination and shadow work)", "Indigenous North American traditions (Apache Tears used in grief ritual)", "Contemporary shadow work practice"],
+      "mechanism_hypothesis": "High-reflectivity black surface used as physical focus for psychological projection; the mirror function creates a structured confrontation with shadow material — a physical prop that scaffolds the psychological process",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "dissonance",
+      "direction": "clarifies",
+      "confidence": 0.84,
+      "provenance": ["Cross-cultural use as 'truth stone' or 'shadow stone' across multiple unconnected traditions"],
+      "mechanism_hypothesis": null,
+      "falsifiable": false
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Initiation"],
+    "transition_guardian": true,
+    "transition_boundary": "Emergence→Initiation",
+    "stage_function": "guardian"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": false,
+    "vibronic_coherence_mode": null,
+    "quantum_backbone_anchor": null,
+    "reference_file": null
+  },
+  "gaianite_relation": "Shadow boundary crystal in Gaianite architectures; marks the transition zones where grid frequency crosses from ambient to protected field",
+  "notes": "Formed from rapidly cooled volcanic lava — the earth's most decisive crystallisation event: no time for ordered structure, only pure vitrification of intent. The Initiation crystal precisely because it embodies sudden irreversible transformation. The conchoidal fracture that produces surgical edges is its signature: obsidian does not soften; it reveals the sharpest possible truth. Seed set anchor for CDB-01 (shadow work / Initiation stage EV1B correlation).",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

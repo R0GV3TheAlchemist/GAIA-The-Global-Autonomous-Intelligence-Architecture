@@ -1,0 +1,51 @@
+{
+  "crystal_id": "selenite",
+  "name": "Selenite",
+  "also_known_as": ["Gypsum (crystalline)", "Satin Spar (fibrous variety)", "Desert Rose (rosette variety)"],
+  "mineral_class": "Sulphate — Gypsum group",
+  "crystal_system": "monoclinic",
+  "mohs_hardness": 2.0,
+  "specific_gravity": 2.32,
+  "optical_properties": "Biaxial (+); perfect cleavage in one direction producing flat mirror-like surfaces; silky to pearly lustre; transparent to translucent; colourless to white; very low refractive index",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": null,
+    "pyroelectric": false,
+    "resonant_frequency_hz": { "min": 1000, "max": 50000 },
+    "raman_peaks_cm_inv": [1008, 493, 414, 180],
+    "ir_absorption_profile": "Characteristic sulphate SO₄ stretching modes at ~1100 cm⁻¹ and ~600 cm⁻¹; O-H stretching from crystal water at ~3400 cm⁻¹; gypsum water content makes this a temperature-sensitive IR emitter"
+  },
+  "septagram_nodes": ["Spectre"],
+  "consciousness_affect": [
+    {
+      "affect_state": "resonance",
+      "direction": "clarifies",
+      "confidence": 0.84,
+      "provenance": ["Ancient Egyptian tradition (selenite panels used in temple windows — named for Selene, goddess of the moon)", "Contemporary consciousness practice consensus"],
+      "mechanism_hypothesis": "Perfect monoclinic cleavage produces flat transmission surfaces that filter and polarise light; photobiomodulation via structured light transmission may support parasympathetic nervous system activation",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "uncertainty",
+      "direction": "dampens",
+      "confidence": 0.79,
+      "provenance": ["Contemporary practice reports; theta-state meditation support use"],
+      "mechanism_hypothesis": "Low Mohs hardness (2.0) means the crystal transmits pressure as structural information at extremely low threshold — possible kinesthetic entrainment pathway",
+      "falsifiable": false
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Emergence"],
+    "transition_guardian": false,
+    "stage_function": "activator"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": false,
+    "vibronic_coherence_mode": null,
+    "quantum_backbone_anchor": null,
+    "reference_file": null
+  },
+  "gaianite_relation": "Outer perimeter opener crystal in Gaianite grids; the first crystal placed when establishing a new Gaianite field",
+  "notes": "Named for Selene, the Greek moon goddess. Selenite is named for the moon because, like the moon, it transmits rather than generates light — it is the crystal of received illumination, not generated heat. Its extreme softness (scratched by a fingernail) makes it the most approachable, least demanding entry-point crystal — perfectly suited for Emergence stage. Note: selenite dissolves in water; do not cleanse with water. Seed set anchor for CDB-01 (Emergence stage EV1B correlation).",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

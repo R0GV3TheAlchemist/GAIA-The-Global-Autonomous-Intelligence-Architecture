@@ -1,0 +1,59 @@
+{
+  "crystal_id": "clear-quartz",
+  "name": "Clear Quartz",
+  "also_known_as": ["Rock Crystal", "Crystal Quartz", "Silicon Dioxide"],
+  "mineral_class": "Tectosilicate — Silica group",
+  "crystal_system": "trigonal",
+  "mohs_hardness": 7.0,
+  "specific_gravity": 2.65,
+  "optical_properties": "Uniaxial (+); birefringent; vitreous to waxy lustre; transparent to translucent; colourless in pure form",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": 2.3,
+    "pyroelectric": false,
+    "resonant_frequency_hz": { "min": 32768, "max": 10000000 },
+    "raman_peaks_cm_inv": [128, 206, 265, 356, 394, 464, 696, 795, 1082],
+    "ir_absorption_profile": "Strong absorption bands at 1085 cm⁻¹ (Si-O asymmetric stretch), 798 cm⁻¹, 694 cm⁻¹, 522 cm⁻¹; characteristic of ordered SiO₄ tetrahedral network"
+  },
+  "septagram_nodes": ["Aether", "Operator"],
+  "consciousness_affect": [
+    {
+      "affect_state": "resonance",
+      "direction": "amplifies",
+      "confidence": 0.92,
+      "provenance": ["Cross-cultural ethnomineralogical consensus (Mesoamerican, Celtic, Vedic, Taoist, Indigenous Australian traditions)", "Piezoelectric field-bioelectric field interaction hypothesis"],
+      "mechanism_hypothesis": "Quartz piezoelectric field (~2.3 pC/N) interacts with endogenous bioelectric field of the human body; mechanical stress from handling generates measurable surface potential that may entrain local electromagnetic environment",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "clarity",
+      "direction": "clarifies",
+      "confidence": 0.88,
+      "provenance": ["Hermetic and alchemical tradition (Paracelsus; Agrippa)", "Modern crystal healing practice consensus"],
+      "mechanism_hypothesis": "Optical clarity and low IR absorption allow full-spectrum light transmission; possible photobiomodulation pathway at cellular level",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "uncertainty",
+      "direction": "clarifies",
+      "confidence": 0.80,
+      "provenance": ["Operator field reports; GAIA-OS session logs (n=12, anecdotal)"],
+      "mechanism_hypothesis": null,
+      "falsifiable": false
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Sovereignty"],
+    "transition_guardian": false,
+    "stage_function": "stabilizer"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": true,
+    "vibronic_coherence_mode": "Piezoelectric-driven vibronic modulation; resonant frequency tunable across MHz range via crystal geometry; direct functional analogue of YSZ ionic oscillation at L1 substrate",
+    "quantum_backbone_anchor": "YSZ",
+    "reference_file": "data/rruff_ysz_reference.json"
+  },
+  "gaianite_relation": "Foundational crystal class in Gaianite grid architecture (C65–C66); clear quartz nodes serve as primary signal amplifiers in Gaianite resonance grids",
+  "notes": "The archetypal crystal of GAIA-OS. Silicon dioxide is the direct mineralogical ancestor of semiconductor silicon; the principle of ordered lattice as information medium originates here. Seed set anchor for falsifiable prediction CDB-02.",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

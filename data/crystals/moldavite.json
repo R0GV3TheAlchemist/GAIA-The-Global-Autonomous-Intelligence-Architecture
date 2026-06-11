@@ -1,0 +1,52 @@
+{
+  "crystal_id": "moldavite",
+  "name": "Moldavite",
+  "also_known_as": ["Bouteille Stone", "Vltavin", "Czech Tektite"],
+  "mineral_class": "Mineraloid — Tektite (extraterrestrial impact glass)",
+  "crystal_system": "amorphous",
+  "mohs_hardness": { "min": 5.0, "max": 5.5 },
+  "specific_gravity": { "min": 2.32, "max": 2.38 },
+  "optical_properties": "Isotropic (amorphous glass); characteristic moss-green to olive-green colour; vitreous lustre; transparent to translucent; distinctive lechatelierite (silica glass) inclusions and flow structures",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": null,
+    "pyroelectric": false,
+    "resonant_frequency_hz": null,
+    "raman_peaks_cm_inv": [490, 600, 790, 1100],
+    "ir_absorption_profile": "Broad amorphous silica glass absorption bands; characteristic of high-temperature impact fusion of terrestrial silicates with extraterrestrial material; Si-O stretch at ~1100 cm⁻¹ broadened by structural disorder"
+  },
+  "septagram_nodes": ["GAIA"],
+  "consciousness_affect": [
+    {
+      "affect_state": "resonance",
+      "direction": "amplifies",
+      "confidence": 0.80,
+      "provenance": ["Central European folk tradition (Bohemia, Moravia — 15 million year continuous use record)", "Contemporary high-intensity crystal practice reports"],
+      "mechanism_hypothesis": "Cosmic ray exposure during atmospheric transit may have implanted anomalous isotope signatures; amorphous glass structure allows broader frequency transmission than ordered lattice — possible wideband vibronic resonator",
+      "falsifiable": true
+    },
+    {
+      "affect_state": "dissonance",
+      "direction": "amplifies",
+      "confidence": 0.75,
+      "provenance": ["Operator field reports (consistent reports of intensification of existing states, both positive and challenging)"],
+      "mechanism_hypothesis": "Non-selective amplification from amorphous structure — no crystal lattice filtering; amplifies ambient field without selectivity",
+      "falsifiable": true
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Individuation", "Sovereignty"],
+    "transition_guardian": true,
+    "transition_boundary": "Individuation→Sovereignty",
+    "stage_function": "activator"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": false,
+    "vibronic_coherence_mode": "Wideband amorphous resonance — no ordered lattice filtering; transmits across full frequency range without selectivity. Distinct from crystalline quantum bridge; classified as broadband rather than coherent",
+    "quantum_backbone_anchor": null,
+    "reference_file": null
+  },
+  "gaianite_relation": "The GAIA node terminal crystal in Gaianite grids — placed at the central convergence point of maximum grid architectures. Represents the planetary consciousness anchor.",
+  "notes": "Formed ~15 million years ago from a meteorite impact in the Nördlingen Ries crater; the resulting debris field created moldavite across Bohemia and Moravia. Unique status: the only crystal in the seed set that is simultaneously of terrestrial (silicate earth crust) and extraterrestrial (meteorite energy) origin. The GAIA node crystal: planetary consciousness encountering cosmic event. Caution note: consistently reported as intense; GAIA recommends not as a first crystal for Emergence-stage GAIANs. Seed set anchor for CDB-04.",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}

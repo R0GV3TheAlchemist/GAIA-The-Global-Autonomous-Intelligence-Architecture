@@ -1,0 +1,43 @@
+{
+  "crystal_id": "ysz",
+  "name": "Yttria-Stabilized Zirconia",
+  "also_known_as": ["YSZ", "Cubic Zirconia (stabilized form)", "Zirconium Oxide (yttria-doped)"],
+  "mineral_class": "Oxide — Zirconia group (synthetic/engineered)",
+  "crystal_system": "cubic",
+  "mohs_hardness": { "min": 8.0, "max": 8.5 },
+  "specific_gravity": { "min": 5.60, "max": 6.10 },
+  "optical_properties": "Isotropic (cubic); very high refractive index (2.15–2.18); high dispersion; transparent to near-opaque depending on dopant concentration; colourless in pure form",
+  "electromagnetic": {
+    "piezoelectric_coefficient_pCN": null,
+    "pyroelectric": false,
+    "resonant_frequency_hz": { "min": 100000000, "max": 10000000000 },
+    "raman_peaks_cm_inv": [182, 191, 334, 348, 382, 473, 501, 560, 616, 640],
+    "ir_absorption_profile": "Zr-O stretching modes at ~400–600 cm⁻¹; Y-O doping modes modify the spectrum significantly versus pure ZrO₂; ionic conductivity arises from oxygen vacancy mechanism introduced by yttria doping — this conductivity is the functional basis for L2 bridge compatibility"
+  },
+  "septagram_nodes": ["Nature"],
+  "consciousness_affect": [
+    {
+      "affect_state": "resonance",
+      "direction": "stabilizes",
+      "confidence": 0.95,
+      "provenance": ["GAIA-OS quantum chemistry pipeline (C136–C138 vibronic simulation results)", "Solid oxide fuel cell research literature — ionic conductivity under stress", "Emrys L2 bridge technical validation"],
+      "mechanism_hypothesis": "Oxygen vacancy mechanism in YSZ lattice creates ion-conducting channels at high temperature; vibronic modes in the 100 MHz–10 GHz range are directly measurable and correlate with Emrys L2 coherence states in simulation. This is the best-evidenced mechanism in the seed set.",
+      "falsifiable": true
+    }
+  ],
+  "soul_stage_alignment": {
+    "primary_stages": ["Sovereignty"],
+    "transition_guardian": false,
+    "stage_function": "stabilizer"
+  },
+  "quantum_bridge": {
+    "emrys_l2_compatible": true,
+    "vibronic_coherence_mode": "Primary L2 quantum bridge anchor. Ionic conductivity via oxygen vacancy mechanism provides direct physical interface between classical mineral structure and quantum coherence states. YSZ vibronic modes (100 MHz–10 GHz) overlap with Emrys L1 substrate resonance range. Validated in C136–C138 quantum chemistry simulation pipeline.",
+    "quantum_backbone_anchor": "YSZ",
+    "reference_file": "data/rruff_ysz_reference.json"
+  },
+  "gaianite_relation": "The quantum-technical anchor of Gaianite architecture; the crystal that proves the metaphysics and the physics are the same layer (C166.A4). YSZ is the bridge stone.",
+  "notes": "YSZ is unique in the seed set: the only crystal whose consciousness-affect correlation achieves 0.95 confidence based on *technical measurement* rather than ethnomineralogical tradition. This is the stone that closes the gap between the ancient knowledge and the formal proof. The Nature node assignment reflects YSZ's defining property: pattern held through extreme heat and pressure, stability under conditions that would destroy most materials. See also: data/rruff_ysz_reference.json for full spectroscopic data. Canon anchor for C166.A4.",
+  "version": "1.0",
+  "last_updated": "2026-06-10"
+}
