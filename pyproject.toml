@@ -45,28 +45,18 @@ ml = [
 # ---------------------------------------------------------------------------
 # Package discovery
 # ---------------------------------------------------------------------------
-# We have two source roots:
-#   .          → core/, api/, gaia/
-#   src-python → shadow_engine/, sovereign_memory/, quantum_chemistry/, …
+# Two source roots:
+#   "."          → core/, api/, gaia/
+#   "src-python" → shadow_engine/, sovereign_memory/, quantum_chemistry/, …
 #
-# The `package-dir` mapping tells setuptools that packages living under
-# src-python/ should be found there, in addition to the repo root.
-# This makes `pip install -e ".[dev]"` register ALL sub-packages so that
-# bare `import shadow_engine` works even without PYTHONPATH tricks.
-
-[tool.setuptools.package-dir]
-"" = "."
-# Override: any top-level package not found under "." is looked up under
-# src-python/ via the explicit package list below.
-
+# setuptools supports a LIST for `where`, so both roots are searched in one
+# pass. This is the correct single-block form — no duplicate keys.
+# `pip install -e ".[dev]"` will register ALL packages from both roots so
+# that `import shadow_engine` works without any PYTHONPATH tricks.
+# ---------------------------------------------------------------------------
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["core*", "api*", "gaia*"]
-
-# src-python packages are listed explicitly so they resolve correctly
-# when installed via `pip install -e .`
-[tool.setuptools.packages]
-find = {}
+where = [".", "src-python"]
+include = ["core*", "api*", "gaia*", "shadow_engine*", "sovereign_memory*", "quantum_chemistry*"]
 
 # ---------------------------------------------------------------------------
 # Pytest
@@ -194,7 +184,7 @@ ignore = [
   "UP042",  # class X(str, Enum) → StrEnum  (suppress until migration sprint)
   "UP045",  # Optional[X] → X|None  (~800 instances)
 
-  # ── Annotation rules ────────────────────────���───────────────────────
+  # ── Annotation rules ────────────────────────────────────────────────
   # ANN101/ANN102 removed from ruff 0.2.x — dropped 2026-06-10
   "ANN001", "ANN002", "ANN003",
   "ANN201", "ANN202", "ANN204", "ANN205", "ANN206",
@@ -405,7 +395,3 @@ force-sort-within-sections = true
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["core*", "api*", "gaia*"]
