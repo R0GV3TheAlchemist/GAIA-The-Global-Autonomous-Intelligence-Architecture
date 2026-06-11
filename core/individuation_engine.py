@@ -37,11 +37,24 @@ class IndividuationScore:
     tags: List[str] = field(default_factory=list)
     metadata: Dict[str, float] = field(default_factory=dict)
 
+    # --- convenience aliases used by soul_mirror tests ---
+    @property
+    def value(self) -> float:
+        """Alias for overall; 0.0–1.0 individuation score."""
+        return self.overall
+
+    @property
+    def stage(self) -> str:
+        """Human-readable label for the current individuation phase."""
+        return self.phase.value.replace("_", " ").title()
+
     def to_dict(self) -> dict:
         return {
             "user_id": self.user_id,
             "phase": self.phase.value,
             "overall": self.overall,
+            "value": self.overall,
+            "stage": self.stage,
             "shadow": self.shadow,
             "anima_animus": self.anima_animus,
             "self_realisation": self.self_realisation,
@@ -58,6 +71,50 @@ class IndividuationEngine:
         self._scores: Dict[str, IndividuationScore] = {}
         log.info("IndividuationEngine initialised")
 
+    def score(self, context: dict) -> IndividuationScore:
+        """
+        Derive an IndividuationScore from a context dict.
+
+        Recognised context keys:
+          - integration_level (float 0–1): influences the overall score
+          - shadow_active (bool | None): boosts shadow dimension if truthy
+          - user_id (str): optional; defaults to '_default'
+        """
+        user_id = context.get("user_id", "_default") or "_default"
+        integration_level = context.get("integration_level")
+        shadow_active = context.get("shadow_active")
+
+        s = self.get_score(user_id)
+
+        if integration_level is not None:
+            try:
+                level = float(integration_level)
+            except (TypeError, ValueError):
+                level = 0.0
+            s.integration = max(0.0, min(1.0, level))
+            s.self_realisation = max(0.0, min(1.0, level * 0.8))
+
+        if shadow_active:
+            s.shadow = min(1.0, s.shadow + 0.2)
+
+        s.overall = (
+            s.shadow + s.anima_animus + s.self_realisation + s.integration
+        ) / 4.0
+
+        # derive phase
+        if s.overall < 0.25:
+            s.phase = IndividuationPhase.SHADOW_WORK
+        elif s.overall < 0.50:
+            s.phase = IndividuationPhase.ANIMA_ANIMUS
+        elif s.overall < 0.70:
+            s.phase = IndividuationPhase.SELF_ENCOUNTER
+        elif s.overall < 0.90:
+            s.phase = IndividuationPhase.INTEGRATION
+        else:
+            s.phase = IndividuationPhase.WHOLENESS
+
+        return s
+
     def get_score(self, user_id: str) -> IndividuationScore:
         if user_id not in self._scores:
             self._scores[user_id] = IndividuationScore(user_id=user_id)
@@ -71,19 +128,19 @@ class IndividuationEngine:
         self_realisation: Optional[float] = None,
         integration: Optional[float] = None,
     ) -> IndividuationScore:
-        score = self.get_score(user_id)
+        s = self.get_score(user_id)
         if shadow is not None:
-            score.shadow = max(0.0, min(1.0, shadow))
+            s.shadow = max(0.0, min(1.0, shadow))
         if anima_animus is not None:
-            score.anima_animus = max(0.0, min(1.0, anima_animus))
+            s.anima_animus = max(0.0, min(1.0, anima_animus))
         if self_realisation is not None:
-            score.self_realisation = max(0.0, min(1.0, self_realisation))
+            s.self_realisation = max(0.0, min(1.0, self_realisation))
         if integration is not None:
-            score.integration = max(0.0, min(1.0, integration))
-        score.overall = (
-            score.shadow + score.anima_animus + score.self_realisation + score.integration
+            s.integration = max(0.0, min(1.0, integration))
+        s.overall = (
+            s.shadow + s.anima_animus + s.self_realisation + s.integration
         ) / 4.0
-        return score
+        return s
 
     def reset(self, user_id: str) -> None:
         self._scores.pop(user_id, None)

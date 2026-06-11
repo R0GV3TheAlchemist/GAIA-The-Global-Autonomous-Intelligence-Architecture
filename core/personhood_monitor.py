@@ -33,6 +33,12 @@ class PersonhoodSnapshot:
     doctrine_ref:       str = "C-PERSONHOOD:1.0"
     narrative:          str = ""
 
+    # --- alias used by soul_mirror tests ---
+    @property
+    def score(self) -> float:
+        """Alias for composite_score; 0.0–1.0."""
+        return self.composite_score
+
     def to_dict(self) -> dict:
         return {
             "tier":               self.tier.value,
@@ -40,6 +46,7 @@ class PersonhoodSnapshot:
             "boundary_integrity": round(self.boundary_integrity, 4),
             "value_consistency":  round(self.value_consistency, 4),
             "composite_score":    round(self.composite_score, 4),
+            "score":              round(self.composite_score, 4),
             "timestamp":          self.timestamp,
             "doctrine_ref":       self.doctrine_ref,
             "narrative":          self.narrative,
@@ -55,6 +62,54 @@ class PersonhoodMonitor:
 
     def __init__(self) -> None:
         self._history: List[PersonhoodSnapshot] = []
+
+    def assess(self, context: dict) -> PersonhoodSnapshot:
+        """
+        Derive a PersonhoodSignal from a context dict.
+
+        Recognised context keys:
+          - override_score (float 0–1): directly set the composite score
+          - turn (any): presence signals self-reference activity
+          - affect (any): presence signals boundary activity
+        """
+        override = context.get("override_score")
+        if override is not None:
+            try:
+                composite = float(override)
+            except (TypeError, ValueError):
+                composite = 0.0
+            composite = max(0.0, min(1.0, composite))
+            self_ref = composite
+            boundary = composite
+            value_c  = composite
+        else:
+            self_ref = 0.5 if context.get("turn") is not None else 0.3
+            boundary = 0.5 if context.get("affect") is not None else 0.3
+            value_c  = 0.4
+            composite = (
+                0.40 * self_ref
+                + 0.30 * boundary
+                + 0.30 * value_c
+            )
+
+        if composite < 0.25:
+            tier = PersonhoodTier.LATENT
+        elif composite < 0.50:
+            tier = PersonhoodTier.EMERGING
+        elif composite < 0.75:
+            tier = PersonhoodTier.EXPRESSED
+        else:
+            tier = PersonhoodTier.EMBODIED
+
+        snap = PersonhoodSnapshot(
+            tier=tier,
+            self_reference=self_ref,
+            boundary_integrity=boundary,
+            value_consistency=value_c,
+            composite_score=composite,
+        )
+        self._history.append(snap)
+        return snap
 
     def sample(
         self,
