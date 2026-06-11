@@ -241,7 +241,7 @@ class CanonPlanHint:
                 f"({self.char_count} chars)"
             )
 
-        groups_str = ", ".join(f"{r}:{l}" for r, l in self.conflict_groups)
+        groups_str = ", ".join(f"{reg}:{lbl}" for reg, lbl in self.conflict_groups)
         return (
             f"Canon context: CONFLICT resolved → {self.register_nudge} "
             f"| Priority: minimal>reflective>executive (C32) "
