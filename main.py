@@ -24,6 +24,11 @@ else:
 
 sys.path.insert(0, ROOT)
 
+# ── src-python/ on path (for emrys_engine and other src-python packages) ─────────────────────
+_SRC_PYTHON = os.path.join(ROOT, "src-python")
+if _SRC_PYTHON not in sys.path:
+    sys.path.insert(0, _SRC_PYTHON)
+
 from api.routers import zodiac
 from api.routers import llm as llm_router
 from api.routers import gaian as gaian_router
@@ -36,6 +41,7 @@ from api.atlas import router as atlas_router
 from api.crypto import router as crypto_router
 from api.auth import router as auth_router
 from core.safety.router import router as safety_router
+from emrys_engine.router import emrys_router, init_emrys_engine
 
 log = logging.getLogger("gaia")
 
@@ -140,6 +146,13 @@ async def lifespan(application: FastAPI):
     except Exception as e:
         log.warning(f"[GAIA] Runtime orchestrator init warning: {e}")
 
+    # ── Emrys L2 vibronic bridge ───────────────────────────────────────────────────────
+    try:
+        init_emrys_engine()
+        log.info("[GAIA] Emrys L2 vibronic bridge ready")
+    except Exception as e:
+        log.warning(f"[GAIA] Emrys engine init warning: {e}")
+
     routing_mode = os.environ.get("GAIA_ROUTING_MODE", "local-first")
     log.info(f"[GAIA] LLM routing mode: {routing_mode}")
 
@@ -186,6 +199,7 @@ app.include_router(atlas_router)
 app.include_router(crypto_router)
 app.include_router(safety_router)                                      # /safety/*
 app.include_router(observability_router)                               # /metrics + /health/detailed  (Issue #265)
+app.include_router(emrys_router,                    prefix="/api/emrys",           tags=["Emrys"])
 
 
 # ── Core endpoints ───────────────────────────────────────────────────────────────────────────────
