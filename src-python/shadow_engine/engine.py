@@ -9,8 +9,6 @@ import asyncio
 from datetime import datetime, timezone
 from typing   import Optional
 
-import httpx
-
 from .archetypes  import ArchetypeDetector, ShadowInputs
 from .intensity   import compute_shadow_intensity
 from .integration import IntegrationTracker, IntegrationState
@@ -38,6 +36,10 @@ class ShadowEngine:
     Usage:
         engine = ShadowEngine()
         record = await engine.evaluate(principal_id)
+
+    For tests, pass ``override_inputs`` to bypass the HTTP fetch entirely::
+
+        record = await engine.evaluate("user-1", override_inputs=my_inputs)
     """
 
     def __init__(self) -> None:
@@ -55,7 +57,7 @@ class ShadowEngine:
         override_inputs: Optional[ShadowInputs] = None,
     ) -> ShadowRecord:
         """Run a full evaluation tick and return the updated ShadowRecord."""
-        inputs = override_inputs or await self._fetch_inputs(principal_id)
+        inputs = override_inputs if override_inputs is not None else await self._fetch_inputs(principal_id)
         scores = self._detector.score_all(inputs)
 
         active, co_active = self._resolve_active(scores)
@@ -86,7 +88,7 @@ class ShadowEngine:
             evaluation_source=source,
         )
 
-        transitions = self._detect_transitions(record, prev_record)
+        self._detect_transitions(record, prev_record)
         self._cache[principal_id] = (record, tracker)
         return record
 
@@ -111,15 +113,25 @@ class ShadowEngine:
     # ------------------------------------------------------------------ private
 
     async def _fetch_inputs(self, principal_id: str) -> ShadowInputs:
-        """Fetch ArcTrend + StageRecord and assemble ShadowInputs."""
-        inputs: ShadowInputs = {}
+        """Fetch ArcTrend + StageRecord and assemble ShadowInputs.
+
+        Requires httpx.  If httpx is not installed, returns a default
+        ShadowInputs rather than crashing — callers that need live data
+        should ensure httpx is in the environment.
+        """
+        try:
+            import httpx  # optional dependency; not needed for tests
+        except ImportError:
+            return ShadowInputs()  # safe defaults
+
+        inputs_kw: dict = {}
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
             # Affect trend
             try:
                 r = await client.get(f"{_AFFECT_TREND_URL}/{principal_id}")
                 if r.status_code == 200:
                     at = r.json()
-                    inputs.update({
+                    inputs_kw.update({
                         "dominant_emotion": at.get("dominant_emotion", "neutral"),
                         "valence_trend":    float(at.get("valence_trend", 0.0)),
                         "mood_momentum":    float(at.get("mood_momentum", 0.0)),
@@ -130,7 +142,7 @@ class ShadowEngine:
                         "arousal":          min(1.0, float(at.get("mean_arousal", 0.5))),
                     })
             except Exception:
-                self._apply_affect_defaults(inputs)
+                pass  # defaults come from ShadowInputs field defaults
 
             # Stage record
             try:
@@ -138,7 +150,7 @@ class ShadowEngine:
                 if r.status_code == 200:
                     sr = r.json()
                     m  = sr.get("marker_scores", {})
-                    inputs.update({
+                    inputs_kw.update({
                         "decision_entropy":        float(m.get("decision_entropy", 50.0)),
                         "hrv_coherence":           float(m.get("hrv_coherence", 50.0)),
                         "journaling_depth":        float(m.get("journaling_depth", 50.0)),
@@ -149,29 +161,9 @@ class ShadowEngine:
                         "regression_active":       bool(sr.get("regression_active", False)),
                     })
             except Exception:
-                self._apply_stage_defaults(inputs)
+                pass
 
-        return inputs
-
-    @staticmethod
-    def _apply_affect_defaults(inp: ShadowInputs) -> None:
-        inp.setdefault("dominant_emotion", "neutral")
-        inp.setdefault("valence_trend",    0.0)
-        inp.setdefault("mood_momentum",    0.0)
-        inp.setdefault("volatility",       0.0)
-        inp.setdefault("is_volatile",      False)
-        inp.setdefault("arc_stability",    0.5)
-        inp.setdefault("low_energy_flag",  False)
-        inp.setdefault("arousal",          0.5)
-
-    @staticmethod
-    def _apply_stage_defaults(inp: ShadowInputs) -> None:
-        for key in ("decision_entropy", "hrv_coherence", "journaling_depth",
-                    "focus_session_length", "goal_completion_rate",
-                    "emotional_arc_stability"):
-            inp.setdefault(key, 50.0)
-        inp.setdefault("days_in_stage",     0)
-        inp.setdefault("regression_active", False)
+        return ShadowInputs(**inputs_kw)
 
     @staticmethod
     def _resolve_active(
