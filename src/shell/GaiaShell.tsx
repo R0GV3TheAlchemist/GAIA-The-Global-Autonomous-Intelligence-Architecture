@@ -25,6 +25,7 @@ import { ViritasWidget }     from '../shared/ViritasWidget';
 import { FieldVisualiser }   from '../shared/FieldVisualiser';
 import { useAlignmentTheme } from '../hooks/useAlignmentTheme';
 import { OnboardingRouter }  from '../onboarding/OnboardingRouter';
+import { EmrysPanel }        from '../crystal-view';
 import {
   useOnboardingStore,
   loadPersistedState,
@@ -387,12 +388,30 @@ const ShellMain: React.FC<{
   const [activeId,      setActiveId]      = useState<string>('ask');
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [sidebarOpen,   setSidebarOpen]   = useState(true);
+  const [showEmrys,     setShowEmrys]     = useState(false);
   const { tier: alignmentTier } = useAlignmentTheme();
+
+  // Pull current GAIAN stage for EmrysPanel context — if the store exposes it.
+  // graceful: if the store doesn't have currentStage yet, pass undefined.
+  const currentStage = useOnboardingStore(
+    s => (s as Record<string, unknown>).currentStage as string | undefined
+  );
 
   useEffect(() => {
     fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3_000) })
       .then(r => setBackendOnline(r.ok))
       .catch(() => setBackendOnline(false));
+  }, []);
+
+  // Listen for navigate_main({ section: 'emrys' }) dispatched by AmbientOrb
+  // via the gaia:navigate custom event that Shell.ts emits on Tauri invoke.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ section: string }>).detail;
+      if (detail?.section === 'emrys') setShowEmrys(true);
+    };
+    window.addEventListener('gaia:navigate', handler);
+    return () => window.removeEventListener('gaia:navigate', handler);
   }, []);
 
   const activeItem = NAV.find(n => n.id === activeId) ?? NAV[4]; // default: Ask GAIA
@@ -446,6 +465,18 @@ const ShellMain: React.FC<{
 
         <div className="gs__topbar-right">
           <ViritasWidget />
+
+          {/* ── Emrys L2 button ──────────────────────────────────── */}
+          <button
+            className={`gs__emrys-btn${ showEmrys ? ' gs__emrys-btn--active' : ''}`}
+            onClick={() => setShowEmrys(v => !v)}
+            aria-label="Open Emrys L2 vibronic bridge panel"
+            aria-pressed={showEmrys}
+            title="Emrys L2 (C164 · C165 · C166)"
+          >
+            ⚡
+          </button>
+
           <span
             className={`gs__status-dot gs__status-dot--${
               backendOnline === null ? 'checking' : backendOnline ? 'online' : 'offline'
@@ -497,6 +528,14 @@ const ShellMain: React.FC<{
 
       <SovereignGuard />
       <ActionGateDialog />
+
+      {/* ── Emrys L2 Panel — portal-level overlay ──────────────────── */}
+      <EmrysPanel
+        open={showEmrys}
+        onClose={() => setShowEmrys(false)}
+        gaianStage={currentStage}
+        defaultTab="cold-start"
+      />
     </div>
   );
 };

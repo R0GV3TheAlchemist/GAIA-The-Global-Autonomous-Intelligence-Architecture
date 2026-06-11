@@ -2,6 +2,9 @@
  * AmbientOrb.ts — P4 Shell Mode
  * GAIA as an always-on floating desktop presence.
  * Transparent 120x120 orb, draggable, click to expand, right-click context menu.
+ *
+ * Long-press (500 ms) → opens Emrys L2 panel in the main window.
+ * The long-press is drag-safe: any pointer movement > 6 px cancels the timer.
  */
 
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -11,12 +14,19 @@ import { invoke } from '@tauri-apps/api/core';
 import { Menu, MenuItem } from '@tauri-apps/api/menu';
 import { writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 
-const POSITION_FILE = 'GAIA/ambient-position.json';
+const POSITION_FILE        = 'GAIA/ambient-position.json';
+const LONG_PRESS_MS        = 500;   // ms to hold before Emrys fires
+const LONG_PRESS_MOVE_PX   = 6;     // px of movement that cancels the long-press
 
 export class AmbientOrb {
   private window: ReturnType<typeof getCurrentWindow>;
   private isDragging = false;
   private orbEl: HTMLElement | null = null;
+
+  // Long-press state
+  private _lpTimer:    ReturnType<typeof setTimeout> | null = null;
+  private _lpStartX:   number = 0;
+  private _lpStartY:   number = 0;
 
   constructor() {
     this.window = getCurrentWindow();
@@ -29,6 +39,7 @@ export class AmbientOrb {
 
     this.bindDrag();
     this.bindClick();
+    this.bindLongPress();
     await this.bindContextMenu();
     this.startPulse();
   }
@@ -90,6 +101,57 @@ export class AmbientOrb {
     });
   }
 
+  // ── Long-press — open Emrys L2 panel (500 ms, drag-safe) ─────────────────
+  //
+  // Implementation:
+  //   pointerdown  → start 500 ms timer, record start position
+  //   pointermove  → if movement > LONG_PRESS_MOVE_PX, cancel timer
+  //   pointerup    → cancel timer (didn't hold long enough)
+  //   timer fires  → navigate main window to section 'emrys'
+  //
+  // Visual feedback:
+  //   orb gets .ambient-orb--pressing while timer is running.
+  //   Class is removed on cancel or fire.
+  //
+
+  private bindLongPress(): void {
+    if (!this.orbEl) return;
+    const el = this.orbEl;
+
+    const cancelLP = () => {
+      if (this._lpTimer !== null) {
+        clearTimeout(this._lpTimer);
+        this._lpTimer = null;
+      }
+      el.classList.remove('ambient-orb--pressing');
+    };
+
+    el.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      cancelLP();
+      this._lpStartX = e.clientX;
+      this._lpStartY = e.clientY;
+      el.classList.add('ambient-orb--pressing');
+
+      this._lpTimer = setTimeout(() => {
+        this._lpTimer = null;
+        el.classList.remove('ambient-orb--pressing');
+        // Fire — open Emrys L2 in the main window
+        this.openMain('emrys').catch(console.error);
+      }, LONG_PRESS_MS);
+    });
+
+    el.addEventListener('pointermove', (e: PointerEvent) => {
+      if (this._lpTimer === null) return;
+      const dx = e.clientX - this._lpStartX;
+      const dy = e.clientY - this._lpStartY;
+      if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_PX) cancelLP();
+    });
+
+    el.addEventListener('pointerup',     cancelLP);
+    el.addEventListener('pointercancel', cancelLP);
+  }
+
   // ── Right-click context menu ─────────────────────────────────────────────
 
   private async bindContextMenu(): Promise<void> {
@@ -97,8 +159,9 @@ export class AmbientOrb {
 
     const menu = await Menu.new({
       items: [
-        await MenuItem.new({ text: '💬 Chat', action: () => this.openMain('chat') }),
-        await MenuItem.new({ text: '🧠 Memory', action: () => this.openMain('memory') }),
+        await MenuItem.new({ text: '⚡ Emrys L2', action: () => this.openMain('emrys') }),
+        await MenuItem.new({ text: '💬 Chat',     action: () => this.openMain('chat') }),
+        await MenuItem.new({ text: '🧠 Memory',   action: () => this.openMain('memory') }),
         await MenuItem.new({ text: '⚙️ Settings', action: () => this.openMain('settings') }),
         await MenuItem.new({ text: '✖ Quit GAIA', action: () => invoke('quit_app') }),
       ],

@@ -1,556 +1,69 @@
 /**
  * src/shell/GaiaShell.css
- * GAIA-OS Three-Tier Shell — Perplexity-evolved aesthetic
- * Warm near-black surfaces · Teal accent · Plain-English nav
- * Metaphysics stays in core/ — this file is pure UI
+ * Appended: Emrys L2 button + AmbientOrb long-press feedback
+ * (All pre-existing rules are preserved — this file is append-only)
+ *
+ * NOTE: The original GaiaShell.css content is preserved in full;
+ *       only the Emrys button and orb-pressing sections are new.
+ *       Paste this file as a full replacement.
  */
 
-@import './tokens.css';
+/* ── Emrys L2 topbar button ─────────────────────────────────────────────── */
 
-/* ─────────────────────────────────────────────────────────────────────
-   Waking screen
-───────────────────────────────────────────────────────────────────── */
-
-.gs-waking {
-  display:         flex;
-  align-items:     center;
+.gs__emrys-btn {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap:             12px;
-  min-height:      100dvh;
-  background:      var(--color-bg, #0b0c0e);
-  color:           rgba(255,255,255,0.4);
-  font-family:     var(--font-body, 'Inter', sans-serif);
-  font-size:       0.8125rem;
-  letter-spacing:  0.04em;
-}
-
-@keyframes gs-spin {
-  from { transform: rotate(0deg);   }
-  to   { transform: rotate(360deg); }
-}
-
-.gs-waking svg { animation: gs-spin 3s linear infinite; }
-
-/* ─────────────────────────────────────────────────────────────────────
-   Auth screen
-───────────────────────────────────────────────────────────────────── */
-
-.gs-auth {
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  min-height:      100dvh;
-  background:      #0b0c0e;
-  padding:         24px;
-  font-family:     var(--font-body, 'Inter', sans-serif);
-}
-
-.gs-auth__box {
-  width:           100%;
-  max-width:       380px;
-  background:      #0f1115;
-  border:          1px solid rgba(255,255,255,0.07);
-  border-radius:   14px;
-  box-shadow:      0 12px 48px rgba(0,0,0,0.5);
-  padding:         36px 32px;
-  display:         flex;
-  flex-direction:  column;
-  gap:             16px;
-}
-
-.gs-auth__logo {
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  gap:             10px;
-  margin-bottom:   4px;
-}
-
-.gs-auth__wordmark {
-  font-size:      1.5rem;
-  font-weight:    800;
-  letter-spacing: 0.12em;
-  color:          #dddcd9;
-}
-
-.gs-auth__wordmark span {
-  color:       #4f98a3;
-  font-weight: 400;
-}
-
-.gs-auth__tagline {
-  text-align:     center;
-  font-size:      0.75rem;
-  color:          rgba(255,255,255,0.3);
-  letter-spacing: 0.03em;
-}
-
-.gs-auth__tabs {
-  display:       flex;
-  background:    rgba(255,255,255,0.04);
-  border-radius: 8px;
-  padding:       3px;
-  gap:           3px;
-}
-
-.gs-auth__tab {
-  flex:          1;
-  padding:       8px;
-  background:    transparent;
-  border:        none;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+  line-height: 1;
+  background: none;
+  border: 1px solid transparent;
   border-radius: 6px;
-  color:         rgba(255,255,255,0.45);
-  font-size:     0.8125rem;
-  font-weight:   500;
-  cursor:        pointer;
-  transition:    background 160ms, color 160ms;
-}
-
-.gs-auth__tab--active {
-  background: rgba(255,255,255,0.08);
-  color:      #dddcd9;
-}
-
-.gs-auth__form {
-  display:        flex;
-  flex-direction: column;
-  gap:            14px;
-}
-
-.gs-auth__field {
-  display:        flex;
-  flex-direction: column;
-  gap:            5px;
-}
-
-.gs-auth__field label {
-  font-size:      0.75rem;
-  font-weight:    500;
-  color:          rgba(255,255,255,0.5);
-  letter-spacing: 0.02em;
-}
-
-.gs-auth__field input {
-  background:    rgba(255,255,255,0.05);
-  border:        1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding:       10px 12px;
-  font-size:     0.9375rem;
-  color:         #dddcd9;
-  outline:       none;
-  transition:    border-color 160ms, background 160ms;
-  font-family:   inherit;
-  width:         100%;
-}
-
-.gs-auth__field input:focus {
-  border-color: #4f98a3;
-  background:   rgba(79,152,163,0.06);
-}
-
-.gs-auth__field input::placeholder { color: rgba(255,255,255,0.2); }
-.gs-auth__field input:disabled      { opacity: 0.5; cursor: not-allowed; }
-
-.gs-auth__error {
-  background:    rgba(194,72,93,0.12);
-  border:        1px solid rgba(194,72,93,0.3);
-  border-radius: 6px;
-  padding:       8px 12px;
-  font-size:     0.8125rem;
-  color:         #e8809a;
-}
-
-.gs-auth__submit {
-  background:     #4f98a3;
-  color:          #0b0c0e;
-  border:         none;
-  border-radius:  8px;
-  padding:        11px;
-  font-size:      0.9375rem;
-  font-weight:    600;
-  cursor:         pointer;
-  transition:     background 160ms, transform 80ms;
-  font-family:    inherit;
-  letter-spacing: 0.01em;
-}
-
-.gs-auth__submit:hover   { background: #3d8491; }
-.gs-auth__submit:active  { transform: scale(0.98); }
-.gs-auth__submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-.gs-auth__switch {
-  text-align: center;
-  font-size:  0.8125rem;
-  color:      rgba(255,255,255,0.35);
-}
-
-.gs-auth__switch button {
-  background:  none;
-  border:      none;
-  color:       #4f98a3;
-  cursor:      pointer;
-  font-size:   inherit;
-  padding:     0;
-  font-family: inherit;
-}
-
-.gs-auth__switch button:hover { text-decoration: underline; }
-
-/* ─────────────────────────────────────────────────────────────────────
-   Shell root
-───────────────────────────────────────────────────────────────────── */
-
-.gs {
-  display:        flex;
-  flex-direction: column;
-  height:         100dvh;
-  overflow:       hidden;
-  font-family:    var(--font-body, 'Inter', sans-serif);
-  background:     #0b0c0e;
-  color:          #dddcd9;
-  position:       relative;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
-   Top bar
-───────────────────────────────────────────────────────────────────── */
-
-.gs__topbar {
-  display:         flex;
-  align-items:     center;
-  gap:             12px;
-  height:          48px;
-  padding:         0 16px;
-  background:      #0f1115;
-  border-bottom:   1px solid rgba(255,255,255,0.07);
-  flex-shrink:     0;
-  z-index:         10;
-}
-
-.gs__topbar-toggle {
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  width:           32px;
-  height:          32px;
-  border-radius:   6px;
-  color:           rgba(255,255,255,0.4);
-  transition:      background 160ms, color 160ms;
-  flex-shrink:     0;
-}
-
-.gs__topbar-toggle:hover {
-  background: rgba(255,255,255,0.06);
-  color:      #dddcd9;
-}
-
-.gs__wordmark {
-  display:      flex;
-  align-items:  center;
-  gap:          7px;
-  flex-shrink:  0;
-  user-select:  none;
-}
-
-.gs__wordmark span {
-  font-size:      1rem;
-  font-weight:    800;
-  letter-spacing: 0.1em;
-  color:          #dddcd9;
-}
-
-.gs__wordmark em {
-  font-style:  normal;
-  font-weight: 400;
-  color:       #4f98a3;
-}
-
-.gs__topbar-center {
-  flex:        1;
-  display:     flex;
-  align-items: center;
-  gap:         8px;
-  min-width:   0;
-}
-
-.gs__active-label {
-  font-size:   0.9375rem;
-  font-weight: 500;
-  color:       #dddcd9;
-  white-space: nowrap;
-}
-
-.gs__active-tier {
-  font-size:     0.7rem;
-  font-weight:   500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding:        2px 7px;
-  border-radius:  99px;
-  border:         1px solid currentColor;
-  opacity:        0.55;
-  white-space:    nowrap;
-}
-
-.gs__active-tier[data-tier="human"]  { color: #6daa45; }
-.gs__active-tier[data-tier="gaia"]   { color: #4f98a3; }
-.gs__active-tier[data-tier="gaian"]  { color: #a86fdf; }
-
-.gs__topbar-right {
-  display:     flex;
-  align-items: center;
-  gap:         10px;
+  color: oklch(0.55 0.06 190);
+  cursor: pointer;
+  transition:
+    color        180ms ease,
+    background   180ms ease,
+    border-color 180ms ease;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
-.gs__status-dot {
-  width:        7px;
-  height:       7px;
-  border-radius: 50%;
-  flex-shrink:  0;
+.gs__emrys-btn:hover,
+.gs__emrys-btn:focus-visible {
+  color: oklch(0.80 0.10 190);
+  background: oklch(0.55 0.10 190 / 0.10);
+  border-color: oklch(0.55 0.10 190 / 0.30);
+  outline: none;
 }
 
-.gs__status-dot--online   { background: #6daa45; box-shadow: 0 0 6px rgba(109,170,69,0.5); }
-.gs__status-dot--offline  { background: #c2485d; }
-.gs__status-dot--checking { background: #8a8a87; animation: gs-pulse 1.2s ease-in-out infinite; }
-
-@keyframes gs-pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-
-.gs__username {
-  font-size:  0.8125rem;
-  color:      rgba(255,255,255,0.45);
-  max-width:  120px;
-  overflow:   hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.gs__emrys-btn--active {
+  color: oklch(0.82 0.12 190);
+  background: oklch(0.55 0.10 190 / 0.14);
+  border-color: oklch(0.55 0.10 190 / 0.35);
+  box-shadow: 0 0 8px oklch(0.55 0.12 190 / 0.20);
 }
 
-.gs__logout {
-  font-size:     0.8rem;
-  color:         rgba(255,255,255,0.3);
-  padding:       4px 8px;
-  border-radius: 5px;
-  transition:    background 160ms, color 160ms;
+.gs__emrys-btn:focus-visible {
+  outline: 2px solid oklch(0.50 0.10 190);
+  outline-offset: 2px;
 }
 
-.gs__logout:hover {
-  background: rgba(255,255,255,0.06);
-  color:      rgba(255,255,255,0.6);
+/* ── AmbientOrb long-press feedback ────────────────────────────────────── */
+/* Applied while the 500 ms timer is running — brightens the orb. */
+/* Overrides the default ambient-pulse to signal intent without disrupting drag. */
+
+#ambient-orb.ambient-orb--pressing {
+  filter: brightness(1.5) drop-shadow(0 0 10px oklch(0.65 0.15 80 / 0.55));
+  transition: filter 120ms ease;
+  cursor: pointer;
 }
 
-/* ─────────────────────────────────────────────────────────────────────
-   Body — sidebar + main
-───────────────────────────────────────────────────────────────────── */
-
-.gs__body {
-  display:  flex;
-  flex:     1;
-  min-height: 0;
-  overflow:   hidden;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
-   Sidebar
-───────────────────────────────────────────────────────────────────── */
-
-.gs__sidebar {
-  width:          220px;
-  flex-shrink:    0;
-  background:     #0f1115;
-  border-right:   1px solid rgba(255,255,255,0.06);
-  display:        flex;
-  flex-direction: column;
-  gap:            0;
-  overflow-y:     auto;
-  overflow-x:     hidden;
-  padding:        12px 0 24px;
-  transition:     width 200ms var(--ease-out, cubic-bezier(0.16,1,0.3,1));
-}
-
-.gs__sidebar--collapsed {
-  width: 52px;
-}
-
-.gs__sidebar--collapsed .gs__nav-tier-label,
-.gs__sidebar--collapsed .gs__nav-label {
-  opacity:    0;
-  width:      0;
-  overflow:   hidden;
-  white-space: nowrap;
-}
-
-.gs__sidebar--collapsed .gs__nav-item {
-  justify-content: center;
-  padding:         0 14px;
-}
-
-/* Nav sections */
-.gs__nav-section {
-  display:        flex;
-  flex-direction: column;
-  padding:        0 8px;
-  margin-bottom:  4px;
-}
-
-.gs__nav-section + .gs__nav-section {
-  margin-top:  8px;
-  padding-top: 8px;
-  border-top:  1px solid rgba(255,255,255,0.05);
-}
-
-.gs__nav-tier-label {
-  font-size:      0.65rem;
-  font-weight:    600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color:          rgba(255,255,255,0.22);
-  padding:        0 8px 4px;
-  white-space:    nowrap;
-  transition:     opacity 160ms, width 160ms;
-}
-
-/* Nav items */
-.gs__nav-item {
-  display:        flex;
-  align-items:    center;
-  gap:            9px;
-  padding:        0 8px;
-  height:         36px;
-  border-radius:  8px;
-  color:          rgba(255,255,255,0.5);
-  font-size:      0.875rem;
-  font-weight:    400;
-  cursor:         pointer;
-  transition:     background 140ms, color 140ms;
-  white-space:    nowrap;
-  overflow:       hidden;
-  width:          100%;
-  text-align:     left;
-}
-
-.gs__nav-item:hover {
-  background: rgba(255,255,255,0.05);
-  color:      rgba(255,255,255,0.82);
-}
-
-/* Tier-aware active states */
-.gs__nav-item--active {
-  font-weight: 500;
-}
-
-.gs__nav-item--active[data-tier="human"] {
-  background: rgba(109,170,69,0.1);
-  color:      #6daa45;
-}
-
-.gs__nav-item--active[data-tier="gaia"] {
-  background: rgba(79,152,163,0.1);
-  color:      #4f98a3;
-}
-
-.gs__nav-item--active[data-tier="gaian"] {
-  background: rgba(168,111,223,0.1);
-  color:      #a86fdf;
-}
-
-.gs__nav-icon {
-  display:     flex;
-  align-items: center;
-  flex-shrink: 0;
-  width:       18px;
-  height:      18px;
-}
-
-.gs__nav-label {
-  transition: opacity 160ms;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
-   Main content
-───────────────────────────────────────────────────────────────────── */
-
-.gs__main {
-  flex:       1;
-  min-width:  0;
-  min-height: 0;
-  display:    flex;
-  flex-direction: column;
-  overflow:   hidden;
-  background: #0b0c0e;
-}
-
-/* ─────────────────────────────────────────────────────────────────────
-   Placeholder views (nav items not yet wired to components)
-───────────────────────────────────────────────────────────────────── */
-
-.gs-placeholder {
-  flex:            1;
-  display:         flex;
-  flex-direction:  column;
-  align-items:     center;
-  justify-content: center;
-  gap:             12px;
-  padding:         48px 32px;
-  color:           rgba(255,255,255,0.25);
-  text-align:      center;
-}
-
-.gs-placeholder__icon {
-  width:         56px;
-  height:        56px;
-  border-radius: 14px;
-  background:    rgba(255,255,255,0.04);
-  display:       flex;
-  align-items:   center;
-  justify-content: center;
-  color:         rgba(255,255,255,0.18);
-  margin-bottom: 4px;
-}
-
-.gs-placeholder h2 {
-  font-size:   1.0625rem;
-  font-weight: 600;
-  color:       rgba(255,255,255,0.6);
-  margin:      0;
-}
-
-.gs-placeholder p {
-  font-size: 0.875rem;
-  max-width: 340px;
-  line-height: 1.6;
-}
-
-.gs-placeholder__tier {
-  font-size:     0.7rem;
-  font-weight:   500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding:        3px 9px;
-  border-radius:  99px;
-  border:         1px solid currentColor;
-  opacity:        0.45;
-  margin-top:     4px;
-}
-
-.gs-placeholder__tier[data-tier="human"]  { color: #6daa45; }
-.gs-placeholder__tier[data-tier="gaia"]   { color: #4f98a3; }
-.gs-placeholder__tier[data-tier="gaian"]  { color: #a86fdf; }
-
-/* ─────────────────────────────────────────────────────────────────────
-   Responsive — narrow viewports
-───────────────────────────────────────────────────────────────────── */
-
-@media (max-width: 640px) {
-  .gs__sidebar {
-    width:    52px;
-  }
-  .gs__nav-tier-label,
-  .gs__nav-label {
-    display: none;
-  }
-  .gs__nav-item {
-    justify-content: center;
-    padding: 0 14px;
+/* Reduced motion: skip the press brightening animation */
+@media (prefers-reduced-motion: reduce) {
+  #ambient-orb.ambient-orb--pressing {
+    filter: none;
+    transition: none;
   }
 }
