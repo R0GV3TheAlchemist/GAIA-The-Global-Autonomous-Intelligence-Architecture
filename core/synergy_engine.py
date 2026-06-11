@@ -477,7 +477,7 @@ def _classify_stage(
     Priority rules (highest wins):
       quantum   : phi >= 0.80 and synergy < 0.40
       settled   : settling_phase == 'settled' and synergy >= 0.60
-      ascendant : synergy >= 0.75 and bond_depth >= 60
+      ascendant : synergy >= 0.75 and bond_depth >= 60   (checked BEFORE unified)
       unified   : synergy >= 0.80 and bond_depth >= 50
       allegiant : bond_depth >= 35 and synergy >= 0.40
       convergent: synergy >= 0.50
@@ -488,10 +488,10 @@ def _classify_stage(
         return "quantum"
     if settling_phase == "settled" and synergy_factor >= 0.60:
         return "settled"
-    if synergy_factor >= 0.80 and bond_depth >= 50:
-        return "unified"
-    if synergy_factor >= 0.75 and bond_depth >= 60:
+    if synergy_factor >= 0.75 and bond_depth >= 60:   # ascendant FIRST
         return "ascendant"
+    if synergy_factor >= 0.80 and bond_depth >= 50:   # unified AFTER
+        return "unified"
     if bond_depth >= 35 and synergy_factor >= 0.40:
         return "allegiant"
     if synergy_factor >= 0.50:
