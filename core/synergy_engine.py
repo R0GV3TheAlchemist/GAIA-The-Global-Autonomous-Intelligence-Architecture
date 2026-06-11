@@ -313,7 +313,6 @@ def _resolve_keyword_conflicts(
     if not matches:
         return None, "", False, []
 
-    # Collect unique registers preserving first-seen label per register
     seen: Dict[str, str] = {}
     for reg, lbl in matches:
         reg_n = reg.strip().lower()
@@ -323,7 +322,6 @@ def _resolve_keyword_conflicts(
     distinct_registers = list(seen.keys())
     conflict = len(distinct_registers) > 1
 
-    # Sort by priority (lower index = higher priority)
     def _rank(r: str) -> int:
         try:
             return _REGISTER_PRIORITY.index(r)
@@ -331,7 +329,6 @@ def _resolve_keyword_conflicts(
             return len(_REGISTER_PRIORITY)
 
     sorted_groups = sorted(seen.items(), key=lambda kv: _rank(kv[0]))
-
     winning_reg = sorted_groups[0][0]
     winning_lbl = sorted_groups[0][1]
 
@@ -344,12 +341,6 @@ def _extract_canon_refs(text: str) -> List[str]:
 
 
 def _keyword_scan(text: str) -> List[Tuple[str, str]]:
-    """
-    Scan *text* for register keywords.
-
-    Returns a list of (register, label) tuples, one per unique
-    keyword hit (label = "keyword:<word>").
-    """
     words = re.findall(r"[a-z]+", text.lower())
     matches: List[Tuple[str, str]] = []
     seen_words: set = set()
@@ -371,9 +362,6 @@ def _analyse_canon_context(context: Any) -> CanonPlanHint:
     CanonEntry              → fast-path when register_signal is explicit;
                               falls through to keyword scan for UNSPECIFIED.
     """
-    # ------------------------------------------------------------------
-    # 1. Detect CanonEntry (avoid hard import — duck-type on .ref_id)
-    # ------------------------------------------------------------------
     entry_ref_id: Optional[str] = None
     body: Optional[str] = None
     declared_register: Optional[str] = None
@@ -389,7 +377,6 @@ def _analyse_canon_context(context: Any) -> CanonPlanHint:
     if is_entry:
         entry_ref_id = context.ref_id
         body = context.body or ""
-        # Determine whether the signal is explicitly declared
         sig = context.register_signal
         sig_value = sig.value if hasattr(sig, "value") else str(sig)
         if sig_value != "unspecified":
@@ -397,22 +384,12 @@ def _analyse_canon_context(context: Any) -> CanonPlanHint:
     else:
         body = context if isinstance(context, str) else None
 
-    # ------------------------------------------------------------------
-    # 2. Early-out: no text
-    # ------------------------------------------------------------------
     if not body or not body.strip():
-        return CanonPlanHint(
-            present=False,
-            char_count=0,
-            entry_ref_id=entry_ref_id,
-        )
+        return CanonPlanHint(present=False, char_count=0, entry_ref_id=entry_ref_id)
 
     char_count = len(body)
     canon_refs = _extract_canon_refs(body)
 
-    # ------------------------------------------------------------------
-    # 3. CanonEntry fast-path: declared signal is authoritative
-    # ------------------------------------------------------------------
     if declared_register is not None:
         nudge_label = f"canon-entry:{entry_ref_id}:{declared_register}"
         return CanonPlanHint(
@@ -424,18 +401,13 @@ def _analyse_canon_context(context: Any) -> CanonPlanHint:
             char_count=char_count,
             nudge_label=nudge_label,
             entry_ref_id=entry_ref_id,
-            # legacy
             canon_id=entry_ref_id or "",
             directive=f"Honour {entry_ref_id}" if entry_ref_id else "",
         )
 
-    # ------------------------------------------------------------------
-    # 4. Keyword scan (plain string OR CanonEntry with UNSPECIFIED signal)
-    # ------------------------------------------------------------------
     kw_matches = _keyword_scan(body)
 
     if not kw_matches:
-        # Text found but no register keywords — present but no nudge
         return CanonPlanHint(
             present=True,
             register_nudge=None,
@@ -459,7 +431,6 @@ def _analyse_canon_context(context: Any) -> CanonPlanHint:
         char_count=char_count,
         nudge_label=winning_lbl,
         entry_ref_id=entry_ref_id,
-        # legacy
         canon_id=entry_ref_id or "",
         directive=f"Register: {winning_reg}" if winning_reg else "",
     )
@@ -621,7 +592,6 @@ class SynergyEngine:
         keywords: Optional[List[str]] = None,
         score:    float = 0.0,
     ) -> SynergyResult:
-        # legacy path: keywords is a flat list of strings
         kw_pairs = [(kw.strip().lower(), f"keyword:{kw.strip().lower()}")
                     for kw in (keywords or []) if kw.strip()]
         _seen: set = set()
@@ -665,7 +635,6 @@ class SynergyEngine:
     ) -> tuple:
         sy = state or blank_synergy_state()
 
-        # ---- five dimensional scores ----
         body_score = (
             0.50 * self._hz_to_score(dominant_hz)
             + 0.30 * (1.0 - min(1.0, conflict_density))
@@ -705,15 +674,12 @@ class SynergyEngine:
             DimensionScore("bond", bond_score),
         ]
 
-        # weighted factor
         factor = sum(self.WEIGHTS[d.name] * d.score for d in dimensions)
         factor = max(0.0, min(1.0, factor))
 
-        # dominant friction: lowest-scoring dimension (only if < 0.5)
         lowest = min(dimensions, key=lambda d: d.score)
         dominant_friction = lowest.name if lowest.score < 0.5 else None
 
-        # stage
         dom_stage = _classify_stage(
             synergy_factor=factor,
             bond_depth=bond_depth,
@@ -811,6 +777,45 @@ class SynergyEngine:
                 score=float(params.get("score", 0.0)),
             )
         return self.compute(**params)
+
+    # ---- plan() / _plan_internal() ----
+
+    def plan(
+        self,
+        goal: str,
+        context: dict | None = None,
+        trace=None,
+        canon_refs: list | None = None,
+    ) -> dict:
+        canon_refs = canon_refs or []
+        try:
+            result = self._plan_internal(goal, context or {})
+        except Exception as exc:
+            if trace is not None:
+                try:
+                    trace.record_error(str(exc), canon_refs=canon_refs)
+                except Exception:
+                    pass
+            raise
+        if trace is not None:
+            try:
+                trace.record_output(result, canon_refs=canon_refs)
+            except Exception:
+                pass
+        return result
+
+    def _plan_internal(self, goal: str, context: dict) -> dict:
+        reading, sy = self.compute(**context) if context else (None, None)
+        factor = reading.synergy_factor if reading else 0.5
+        return {
+            "action":           "executive",
+            "confidence":       factor,
+            "goal_complete":    False,
+            "goal_excerpt":     goal[:80],
+            "coherence":        factor,
+            "cycle_count":      len(sy.turn_history) if sy else 0,
+            "canon_rest_nudge": reading.canon_hint if reading else "",
+        }
 
     def get_history(self) -> List[SynergyResult]:
         return list(self._history)
