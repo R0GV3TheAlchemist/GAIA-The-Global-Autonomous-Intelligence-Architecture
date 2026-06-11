@@ -43,6 +43,9 @@ class AuditEventType(str, Enum):
     POLICY_DECISION    = "policy_decision"
     TOOL_CALL          = "tool_call"
     SAFETY_VIOLATION   = "safety_violation"
+    # --- permission gate events (used by core.agent.action_gate) ---
+    PERMISSION_GRANT   = "permission_grant"
+    PERMISSION_DENY    = "permission_deny"
 
 
 @dataclass(frozen=True)
