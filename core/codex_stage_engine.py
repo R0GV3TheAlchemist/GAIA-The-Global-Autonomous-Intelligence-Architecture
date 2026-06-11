@@ -40,6 +40,25 @@ class CodexStageID(StrEnum):
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def coerce_codex_stage_id(raw) -> CodexStageID:
+    """Safely coerce int-0 or unknown values to a valid CodexStageID."""
+    if isinstance(raw, CodexStageID):
+        return raw
+    if isinstance(raw, int) or (isinstance(raw, str) and raw.isdigit()):
+        # Legacy: int 0 → CALCINATIO (first stage)
+        _by_index = list(CodexStageID)
+        idx = int(raw)
+        return _by_index[idx] if 0 <= idx < len(_by_index) else CodexStageID.CALCINATIO
+    try:
+        return CodexStageID(str(raw).lower())
+    except ValueError:
+        return CodexStageID.CALCINATIO
+
+
+# ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
 
