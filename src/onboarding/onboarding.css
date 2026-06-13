@@ -128,6 +128,15 @@
   flex-wrap:   wrap;
 }
 
+/* Stacked column layout for offer-view buttons in Phase 7 */
+.phase__actions--stack {
+  flex-direction: column;
+  align-items:    stretch;
+  width:          100%;
+  max-width:      320px;
+  margin:         0 auto;
+}
+
 .phase__cta {
   margin-top: 0.5rem;
 }
@@ -137,6 +146,7 @@
 .btn {
   display:         inline-flex;
   align-items:     center;
+  justify-content: center;
   gap:             0.5em;
   padding:         0.6rem 1.4rem;
   border:          1.5px solid transparent;
@@ -314,8 +324,6 @@
 
 /* ── 8. Phase 4 — Three Questions ───────────────────────────────────────── */
 
-/* — Header & step counter — */
-
 .q4-header {
   display:     flex;
   align-items: center;
@@ -331,11 +339,7 @@
   min-width:      2.5ch;
 }
 
-.q4-dots {
-  display: flex;
-  gap:     6px;
-  align-items: center;
-}
+.q4-dots { display: flex; gap: 6px; align-items: center; }
 
 .q4-dot {
   width:         6px;
@@ -345,20 +349,8 @@
   border:        1px solid rgba(155, 109, 219, 0.3);
   transition:    background 300ms ease, transform 250ms ease, border-color 300ms ease;
 }
-
-.q4-dot--done {
-  background:   rgba(155, 109, 219, 0.65);
-  border-color: rgba(155, 109, 219, 0.8);
-}
-
-.q4-dot--active {
-  background:   #9b6ddb;
-  border-color: #c8aaed;
-  transform:    scale(1.5);
-  box-shadow:   0 0 5px rgba(155, 109, 219, 0.6);
-}
-
-/* — GAIA voice prompt — */
+.q4-dot--done    { background: rgba(155, 109, 219, 0.65); border-color: rgba(155, 109, 219, 0.8); }
+.q4-dot--active  { background: #9b6ddb; border-color: #c8aaed; transform: scale(1.5); box-shadow: 0 0 5px rgba(155, 109, 219, 0.6); }
 
 .q4-prompt {
   font-size:   1.15rem;
@@ -375,14 +367,7 @@
   font-style: italic;
 }
 
-/* — Step transition animations — */
-
-.q4-step {
-  min-height: 280px;
-  display:    flex;
-  flex-direction: column;
-  gap:        1.25rem;
-}
+.q4-step { min-height: 280px; display: flex; flex-direction: column; gap: 1.25rem; }
 
 .q4-step--exit-forward  { animation: q4ExitForward  240ms cubic-bezier(0.4, 0, 1, 1)   both; }
 .q4-step--exit-back     { animation: q4ExitBack     240ms cubic-bezier(0.4, 0, 1, 1)   both; }
@@ -394,16 +379,7 @@
 @keyframes q4EnterForward { from { opacity: 0; transform: translateX( 28px); } to { opacity: 1; transform: translateX(0);     } }
 @keyframes q4EnterBack    { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0);     } }
 
-/* — Intent cards — */
-
-.question-group {
-  border:  none;
-  padding: 0;
-  margin:  0;
-  display: flex;
-  flex-direction: column;
-  gap:     1rem;
-}
+.question-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem; }
 
 .intent-grid {
   display:               grid;
@@ -412,108 +388,70 @@
 }
 
 .intent-card {
-  display:        flex;
-  flex-direction: column;
-  gap:            0.3rem;
-  padding:        0.8rem 1rem;
-  border:         1.5px solid rgba(155, 109, 219, 0.22);
-  border-radius:  10px;
-  background:     rgba(155, 109, 219, 0.05);
-  cursor:         pointer;
-  text-align:     left;
-  transition:     border-color 180ms ease, background 180ms ease, transform 120ms ease;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  padding: 0.8rem 1rem;
+  border: 1.5px solid rgba(155, 109, 219, 0.22);
+  border-radius: 10px;
+  background: rgba(155, 109, 219, 0.05);
+  cursor: pointer; text-align: left;
+  transition: border-color 180ms ease, background 180ms ease, transform 120ms ease;
 }
-.intent-card:hover {
-  border-color: rgba(155, 109, 219, 0.45);
-  background:   rgba(155, 109, 219, 0.12);
-}
-.intent-card--selected {
-  border-color: #9b6ddb;
-  background:   rgba(155, 109, 219, 0.22);
-  box-shadow:   0 0 0 1px rgba(155, 109, 219, 0.4);
-}
-.intent-card__icon  { font-size: 1.4rem; line-height: 1; margin-bottom: 0.1rem; }
-.intent-card__label { font-size: 0.92rem; font-weight: 500; color: rgba(224, 221, 240, 0.88); }
-.intent-card__desc  { font-size: 0.78rem; color: rgba(224, 221, 240, 0.45); line-height: 1.35; }
+.intent-card:hover     { border-color: rgba(155, 109, 219, 0.45); background: rgba(155, 109, 219, 0.12); }
+.intent-card--selected { border-color: #9b6ddb; background: rgba(155, 109, 219, 0.22); box-shadow: 0 0 0 1px rgba(155, 109, 219, 0.4); }
+.intent-card__icon     { font-size: 1.4rem; line-height: 1; margin-bottom: 0.1rem; }
+.intent-card__label    { font-size: 0.92rem; font-weight: 500; color: rgba(224, 221, 240, 0.88); }
+.intent-card__desc     { font-size: 0.78rem; color: rgba(224, 221, 240, 0.45); line-height: 1.35; }
 
 .intent-other {
-  background:    rgba(255, 255, 255, 0.04);
-  border:        1.5px solid rgba(155, 109, 219, 0.3);
-  border-radius: 8px;
-  color:         #e0ddf0;
-  font-size:     0.95rem;
-  padding:       0.65rem 0.9rem;
-  outline:       none;
-  resize:        vertical;
-  transition:    border-color 200ms ease, box-shadow 200ms ease;
-  animation:     phaseEnter 280ms ease both;
-  font-family:   inherit;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(155, 109, 219, 0.3);
+  border-radius: 8px; color: #e0ddf0; font-size: 0.95rem;
+  padding: 0.65rem 0.9rem; outline: none; resize: vertical;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  animation: phaseEnter 280ms ease both; font-family: inherit;
 }
-.intent-other:focus {
-  border-color: #9b6ddb;
-  box-shadow:   0 0 0 3px rgba(155, 109, 219, 0.14);
-}
+.intent-other:focus       { border-color: #9b6ddb; box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.14); }
 .intent-other::placeholder { color: rgba(224, 221, 240, 0.25); }
-
-/* — Depth cards — */
 
 .depth-list { display: flex; flex-direction: column; gap: 0.55rem; }
 
 .depth-card {
-  display:        grid;
-  grid-template:  'icon label desc' auto
-                  'icon .    detail' auto / 2.5rem 1fr;
-  column-gap:     0.75rem;
-  row-gap:        0.15rem;
-  padding:        0.9rem 1rem;
-  border:         1.5px solid rgba(155, 109, 219, 0.2);
-  border-radius:  10px;
-  background:     rgba(155, 109, 219, 0.04);
-  cursor:         pointer;
-  text-align:     left;
-  transition:     border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
-  width:          100%;
+  display: grid;
+  grid-template: 'icon label desc' auto 'icon . detail' auto / 2.5rem 1fr;
+  column-gap: 0.75rem; row-gap: 0.15rem;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid rgba(155, 109, 219, 0.2);
+  border-radius: 10px; background: rgba(155, 109, 219, 0.04);
+  cursor: pointer; text-align: left; width: 100%;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
 }
-.depth-card:hover       { border-color: rgba(155, 109, 219, 0.4); background: rgba(155, 109, 219, 0.1); }
-.depth-card--selected   { border-color: #9b6ddb; background: rgba(155, 109, 219, 0.18); box-shadow: 0 0 0 1px rgba(155, 109, 219, 0.35), 0 0 14px rgba(155, 109, 219, 0.12); }
-.depth-card__icon       { grid-area: icon; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; color: rgba(155, 109, 219, 0.75); }
-.depth-card__label      { grid-area: label; font-size: 1rem; font-weight: 500; color: rgba(224, 221, 240, 0.9); align-self: end; }
-.depth-card__desc       { grid-area: desc; font-size: 0.8rem; color: rgba(155, 109, 219, 0.75); font-weight: 500; align-self: end; }
-.depth-card__detail     { grid-area: detail; font-size: 0.78rem; color: rgba(224, 221, 240, 0.42); line-height: 1.45; }
-
-/* — Topic chips — */
+.depth-card:hover     { border-color: rgba(155, 109, 219, 0.4); background: rgba(155, 109, 219, 0.1); }
+.depth-card--selected { border-color: #9b6ddb; background: rgba(155, 109, 219, 0.18); box-shadow: 0 0 0 1px rgba(155, 109, 219, 0.35), 0 0 14px rgba(155, 109, 219, 0.12); }
+.depth-card__icon     { grid-area: icon; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; color: rgba(155, 109, 219, 0.75); }
+.depth-card__label    { grid-area: label; font-size: 1rem; font-weight: 500; color: rgba(224, 221, 240, 0.9); align-self: end; }
+.depth-card__desc     { grid-area: desc; font-size: 0.8rem; color: rgba(155, 109, 219, 0.75); font-weight: 500; align-self: end; }
+.depth-card__detail   { grid-area: detail; font-size: 0.78rem; color: rgba(224, 221, 240, 0.42); line-height: 1.45; }
 
 .topics-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 .topic-chip {
-  display:       inline-flex;
-  align-items:   center;
-  gap:           0.4em;
-  padding:       0.45rem 1rem;
-  border-radius: 20px;
-  border:        1.5px solid rgba(155, 109, 219, 0.28);
-  background:    transparent;
-  color:         rgba(224, 221, 240, 0.68);
-  font-size:     0.88rem;
-  cursor:        pointer;
-  transition:    all 180ms ease;
-  font-family:   inherit;
+  display: inline-flex; align-items: center; gap: 0.4em;
+  padding: 0.45rem 1rem; border-radius: 20px;
+  border: 1.5px solid rgba(155, 109, 219, 0.28);
+  background: transparent; color: rgba(224, 221, 240, 0.68);
+  font-size: 0.88rem; cursor: pointer;
+  transition: all 180ms ease; font-family: inherit;
 }
-.topic-chip:hover        { border-color: rgba(155, 109, 219, 0.55); color: #e0ddf0; background: rgba(155, 109, 219, 0.08); }
-.topic-chip--selected    { background: rgba(155, 109, 219, 0.22); border-color: #9b6ddb; color: #e0ddf0; box-shadow: 0 0 0 1px rgba(155, 109, 219, 0.3); }
+.topic-chip:hover     { border-color: rgba(155, 109, 219, 0.55); color: #e0ddf0; background: rgba(155, 109, 219, 0.08); }
+.topic-chip--selected { background: rgba(155, 109, 219, 0.22); border-color: #9b6ddb; color: #e0ddf0; box-shadow: 0 0 0 1px rgba(155, 109, 219, 0.3); }
 
 .q4-none-btn {
-  background:   none;
-  border:       none;
-  color:        rgba(224, 221, 240, 0.32);
-  font-size:    0.82rem;
-  cursor:       pointer;
-  padding:      0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  font-family:  inherit;
-  align-self:   flex-start;
-  transition:   color 180ms ease;
+  background: none; border: none;
+  color: rgba(224, 221, 240, 0.32); font-size: 0.82rem;
+  cursor: pointer; padding: 0;
+  text-decoration: underline; text-underline-offset: 3px;
+  font-family: inherit; align-self: flex-start;
+  transition: color 180ms ease;
 }
 .q4-none-btn:hover { color: rgba(224, 221, 240, 0.6); }
 
@@ -527,198 +465,220 @@
 
 /* ── 9. Phase 5 — Consent ────────────────────────────────────────────────── */
 
-.consent-list {
-  display:        flex;
-  flex-direction: column;
-  gap:            0.45rem;
-}
+.consent-list { display: flex; flex-direction: column; gap: 0.45rem; }
 
 .consent-group-label {
-  font-size:      0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color:          rgba(155, 109, 219, 0.6);
-  margin-top:     0.35rem;
-  margin-bottom:  0.1rem;
-  padding-left:   0.1rem;
+  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(155, 109, 219, 0.6);
+  margin-top: 0.35rem; margin-bottom: 0.1rem; padding-left: 0.1rem;
 }
 .consent-group-label--dim { color: rgba(224, 221, 240, 0.28); }
 
-.consent-divider {
-  height:     1px;
-  background: rgba(155, 109, 219, 0.14);
-  margin:     0.6rem 0 0.25rem;
-  border:     none;
-}
+.consent-divider { height: 1px; background: rgba(155, 109, 219, 0.14); margin: 0.6rem 0 0.25rem; border: none; }
 
 .consent-item {
-  display:     grid;
-  grid-template-columns: 1.6rem 1fr auto;
-  align-items: center;
-  gap:         0.8rem;
-  padding:     0.7rem 0.9rem;
-  border-radius: 9px;
-  border:      1.5px solid rgba(155, 109, 219, 0.14);
-  background:  rgba(155, 109, 219, 0.03);
-  opacity:     0;
-  transform:   translateY(8px);
-  transition:  border-color 200ms ease, background 200ms ease;
+  display: grid; grid-template-columns: 1.6rem 1fr auto;
+  align-items: center; gap: 0.8rem;
+  padding: 0.7rem 0.9rem; border-radius: 9px;
+  border: 1.5px solid rgba(155, 109, 219, 0.14);
+  background: rgba(155, 109, 219, 0.03);
+  opacity: 0; transform: translateY(8px);
+  transition: border-color 200ms ease, background 200ms ease;
 }
-
-.consent-item--visible {
-  animation: consentItemIn 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
+.consent-item--visible { animation: consentItemIn 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
 @keyframes consentItemIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0);   }
 }
 
-.consent-item--on {
-  border-color: rgba(155, 109, 219, 0.38);
-  background:   rgba(155, 109, 219, 0.09);
-}
-
-.consent-item__icon   { font-size: 1.1rem; line-height: 1; color: rgba(155, 109, 219, 0.65); justify-self: center; }
-.consent-item__body   { display: flex; flex-direction: column; gap: 0.18rem; }
-.consent-item__label  { font-size: 0.9rem; font-weight: 500; color: rgba(224, 221, 240, 0.86); line-height: 1.3; }
-.consent-item__desc   { font-size: 0.78rem; color: rgba(224, 221, 240, 0.42); line-height: 1.5; }
+.consent-item--on      { border-color: rgba(155, 109, 219, 0.38); background: rgba(155, 109, 219, 0.09); }
+.consent-item__icon    { font-size: 1.1rem; line-height: 1; color: rgba(155, 109, 219, 0.65); justify-self: center; }
+.consent-item__body    { display: flex; flex-direction: column; gap: 0.18rem; }
+.consent-item__label   { font-size: 0.9rem; font-weight: 500; color: rgba(224, 221, 240, 0.86); line-height: 1.3; }
+.consent-item__desc    { font-size: 0.78rem; color: rgba(224, 221, 240, 0.42); line-height: 1.5; }
 
 .consent-toggle {
-  flex-shrink:   0;
-  width:         38px;
-  height:        22px;
-  border-radius: 11px;
-  background:    rgba(155, 109, 219, 0.18);
-  border:        1.5px solid rgba(155, 109, 219, 0.3);
-  position:      relative;
-  cursor:        pointer;
-  transition:    background 220ms ease, border-color 220ms ease;
-  outline:       none;
-  padding:       0;
+  flex-shrink: 0; width: 38px; height: 22px; border-radius: 11px;
+  background: rgba(155, 109, 219, 0.18);
+  border: 1.5px solid rgba(155, 109, 219, 0.3);
+  position: relative; cursor: pointer;
+  transition: background 220ms ease, border-color 220ms ease;
+  outline: none; padding: 0;
 }
-.consent-toggle--on        { background: #9b6ddb; border-color: #b48fe8; }
-.consent-toggle:focus-visible { box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.45); }
-
+.consent-toggle--on           { background: #9b6ddb; border-color: #b48fe8; }
+.consent-toggle:focus-visible  { box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.45); }
 .consent-toggle__thumb {
-  position: absolute; top: 3px; left: 3px;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: rgba(224, 221, 240, 0.7);
+  position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
+  border-radius: 50%; background: rgba(224, 221, 240, 0.7); display: block;
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
-  display: block;
 }
 .consent-toggle--on .consent-toggle__thumb { transform: translateX(16px); background: #fff; }
 
-.consent-footer {
-  font-size: 0.8rem; color: rgba(224, 221, 240, 0.32);
-  line-height: 1.6; text-align: center;
-}
+.consent-footer      { font-size: 0.8rem; color: rgba(224, 221, 240, 0.32); line-height: 1.6; text-align: center; }
 .consent-footer__path { color: rgba(155, 109, 219, 0.7); font-style: normal; font-weight: 500; }
 
 /* ── 10. Phase 6 — First Gift ────────────────────────────────────────────── */
 
-/*
- * .gift-intro: slightly larger than .gaia-aside, not italic,
- * centred — serves as GAIA's typed intro line for this phase.
- * Reuses the q4-prompt type scale but with centred alignment.
- */
 .gift-intro {
-  font-size:   1.1rem;
-  font-weight: 300;
-  color:       rgba(224, 221, 240, 0.82);
-  line-height: 1.55;
-  text-align:  center;
-  margin-bottom: 0.25rem;
+  font-size: 1.1rem; font-weight: 300;
+  color: rgba(224, 221, 240, 0.82); line-height: 1.55;
+  text-align: center; margin-bottom: 0.25rem;
 }
 
-/* Gift card — revealed via JS gift-card--visible after intro completes */
 .gift-card {
-  background:    rgba(155, 109, 219, 0.06);
-  border:        1.5px solid rgba(155, 109, 219, 0.22);
-  border-radius: 14px;
-  padding:       2rem 1.75rem;
-  max-width:     440px;
-  width:         100%;
-  display:       flex;
-  flex-direction: column;
-  gap:           0.85rem;
-  /* Hidden state */
-  opacity:       0;
-  transform:     scale(0.95) translateY(12px);
-  transition:    opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
-                 transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
-                 border-color 300ms ease;
+  background: rgba(155, 109, 219, 0.06);
+  border: 1.5px solid rgba(155, 109, 219, 0.22);
+  border-radius: 14px; padding: 2rem 1.75rem;
+  max-width: 440px; width: 100%;
+  display: flex; flex-direction: column; gap: 0.85rem;
+  opacity: 0; transform: scale(0.95) translateY(12px);
+  transition: opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 300ms ease;
 }
-.gift-card--visible {
-  opacity:   1;
-  transform: scale(1) translateY(0);
-}
-.gift-card:hover     { border-color: rgba(155, 109, 219, 0.42); }
+.gift-card--visible { opacity: 1; transform: scale(1) translateY(0); }
+.gift-card:hover    { border-color: rgba(155, 109, 219, 0.42); }
+.gift-card__icon    { font-size: 2rem; line-height: 1; color: rgba(155, 109, 219, 0.8); }
+.gift-card__title   { font-size: 1.2rem; font-weight: 500; color: #e0ddf0; margin: 0; }
+.gift-card__body    { font-size: 0.97rem; line-height: 1.68; color: rgba(224, 221, 240, 0.72); }
+.gift-card__hint    { font-size: 0.8rem; color: rgba(224, 221, 240, 0.35); font-style: italic; }
 
-.gift-card__icon {
-  font-size:   2rem;
-  line-height: 1;
-  color:       rgba(155, 109, 219, 0.8);
-}
-.gift-card__title {
-  font-size:   1.2rem;
-  font-weight: 500;
-  color:       #e0ddf0;
-  margin:      0;
-}
-.gift-card__body {
-  font-size:   0.97rem;
-  line-height: 1.68;
-  color:       rgba(224, 221, 240, 0.72);
-}
-.gift-card__hint {
-  font-size:  0.8rem;
-  color:      rgba(224, 221, 240, 0.35);
-  font-style: italic;
-}
-
-/* Skip — plain text link, not a ghost button */
 .gift-skip {
-  background:          none;
-  border:              none;
-  color:               rgba(224, 221, 240, 0.3);
-  font-size:           0.8rem;
-  cursor:              pointer;
-  padding:             0;
-  text-decoration:     underline;
-  text-underline-offset: 3px;
-  font-family:         inherit;
-  transition:          color 180ms ease;
-  /* Fades in with a small delay after the card */
-  animation:           phaseEnter 400ms 200ms ease both;
+  background: none; border: none;
+  color: rgba(224, 221, 240, 0.3); font-size: 0.8rem;
+  cursor: pointer; padding: 0;
+  text-decoration: underline; text-underline-offset: 3px;
+  font-family: inherit; transition: color 180ms ease;
+  animation: phaseEnter 400ms 200ms ease both;
 }
 .gift-skip:hover { color: rgba(224, 221, 240, 0.55); }
 
 /* ── 11. Phase 7 — Account Setup ─────────────────────────────────────────── */
 
-.account-fields {
-  display: flex; flex-direction: column; gap: 1rem;
-  width: 100%; max-width: 360px; margin: 0 auto;
+/*
+ * .account-intro — the typed GAIA prompt explaining that no account
+ * is required. Left-aligned within centred content because it's
+ * a multi-sentence paragraph, not a one-liner.
+ */
+.account-intro {
+  font-size:   1rem;
+  font-weight: 300;
+  color:       rgba(224, 221, 240, 0.75);
+  line-height: 1.7;
+  text-align:  left;
+  max-width:   420px;
 }
-.field-group { display: flex; flex-direction: column; gap: 0.35rem; }
-.field-group label { font-size: 0.85rem; color: rgba(224, 221, 240, 0.5); letter-spacing: 0.03em; }
+
+/*
+ * .account-form — the email/password form.
+ * Starts invisible; .account-form--visible slides it in.
+ * Width-capped so it doesn't stretch edge-to-edge.
+ */
+.account-form {
+  display:        flex;
+  flex-direction: column;
+  gap:            1.1rem;
+  width:          100%;
+  max-width:      360px;
+  opacity:        0;
+  transform:      translateY(10px);
+  transition:     opacity 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.account-form--visible {
+  opacity:   1;
+  transform: translateY(0);
+}
+
+/* Field label + input pair */
+.field-group {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.35rem;
+}
+.field-group label {
+  font-size:      0.82rem;
+  color:          rgba(224, 221, 240, 0.48);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .field-group input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid rgba(155, 109, 219, 0.3);
-  border-radius: 7px; color: #e0ddf0; font-size: 0.97rem;
-  padding: 0.5rem 0.85rem; outline: none;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  background:    rgba(255, 255, 255, 0.05);
+  border:        1.5px solid rgba(155, 109, 219, 0.3);
+  border-radius: 8px;
+  color:         #e0ddf0;
+  font-size:     0.97rem;
+  padding:       0.55rem 0.9rem;
+  outline:       none;
+  width:         100%;
+  box-sizing:    border-box;
+  transition:    border-color 200ms ease, box-shadow 200ms ease;
 }
-.field-group input:focus        { border-color: #9b6ddb; box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.18); }
+.field-group input:focus {
+  border-color: #9b6ddb;
+  box-shadow:   0 0 0 3px rgba(155, 109, 219, 0.18);
+}
 .field-group input::placeholder { color: rgba(224, 221, 240, 0.22); }
-.account-error { font-size: 0.85rem; color: #e87070; text-align: center; animation: phaseEnter 250ms ease both; }
-.account-skip  { font-size: 0.82rem; color: rgba(224, 221, 240, 0.38); text-align: center; }
-.account-skip button {
-  background: none; border: none; color: rgba(155, 109, 219, 0.65);
-  cursor: pointer; font-size: inherit; padding: 0;
-  text-decoration: underline; text-underline-offset: 2px;
+
+/* Password field wrapper — holds the input + show/hide toggle */
+.account-password-wrap {
+  position: relative;
+  display:  flex;
+  align-items: stretch;
 }
-.account-skip button:hover { color: #9b6ddb; }
+.account-password-wrap input {
+  /* Leave room for the show/hide button */
+  padding-right: 2.8rem;
+}
+
+/* Show/hide password toggle icon button */
+.account-show-pass {
+  position:   absolute;
+  right:      0;
+  top:        0;
+  bottom:     0;
+  width:      2.6rem;
+  background: none;
+  border:     none;
+  color:      rgba(224, 221, 240, 0.35);
+  cursor:     pointer;
+  font-size:  0.8rem;
+  display:    flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 160ms ease;
+  border-radius: 0 8px 8px 0;
+}
+.account-show-pass:hover     { color: rgba(224, 221, 240, 0.7); }
+.account-show-pass:focus-visible {
+  outline:    none;
+  box-shadow: 0 0 0 2px rgba(155, 109, 219, 0.5) inset;
+}
+
+/* Inline error message */
+.account-error {
+  font-size:  0.85rem;
+  color:      #e87070;
+  line-height: 1.5;
+  animation:  phaseEnter 220ms ease both;
+  text-align: left;
+}
+
+/* ‘← Back’ plain text button below the form */
+.account-back {
+  background:          none;
+  border:              none;
+  color:               rgba(224, 221, 240, 0.32);
+  font-size:           0.82rem;
+  cursor:              pointer;
+  padding:             0;
+  text-decoration:     underline;
+  text-underline-offset: 3px;
+  font-family:         inherit;
+  align-self:          flex-start;
+  transition:          color 160ms ease;
+}
+.account-back:hover { color: rgba(224, 221, 240, 0.6); }
 
 /* ── 12. Phase 8 — Threshold ─────────────────────────────────────────────── */
 
@@ -760,13 +720,8 @@
 
 /* ── 14. Shared components ───────────────────────────────────────────────── */
 
-.gaia-question {
-  font-size: 1.3rem; font-weight: 300;
-  color: rgba(224, 221, 240, 0.9); line-height: 1.55;
-}
-.gaia-aside {
-  font-size: 0.95rem; color: rgba(224, 221, 240, 0.5); font-style: italic;
-}
+.gaia-question { font-size: 1.3rem; font-weight: 300; color: rgba(224, 221, 240, 0.9); line-height: 1.55; }
+.gaia-aside    { font-size: 0.95rem; color: rgba(224, 221, 240, 0.5); font-style: italic; }
 
 /* ── 15. Reduced motion ──────────────────────────────────────────────────── */
 
@@ -777,6 +732,7 @@
   .name-input-wrap,
   .gift-card,
   .gift-skip,
+  .account-form,
   .threshold-line,
   .onboarding-resume,
   .consent-item--visible,
