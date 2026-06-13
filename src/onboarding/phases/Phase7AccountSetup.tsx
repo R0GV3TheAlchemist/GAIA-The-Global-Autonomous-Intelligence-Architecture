@@ -1,225 +1,185 @@
-// C-OB01 — Phase 7: Account Setup (Optional) v2
-// Explicitly optional. No friction for skipping.
-// Email + password only. Everything works locally without an account.
-// Rebuilt: TypewriterText intro, correct CSS classes, form reveal
-// animation, password show/hide, keyboard navigation, markInterrupted.
+// C-OB01 — Phase 7: Account Setup
+// Refactor #366: receives onComplete + onBack props; no longer calls
+// nextPhase() internally.
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
 import { TypewriterText } from '../components/TypewriterText';
 
-const GAIA_PROMPT =
-  'GAIA works entirely without an account. Everything stays on your device. '
-  + 'If you want to sync across devices or back up your data, you can create '
-  + 'one now — or skip this and come back to it in Settings any time.';
+// ── Views ─────────────────────────────────────────────────────────────────────
+//
+// 'offer'  — GAIA explains the account is optional, presents two paths
+// 'form'   — email + password form
+// 'local'  — confirming local-only path
 
-export function Phase7AccountSetup() {
-  const setAccountCreated  = useOnboardingStore((s: OnboardingStore) => s.setAccountCreated);
-  const nextPhase          = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
-  const markInterrupted    = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
+type View = 'offer' | 'form' | 'local';
 
-  // Typewriter — lock after first render
-  const promptShown = useRef(false);
+interface Phase7AccountSetupProps {
+  onComplete: () => void;
+  onBack:     () => void;
+}
 
-  // Two-panel state
-  const [showForm, setShowForm] = useState(false);
+export function Phase7AccountSetup({ onComplete, onBack }: Phase7AccountSetupProps) {
+  const name             = useOnboardingStore((s: OnboardingStore) => s.name);
+  const setAccountCreated = useOnboardingStore((s: OnboardingStore) => s.setAccountCreated);
 
-  // Form state
+  const [view,        setView]        = useState<View>('offer');
   const [email,       setEmail]       = useState('');
   const [password,    setPassword]    = useState('');
   const [showPass,    setShowPass]    = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [loading,     setLoading]     = useState(false);
+  const [submitting,  setSubmitting]  = useState(false);
+  const [error,       setError]       = useState('');
+  const [showForm,    setShowForm]    = useState(false);
 
-  // Autofocus email when form opens
-  const emailRef = useRef<HTMLInputElement>(null);
+  // Slide form in after mount
   useEffect(() => {
-    if (showForm) emailRef.current?.focus();
-  }, [showForm]);
-
-  // ── Validation ───────────────────────────────────────────────────────────
-  function validate(): string | null {
-    if (!email.trim())         return 'Please enter your email address.';
-    if (!email.includes('@'))  return 'That doesn’t look like an email address.';
-    if (!password)             return 'Please enter a password.';
-    if (password.length < 8)  return 'Password must be at least 8 characters.';
-    return null;
-  }
-
-  // ── Submit ─────────────────────────────────────────────────────────────────
-  const handleCreate = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    const err = validate();
-    if (err) { setError(err); return; }
-    setError(null);
-    setLoading(true);
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('create_account', { email: email.trim(), password });
-    } catch {
-      // Tauri not available or command not implemented — proceed
-    } finally {
-      setAccountCreated(email.trim());
-      nextPhase();
-      setLoading(false);
+    if (view === 'form') {
+      const t = setTimeout(() => setShowForm(true), 80);
+      return () => clearTimeout(t);
     }
-  }, [email, password, setAccountCreated, nextPhase]);
+    setShowForm(false);
+  }, [view]);
 
-  // ── Keyboard ────────────────────────────────────────────────────────────────
+  // ── Keyboard ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Escape: back to offer view OR interrupt
       if (e.key === 'Escape') {
-        if (showForm) setShowForm(false);
-        else markInterrupted();
-        return;
+        if (view === 'form') { setView('offer'); return; }
+        onBack();
       }
-      // Enter on offer view: open form
-      if (e.key === 'Enter' && !showForm) {
-        // Don't intercept if a button/link is focused — let default handle it
-        const tag = (document.activeElement as HTMLElement)?.tagName;
-        if (tag !== 'BUTTON' && tag !== 'A') setShowForm(true);
-      }
-      // Enter inside form is handled natively by form submit
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showForm, markInterrupted]);
+  }, [view, onBack]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-  return (
-    <section className="phase phase--account phase--enter" aria-label="Optional account setup">
-      <div className="phase__content phase__content--centered">
+  // ── Account creation ──────────────────────────────────────────────────────────
+  const handleCreateAccount = useCallback(async () => {
+    setError('');
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError('Please enter an email and password.');
+      return;
+    }
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    if (!emailOk) {
+      setError('That doesn't look like a valid email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await invoke('create_account', { email: trimmedEmail, password });
+      setAccountCreated(trimmedEmail);
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [email, password, setAccountCreated, onComplete]);
 
-        {/* ── GAIA prompt ────────────────────────────────────────────── */}
-        <TypewriterText
-          key={promptShown.current ? 'static' : 'type'}
-          text={GAIA_PROMPT}
-          speed={22}
-          onComplete={() => { promptShown.current = true; }}
-          tag="p"
-          className="q4-prompt account-intro"
-        />
+  const handleSkip = useCallback(() => onComplete(), [onComplete]);
 
-        {/* ── Offer view ────────────────────────────────────────────── */}
-        {!showForm && (
+  // ── Offer view ────────────────────────────────────────────────────────────────
+  if (view === 'offer') {
+    return (
+      <section className="phase phase--account phase--enter" aria-label="Account setup">
+        <div className="phase__content phase__content--centered">
+          <TypewriterText
+            text={`No account required, ${name || 'friend'}. Everything works locally. An account unlocks encrypted cloud backup and sync across devices — nothing more.`}
+            className="account-intro"
+            speed={18}
+          />
           <div className="phase__actions phase__actions--stack">
             <button
-              type="button"
               className="btn btn--primary"
-              onClick={() => setShowForm(true)}
-              aria-label="Create a GAIA account"
+              onClick={() => setView('form')}
             >
               Create account
             </button>
             <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={nextPhase}
-              aria-label="Skip account creation and continue"
+              className="btn btn--secondary"
+              onClick={handleSkip}
             >
-              Skip for now
+              Stay local
             </button>
           </div>
-        )}
+        </div>
+      </section>
+    );
+  }
 
-        {/* ── Account form ───────────────────────────────────────────── */}
-        {showForm && (
-          <form
-            className="account-form account-form--visible"
-            onSubmit={handleCreate}
-            noValidate
-            aria-label="Create account"
-          >
-            {/* Email */}
-            <div className="field-group">
-              <label htmlFor="account-email">Email</label>
+  // ── Form view ─────────────────────────────────────────────────────────────────
+  return (
+    <section className="phase phase--account phase--enter" aria-label="Create account">
+      <div className="phase__content phase__content--centered">
+        <TypewriterText
+          text="Create your account."
+          className="account-intro"
+          speed={24}
+        />
+
+        <form
+          className={['account-form', showForm ? 'account-form--visible' : ''].filter(Boolean).join(' ')}
+          onSubmit={(e) => { e.preventDefault(); handleCreateAccount(); }}
+          noValidate
+        >
+          <div className="field-group">
+            <label htmlFor="ob-email">Email</label>
+            <input
+              id="ob-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              autoFocus
+            />
+          </div>
+
+          <div className="field-group">
+            <label htmlFor="ob-password">Password</label>
+            <div className="account-password-wrap">
               <input
-                ref={emailRef}
-                id="account-email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(null); }}
-                autoComplete="email"
-                required
-                aria-required="true"
-                aria-describedby={error ? 'account-error' : undefined}
+                id="ob-password"
+                type={showPass ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 8 characters"
+                autoComplete="new-password"
               />
-            </div>
-
-            {/* Password */}
-            <div className="field-group">
-              <label htmlFor="account-password">Password</label>
-              <div className="account-password-wrap">
-                <input
-                  id="account-password"
-                  type={showPass ? 'text' : 'password'}
-                  placeholder="Minimum 8 characters"
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(null); }}
-                  autoComplete="new-password"
-                  minLength={8}
-                  required
-                  aria-required="true"
-                  aria-describedby={error ? 'account-error' : undefined}
-                />
-                <button
-                  type="button"
-                  className="account-show-pass"
-                  aria-label={showPass ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPass(v => !v)}
-                  tabIndex={0}
-                >
-                  {showPass ? '□' : '■'}
-                </button>
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <p
-                id="account-error"
-                className="account-error"
-                role="alert"
-                aria-live="assertive"
-              >
-                {error}
-              </p>
-            )}
-
-            {/* Actions */}
-            <div className="phase__actions">
-              <button
-                type="submit"
-                className="btn btn--primary"
-                disabled={loading}
-                aria-busy={loading}
-              >
-                {loading ? 'Creating…' : 'Create account'}
-              </button>
               <button
                 type="button"
-                className="btn btn--ghost"
-                onClick={nextPhase}
-                aria-label="Skip and continue without an account"
+                className="account-show-pass"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={showPass ? 'Hide password' : 'Show password'}
               >
-                Skip
+                {showPass ? '🙈' : '👁'}
               </button>
             </div>
+          </div>
 
-            {/* Back link */}
-            <button
-              type="button"
-              className="account-back"
-              onClick={() => { setShowForm(false); setError(null); }}
-              aria-label="Go back"
-            >
-              ← Back
-            </button>
-          </form>
-        )}
+          {error && <p className="account-error" role="alert">{error}</p>}
 
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={submitting}
+          >
+            {submitting ? 'Creating…' : 'Create account'}
+          </button>
+        </form>
+
+        <button
+          className="account-back"
+          onClick={() => setView('offer')}
+        >
+          ← Back
+        </button>
       </div>
     </section>
   );

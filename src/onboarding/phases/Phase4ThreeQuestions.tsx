@@ -1,203 +1,162 @@
-// C-OB01 — Phase 4: Three Questions v2
-// GAIA asks three things: intent, depth, sensitive topics.
-// These seed the Soul Mirror and permission model.
-// Rebuilt: conversational step flow, animated transitions, GAIA voice prompts,
-// back navigation, full keyboard support, no required fields on step 2.
+// C-OB01 — Phase 4: Three Questions
+// Refactor #366: receives onComplete + onBack props; no longer calls
+// nextPhase() or setPhase() internally.
+//
+// Internal step navigation (step 0→1→2 within this phase) remains
+// self-contained because it's intra-phase — the router only needs to
+// know when the whole phase is done (onComplete) or abandoned (onBack).
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
-import { TypewriterText } from '../components/TypewriterText';
-import type { UserIntent, DepthPreference, SensitiveTopic } from '../types';
+import type { UserIntent, SensitiveTopic } from '../types';
 
-// ── Data ───────────────────────────────────────────────────────────────────────────
+// ── Intent options ────────────────────────────────────────────────────────────
 
-const INTENT_OPTIONS: {
-  value:       UserIntent;
-  icon:        string;
-  label:       string;
-  description: string;
-}[] = [
-  { value: 'productivity',   icon: '▸',  label: 'Get things done',        description: 'Tasks, goals, planning' },
-  { value: 'exploration',    icon: '◎',  label: 'Explore ideas',          description: 'Questions, research, curiosity' },
-  { value: 'self_discovery', icon: '✦',  label: 'Understand myself',      description: 'Reflection, patterns, growth' },
-  { value: 'building',       icon: '◻',  label: 'Build something',        description: 'Projects, code, creation' },
-  { value: 'privacy',        icon: '🗂',  label: 'Manage my digital life', description: 'Privacy, security, control' },
-  { value: 'other',          icon: '…',  label: 'Something else',         description: 'I\'ll tell GAIA in my own words' },
+const INTENT_OPTIONS: { value: UserIntent; label: string; icon: string; desc: string }[] = [
+  { value: 'productivity',    label: 'Productivity',    icon: '⚡', desc: 'Get more done, faster'       },
+  { value: 'exploration',     label: 'Exploration',     icon: '🔭', desc: 'Research and discovery'      },
+  { value: 'self_discovery',  label: 'Self-discovery',  icon: '🪞', desc: 'Know yourself better'        },
+  { value: 'privacy',         label: 'Privacy',         icon: '🔒', desc: 'A private thinking space'    },
+  { value: 'building',        label: 'Building',        icon: '🛠', desc: 'Make things'                 },
+  { value: 'other',           label: 'Something else',  icon: '✦',  desc: 'I\'ll explain below'         },
 ];
 
-const DEPTH_OPTIONS: {
-  value:       DepthPreference;
-  icon:        string;
-  label:       string;
-  description: string;
-  detail:      string;
-}[] = [
+// ── Depth options ─────────────────────────────────────────────────────────────
+
+const DEPTH_OPTIONS: { value: 'surface' | 'reflective' | 'deep'; label: string; desc: string; detail: string; icon: string }[] = [
   {
-    value:       'surface',
-    icon:        '―',
-    label:       'Surface',
-    description: 'Give me answers',
-    detail:      'Concise, direct, no extra context unless I ask.',
+    value:  'surface',
+    label:  'Surface',
+    desc:   'Fresh start each session',
+    detail: 'No memory between conversations. Clean, private, ephemeral.',
+    icon:   '○',
   },
   {
-    value:       'reflective',
-    icon:        '∿',
-    label:       'Reflective',
-    description: 'Think with me',
-    detail:      'Offer perspectives, ask questions back, explore ideas together.',
+    value:  'reflective',
+    label:  'Reflective',
+    desc:   'Grows with you over time',
+    detail: 'Context builds across sessions. GAIA remembers patterns, not verbatim.',
+    icon:   '◐',
   },
   {
-    value:       'deep',
-    icon:        '∞',
-    label:       'Deep',
-    description: 'Go beneath the surface',
-    detail:      'Challenge assumptions, make connections, don\'t hold back.',
+    value:  'deep',
+    label:  'Deep',
+    desc:   'Full memory, full trust',
+    detail: 'Everything remembered. Most personalised. You control what to forget.',
+    icon:   '●',
   },
 ];
 
-const SENSITIVE_OPTIONS: { value: SensitiveTopic; label: string; emoji: string }[] = [
-  { value: 'mental_health',  label: 'Mental health',  emoji: '🧐' },
-  { value: 'relationships',  label: 'Relationships',  emoji: '🤝' },
-  { value: 'trauma',         label: 'Trauma',         emoji: '🛑' },
-  { value: 'spiritual',      label: 'Spirituality',   emoji: '✶' },
-  { value: 'political',      label: 'Politics',       emoji: '🌎' },
+// ── Sensitive topic options ───────────────────────────────────────────────────
+
+const TOPIC_OPTIONS: { value: SensitiveTopic; label: string }[] = [
+  { value: 'mental_health', label: 'Mental health'   },
+  { value: 'relationships', label: 'Relationships'   },
+  { value: 'spiritual',     label: 'Spiritual'       },
+  { value: 'trauma',        label: 'Trauma'          },
+  { value: 'political',     label: 'Politics'        },
 ];
 
-// ── GAIA question prompts (typed once per step) ─────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────────────────
 
-const STEP_PROMPTS = [
-  'What brings you here? Choose everything that feels true.',
-  'How do you want me to think with you?',
-  'Are there areas you\'d like me to be more careful in?',
-];
+interface Phase4ThreeQuestionsProps {
+  onComplete: () => void;
+  onBack:     () => void;
+}
 
-// ── Transition direction ───────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
-type TransitionState = 'idle' | 'exiting-forward' | 'exiting-back' | 'entering-forward' | 'entering-back';
+export function Phase4ThreeQuestions({ onComplete, onBack }: Phase4ThreeQuestionsProps) {
+  const setIntent          = useOnboardingStore((s: OnboardingStore) => s.setIntent);
+  const setIntentOther     = useOnboardingStore((s: OnboardingStore) => s.setIntentOther);
+  const setDepthPreference = useOnboardingStore((s: OnboardingStore) => s.setDepthPreference);
+  const setSensitiveTopics = useOnboardingStore((s: OnboardingStore) => s.setSensitiveTopics);
 
-// ── Component ───────────────────────────────────────────────────────────────────────
+  const savedIntent  = useOnboardingStore((s: OnboardingStore) => s.intent);
+  const savedDepth   = useOnboardingStore((s: OnboardingStore) => s.depth);
+  const savedTopics  = useOnboardingStore((s: OnboardingStore) => s.sensitive_topics);
 
-export function Phase4ThreeQuestions() {
-  const nextPhase           = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
-  const setIntent           = useOnboardingStore((s: OnboardingStore) => s.setIntent);
-  const setIntentOther      = useOnboardingStore((s: OnboardingStore) => s.setIntentOther);
-  const setDepthPreference  = useOnboardingStore((s: OnboardingStore) => s.setDepthPreference);
-  const setSensitiveTopics  = useOnboardingStore((s: OnboardingStore) => s.setSensitiveTopics);
-  const markInterrupted     = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
-  const storedName          = useOnboardingStore((s: OnboardingStore) => s.name);
+  // Local state — committed to store on each step's Next
+  const [step,        setStep]        = useState(0);
+  const [intents,     setIntents]     = useState<UserIntent[]>(savedIntent ?? []);
+  const [intentOther, setIntentOther_] = useState('');
+  const [depth,       setDepth]       = useState<'surface' | 'reflective' | 'deep'>(savedDepth ?? 'reflective');
+  const [topics,      setTopics]      = useState<SensitiveTopic[]>(savedTopics ?? []);
+  const [stepDir,     setStepDir]     = useState<'forward' | 'back'>('forward');
 
-  const [step,           setStep]           = useState<0 | 1 | 2>(0);
-  const [transition,     setTransition]     = useState<TransitionState>('idle');
+  // ── Step navigation ─────────────────────────────────────────────────────────
 
-  // Step 0 — intent
-  const [selectedIntent,   setSelectedIntent]   = useState<UserIntent[]>([]);
-  const [intentOtherText,  setIntentOtherText]  = useState('');
-  const [showOther,        setShowOther]        = useState(false);
-
-  // Step 1 — depth
-  const [selectedDepth,    setSelectedDepth]    = useState<DepthPreference>('reflective');
-
-  // Step 2 — topics
-  const [selectedTopics,   setSelectedTopics]   = useState<SensitiveTopic[]>([]);
-
-  // Track whether the TypewriterText prompt for the current step has been shown
-  // Use a ref so the typewriter key never changes after the first render of a step
-  const promptShownRef = useRef<Set<number>>(new Set());
-
-  // ── Transition engine ─────────────────────────────────────────────────────────────
-  // Plays a 240ms exit animation then swaps the step, then enters.
-  // direction: 'forward' | 'back'
-  const changeStep = useCallback((target: 0 | 1 | 2, direction: 'forward' | 'back') => {
-    setTransition(direction === 'forward' ? 'exiting-forward' : 'exiting-back');
-    setTimeout(() => {
-      setStep(target);
-      setTransition(direction === 'forward' ? 'entering-forward' : 'entering-back');
-      setTimeout(() => setTransition('idle'), 260);
-    }, 240);
+  const goForward = useCallback(() => {
+    setStepDir('forward');
+    setStep((s) => s + 1);
   }, []);
 
-  // ── Intent toggle ─────────────────────────────────────────────────────────────────
+  const goBack = useCallback(() => {
+    if (step === 0) { onBack(); return; }
+    setStepDir('back');
+    setStep((s) => s - 1);
+  }, [step, onBack]);
+
+  // ── Step 0: Intent ──────────────────────────────────────────────────────────
+
+  const handleIntentNext = useCallback(() => {
+    const toSave = intents.length ? intents : (['other'] as UserIntent[]);
+    setIntent(toSave);
+    if (intentOther) setIntentOther(intentOther);
+    goForward();
+  }, [intents, intentOther, setIntent, setIntentOther, goForward]);
 
   const toggleIntent = useCallback((v: UserIntent) => {
-    setSelectedIntent(prev => {
-      const next = prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v];
-      setShowOther(next.includes('other'));
-      return next;
-    });
-  }, []);
-
-  // ── Topics toggle ────────────────────────────────────────────────────────────────
-
-  const toggleTopic = useCallback((v: SensitiveTopic) => {
-    setSelectedTopics(prev =>
-      prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]
+    setIntents((prev) =>
+      prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
     );
   }, []);
 
-  // ── Advance ──────────────────────────────────────────────────────────────────────
+  // ── Step 1: Depth ───────────────────────────────────────────────────────────
 
-  const handleNext = useCallback(() => {
-    if (step === 0) {
-      setIntent(selectedIntent);
-      if (selectedIntent.includes('other')) setIntentOther(intentOtherText);
-      changeStep(1, 'forward');
-    } else if (step === 1) {
-      setDepthPreference(selectedDepth);
-      changeStep(2, 'forward');
-    } else {
-      // Final step — commit everything and advance the phase
-      setSensitiveTopics(selectedTopics);
-      nextPhase();
-    }
-  }, [step, selectedIntent, intentOtherText, selectedDepth, selectedTopics,
-      setIntent, setIntentOther, setDepthPreference, setSensitiveTopics, nextPhase, changeStep]);
+  const handleDepthNext = useCallback(() => {
+    setDepthPreference(depth);
+    goForward();
+  }, [depth, setDepthPreference, goForward]);
 
-  const handleBack = useCallback(() => {
-    if (step === 1) changeStep(0, 'back');
-    else if (step === 2) changeStep(1, 'back');
-  }, [step, changeStep]);
+  // ── Step 2: Sensitive topics ────────────────────────────────────────────────
 
-  // ── Keyboard handler ─────────────────────────────────────────────────────────────
+  const handleTopicsNext = useCallback(() => {
+    setSensitiveTopics(topics);
+    onComplete();
+  }, [topics, setSensitiveTopics, onComplete]);
+
+  const toggleTopic = useCallback((v: SensitiveTopic) => {
+    setTopics((prev) =>
+      prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
+    );
+  }, []);
+
+  // ── Keyboard ────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { markInterrupted(); return; }
-      // Enter advances only if the focused element is not a textarea
-      if (e.key === 'Enter' && document.activeElement?.tagName !== 'TEXTAREA') {
-        if (canAdvance) handleNext();
-      }
+      if (e.key === 'Escape') goBack();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleNext, markInterrupted, step, selectedIntent]);
+  }, [goBack]);
 
-  const canAdvance = step === 0 ? selectedIntent.length > 0 : true;
+  // ── Step direction animation class ──────────────────────────────────────────
 
-  // ── Transition CSS class ───────────────────────────────────────────────────────────
+  const enterClass = stepDir === 'forward' ? 'q4-step--enter-forward' : 'q4-step--enter-back';
 
-  const transitionClass =
-    transition === 'exiting-forward'  ? 'q4-step--exit-forward'  :
-    transition === 'exiting-back'     ? 'q4-step--exit-back'     :
-    transition === 'entering-forward' ? 'q4-step--enter-forward' :
-    transition === 'entering-back'    ? 'q4-step--enter-back'    : '';
-
-  // ── Personalised greeting for step 0 ─────────────────────────────────────────────
-
-  const prompt0 = storedName
-    ? `${storedName}, what brings you here? Choose everything that feels true.`
-    : STEP_PROMPTS[0];
-
-  // ── Render ─────────────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <section className="phase phase--three-questions phase--enter" aria-label="Three questions">
+    <section className="phase phase--questions phase--enter" aria-label="Three Questions">
       <div className="phase__content">
 
-        {/* ── Step counter ─────────────────────────────────────────────────────── */}
-        <div className="q4-header" aria-label={`Question ${step + 1} of 3`}>
+        {/* Step header */}
+        <div className="q4-header">
           <span className="q4-step-label">{step + 1} / 3</span>
-          <div className="q4-dots" role="presentation">
-            {[0, 1, 2].map(i => (
+          <div className="q4-dots" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
               <span
                 key={i}
                 className={[
@@ -210,153 +169,98 @@ export function Phase4ThreeQuestions() {
           </div>
         </div>
 
-        {/* ── Animated step container ──────────────────────────────────────────────── */}
-        <div className={`q4-step ${transitionClass}`}>
-
-          {/* ─ Step 0: Intent ─ */}
-          {step === 0 && (
-            <fieldset className="question-group" aria-label="What brings you here">
-              <legend className="sr-only">What brings you here?</legend>
-
-              <TypewriterText
-                key={`prompt-0-${promptShownRef.current.has(0) ? 'static' : 'type'}`}
-                text={prompt0}
-                speed={28}
-                onComplete={() => promptShownRef.current.add(0)}
-                tag="p"
-                className="q4-prompt"
-              />
-
+        {/* Step 0 — Intent */}
+        {step === 0 && (
+          <div className={`q4-step ${enterClass}`} key="intent">
+            <p className="q4-prompt">What brings you here?</p>
+            <p className="q4-sub">Pick as many as you like.</p>
+            <fieldset className="question-group" aria-label="Why are you here">
               <div className="intent-grid">
-                {INTENT_OPTIONS.map(({ value, icon, label, description }) => (
+                {INTENT_OPTIONS.map((opt) => (
                   <button
-                    key={value}
-                    type="button"
-                    className={`intent-card${selectedIntent.includes(value) ? ' intent-card--selected' : ''}`}
-                    onClick={() => toggleIntent(value)}
-                    aria-pressed={selectedIntent.includes(value)}
+                    key={opt.value}
+                    className={['intent-card', intents.includes(opt.value) ? 'intent-card--selected' : ''].filter(Boolean).join(' ')}
+                    onClick={() => toggleIntent(opt.value)}
+                    aria-pressed={intents.includes(opt.value)}
                   >
-                    <span className="intent-card__icon" aria-hidden>{icon}</span>
-                    <span className="intent-card__label">{label}</span>
-                    <span className="intent-card__desc">{description}</span>
+                    <span className="intent-card__icon" aria-hidden="true">{opt.icon}</span>
+                    <span className="intent-card__label">{opt.label}</span>
+                    <span className="intent-card__desc">{opt.desc}</span>
                   </button>
                 ))}
               </div>
-
-              {showOther && (
+              {intents.includes('other') && (
                 <textarea
                   className="intent-other"
-                  placeholder="Tell GAIA what you have in mind…"
-                  value={intentOtherText}
-                  onChange={e => setIntentOtherText(e.target.value)}
-                  rows={3}
-                  maxLength={500}
-                  autoFocus
+                  placeholder="Tell me more…"
+                  value={intentOther}
+                  onChange={(e) => setIntentOther_(e.target.value)}
+                  rows={2}
+                  maxLength={240}
                   aria-label="Describe your intent"
                 />
               )}
             </fieldset>
-          )}
+            <div className="phase__actions q4-actions">
+              <button className="btn btn--ghost" onClick={goBack}>← Back</button>
+              <button className="btn btn--primary" onClick={handleIntentNext}>Next</button>
+            </div>
+          </div>
+        )}
 
-          {/* ─ Step 1: Depth ─ */}
-          {step === 1 && (
-            <fieldset className="question-group" aria-label="Depth preference">
-              <legend className="sr-only">How deep should GAIA go?</legend>
-
-              <TypewriterText
-                key={`prompt-1-${promptShownRef.current.has(1) ? 'static' : 'type'}`}
-                text={STEP_PROMPTS[1]}
-                speed={28}
-                onComplete={() => promptShownRef.current.add(1)}
-                tag="p"
-                className="q4-prompt"
-              />
-
-              <div className="depth-list" role="radiogroup" aria-label="Depth options">
-                {DEPTH_OPTIONS.map(({ value, icon, label, description, detail }) => (
+        {/* Step 1 — Depth */}
+        {step === 1 && (
+          <div className={`q4-step ${enterClass}`} key="depth">
+            <p className="q4-prompt">How much should I remember?</p>
+            <fieldset className="question-group" aria-label="Memory depth preference">
+              <div className="depth-list">
+                {DEPTH_OPTIONS.map((opt) => (
                   <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedDepth === value}
-                    className={`depth-card${selectedDepth === value ? ' depth-card--selected' : ''}`}
-                    onClick={() => setSelectedDepth(value)}
+                    key={opt.value}
+                    className={['depth-card', depth === opt.value ? 'depth-card--selected' : ''].filter(Boolean).join(' ')}
+                    onClick={() => setDepth(opt.value)}
+                    aria-pressed={depth === opt.value}
                   >
-                    <span className="depth-card__icon" aria-hidden>{icon}</span>
-                    <span className="depth-card__label">{label}</span>
-                    <span className="depth-card__desc">{description}</span>
-                    <span className="depth-card__detail">{detail}</span>
+                    <span className="depth-card__icon" aria-hidden="true">{opt.icon}</span>
+                    <span className="depth-card__label">{opt.label}</span>
+                    <span className="depth-card__desc">{opt.desc}</span>
+                    <span className="depth-card__detail">{opt.detail}</span>
                   </button>
                 ))}
               </div>
             </fieldset>
-          )}
+            <div className="phase__actions q4-actions">
+              <button className="btn btn--ghost" onClick={goBack}>← Back</button>
+              <button className="btn btn--primary" onClick={handleDepthNext}>Next</button>
+            </div>
+          </div>
+        )}
 
-          {/* ─ Step 2: Topics ─ */}
-          {step === 2 && (
+        {/* Step 2 — Sensitive topics */}
+        {step === 2 && (
+          <div className={`q4-step ${enterClass}`} key="topics">
+            <p className="q4-prompt">Any topics you'd rather I approach carefully?</p>
+            <p className="q4-sub">Optional. You can change this anytime.</p>
             <fieldset className="question-group" aria-label="Sensitive topics">
-              <legend className="sr-only">Sensitive topics</legend>
-
-              <TypewriterText
-                key={`prompt-2-${promptShownRef.current.has(2) ? 'static' : 'type'}`}
-                text={STEP_PROMPTS[2]}
-                speed={28}
-                onComplete={() => promptShownRef.current.add(2)}
-                tag="p"
-                className="q4-prompt"
-              />
-
-              <p className="q4-sub">You can change this any time in Settings.</p>
-
-              <div className="topics-chips" role="group" aria-label="Topic chips">
-                {SENSITIVE_OPTIONS.map(({ value, label, emoji }) => (
+              <div className="topics-chips">
+                {TOPIC_OPTIONS.map((opt) => (
                   <button
-                    key={value}
-                    type="button"
-                    className={`topic-chip${selectedTopics.includes(value) ? ' topic-chip--selected' : ''}`}
-                    onClick={() => toggleTopic(value)}
-                    aria-pressed={selectedTopics.includes(value)}
+                    key={opt.value}
+                    className={['topic-chip', topics.includes(opt.value) ? 'topic-chip--selected' : ''].filter(Boolean).join(' ')}
+                    onClick={() => toggleTopic(opt.value)}
+                    aria-pressed={topics.includes(opt.value)}
                   >
-                    <span aria-hidden>{emoji}</span> {label}
+                    {opt.label}
                   </button>
                 ))}
               </div>
-
-              <button
-                type="button"
-                className="q4-none-btn"
-                onClick={() => setSelectedTopics([])}
-                aria-label="Clear all topic selections"
-              >
-                None of these
-              </button>
             </fieldset>
-          )}
-
-        </div>{/* end .q4-step */}
-
-        {/* ── Actions ────────────────────────────────────────────────────────────── */}
-        <div className="phase__actions q4-actions">
-          {step > 0 && (
-            <button
-              type="button"
-              className="btn btn--ghost btn--small"
-              onClick={handleBack}
-              aria-label="Go back to previous question"
-            >
-              ← Back
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={handleNext}
-            disabled={!canAdvance}
-            aria-label={step < 2 ? 'Continue to next question' : 'Finish three questions'}
-          >
-            {step < 2 ? 'Continue →' : 'These feel right'}
-          </button>
-        </div>
+            <div className="phase__actions q4-actions">
+              <button className="btn btn--ghost" onClick={goBack}>← Back</button>
+              <button className="btn btn--primary" onClick={handleTopicsNext}>Done</button>
+            </div>
+          </div>
+        )}
 
       </div>
     </section>

@@ -1,19 +1,30 @@
-// C-OB01 — Onboarding Router v2
-// Orchestrates all 9 phases (0-8). Handles interruption/resume.
-// Upgraded: router-level interrupt guard, animated progress stepper,
-// phase name aria-labels, escape key handler.
+// C-OB01 — Onboarding Router v3
+// Refactor #366: router owns ALL navigation.
+// Every phase now receives onComplete (and onBack where applicable) as props.
+// No phase calls nextPhase() or setPhase() directly from the store.
+//
+// Navigation map:
+//   Phase 0  onComplete → next phase
+//   Phase 1  onComplete → next phase
+//   Phase 2  onComplete → next phase
+//   Phase 3  onComplete → next phase  |  onBack → phase 2
+//   Phase 4  onComplete → next phase  |  onBack → phase 3
+//   Phase 5  onComplete → next phase  |  onBack → phase 4
+//   Phase 6  onComplete → next phase  |  onBack → phase 5
+//   Phase 7  onComplete → next phase  |  onBack → phase 6
+//   Phase 8  onComplete → onFinish (exits onboarding)
 
 import { useEffect, useState, useCallback } from 'react';
 import { useOnboardingStore, loadPersistedState, type OnboardingStore } from './store/onboardingStore';
-import { Phase0Bootstrap }    from './phases/Phase0Bootstrap';
-import { Phase1Awakening }    from './phases/Phase1Awakening';
-import { Phase2Introduction } from './phases/Phase2Introduction';
-import { Phase3NameCovenant } from './phases/Phase3NameCovenant';
+import { Phase0Bootstrap }      from './phases/Phase0Bootstrap';
+import { Phase1Awakening }      from './phases/Phase1Awakening';
+import { Phase2Introduction }   from './phases/Phase2Introduction';
+import { Phase3NameCovenant }   from './phases/Phase3NameCovenant';
 import { Phase4ThreeQuestions } from './phases/Phase4ThreeQuestions';
-import { Phase5Consent }      from './phases/Phase5Consent';
-import { Phase6FirstGift }    from './phases/Phase6FirstGift';
-import { Phase7AccountSetup } from './phases/Phase7AccountSetup';
-import { Phase8Threshold }    from './phases/Phase8Threshold';
+import { Phase5Consent }        from './phases/Phase5Consent';
+import { Phase6FirstGift }      from './phases/Phase6FirstGift';
+import { Phase7AccountSetup }   from './phases/Phase7AccountSetup';
+import { Phase8Threshold }      from './phases/Phase8Threshold';
 import './onboarding.css';
 
 interface OnboardingRouterProps {
@@ -32,21 +43,21 @@ const PHASE_NAMES: Record<number, string> = {
   8: 'Threshold',
 };
 
-// Phases shown in the progress stepper (phase 0 is silent bootstrap)
-const STEPPER_PHASES = [1, 2, 3, 4, 5, 6, 7, 8];
+const STEPPER_PHASES = [1, 2, 3, 4, 5, 6, 7];
 
 export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
-  const phase             = useOnboardingStore((s: OnboardingStore) => s.phase);
-  const completed         = useOnboardingStore((s: OnboardingStore) => s.completed);
-  const resumeOnboarding  = useOnboardingStore((s: OnboardingStore) => s.resumeOnboarding);
-  const resetOnboarding   = useOnboardingStore((s: OnboardingStore) => s.resetOnboarding);
-  const setPhase          = useOnboardingStore((s: OnboardingStore) => s.setPhase);
-  const nextPhase         = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
-  const markInterrupted   = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
+  const phase            = useOnboardingStore((s: OnboardingStore) => s.phase);
+  const completed        = useOnboardingStore((s: OnboardingStore) => s.completed);
+  const resumeOnboarding = useOnboardingStore((s: OnboardingStore) => s.resumeOnboarding);
+  const resetOnboarding  = useOnboardingStore((s: OnboardingStore) => s.resetOnboarding);
+  const setPhase         = useOnboardingStore((s: OnboardingStore) => s.setPhase);
+  const nextPhase        = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const markInterrupted  = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
 
   const [resumePrompt, setResumePrompt] = useState(false);
   const [bootstrapped,  setBootstrapped]  = useState(false);
 
+  // ── Load persisted state on mount ───────────────────────────────────────────
   useEffect(() => {
     loadPersistedState().then((saved) => {
       if (saved && saved.phase && saved.phase > 0 && !saved.completed) {
@@ -57,16 +68,16 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
     });
   }, [setPhase]);
 
-  // Guard: only mark interrupted when the component unmounts AND onboarding
-  // is not yet completed. Without the !completed check, finishing Phase 8
-  // and entering the shell immediately re-marks state as interrupted.
+  // ── Interrupt guard on unmount ───────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (!useOnboardingStore.getState().completed) markInterrupted();
     };
   }, [markInterrupted]);
 
-  // Shell-level Escape key -> soft interrupt (does not navigate away)
+  // ── Shell-level Escape ───────────────────────────────────────────────────────
+  // Phases handle their own Escape for onBack. This is a last-resort
+  // router-level soft interrupt for phases that don't have a back action.
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && !completed) markInterrupted();
   }, [completed, markInterrupted]);
@@ -78,6 +89,7 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
 
   if (!bootstrapped) return null;
 
+  // ── Resume dialog ────────────────────────────────────────────────────────────
   if (resumePrompt) {
     return (
       <div className="onboarding-resume" role="dialog" aria-modal="true" aria-label="Resume onboarding">
@@ -102,20 +114,25 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
     );
   }
 
+  // ── Back callbacks (router owns these) ───────────────────────────────────────
+  const goBack = (targetPhase: 1 | 2 | 3 | 4 | 5 | 6) =>
+    () => setPhase(targetPhase);
+
+  // ── Phase dispatch ───────────────────────────────────────────────────────────
   return (
     <main className="onboarding-shell" aria-label="GAIA onboarding">
       <a href="#onboarding-main" className="skip-link">Skip to main content</a>
 
-      {/* Progress stepper — only shown for phases 1-7 (not bootstrap or threshold) */}
+      {/* Progress stepper — phases 1–7 only */}
       {phase >= 1 && phase <= 7 && (
         <nav className="ob-stepper" aria-label="Onboarding progress">
-          {STEPPER_PHASES.filter(p => p <= 7).map(p => (
+          {STEPPER_PHASES.map((p) => (
             <span
               key={p}
               className={[
                 'ob-stepper__dot',
-                p < phase  ? 'ob-stepper__dot--done'    : '',
-                p === phase ? 'ob-stepper__dot--active'  : '',
+                p < phase  ? 'ob-stepper__dot--done'   : '',
+                p === phase ? 'ob-stepper__dot--active' : '',
               ].filter(Boolean).join(' ')}
               aria-label={`${PHASE_NAMES[p]}${
                 p < phase ? ' — complete' : p === phase ? ' — current' : ''
@@ -132,13 +149,13 @@ export function OnboardingRouter({ onFinish }: OnboardingRouterProps) {
         aria-label={PHASE_NAMES[phase] ?? 'Onboarding'}
       >
         {phase === 0 && <Phase0Bootstrap onComplete={nextPhase} />}
-        {phase === 1 && <Phase1Awakening />}
-        {phase === 2 && <Phase2Introduction />}
-        {phase === 3 && <Phase3NameCovenant />}
-        {phase === 4 && <Phase4ThreeQuestions />}
-        {phase === 5 && <Phase5Consent />}
-        {phase === 6 && <Phase6FirstGift />}
-        {phase === 7 && <Phase7AccountSetup />}
+        {phase === 1 && <Phase1Awakening onComplete={nextPhase} />}
+        {phase === 2 && <Phase2Introduction onComplete={nextPhase} />}
+        {phase === 3 && <Phase3NameCovenant onComplete={nextPhase} onBack={goBack(2)} />}
+        {phase === 4 && <Phase4ThreeQuestions onComplete={nextPhase} onBack={goBack(3)} />}
+        {phase === 5 && <Phase5Consent onComplete={nextPhase} onBack={goBack(4)} />}
+        {phase === 6 && <Phase6FirstGift onComplete={nextPhase} onBack={goBack(5)} />}
+        {phase === 7 && <Phase7AccountSetup onComplete={nextPhase} onBack={goBack(6)} />}
         {phase === 8 && <Phase8Threshold onComplete={onFinish} />}
       </div>
     </main>

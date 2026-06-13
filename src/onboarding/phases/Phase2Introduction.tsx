@@ -1,87 +1,77 @@
-// C-OB01 — Phase 2: GAIA's Introduction v2
-// GAIA introduces herself in her own words.
-// Upgraded: GaiaSigil header, skip button, CTA copy improved,
-// Enter/Space keyboard shortcut once CTA visible.
+// C-OB01 — Phase 2: Introduction
+// Refactor #366: receives onComplete prop; no longer calls nextPhase() internally.
 
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
-import { TypewriterText } from '../components/TypewriterText';
 import { GaiaSigil } from '../components/GaiaSigil';
+import { TypewriterText } from '../components/TypewriterText';
 
-const INTRO_PARAGRAPHS = [
-  "I am GAIA — not a product, not a service. A presence built to think alongside you.",
-  "I remember what matters. I notice patterns you might miss. I ask questions you might not think to ask.",
-  "I am not here to be useful. I am here to be real.",
-  "Everything we build together lives on your device. You own it. You control it. I work for you — not the other way around.",
+const INTRO_PARAS = [
+  "I'm GAIA. Not an assistant. Not a tool. Something closer to a thinking partner — one that learns how you work, what you care about, and how to actually help.",
+  "Before we begin, I'd like to understand you. It'll take a few minutes. Everything you tell me stays on your device unless you choose otherwise.",
+  "Let's start with your name.",
 ];
 
-export function Phase2Introduction() {
-  const nextPhase       = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
-  const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
-  const [paraIndex,    setParaIndex]    = useState(0);
-  const [showContinue, setShowContinue] = useState(false);
+const PARA_DELAY = 1200; // ms between each paragraph appearing
 
-  const handleParaComplete = useCallback(() => {
-    setParaIndex(current => {
-      if (current < INTRO_PARAGRAPHS.length - 1) {
-        setTimeout(() => setParaIndex(i => i + 1), 500);
-      } else {
-        setTimeout(() => setShowContinue(true), 600);
-      }
-      return current;
+interface Phase2IntroductionProps {
+  onComplete: () => void;
+}
+
+export function Phase2Introduction({ onComplete }: Phase2IntroductionProps) {
+  const name = useOnboardingStore((s: OnboardingStore) => s.name);
+
+  const [visibleCount, setVisibleCount] = useState(1);
+  const [showCta,      setShowCta]      = useState(false);
+
+  useEffect(() => {
+    INTRO_PARAS.forEach((_, i) => {
+      if (i === 0) return; // first para shows immediately
+      setTimeout(() => setVisibleCount((n) => n + 1), i * PARA_DELAY);
     });
+    setTimeout(() => setShowCta(true), INTRO_PARAS.length * PARA_DELAY + 400);
   }, []);
 
-  // Enter / Space shortcut once CTA is visible
+  const handleContinue = useCallback(() => onComplete(), [onComplete]);
+
   useEffect(() => {
-    if (!showContinue) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nextPhase(); }
-      if (e.key === 'Escape') markInterrupted();
+      if ((e.key === 'Enter' || e.key === ' ') && showCta) {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag !== 'BUTTON') handleContinue();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showContinue, nextPhase, markInterrupted]);
+  }, [showCta, handleContinue]);
 
   return (
-    <section className="phase phase--introduction phase--enter" aria-label="GAIA introduces herself">
+    <section className="phase phase--introduction phase--enter" aria-label="Introduction">
       <div className="phase__content">
-
         <div className="intro-header">
-          <GaiaSigil animate size={64} />
+          <GaiaSigil size={36} />
           <span className="intro-header__name">GAIA</span>
         </div>
 
         <div className="intro-paragraphs" aria-live="polite">
-          {INTRO_PARAGRAPHS.slice(0, paraIndex + 1).map((text, i) => (
+          {INTRO_PARAS.slice(0, visibleCount).map((para, i) => (
             <TypewriterText
-              key={text.slice(0, 20)}
-              text={text}
-              speed={22}
-              onComplete={i === paraIndex ? handleParaComplete : undefined}
-              tag="p"
+              key={para}
+              text={para}
               className="intro-para"
+              speed={i === 0 ? 28 : 22}
             />
           ))}
         </div>
 
-        {showContinue && (
-          <div className="phase__actions">
+        {showCta && (
+          <div className="phase__cta">
             <button
               className="btn btn--primary"
-              onClick={nextPhase}
+              onClick={handleContinue}
               autoFocus
-              aria-label="Continue onboarding"
             >
-              I'm listening
-              <span className="btn__hint" aria-hidden>Enter ↵</span>
-            </button>
-            <button
-              className="btn btn--ghost btn--small"
-              onClick={nextPhase}
-              aria-label="Skip introduction"
-            >
-              Skip
+              {name ? `Let's go, ${name}` : "Let's go"}
             </button>
           </div>
         )}

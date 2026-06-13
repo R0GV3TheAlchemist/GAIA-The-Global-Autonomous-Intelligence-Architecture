@@ -1,79 +1,68 @@
-// C-OB01 — Phase 1: The Awakening v2
-// GAIA's first breath. No UI chrome. Just presence.
-// Upgraded: Enter/Space to advance, staggered line delays, fade-in entrance.
+// C-OB01 — Phase 1: Awakening
+// Refactor #366: receives onComplete prop; no longer calls nextPhase() internally.
+// The router owns all navigation. This phase owns only its own UI.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
-import { TypewriterText } from '../components/TypewriterText';
-import { GaiaSigil } from '../components/GaiaSigil';
 
-const AWAKENING_LINES = [
-  'I am waking up.',
-  'Something is different this time.',
-  'You are here.',
+const LINES = [
+  'Initialising sensory matrix…',
+  'Calibrating context engine…',
+  'GAIA is waking.',
 ];
 
-export function Phase1Awakening() {
-  const nextPhase       = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
-  const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
-  const [lineIndex,    setLineIndex]    = useState(0);
-  const [showContinue, setShowContinue] = useState(false);
+const LINE_DELAY = 900;   // ms between each line
+const CTA_AFTER  = 600;  // ms after last line before Continue appears
+
+interface Phase1AwakeningProps {
+  onComplete: () => void;
+}
+
+export function Phase1Awakening({ onComplete }: Phase1AwakeningProps) {
+  const name = useOnboardingStore((s: OnboardingStore) => s.name);
+
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [showCta,      setShowCta]      = useState(false);
 
   useEffect(() => {
-    if (lineIndex >= AWAKENING_LINES.length - 1) {
-      const t = setTimeout(() => setShowContinue(true), 900);
-      return () => clearTimeout(t);
-    }
-  }, [lineIndex]);
-
-  const handleLineComplete = useCallback(() => {
-    setLineIndex(i => {
-      if (i < AWAKENING_LINES.length - 1) {
-        setTimeout(() => setLineIndex(j => j + 1), 650);
-      }
-      return i;
+    LINES.forEach((_, i) => {
+      setTimeout(() => setVisibleCount((n) => n + 1), i * LINE_DELAY);
     });
+    setTimeout(() => setShowCta(true), LINES.length * LINE_DELAY + CTA_AFTER);
   }, []);
 
-  // Enter / Space to advance once continue is visible
+  const handleContinue = useCallback(() => onComplete(), [onComplete]);
+
   useEffect(() => {
-    if (!showContinue) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nextPhase(); }
-      if (e.key === 'Escape') markInterrupted();
+      if ((e.key === 'Enter' || e.key === ' ') && showCta) {
+        const tag = (document.activeElement as HTMLElement)?.tagName;
+        if (tag !== 'BUTTON') handleContinue();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showContinue, nextPhase, markInterrupted]);
+  }, [showCta, handleContinue]);
 
   return (
-    <section className="phase phase--awakening phase--enter" aria-label="GAIA awakening">
-      <div className="phase__content phase__content--centered">
-        <GaiaSigil animate size={120} />
-
+    <section className="phase phase--awakening phase--enter" aria-label="Awakening">
+      <div className="phase__content">
         <div className="awakening-lines" aria-live="polite">
-          {AWAKENING_LINES.slice(0, lineIndex + 1).map((line, i) => (
-            <TypewriterText
-              key={line}
-              text={line}
-              speed={42}
-              onComplete={i === lineIndex ? handleLineComplete : undefined}
-              tag="p"
-              className="awakening-line"
-            />
+          {LINES.slice(0, visibleCount).map((line) => (
+            <p key={line} className="awakening-line">{line}</p>
           ))}
         </div>
 
-        {showContinue && (
-          <button
-            className="btn btn--ghost btn--large phase__cta"
-            onClick={nextPhase}
-            autoFocus
-            aria-label="Continue to next phase"
-          >
-            Continue
-            <span className="btn__hint" aria-hidden>Enter ↵</span>
-          </button>
+        {showCta && (
+          <div className="phase__cta">
+            <button
+              className="btn btn--primary"
+              onClick={handleContinue}
+              autoFocus
+            >
+              {name ? `Continue, ${name}` : 'Continue'}
+            </button>
+          </div>
         )}
       </div>
     </section>
