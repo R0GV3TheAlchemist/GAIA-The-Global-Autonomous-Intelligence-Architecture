@@ -556,11 +556,6 @@
 
 /* ── 11. Phase 7 — Account Setup ─────────────────────────────────────────── */
 
-/*
- * .account-intro — the typed GAIA prompt explaining that no account
- * is required. Left-aligned within centred content because it's
- * a multi-sentence paragraph, not a one-liner.
- */
 .account-intro {
   font-size:   1rem;
   font-weight: 300;
@@ -570,11 +565,6 @@
   max-width:   420px;
 }
 
-/*
- * .account-form — the email/password form.
- * Starts invisible; .account-form--visible slides it in.
- * Width-capped so it doesn't stretch edge-to-edge.
- */
 .account-form {
   display:        flex;
   flex-direction: column;
@@ -585,117 +575,109 @@
   transform:      translateY(10px);
   transition:     opacity 300ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.account-form--visible {
-  opacity:   1;
-  transform: translateY(0);
-}
+.account-form--visible { opacity: 1; transform: translateY(0); }
 
-/* Field label + input pair */
-.field-group {
-  display:        flex;
-  flex-direction: column;
-  gap:            0.35rem;
-}
+.field-group { display: flex; flex-direction: column; gap: 0.35rem; }
 .field-group label {
-  font-size:      0.82rem;
-  color:          rgba(224, 221, 240, 0.48);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.82rem; color: rgba(224, 221, 240, 0.48);
+  letter-spacing: 0.04em; text-transform: uppercase;
 }
 .field-group input {
-  background:    rgba(255, 255, 255, 0.05);
-  border:        1.5px solid rgba(155, 109, 219, 0.3);
-  border-radius: 8px;
-  color:         #e0ddf0;
-  font-size:     0.97rem;
-  padding:       0.55rem 0.9rem;
-  outline:       none;
-  width:         100%;
-  box-sizing:    border-box;
-  transition:    border-color 200ms ease, box-shadow 200ms ease;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(155, 109, 219, 0.3);
+  border-radius: 8px; color: #e0ddf0; font-size: 0.97rem;
+  padding: 0.55rem 0.9rem; outline: none;
+  width: 100%; box-sizing: border-box;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
 }
-.field-group input:focus {
-  border-color: #9b6ddb;
-  box-shadow:   0 0 0 3px rgba(155, 109, 219, 0.18);
-}
+.field-group input:focus        { border-color: #9b6ddb; box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.18); }
 .field-group input::placeholder { color: rgba(224, 221, 240, 0.22); }
 
-/* Password field wrapper — holds the input + show/hide toggle */
 .account-password-wrap {
-  position: relative;
-  display:  flex;
-  align-items: stretch;
+  position: relative; display: flex; align-items: stretch;
 }
-.account-password-wrap input {
-  /* Leave room for the show/hide button */
-  padding-right: 2.8rem;
-}
+.account-password-wrap input { padding-right: 2.8rem; }
 
-/* Show/hide password toggle icon button */
 .account-show-pass {
-  position:   absolute;
-  right:      0;
-  top:        0;
-  bottom:     0;
-  width:      2.6rem;
-  background: none;
-  border:     none;
-  color:      rgba(224, 221, 240, 0.35);
-  cursor:     pointer;
-  font-size:  0.8rem;
-  display:    flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 160ms ease;
-  border-radius: 0 8px 8px 0;
+  position: absolute; right: 0; top: 0; bottom: 0; width: 2.6rem;
+  background: none; border: none;
+  color: rgba(224, 221, 240, 0.35); cursor: pointer; font-size: 0.8rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: color 160ms ease; border-radius: 0 8px 8px 0;
 }
-.account-show-pass:hover     { color: rgba(224, 221, 240, 0.7); }
-.account-show-pass:focus-visible {
-  outline:    none;
-  box-shadow: 0 0 0 2px rgba(155, 109, 219, 0.5) inset;
-}
+.account-show-pass:hover { color: rgba(224, 221, 240, 0.7); }
+.account-show-pass:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(155, 109, 219, 0.5) inset; }
 
-/* Inline error message */
 .account-error {
-  font-size:  0.85rem;
-  color:      #e87070;
-  line-height: 1.5;
-  animation:  phaseEnter 220ms ease both;
-  text-align: left;
+  font-size: 0.85rem; color: #e87070; line-height: 1.5;
+  animation: phaseEnter 220ms ease both; text-align: left;
 }
 
-/* ‘← Back’ plain text button below the form */
 .account-back {
-  background:          none;
-  border:              none;
-  color:               rgba(224, 221, 240, 0.32);
-  font-size:           0.82rem;
-  cursor:              pointer;
-  padding:             0;
-  text-decoration:     underline;
-  text-underline-offset: 3px;
-  font-family:         inherit;
-  align-self:          flex-start;
-  transition:          color 160ms ease;
+  background: none; border: none;
+  color: rgba(224, 221, 240, 0.32); font-size: 0.82rem;
+  cursor: pointer; padding: 0;
+  text-decoration: underline; text-underline-offset: 3px;
+  font-family: inherit; align-self: flex-start;
+  transition: color 160ms ease;
 }
 .account-back:hover { color: rgba(224, 221, 240, 0.6); }
 
 /* ── 12. Phase 8 — Threshold ─────────────────────────────────────────────── */
 
+/*
+ * Phase 8 is purely ceremonial — no user input.
+ * The phase--enter animation is on the <section> itself (520ms).
+ * The greeting h1 has its own longer delay via animation-delay.
+ * The lines stagger in via JS toggling threshold-line--visible.
+ * The CTA fades in after all lines via threshold-cta.
+ */
+
 .phase--threshold .phase__content { gap: 2rem; }
 
+/* Greeting — larger weight-300 heading, delayed so it arrives after
+   the phase--enter slide-up has nearly finished */
 .threshold-greeting {
-  font-size: 2rem; font-weight: 300; letter-spacing: 0.03em;
-  color: #e0ddf0; animation: phaseEnter 600ms ease both;
+  font-size:        2rem;
+  font-weight:      300;
+  letter-spacing:   0.03em;
+  color:            #e0ddf0;
+  margin:           0;
+  animation:        phaseEnter 500ms 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.threshold-lines { display: flex; flex-direction: column; gap: 0.55rem; min-height: 4rem; }
+
+/* Lines container — reserves height so layout doesn't jump */
+.threshold-lines {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.55rem;
+  min-height:     5.5rem;
+}
+
+/* Individual line — hidden by default, JS adds --visible */
 .threshold-line {
-  font-size: 1.05rem; color: rgba(224, 221, 240, 0.85);
-  opacity: 0; transform: translateY(8px);
-  transition: opacity 500ms ease, transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  font-size:      1.05rem;
+  color:          rgba(224, 221, 240, 0.85);
+  line-height:    1.55;
+  margin:         0;
+  pointer-events: none;   /* decorative; aria-live handles announcement */
+  opacity:        0;
+  transform:      translateY(8px);
+  transition:     opacity  500ms ease,
+                  transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .threshold-line--muted   { color: rgba(224, 221, 240, 0.45); }
 .threshold-line--visible { opacity: 1; transform: translateY(0); }
+
+/*
+ * .threshold-cta — wrapper for the Enter button.
+ * Fades in via phaseEnter once JS renders it (after all lines land).
+ * The animation is on the wrapper so the button itself retains
+ * its own :active scale transform without fighting an animation.
+ */
+.threshold-cta {
+  animation: phaseEnter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* ── 13. Resume Dialog ───────────────────────────────────────────────────── */
 
@@ -733,7 +715,9 @@
   .gift-card,
   .gift-skip,
   .account-form,
+  .threshold-greeting,
   .threshold-line,
+  .threshold-cta,
   .onboarding-resume,
   .consent-item--visible,
   .q4-step--exit-forward,
