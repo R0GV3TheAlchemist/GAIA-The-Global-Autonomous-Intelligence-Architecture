@@ -5,70 +5,296 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GAIA Ambient</title>
   <style>
+    /* ── Reset ──────────────────────────────────────────────────────────── */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
-      width: 120px;
-      height: 120px;
+      width:      120px;
+      height:     120px;
       background: transparent;
-      overflow: hidden;
-      user-select: none;
+      overflow:   hidden;
+      user-select:         none;
       -webkit-user-select: none;
     }
 
+    /* ── Mode colour tokens ─────────────────────────────────────────────── */
+    /*
+     * Each mode maps to three values:
+     *   --orb-c1   inner highlight colour
+     *   --orb-c2   mid gradient colour
+     *   --orb-c3   deep edge colour
+     *   --orb-g1   primary glow colour  (near)
+     *   --orb-g2   secondary glow colour (far)
+     *   --orb-dur  breathing cycle duration
+     *   --orb-scale-hi  peak scale during breathe
+     *
+     * Colours match GaiaPresenceBar exactly:
+     *   resting   → amethyst  #9b6ddb
+     *   listening → teal      #4f98a3
+     *   thinking  → amethyst bright #b48fe8  (faster shimmer)
+     *   speaking  → gold      #e8af34
+     *   offline   → grey      #4a4a5a
+     */
+
+    :root {
+      /* resting — amethyst */
+      --orb-c1:       rgba(180, 143, 232, 0.95);
+      --orb-c2:       rgba(100,  60, 180, 0.85);
+      --orb-c3:       rgba( 20,  10,  50, 0.80);
+      --orb-g1:       rgba(155, 109, 219, 0.65);
+      --orb-g2:       rgba( 80,  30, 160, 0.30);
+      --orb-dur:      3.2s;
+      --orb-scale-hi: 1.07;
+      --orb-shimmer:  rgba(200, 170, 255, 0.18);
+    }
+
+    /* ── Mode overrides via data-mode attribute ──────────────────────────── */
+
+    [data-mode="listening"] {
+      --orb-c1:       rgba(100, 220, 200, 0.95);
+      --orb-c2:       rgba( 30, 120, 140, 0.85);
+      --orb-c3:       rgba(  5,  30,  50, 0.80);
+      --orb-g1:       rgba( 79, 152, 163, 0.70);
+      --orb-g2:       rgba( 20,  80, 120, 0.30);
+      --orb-dur:      1.9s;
+      --orb-scale-hi: 1.09;
+      --orb-shimmer:  rgba(160, 240, 230, 0.18);
+    }
+
+    [data-mode="thinking"] {
+      --orb-c1:       rgba(200, 160, 255, 0.95);
+      --orb-c2:       rgba(110,  50, 210, 0.85);
+      --orb-c3:       rgba( 20,   5,  60, 0.80);
+      --orb-g1:       rgba(155, 109, 219, 0.80);
+      --orb-g2:       rgba( 90,  20, 180, 0.40);
+      --orb-dur:      0.85s;
+      --orb-scale-hi: 1.11;
+      --orb-shimmer:  rgba(220, 190, 255, 0.22);
+    }
+
+    [data-mode="speaking"] {
+      --orb-c1:       rgba(255, 220, 100, 0.95);
+      --orb-c2:       rgba(200, 130,  20, 0.85);
+      --orb-c3:       rgba( 50,  25,   5, 0.80);
+      --orb-g1:       rgba(232, 175,  52, 0.75);
+      --orb-g2:       rgba(180,  90,  10, 0.35);
+      --orb-dur:      1.1s;
+      --orb-scale-hi: 1.12;
+      --orb-shimmer:  rgba(255, 240, 160, 0.22);
+    }
+
+    [data-mode="offline"] {
+      --orb-c1:       rgba(100, 100, 120, 0.70);
+      --orb-c2:       rgba( 50,  50,  70, 0.70);
+      --orb-c3:       rgba( 10,  10,  25, 0.75);
+      --orb-g1:       rgba( 80,  80, 100, 0.25);
+      --orb-g2:       rgba( 30,  30,  50, 0.10);
+      --orb-dur:      6s;
+      --orb-scale-hi: 1.02;
+      --orb-shimmer:  rgba(120, 120, 140, 0.08);
+    }
+
+    /* ── Canvas layer (particle field) ─────────────────────────────────── */
+
+    #orb-canvas {
+      position: absolute;
+      top:      0;
+      left:     0;
+      width:    120px;
+      height:   120px;
+      pointer-events: none;
+      border-radius:  50%;
+      /* Clip to orb boundary */
+      clip-path: circle(50px at 60px 60px);
+    }
+
+    /* ── Orb ─────────────────────────────────────────────────────────────── */
+
     #ambient-orb {
-      width: 100px;
-      height: 100px;
-      margin: 10px;
+      position:      relative;
+      width:         100px;
+      height:        100px;
+      margin:        10px;
       border-radius: 50%;
-      cursor: pointer;
+      cursor:        pointer;
+      z-index:       1;
+
       background: radial-gradient(
         circle at 35% 35%,
-        rgba(100, 220, 180, 0.95),
-        rgba(30, 80, 140, 0.85) 60%,
-        rgba(10, 20, 60, 0.75) 100%
+        var(--orb-c1),
+        var(--orb-c2) 58%,
+        var(--orb-c3) 100%
       );
+
       box-shadow:
-        0 0 20px rgba(80, 200, 160, 0.6),
-        0 0 40px rgba(40, 100, 200, 0.3),
-        inset 0 0 15px rgba(255, 255, 255, 0.15);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+        0 0 22px var(--orb-g1),
+        0 0 44px var(--orb-g2),
+        inset 0 0 16px var(--orb-shimmer);
+
+      /* Mode cross-fade */
+      transition:
+        background  600ms ease,
+        box-shadow  600ms ease,
+        transform   200ms ease;
+
+      animation: orbBreathe var(--orb-dur) ease-in-out infinite;
     }
+
+    /* Inner specular highlight — biophotonic shimmer */
+    #ambient-orb::before {
+      content:       '';
+      position:      absolute;
+      top:           12%;
+      left:          18%;
+      width:         38%;
+      height:        28%;
+      border-radius: 50%;
+      background:    radial-gradient(
+        ellipse at center,
+        rgba(255, 255, 255, 0.28) 0%,
+        transparent 70%
+      );
+      pointer-events: none;
+      transition: opacity 600ms ease;
+    }
+
+    /* Outer aura ring — breathing behind orb */
+    #ambient-orb::after {
+      content:       '';
+      position:      absolute;
+      inset:         -12px;
+      border-radius: 50%;
+      background:    radial-gradient(
+        circle at center,
+        var(--orb-g1) 0%,
+        transparent 70%
+      );
+      opacity:       0.4;
+      pointer-events: none;
+      animation:     auraBreath var(--orb-dur) ease-in-out infinite;
+      transition:    background 600ms ease;
+    }
+
+    /* ── Hover + active ──────────────────────────────────────────────────── */
 
     #ambient-orb:hover {
       transform: scale(1.08);
       box-shadow:
-        0 0 30px rgba(80, 200, 160, 0.8),
-        0 0 60px rgba(40, 100, 200, 0.5),
-        inset 0 0 20px rgba(255, 255, 255, 0.2);
+        0 0 32px var(--orb-g1),
+        0 0 64px var(--orb-g2),
+        inset 0 0 22px var(--orb-shimmer);
     }
 
     #ambient-orb:active {
-      transform: scale(0.95);
+      transform: scale(0.94);
     }
 
-    @keyframes ambientPulse {
+    /* ── Long-press feedback ring ────────────────────────────────────────── */
+    /*
+     * AmbientOrb.ts adds .ambient-orb--pressing during a long-press.
+     * A sweeping conic-gradient ring reveals progress.
+     */
+    #ambient-orb.ambient-orb--pressing {
+      box-shadow:
+        0 0 0 3px var(--orb-g1),
+        0 0 22px var(--orb-g1),
+        0 0 44px var(--orb-g2),
+        inset 0 0 16px var(--orb-shimmer);
+      animation: longPressRing 500ms linear forwards, orbBreathe var(--orb-dur) ease-in-out infinite;
+    }
+
+    /* ── Keyframes ───────────────────────────────────────────────────────── */
+
+    @keyframes orbBreathe {
       0%, 100% {
+        transform: scale(1);
         box-shadow:
-          0 0 20px rgba(80, 200, 160, 0.6),
-          0 0 40px rgba(40, 100, 200, 0.3),
-          inset 0 0 15px rgba(255, 255, 255, 0.15);
+          0 0 22px var(--orb-g1),
+          0 0 44px var(--orb-g2),
+          inset 0 0 16px var(--orb-shimmer);
       }
       50% {
+        transform: scale(var(--orb-scale-hi));
         box-shadow:
-          0 0 35px rgba(80, 200, 160, 0.9),
-          0 0 70px rgba(40, 100, 200, 0.5),
-          inset 0 0 25px rgba(255, 255, 255, 0.25);
+          0 0 36px var(--orb-g1),
+          0 0 72px var(--orb-g2),
+          inset 0 0 24px var(--orb-shimmer);
       }
     }
 
-    .ambient-pulse {
-      animation: ambientPulse 3s ease-in-out infinite;
+    @keyframes auraBreath {
+      0%, 100% { opacity: 0.30; transform: scale(0.95); }
+      50%       { opacity: 0.55; transform: scale(1.08); }
+    }
+
+    @keyframes longPressRing {
+      0%   { outline: 3px solid transparent; outline-offset: 2px; }
+      100% { outline: 3px solid var(--orb-g1); outline-offset: 5px; }
+    }
+
+    /* ── Thinking mode: rapid quantum shimmer ───────────────────────────── */
+    [data-mode="thinking"] #ambient-orb,
+    #ambient-orb[data-mode="thinking"] {
+      animation: orbShimmer var(--orb-dur) ease-in-out infinite;
+    }
+
+    @keyframes orbShimmer {
+      0%   { transform: scale(0.97); filter: brightness(0.90); }
+      25%  { transform: scale(1.11); filter: brightness(1.30); }
+      50%  { transform: scale(0.99); filter: brightness(0.95); }
+      75%  { transform: scale(1.08); filter: brightness(1.20); }
+      100% { transform: scale(0.97); filter: brightness(0.90); }
+    }
+
+    /* ── Speaking mode: radiate outward ────────────────────────────────── */
+    [data-mode="speaking"] #ambient-orb,
+    #ambient-orb[data-mode="speaking"] {
+      animation: orbRadiate var(--orb-dur) ease-in-out infinite;
+    }
+
+    @keyframes orbRadiate {
+      0%   { transform: scale(0.96); }
+      35%  { transform: scale(var(--orb-scale-hi)); }
+      100% { transform: scale(0.96); }
+    }
+
+    /* ── Offline: slow fade-dim ─────────────────────────────────────────── */
+    [data-mode="offline"] #ambient-orb,
+    #ambient-orb[data-mode="offline"] {
+      animation: orbDim var(--orb-dur) ease-in-out infinite;
+      filter: saturate(0.3);
+    }
+
+    @keyframes orbDim {
+      0%, 100% { opacity: 0.45; transform: scale(0.98); }
+      50%       { opacity: 0.60; transform: scale(1.01); }
+    }
+
+    /* ── Reduced motion ─────────────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      #ambient-orb,
+      #ambient-orb::after {
+        animation: none !important;
+      }
+      #ambient-orb {
+        transition: background 200ms ease, box-shadow 200ms ease;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="ambient-orb" aria-label="GAIA Ambient Orb" role="button" tabindex="0"></div>
+  <!-- Particle canvas sits behind the orb -->
+  <canvas id="orb-canvas" width="120" height="120" aria-hidden="true"></canvas>
+
+  <!-- The orb — data-mode is set by AmbientOrb.ts -->
+  <div
+    id="ambient-orb"
+    data-mode="resting"
+    aria-label="GAIA — click to open, hold for Emrys"
+    role="button"
+    tabindex="0"
+  ></div>
+
   <script type="module" src="/src/shell/AmbientOrb.ts"></script>
 </body>
 </html>
