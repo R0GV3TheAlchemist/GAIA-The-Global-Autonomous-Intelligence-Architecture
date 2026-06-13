@@ -20,7 +20,7 @@
  *  15. Reduced motion
  */
 
-/* ── 1. Layout & Shell ───────────────────────────────────────────────────── */
+/* ── 1. Layout & Shell ──────────────────────────────────────────────────── */
 
 .onboarding-shell {
   position:        fixed;
@@ -312,110 +312,319 @@
   margin-top:  0.5rem;
 }
 
-/* ── 8. Phase 4 — Three Questions ────────────────────────────────────────── */
+/* ── 8. Phase 4 — Three Questions ───────────────────────────────────────── */
 
-.questions-header {
-  font-size:   1.05rem;
-  color:       rgba(224, 221, 240, 0.55);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-size:   0.8rem;
+/* — Header & step counter — */
+
+.q4-header {
+  display:     flex;
+  align-items: center;
+  gap:         1rem;
+  margin-bottom: 0.25rem;
 }
 
-.question-block {
-  display:        flex;
-  flex-direction: column;
-  gap:            0.75rem;
+.q4-step-label {
+  font-size:      0.75rem;
+  letter-spacing: 0.1em;
+  color:          rgba(224, 221, 240, 0.4);
+  font-variant-numeric: tabular-nums;
+  min-width:      2.5ch;
 }
 
-.question-block__label {
-  font-size:   1.1rem;
-  font-weight: 400;
+.q4-dots {
+  display: flex;
+  gap:     6px;
+  align-items: center;
+}
+
+.q4-dot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    rgba(155, 109, 219, 0.2);
+  border:        1px solid rgba(155, 109, 219, 0.3);
+  transition:    background 300ms ease, transform 250ms ease, border-color 300ms ease;
+}
+
+.q4-dot--done {
+  background:   rgba(155, 109, 219, 0.65);
+  border-color: rgba(155, 109, 219, 0.8);
+}
+
+.q4-dot--active {
+  background:   #9b6ddb;
+  border-color: #c8aaed;
+  transform:    scale(1.5);
+  box-shadow:   0 0 5px rgba(155, 109, 219, 0.6);
+}
+
+/* — GAIA voice prompt — */
+
+.q4-prompt {
+  font-size:   1.15rem;
+  font-weight: 300;
   color:       rgba(224, 221, 240, 0.88);
+  line-height: 1.55;
+  margin-bottom: 0.25rem;
 }
 
-.option-grid {
+.q4-sub {
+  font-size:  0.85rem;
+  color:      rgba(224, 221, 240, 0.38);
+  margin-top: -0.75rem;
+  font-style: italic;
+}
+
+/* — Step transition animations — */
+
+.q4-step {
+  /* Container for animated transitions between sub-steps */
+  min-height: 280px;
+  display:    flex;
+  flex-direction: column;
+  gap:        1.25rem;
+}
+
+.q4-step--exit-forward {
+  animation: q4ExitForward 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.q4-step--exit-back {
+  animation: q4ExitBack 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.q4-step--enter-forward {
+  animation: q4EnterForward 260ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+
+.q4-step--enter-back {
+  animation: q4EnterBack 260ms cubic-bezier(0, 0, 0.2, 1) both;
+}
+
+@keyframes q4ExitForward  { from { opacity: 1; transform: translateX(0);     } to { opacity: 0; transform: translateX(-28px); } }
+@keyframes q4ExitBack     { from { opacity: 1; transform: translateX(0);     } to { opacity: 0; transform: translateX( 28px); } }
+@keyframes q4EnterForward { from { opacity: 0; transform: translateX( 28px); } to { opacity: 1; transform: translateX(0);     } }
+@keyframes q4EnterBack    { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0);     } }
+
+/* — Intent cards — */
+
+.question-group {
+  border:  none;
+  padding: 0;
+  margin:  0;
+  display: flex;
+  flex-direction: column;
+  gap:     1rem;
+}
+
+.intent-grid {
   display:               grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
   gap:                   0.6rem;
 }
 
-.option-btn {
-  background:    rgba(155, 109, 219, 0.07);
-  border:        1.5px solid rgba(155, 109, 219, 0.25);
-  border-radius: 8px;
-  color:         rgba(224, 221, 240, 0.8);
-  font-size:     0.9rem;
-  padding:       0.55rem 0.85rem;
-  cursor:        pointer;
-  transition:    background 180ms ease, border-color 180ms ease, color 180ms ease;
-  text-align:    left;
-}
-.option-btn:hover {
-  background:    rgba(155, 109, 219, 0.16);
-  border-color:  rgba(155, 109, 219, 0.55);
-  color:         #e0ddf0;
-}
-.option-btn--selected {
-  background:    rgba(155, 109, 219, 0.28);
-  border-color:  #9b6ddb;
-  color:         #e0ddf0;
-}
-
-.depth-slider-wrap {
+.intent-card {
   display:        flex;
   flex-direction: column;
-  gap:            0.5rem;
+  gap:            0.3rem;
+  padding:        0.8rem 1rem;
+  border:         1.5px solid rgba(155, 109, 219, 0.22);
+  border-radius:  10px;
+  background:     rgba(155, 109, 219, 0.05);
+  cursor:         pointer;
+  text-align:     left;
+  transition:     border-color 180ms ease, background 180ms ease, transform 120ms ease;
 }
 
-.depth-labels {
-  display:         flex;
-  justify-content: space-between;
-  font-size:       0.78rem;
-  color:           rgba(224, 221, 240, 0.45);
+.intent-card:hover {
+  border-color: rgba(155, 109, 219, 0.45);
+  background:   rgba(155, 109, 219, 0.12);
 }
 
-input[type='range'] {
-  -webkit-appearance: none;
-  width:         100%;
-  height:        4px;
-  border-radius: 2px;
-  background:    linear-gradient(
-    to right,
-    #9b6ddb 0%,
-    #9b6ddb var(--range-progress, 50%),
-    rgba(155, 109, 219, 0.2) var(--range-progress, 50%)
-  );
-  outline: none;
-}
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width:         16px;
-  height:        16px;
-  border-radius: 50%;
-  background:    #9b6ddb;
-  cursor:        pointer;
-  box-shadow:    0 0 4px rgba(155, 109, 219, 0.5);
+.intent-card--selected {
+  border-color: #9b6ddb;
+  background:   rgba(155, 109, 219, 0.22);
+  box-shadow:   0 0 0 1px rgba(155, 109, 219, 0.4);
 }
 
-.sensitive-topics {
-  display: flex;
+.intent-card__icon {
+  font-size:   1.4rem;
+  line-height: 1;
+  margin-bottom: 0.1rem;
+}
+
+.intent-card__label {
+  font-size:   0.92rem;
+  font-weight: 500;
+  color:       rgba(224, 221, 240, 0.88);
+}
+
+.intent-card__desc {
+  font-size:  0.78rem;
+  color:      rgba(224, 221, 240, 0.45);
+  line-height: 1.35;
+}
+
+/* Intent 'other' textarea */
+.intent-other {
+  background:    rgba(255, 255, 255, 0.04);
+  border:        1.5px solid rgba(155, 109, 219, 0.3);
+  border-radius: 8px;
+  color:         #e0ddf0;
+  font-size:     0.95rem;
+  padding:       0.65rem 0.9rem;
+  outline:       none;
+  resize:        vertical;
+  transition:    border-color 200ms ease, box-shadow 200ms ease;
+  animation:     phaseEnter 280ms ease both;
+  font-family:   inherit;
+}
+.intent-other:focus {
+  border-color: #9b6ddb;
+  box-shadow:   0 0 0 3px rgba(155, 109, 219, 0.14);
+}
+.intent-other::placeholder { color: rgba(224, 221, 240, 0.25); }
+
+/* — Depth cards — */
+
+.depth-list {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.55rem;
+}
+
+.depth-card {
+  display:        grid;
+  grid-template:  'icon label desc' auto
+                  'icon .    detail' auto / 2.5rem 1fr;
+  column-gap:     0.75rem;
+  row-gap:        0.15rem;
+  padding:        0.9rem 1rem;
+  border:         1.5px solid rgba(155, 109, 219, 0.2);
+  border-radius:  10px;
+  background:     rgba(155, 109, 219, 0.04);
+  cursor:         pointer;
+  text-align:     left;
+  transition:     border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+  width:          100%;
+}
+
+.depth-card:hover {
+  border-color: rgba(155, 109, 219, 0.4);
+  background:   rgba(155, 109, 219, 0.1);
+}
+
+.depth-card--selected {
+  border-color: #9b6ddb;
+  background:   rgba(155, 109, 219, 0.18);
+  box-shadow:   0 0 0 1px rgba(155, 109, 219, 0.35),
+                0 0 14px rgba(155, 109, 219, 0.12);
+}
+
+.depth-card__icon {
+  grid-area:   icon;
+  font-size:   1.6rem;
+  line-height: 1;
+  display:     flex;
+  align-items: center;
+  justify-content: center;
+  color:       rgba(155, 109, 219, 0.75);
+}
+
+.depth-card__label {
+  grid-area:   label;
+  font-size:   1rem;
+  font-weight: 500;
+  color:       rgba(224, 221, 240, 0.9);
+  line-height: 1.3;
+  align-self:  end;
+}
+
+.depth-card__desc {
+  grid-area:    desc;
+  font-size:    0.8rem;
+  color:        rgba(155, 109, 219, 0.75);
+  font-weight:  500;
+  padding-left: 0.1rem;
+  align-self:   end;
+}
+
+.depth-card__detail {
+  grid-area:  detail;
+  font-size:  0.78rem;
+  color:      rgba(224, 221, 240, 0.42);
+  line-height: 1.45;
+}
+
+/* — Topic chips — */
+
+.topics-chips {
+  display:   flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap:       0.5rem;
 }
 
 .topic-chip {
-  padding:       0.3rem 0.75rem;
+  display:       inline-flex;
+  align-items:   center;
+  gap:           0.4em;
+  padding:       0.45rem 1rem;
   border-radius: 20px;
-  border:        1.5px solid rgba(155, 109, 219, 0.3);
+  border:        1.5px solid rgba(155, 109, 219, 0.28);
   background:    transparent;
-  color:         rgba(224, 221, 240, 0.65);
-  font-size:     0.83rem;
+  color:         rgba(224, 221, 240, 0.68);
+  font-size:     0.88rem;
   cursor:        pointer;
   transition:    all 180ms ease;
+  font-family:   inherit;
 }
-.topic-chip:hover        { border-color: rgba(155, 109, 219, 0.55); color: #e0ddf0; }
-.topic-chip--selected    { background: rgba(155, 109, 219, 0.22); border-color: #9b6ddb; color: #e0ddf0; }
+
+.topic-chip:hover {
+  border-color: rgba(155, 109, 219, 0.55);
+  color:        #e0ddf0;
+  background:   rgba(155, 109, 219, 0.08);
+}
+
+.topic-chip--selected {
+  background:   rgba(155, 109, 219, 0.22);
+  border-color: #9b6ddb;
+  color:        #e0ddf0;
+  box-shadow:   0 0 0 1px rgba(155, 109, 219, 0.3);
+}
+
+.q4-none-btn {
+  background:   none;
+  border:       none;
+  color:        rgba(224, 221, 240, 0.32);
+  font-size:    0.82rem;
+  cursor:       pointer;
+  padding:      0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-family:  inherit;
+  align-self:   flex-start;
+  transition:   color 180ms ease;
+}
+.q4-none-btn:hover { color: rgba(224, 221, 240, 0.6); }
+
+/* — Actions row — */
+
+.q4-actions {
+  justify-content: space-between;
+}
+
+/* Accessibility: screen-reader only */
+.sr-only {
+  position:   absolute;
+  width:      1px;
+  height:     1px;
+  padding:    0;
+  margin:     -1px;
+  overflow:   hidden;
+  clip:       rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border:     0;
+}
 
 /* ── 9. Phase 5 — Consent ────────────────────────────────────────────────── */
 
@@ -708,11 +917,16 @@ input[type='range']::-webkit-slider-thumb {
   .name-input-wrap,
   .gift-card,
   .threshold-line,
-  .onboarding-resume {
+  .onboarding-resume,
+  .q4-step--exit-forward,
+  .q4-step--exit-back,
+  .q4-step--enter-forward,
+  .q4-step--enter-back {
     animation:  none !important;
-    transition: none !important;
+    transition: opacity 150ms ease !important;
     opacity:    1   !important;
     transform:  none !important;
   }
-  .ob-stepper__dot { transition: none; }
+  .ob-stepper__dot,
+  .q4-dot { transition: none; }
 }
