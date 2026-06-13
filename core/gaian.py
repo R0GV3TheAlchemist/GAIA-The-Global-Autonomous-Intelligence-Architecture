@@ -1,8 +1,13 @@
 # DELETED — core/gaian/ package directory is the canonical module.
-# Python resolves the package first; this file was always unreachable.
-# This tombstone exists only so git history records the deletion cleanly.
-# Safe to remove this file entirely in a subsequent cleanup pass.
+# This file has been removed as part of the #321 stub audit (June 2026).
+# core.gaian now resolves to core/gaian/__init__.py.
+#
+# If you reached this file via an import error, update your import:
+#   from core.gaian import ...  (this now resolves to core/gaian/__init__.py)
+#
+# This file will be removed entirely in the next cleanup pass.
 raise ImportError(
     "core.gaian is a package directory (core/gaian/__init__.py). "
-    "This file is a tombstone and should be deleted."
+    "This tombstone is scheduled for deletion. "
+    "Import directly from core.gaian — it resolves to the package."
 )
