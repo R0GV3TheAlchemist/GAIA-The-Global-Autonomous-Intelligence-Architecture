@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mode="resting">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GAIA Ambient</title>
   <style>
-    /* ── Reset ──────────────────────────────────────────────────────────── */
+    /* ── Reset ────────────────────────────────────────────────────────────────────── */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
@@ -17,27 +17,36 @@
       -webkit-user-select: none;
     }
 
-    /* ── Mode colour tokens ─────────────────────────────────────────────── */
+    /* ── Mode colour tokens ────────────────────────────────────────────────────── */
     /*
-     * Each mode maps to three values:
-     *   --orb-c1   inner highlight colour
-     *   --orb-c2   mid gradient colour
-     *   --orb-c3   deep edge colour
-     *   --orb-g1   primary glow colour  (near)
-     *   --orb-g2   secondary glow colour (far)
-     *   --orb-dur  breathing cycle duration
-     *   --orb-scale-hi  peak scale during breathe
+     * setMode() applies data-mode to BOTH:
+     *   1. document.documentElement (:root / [data-mode] on <html>)
+     *   2. #ambient-orb itself
      *
-     * Colours match GaiaPresenceBar exactly:
+     * Selectors below cover both surfaces redundantly.
+     * The :root selector wins specificity on token definitions;
+     * the #ambient-orb[data-mode] selector wins on animation overrides.
+     *
+     * Token map:
+     *   --orb-c1          inner highlight colour
+     *   --orb-c2          mid gradient colour
+     *   --orb-c3          deep edge colour
+     *   --orb-g1          primary glow (near)
+     *   --orb-g2          secondary glow (far)
+     *   --orb-dur         breathing animation cycle duration
+     *   --orb-scale-hi    peak scale during breathe keyframe
+     *   --orb-shimmer     inner specular highlight tint
+     *
+     * Colours mirror GaiaPresenceBar exactly:
      *   resting   → amethyst  #9b6ddb
      *   listening → teal      #4f98a3
-     *   thinking  → amethyst bright #b48fe8  (faster shimmer)
+     *   thinking  → amethyst bright #b48fe8  (fast shimmer)
      *   speaking  → gold      #e8af34
      *   offline   → grey      #4a4a5a
      */
 
+    /* Default / resting — amethyst */
     :root {
-      /* resting — amethyst */
       --orb-c1:       rgba(180, 143, 232, 0.95);
       --orb-c2:       rgba(100,  60, 180, 0.85);
       --orb-c3:       rgba( 20,  10,  50, 0.80);
@@ -48,9 +57,12 @@
       --orb-shimmer:  rgba(200, 170, 255, 0.18);
     }
 
-    /* ── Mode overrides via data-mode attribute ──────────────────────────── */
+    /* ── Mode token overrides ─────────────────────────────────────────────────── */
+    /* Applied to :root (document.documentElement) AND #ambient-orb itself.
+       Both selectors set identically so either surface triggers the cascade. */
 
-    [data-mode="listening"] {
+    :root[data-mode="listening"],
+    #ambient-orb[data-mode="listening"] {
       --orb-c1:       rgba(100, 220, 200, 0.95);
       --orb-c2:       rgba( 30, 120, 140, 0.85);
       --orb-c3:       rgba(  5,  30,  50, 0.80);
@@ -61,7 +73,8 @@
       --orb-shimmer:  rgba(160, 240, 230, 0.18);
     }
 
-    [data-mode="thinking"] {
+    :root[data-mode="thinking"],
+    #ambient-orb[data-mode="thinking"] {
       --orb-c1:       rgba(200, 160, 255, 0.95);
       --orb-c2:       rgba(110,  50, 210, 0.85);
       --orb-c3:       rgba( 20,   5,  60, 0.80);
@@ -72,7 +85,8 @@
       --orb-shimmer:  rgba(220, 190, 255, 0.22);
     }
 
-    [data-mode="speaking"] {
+    :root[data-mode="speaking"],
+    #ambient-orb[data-mode="speaking"] {
       --orb-c1:       rgba(255, 220, 100, 0.95);
       --orb-c2:       rgba(200, 130,  20, 0.85);
       --orb-c3:       rgba( 50,  25,   5, 0.80);
@@ -83,7 +97,8 @@
       --orb-shimmer:  rgba(255, 240, 160, 0.22);
     }
 
-    [data-mode="offline"] {
+    :root[data-mode="offline"],
+    #ambient-orb[data-mode="offline"] {
       --orb-c1:       rgba(100, 100, 120, 0.70);
       --orb-c2:       rgba( 50,  50,  70, 0.70);
       --orb-c3:       rgba( 10,  10,  25, 0.75);
@@ -94,7 +109,7 @@
       --orb-shimmer:  rgba(120, 120, 140, 0.08);
     }
 
-    /* ── Canvas layer (particle field) ─────────────────────────────────── */
+    /* ── Canvas layer (particle field) ───────────────────────────────────────── */
 
     #orb-canvas {
       position: absolute;
@@ -104,11 +119,10 @@
       height:   120px;
       pointer-events: none;
       border-radius:  50%;
-      /* Clip to orb boundary */
-      clip-path: circle(50px at 60px 60px);
+      clip-path:      circle(50px at 60px 60px);
     }
 
-    /* ── Orb ─────────────────────────────────────────────────────────────── */
+    /* ── Orb base ─────────────────────────────────────────────────────────────────── */
 
     #ambient-orb {
       position:      relative;
@@ -118,6 +132,7 @@
       border-radius: 50%;
       cursor:        pointer;
       z-index:       1;
+      outline:       none;   /* focus ring handled below */
 
       background: radial-gradient(
         circle at 35% 35%,
@@ -131,13 +146,29 @@
         0 0 44px var(--orb-g2),
         inset 0 0 16px var(--orb-shimmer);
 
-      /* Mode cross-fade */
+      /* Mode colour cross-fade */
       transition:
         background  600ms ease,
         box-shadow  600ms ease,
         transform   200ms ease;
 
       animation: orbBreathe var(--orb-dur) ease-in-out infinite;
+    }
+
+    /* Keyboard focus ring — visible only for keyboard navigation */
+    #ambient-orb:focus-visible {
+      box-shadow:
+        0 0 0 3px rgba(155, 109, 219, 0.9),
+        0 0 22px var(--orb-g1),
+        0 0 44px var(--orb-g2),
+        inset 0 0 16px var(--orb-shimmer);
+    }
+
+    /* Mode transition flash — added/removed by setMode() over 160 ms */
+    #ambient-orb.orb-mode-change {
+      transition:
+        background  120ms ease,
+        box-shadow  120ms ease;
     }
 
     /* Inner specular highlight — biophotonic shimmer */
@@ -155,10 +186,10 @@
         transparent 70%
       );
       pointer-events: none;
-      transition: opacity 600ms ease;
+      transition:     opacity 600ms ease;
     }
 
-    /* Outer aura ring — breathing behind orb */
+    /* Outer aura ring — breathes behind orb */
     #ambient-orb::after {
       content:       '';
       position:      absolute;
@@ -169,13 +200,13 @@
         var(--orb-g1) 0%,
         transparent 70%
       );
-      opacity:       0.4;
+      opacity:        0.4;
       pointer-events: none;
-      animation:     auraBreath var(--orb-dur) ease-in-out infinite;
-      transition:    background 600ms ease;
+      animation:      auraBreath var(--orb-dur) ease-in-out infinite;
+      transition:     background 600ms ease;
     }
 
-    /* ── Hover + active ──────────────────────────────────────────────────── */
+    /* ── Hover + active ─────────────────────────────────────────────────────────── */
 
     #ambient-orb:hover {
       transform: scale(1.08);
@@ -189,22 +220,21 @@
       transform: scale(0.94);
     }
 
-    /* ── Long-press feedback ring ────────────────────────────────────────── */
-    /*
-     * AmbientOrb.ts adds .ambient-orb--pressing during a long-press.
-     * A sweeping conic-gradient ring reveals progress.
-     */
+    /* ── Long-press feedback ring ─────────────────────────────────────────────── */
+
     #ambient-orb.ambient-orb--pressing {
       box-shadow:
         0 0 0 3px var(--orb-g1),
         0 0 22px var(--orb-g1),
         0 0 44px var(--orb-g2),
         inset 0 0 16px var(--orb-shimmer);
-      animation: longPressRing 500ms linear forwards, orbBreathe var(--orb-dur) ease-in-out infinite;
+      animation: longPressRing 500ms linear forwards,
+                 orbBreathe var(--orb-dur) ease-in-out infinite;
     }
 
-    /* ── Keyframes ───────────────────────────────────────────────────────── */
+    /* ── Keyframes ─────────────────────────────────────────────────────────────── */
 
+    /* Default breathe — resting, listening */
     @keyframes orbBreathe {
       0%, 100% {
         transform: scale(1);
@@ -228,12 +258,27 @@
     }
 
     @keyframes longPressRing {
-      0%   { outline: 3px solid transparent; outline-offset: 2px; }
-      100% { outline: 3px solid var(--orb-g1); outline-offset: 5px; }
+      0%   { outline: 3px solid transparent;    outline-offset: 2px; }
+      100% { outline: 3px solid var(--orb-g1);  outline-offset: 5px; }
     }
 
-    /* ── Thinking mode: rapid quantum shimmer ───────────────────────────── */
-    [data-mode="thinking"] #ambient-orb,
+    /* ── Listening: rapid even pulse ──────────────────────────────────────────── */
+    :root[data-mode="listening"] #ambient-orb,
+    #ambient-orb[data-mode="listening"] {
+      animation: orbListen var(--orb-dur) ease-in-out infinite;
+    }
+
+    @keyframes orbListen {
+      0%   { transform: scale(0.97); filter: brightness(0.92); }
+      20%  { transform: scale(1.09); filter: brightness(1.10); }
+      40%  { transform: scale(0.99); filter: brightness(0.96); }
+      60%  { transform: scale(1.07); filter: brightness(1.08); }
+      80%  { transform: scale(0.98); filter: brightness(0.94); }
+      100% { transform: scale(0.97); filter: brightness(0.92); }
+    }
+
+    /* ── Thinking: rapid quantum shimmer ─────────────────────────────────────── */
+    :root[data-mode="thinking"] #ambient-orb,
     #ambient-orb[data-mode="thinking"] {
       animation: orbShimmer var(--orb-dur) ease-in-out infinite;
     }
@@ -246,8 +291,8 @@
       100% { transform: scale(0.97); filter: brightness(0.90); }
     }
 
-    /* ── Speaking mode: radiate outward ────────────────────────────────── */
-    [data-mode="speaking"] #ambient-orb,
+    /* ── Speaking: radiate outward ──────────────────────────────────────────── */
+    :root[data-mode="speaking"] #ambient-orb,
     #ambient-orb[data-mode="speaking"] {
       animation: orbRadiate var(--orb-dur) ease-in-out infinite;
     }
@@ -258,11 +303,11 @@
       100% { transform: scale(0.96); }
     }
 
-    /* ── Offline: slow fade-dim ─────────────────────────────────────────── */
-    [data-mode="offline"] #ambient-orb,
+    /* ── Offline: slow fade-dim + desaturate ─────────────────────────────────── */
+    :root[data-mode="offline"] #ambient-orb,
     #ambient-orb[data-mode="offline"] {
       animation: orbDim var(--orb-dur) ease-in-out infinite;
-      filter: saturate(0.3);
+      filter:    saturate(0.3);
     }
 
     @keyframes orbDim {
@@ -270,11 +315,12 @@
       50%       { opacity: 0.60; transform: scale(1.01); }
     }
 
-    /* ── Reduced motion ─────────────────────────────────────────────────── */
+    /* ── Reduced motion ───────────────────────────────────────────────────────────── */
     @media (prefers-reduced-motion: reduce) {
       #ambient-orb,
       #ambient-orb::after {
-        animation: none !important;
+        animation:  none !important;
+        filter:     none !important;
       }
       #ambient-orb {
         transition: background 200ms ease, box-shadow 200ms ease;
@@ -283,10 +329,10 @@
   </style>
 </head>
 <body>
-  <!-- Particle canvas sits behind the orb -->
+  <!-- Particle canvas sits behind the orb z-order -->
   <canvas id="orb-canvas" width="120" height="120" aria-hidden="true"></canvas>
 
-  <!-- The orb — data-mode is set by AmbientOrb.ts -->
+  <!-- The orb — data-mode is set by AmbientOrb.ts setMode() -->
   <div
     id="ambient-orb"
     data-mode="resting"

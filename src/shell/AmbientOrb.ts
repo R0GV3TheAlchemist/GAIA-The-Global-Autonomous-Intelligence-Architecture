@@ -1,13 +1,14 @@
 /**
  * AmbientOrb.ts — P4 Shell Mode
  * GAIA as an always-on floating desktop presence.
- * Transparent 120x120 orb, draggable, click to expand, right-click context menu.
+ * Transparent 120×120 orb, draggable, click to expand, right-click context menu.
  *
  * Mode-reactive animation system:
  *   AmbientOrb listens for Tauri 'gaia:mode' events emitted by the main window
  *   (GaiaShell broadcasts these whenever useGaiaMode changes state).
- *   The mode is applied as data-mode="..." on #ambient-orb, which drives
- *   all CSS colour tokens and keyframe animations in ambient.html.
+ *   The mode is applied as data-mode="..." on both #ambient-orb AND
+ *   document.documentElement (:root), which drives all CSS colour tokens
+ *   and keyframe animations in ambient.html.
  *
  *   Modes: resting | listening | thinking | speaking | offline
  *
@@ -20,10 +21,9 @@
  *   mainWindow.emit('gaia:navigate', { section }).
  *   GaiaShell.tsx listens via listen('gaia:navigate', ...) from @tauri-apps/api/event.
  *
- * Mode broadcast from GaiaShell (add to ShellMain):
+ * Mode broadcast from GaiaShell (wired in feat(shell): broadcast gaia:mode):
  *   import { emit } from '@tauri-apps/api/event';
- *   // Call whenever gaiaMode changes:
- *   emit('gaia:mode', { mode: gaiaMode });
+ *   useEffect(() => { emit('gaia:mode', { mode: gaiaMode }).catch(() => {}); }, [gaiaMode]);
  *
  * Long-press (500 ms) → opens Emrys L2 panel in the main window.
  * Drag-safe: pointer movement > 6 px cancels the timer.
@@ -41,11 +41,17 @@ const POSITION_FILE      = 'GAIA/ambient-position.json';
 const LONG_PRESS_MS      = 500;
 const LONG_PRESS_MOVE_PX = 6;
 
-// ── Mode types ───────────────────────────────────────────────────────────────
+// ── Mode types ──────────────────────────────────────────────────────────────────────
 
-type GaiaMode = 'resting' | 'listening' | 'thinking' | 'speaking' | 'offline';
+export type GaiaMode = 'resting' | 'listening' | 'thinking' | 'speaking' | 'offline';
 
-// Particle colours per mode — RGBA triplets (no alpha here, set per-draw)
+const VALID_MODES = new Set<GaiaMode>(['resting', 'listening', 'thinking', 'speaking', 'offline']);
+
+function isGaiaMode(v: unknown): v is GaiaMode {
+  return typeof v === 'string' && VALID_MODES.has(v as GaiaMode);
+}
+
+// Particle colours per mode — RGB triplets (alpha set per-draw)
 const MODE_PARTICLE_COLORS: Record<GaiaMode, [number, number, number][]> = {
   resting:   [[155, 109, 219], [180, 143, 232], [100,  60, 180]],   // amethyst
   listening: [[ 79, 152, 163], [100, 220, 200], [ 30, 120, 140]],   // teal
@@ -54,7 +60,7 @@ const MODE_PARTICLE_COLORS: Record<GaiaMode, [number, number, number][]> = {
   offline:   [[ 80,  80, 100], [100, 100, 120], [ 50,  50,  70]],   // grey
 };
 
-// ── Particle system ───────────────────────────────────────────────────────────
+// ── Particle system ──────────────────────────────────────────────────────────────────
 
 const PARTICLE_COUNT = 12;
 const ORB_CX         = 60;  // canvas centre x
@@ -62,14 +68,14 @@ const ORB_CY         = 60;  // canvas centre y
 const ORB_RADIUS     = 44;  // particle orbit radius
 
 interface OrbParticle {
-  angle:        number;   // current orbit angle (radians)
-  speed:        number;   // radians per frame
-  orbitR:       number;   // orbit radius (slight variation per particle)
-  size:         number;   // dot radius in px
-  alpha:        number;   // current opacity
+  angle:        number;
+  speed:        number;
+  orbitR:       number;
+  size:         number;
+  alpha:        number;
   twinklePhase: number;
   twinkleSpeed: number;
-  colorIdx:     number;   // index into current mode colour array
+  colorIdx:     number;
 }
 
 function createParticles(): OrbParticle[] {
@@ -85,7 +91,7 @@ function createParticles(): OrbParticle[] {
   }));
 }
 
-// ── AmbientOrb class ──────────────────────────────────────────────────────────
+// ── AmbientOrb class ────────────────────────────────────────────────────────────────
 
 export class AmbientOrb {
   private window:     ReturnType<typeof getCurrentWindow>;
@@ -95,10 +101,13 @@ export class AmbientOrb {
   private ctx:        CanvasRenderingContext2D | null = null;
 
   // Mode state
-  private currentMode: GaiaMode = 'resting';
-  private particles:   OrbParticle[] = [];
-  private rafId:       number = 0;
-  private tick:        number = 0;
+  private currentMode:  GaiaMode = 'resting';
+  private particles:    OrbParticle[] = [];
+  private rafId:        number = 0;
+  private tick:         number = 0;
+
+  // Tauri event unlisten handle — stored so destroy() can clean up
+  private unlistenMode: (() => void) | null = null;
 
   // Long-press state
   private _lpTimer:  ReturnType<typeof setTimeout> | null = null;
@@ -114,7 +123,10 @@ export class AmbientOrb {
 
     this.orbEl    = document.getElementById('ambient-orb');
     this.canvasEl = document.getElementById('orb-canvas') as HTMLCanvasElement | null;
-    if (!this.orbEl) return;
+    if (!this.orbEl) {
+      console.error('[AmbientOrb] #ambient-orb not found in DOM.');
+      return;
+    }
 
     if (this.canvasEl) {
       this.ctx = this.canvasEl.getContext('2d');
@@ -124,42 +136,59 @@ export class AmbientOrb {
 
     this.bindDrag();
     this.bindClick();
+    this.bindKeyboard();
     this.bindLongPress();
     await this.bindContextMenu();
-    this.bindModeEvents();
+    await this.bindModeEvents();    // await so unlisten is stored before any event arrives
     this.startPulse();
     this.startParticleLoop();
+
+    console.info(`[AmbientOrb] ready — mode: ${this.currentMode}`);
   }
 
-  // ── Public mode setter ────────────────────────────────────────────────────
+  // ── Public mode setter ────────────────────────────────────────────────────────────
 
   setMode(mode: GaiaMode): void {
     if (mode === this.currentMode) return;
     this.currentMode = mode;
+
     if (this.orbEl) {
+      // Apply to orb element directly (catches #ambient-orb[data-mode] selectors)
       this.orbEl.setAttribute('data-mode', mode);
+
+      // Flash a brief transition class for the cross-dissolve
+      this.orbEl.classList.add('orb-mode-change');
+      setTimeout(() => this.orbEl?.classList.remove('orb-mode-change'), 160);
     }
-    // Also update parent element for CSS token cascade
+
+    // Apply to :root (catches :root[data-mode] / [data-mode] on html element)
     document.documentElement.setAttribute('data-mode', mode);
   }
 
-  // ── Tauri 'gaia:mode' event listener ───────────────────────────────────────
+  // ── Tauri 'gaia:mode' event listener ──────────────────────────────────────────
   //
-  // GaiaShell should emit: mainWindow.emit('gaia:mode', { mode: gaiaMode })
-  // whenever useGaiaMode changes. No Rust handler needed.
+  // GaiaShell emits: emit('gaia:mode', { mode: gaiaMode })
+  // Tauri broadcast reaches all webview windows including this one.
+  // unlisten is stored on the instance for cleanup in destroy().
   //
-  private bindModeEvents(): void {
-    listen<{ mode: GaiaMode }>('gaia:mode', (event) => {
-      const m = event.payload?.mode;
-      const valid: GaiaMode[] = ['resting', 'listening', 'thinking', 'speaking', 'offline'];
-      if (valid.includes(m)) this.setMode(m);
-    }).catch(() => {
-      // Non-Tauri / browser dev environment — silently ignore.
+  private async bindModeEvents(): Promise<void> {
+    try {
+      this.unlistenMode = await listen<{ mode: unknown }>('gaia:mode', (event) => {
+        const m = event.payload?.mode;
+        if (isGaiaMode(m)) {
+          this.setMode(m);
+        } else {
+          console.warn(`[AmbientOrb] received unknown mode: ${String(m)}`);
+        }
+      });
+    } catch {
+      // Non-Tauri / browser dev environment — silently degrade.
       // Mode can still be driven manually via setMode() or DOM attribute.
-    });
+      console.info('[AmbientOrb] Tauri event API unavailable — running in browser mode.');
+    }
   }
 
-  // ── Drag ──────────────────────────────────────────────────────────────────
+  // ── Drag ────────────────────────────────────────────────────────────────────────
 
   private bindDrag(): void {
     if (!this.orbEl) return;
@@ -195,28 +224,38 @@ export class AmbientOrb {
         await this.window.setPosition(new PhysicalPosition(x, y));
       }
     } catch {
-      // No saved position — default placement fine
+      // No saved position — default placement is fine
     }
   }
 
-  // ── Click ──────────────────────────────────────────────────────────────────────
+  // ── Click ──────────────────────────────────────────────────────────────────────────
 
   private bindClick(): void {
     if (!this.orbEl) return;
 
     this.orbEl.addEventListener('click', async (e: MouseEvent) => {
       if (e.button !== 0) return;
-      try {
-        const mainWindow = new WebviewWindow('main');
-        await mainWindow.show();
-        await mainWindow.setFocus();
-      } catch (err) {
-        console.error('[AmbientOrb] Failed to open main window:', err);
+      await this.openMain('ask');
+    });
+  }
+
+  // ── Keyboard accessibility (Enter / Space → click) ────────────────────────────
+  //
+  // The orb has role="button" and tabindex="0" in the HTML.
+  // Without this handler, keyboard users can tab to it but Enter/Space do nothing.
+  //
+  private bindKeyboard(): void {
+    if (!this.orbEl) return;
+
+    this.orbEl.addEventListener('keydown', async (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        await this.openMain('ask');
       }
     });
   }
 
-  // ── Long-press ───────────────────────────────────────────────────────────────
+  // ── Long-press ─────────────────────────────────────────────────────────────────────
 
   private bindLongPress(): void {
     if (!this.orbEl) return;
@@ -255,7 +294,7 @@ export class AmbientOrb {
     el.addEventListener('pointercancel', cancelLP);
   }
 
-  // ── Right-click context menu ────────────────────────────────────────────────
+  // ── Right-click context menu ──────────────────────────────────────────────────
 
   private async bindContextMenu(): Promise<void> {
     if (!this.orbEl) return;
@@ -276,7 +315,7 @@ export class AmbientOrb {
     });
   }
 
-  // ── openMain ─────────────────────────────────────────────────────────────────
+  // ── openMain ────────────────────────────────────────────────────────────────────
 
   private async openMain(section: string): Promise<void> {
     try {
@@ -289,17 +328,17 @@ export class AmbientOrb {
     }
   }
 
-  // ── Ambient pulse (CSS class) ──────────────────────────────────────────────
+  // ── Ambient pulse (CSS class) ──────────────────────────────────────────────────
   //
-  // Kept for backwards compatibility. The real animation now runs via
-  // data-mode CSS tokens. ambient-pulse class is a no-op but harmless.
+  // Kept for backwards compatibility. All real animation now runs via
+  // data-mode CSS tokens. ambient-pulse class is additive but harmless.
   //
   private startPulse(): void {
     if (!this.orbEl) return;
     this.orbEl.classList.add('ambient-pulse');
   }
 
-  // ── Particle canvas loop ───────────────────────────────────────────────────
+  // ── Particle canvas loop ────────────────────────────────────────────────────────
   //
   // 12 micro-particles orbit the orb centre in a biophotonic halo.
   // Particle colour is tinted by current mode via MODE_PARTICLE_COLORS.
@@ -319,13 +358,11 @@ export class AmbientOrb {
       ctx.clearRect(0, 0, 120, 120);
 
       for (const p of this.particles) {
-        // Advance orbit
         p.angle += p.speed;
 
-        // Twinkle
-        const tw   = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(this.tick * p.twinkleSpeed + p.twinklePhase));
-        const x    = ORB_CX + p.orbitR * Math.cos(p.angle);
-        const y    = ORB_CY + p.orbitR * Math.sin(p.angle);
+        const tw        = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(this.tick * p.twinkleSpeed + p.twinklePhase));
+        const x         = ORB_CX + p.orbitR * Math.cos(p.angle);
+        const y         = ORB_CY + p.orbitR * Math.sin(p.angle);
         const [r, g, b] = colors[p.colorIdx % colors.length];
 
         ctx.beginPath();
@@ -340,10 +377,16 @@ export class AmbientOrb {
     this.rafId = requestAnimationFrame(loop);
   }
 
-  // ── Cleanup ──────────────────────────────────────────────────────────────────
-
+  // ── Cleanup ──────────────────────────────────────────────────────────────────────
+  //
+  // Called if the webview is being torn down programmatically.
+  // Cancels the animation frame AND the Tauri event listener so there
+  // are no dangling references or re-delivery after unmount.
+  //
   destroy(): void {
     cancelAnimationFrame(this.rafId);
+    this.unlistenMode?.();
+    this.unlistenMode = null;
   }
 }
 
