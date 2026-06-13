@@ -14,12 +14,17 @@
  *   2. token + !onboardingCompleted → OnboardingRouter  ← C-OB01
  *   3. token + onboardingCompleted  → ShellMain
  *
+ * Mode broadcast:
+ *   ShellMain emits 'gaia:mode' via Tauri event API whenever gaiaMode
+ *   changes. AmbientOrb.ts listens and mirrors the mode on the floating
+ *   desktop orb window. GaiaPresenceBar and AmbientOrb stay in sync.
+ *
  * DEV: Set DEV_BYPASS_AUTH = true to skip auth during development.
  *      MUST be false before any production build.
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { listen }            from '@tauri-apps/api/event';
+import { listen, emit }   from '@tauri-apps/api/event';
 import { GaiaChat }          from '../chat/GaiaChat';
 import { SovereignGuard }    from '../shared/SovereignGuard';
 import { ActionGateDialog }  from '../shared/ActionGateDialog';
@@ -402,10 +407,16 @@ const ShellMain: React.FC<{
   // ── GaiaPresenceBar mode ─────────────────────────────────────────────────────────
   const { mode: gaiaMode, setMode: setGaiaMode } = useGaiaMode('resting');
 
-  // Chat event ref — passed down to GaiaChat so it can drive mode changes
-  // without prop drilling a full callback tree.
+  // Stable ref so GaiaChat callbacks never go stale inside closures
   const setGaiaModeRef = useRef(setGaiaMode);
   useEffect(() => { setGaiaModeRef.current = setGaiaMode; }, [setGaiaMode]);
+
+  // ── Broadcast gaiaMode to AmbientOrb window via Tauri event ─────────────────
+  // emit() is fire-and-forget. If Tauri is unavailable (browser dev mode),
+  // the catch silences the error — presence bar still works in isolation.
+  useEffect(() => {
+    emit('gaia:mode', { mode: gaiaMode }).catch(() => {});
+  }, [gaiaMode]);
 
   // Pull current GAIAN stage for EmrysPanel context.
   const currentStage = useOnboardingStore(
@@ -439,12 +450,10 @@ const ShellMain: React.FC<{
   const activeItem = NAV.find(n => n.id === activeId) ?? NAV[4];
 
   // ── GaiaChat mode bridge callbacks ───────────────────────────────────────────
-  // These callbacks are stable refs — GaiaChat can call them during streaming
-  // without causing re-renders on the ShellMain parent.
-  const onChatUserInput    = useCallback(() => setGaiaModeRef.current('listening'),  []);
-  const onChatStreamStart  = useCallback(() => setGaiaModeRef.current('thinking'),   []);
-  const onChatFirstToken   = useCallback(() => setGaiaModeRef.current('speaking'),   []);
-  const onChatStreamEnd    = useCallback(() => setGaiaModeRef.current('resting'),    []);
+  const onChatUserInput   = useCallback(() => setGaiaModeRef.current('listening'), []);
+  const onChatStreamStart = useCallback(() => setGaiaModeRef.current('thinking'),  []);
+  const onChatFirstToken  = useCallback(() => setGaiaModeRef.current('speaking'),  []);
+  const onChatStreamEnd   = useCallback(() => setGaiaModeRef.current('resting'),   []);
 
   const renderContent = useCallback(() => {
     if (activeId === 'ask' || activeId === 'chat' || activeId === 'companion') {
@@ -501,7 +510,6 @@ const ShellMain: React.FC<{
           mode={gaiaMode}
           className="gs__presence-bar"
           onClick={() => {
-            // Clicking the bar during offline mode re-checks the backend
             if (gaiaMode === 'offline') {
               setGaiaMode('resting');
               fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3_000) })
@@ -606,9 +614,6 @@ export const GaiaShell: React.FC = () => {
   const [onboardingReady, setOnboardingReady] = useState(false);
 
   // ── Awakening guard ───────────────────────────────────────────────────────────────
-  // Plays once per browser session. sessionStorage is cleared on tab close,
-  // so each cold boot gets the full awakening sequence.
-  // Hot-reloads during development skip it (flag already set in session).
   const [awakened, setAwakened] = useState<boolean>(
     () => sessionStorage.getItem(AWAKENING_KEY) === 'true'
   );
@@ -618,29 +623,15 @@ export const GaiaShell: React.FC = () => {
     setAwakened(true);
   }, []);
 
-  // ── Show AwakeningScreen before anything else ───────────────────────────────────
   if (!awakened) {
     return <AwakeningScreen onComplete={handleAwakeningComplete} />;
   }
 
-  // ── Auth guard ──────────────────────────────────────────────────────────────────
   if (!token) {
     return <AuthScreen onLogin={login} onRegister={register}
       loading={loading} error={error} onClear={clearError} />;
   }
 
-  // ── Onboarding guard ───────────────────────────────────────────────────────────
-  // NOTE: onboardingReady is not set here because useEffect cannot be called
-  // conditionally. The effect below runs regardless; this guard reads the flag.
-
-  if (!onboardingReady) {
-    // Trigger persisted state load
-    // (safe to call effect indirectly via the ref pattern)
-  }
-
-  // ── Onboarding state loader ─────────────────────────────────────────────────────
-  // This effect is always called (hooks rules) — the guard above is non-returning
-  // so we replicate the original logic here as a standalone component effect.
   return (
     <GaiaShellInner
       token={token}
@@ -660,9 +651,7 @@ export const GaiaShell: React.FC = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GaiaShellInner — handles onboarding state effect (hooks-rules safe)
-// The Awakening guard lives in GaiaShell above; this component only handles
-// the token/onboarding/ShellMain state machine.
+// GaiaShellInner — hooks-rules safe inner component
 // ─────────────────────────────────────────────────────────────────────────────
 
 const GaiaShellInner: React.FC<{
