@@ -1,72 +1,104 @@
-// C-OB01 — Phase 3: The Name Covenant
-// GAIA asks what to call the user. Minimal, symbolic, reversible.
+// C-OB01 — Phase 3: The Name Covenant v2
+// GAIA asks the user's name. First data exchange.
+// Upgraded: auto-focus, Enter to submit, live validation with shake,
+// confirmation echo before advancing.
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
+import { TypewriterText } from '../components/TypewriterText';
 
 export function Phase3NameCovenant() {
   const setName   = useOnboardingStore((s: OnboardingStore) => s.setName);
   const nextPhase = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const storedName = useOnboardingStore((s: OnboardingStore) => s.name);
 
-  const [inputValue, setInputValue]     = useState('');
-  const [submitted, setSubmitted]       = useState(false);
-  const [responseLine, setResponseLine] = useState('');
+  const [inputVal,    setInputVal]    = useState(storedName || '');
+  const [shake,       setShake]       = useState(false);
+  const [confirmed,   setConfirmed]   = useState(false);
+  const [showPrompt,  setShowPrompt]  = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (advanceTimerRef.current !== null) clearTimeout(advanceTimerRef.current);
-    };
+  // Auto-focus input after the typewriter prompt finishes
+  const handlePromptComplete = useCallback(() => {
+    setShowPrompt(true);
+    setTimeout(() => inputRef.current?.focus(), 80);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = inputValue.trim() || 'Friend';
-    setName(name);
+  // If user already has a stored name (resuming), show input immediately
+  useEffect(() => {
+    if (storedName) {
+      setShowPrompt(true);
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [storedName]);
 
-    const response = inputValue.trim()
-      ? `Welcome, ${name}. Let's begin.`
-      : "Alright — I'll call you 'Friend' for now. You can tell me your name whenever you're ready.";
+  const handleSubmit = useCallback(() => {
+    const trimmed = inputVal.trim();
+    if (!trimmed) {
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      inputRef.current?.focus();
+      return;
+    }
+    setName(trimmed);
+    setConfirmed(true);
+    // Brief pause to show the confirmation echo, then advance
+    setTimeout(nextPhase, 1400);
+  }, [inputVal, setName, nextPhase]);
 
-    setResponseLine(response);
-    setSubmitted(true);
-    advanceTimerRef.current = setTimeout(() => nextPhase(), 2200);
-  };
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
+  }, [handleSubmit]);
 
   return (
-    <section className="phase phase--name-covenant" aria-label="Name covenant">
+    <section className="phase phase--name-covenant phase--enter" aria-label="What is your name?">
       <div className="phase__content phase__content--centered">
-        {!submitted ? (
+
+        {!confirmed ? (
           <>
-            <h2 className="phase__question">What would you like me to call you?</h2>
-            <p className="phase__subtext">
-              This can be your real name, a nickname, or anything you choose.
-              You can change it anytime.
-            </p>
-            <form className="name-form" onSubmit={handleSubmit} noValidate>
-              <label htmlFor="gaia-name-input" className="sr-only">Your name</label>
-              <input
-                id="gaia-name-input"
-                type="text"
-                className="name-form__input"
-                placeholder="Enter your name…"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                autoFocus
-                autoComplete="off"
-                maxLength={80}
-                aria-describedby="name-hint"
-              />
-              <p id="name-hint" className="sr-only">Leave blank to be called Friend</p>
-              <button type="submit" className="btn btn--primary">Continue</button>
-            </form>
+            <TypewriterText
+              key="name-prompt"
+              text="What would you like me to call you?"
+              speed={36}
+              onComplete={handlePromptComplete}
+              tag="p"
+              className="gaia-question"
+            />
+
+            {showPrompt && (
+              <div className={`name-input-wrap${shake ? ' name-input-wrap--shake' : ''}`}>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="name-input"
+                  value={inputVal}
+                  onChange={e => setInputVal(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Your name"
+                  maxLength={48}
+                  autoComplete="off"
+                  aria-label="Enter your name"
+                />
+                <button
+                  className="btn btn--primary"
+                  onClick={handleSubmit}
+                  disabled={!inputVal.trim()}
+                  aria-label="Confirm name"
+                >
+                  That's me
+                </button>
+              </div>
+            )}
           </>
         ) : (
-          <p className="name-response" aria-live="polite" aria-atomic="true">
-            {responseLine}
-          </p>
+          <div className="name-confirmed" aria-live="polite">
+            <p className="name-confirmed__echo">
+              {inputVal.trim()}.
+            </p>
+            <p className="name-confirmed__sub">I'll remember that.</p>
+          </div>
         )}
+
       </div>
     </section>
   );
