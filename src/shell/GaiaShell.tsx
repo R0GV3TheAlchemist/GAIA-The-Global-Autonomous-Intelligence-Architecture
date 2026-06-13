@@ -8,7 +8,8 @@
  *   GAIA   tier → Ask GAIA · World Feed · Deep Compute · Analysis
  *   GAIAN  tier → Companion · Mood · Bond · Vitality
  *
- * Boot sequence (three-state guard):
+ * Boot sequence (four-state guard):
+ *   0. !awakened                    → AwakeningScreen   (first breath)
  *   1. !token                       → AuthScreen
  *   2. token + !onboardingCompleted → OnboardingRouter  ← C-OB01
  *   3. token + onboardingCompleted  → ShellMain
@@ -17,7 +18,7 @@
  *      MUST be false before any production build.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { listen }            from '@tauri-apps/api/event';
 import { GaiaChat }          from '../chat/GaiaChat';
 import { SovereignGuard }    from '../shared/SovereignGuard';
@@ -27,6 +28,8 @@ import { FieldVisualiser }   from '../shared/FieldVisualiser';
 import { useAlignmentTheme } from '../hooks/useAlignmentTheme';
 import { OnboardingRouter }  from '../onboarding/OnboardingRouter';
 import { EmrysPanel }        from '../crystal-view';
+import { AwakeningScreen }   from './AwakeningScreen';
+import { GaiaPresenceBar, useGaiaMode } from './GaiaPresenceBar';
 import {
   useOnboardingStore,
   loadPersistedState,
@@ -35,6 +38,10 @@ import './GaiaShell.css';
 
 const API_BASE = '/api';
 const DEV_BYPASS_AUTH = true; // ⚠️ set false before production
+
+// Session flag — AwakeningScreen plays once per browser session, not on
+// every hot-reload. Flip to 'true' in sessionStorage after first play.
+const AWAKENING_KEY = 'gaia:awakened';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -64,7 +71,7 @@ interface NavItem {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV: NavItem[] = [
-  // ── HUMAN tier ──────────────────────────────────────────────────────────
+  // ── HUMAN tier ───────────────────────────────────────────────────────────────────
   {
     id: 'companion',
     label: 'My Gaian',
@@ -93,7 +100,7 @@ const NAV: NavItem[] = [
     tooltip: 'Your account, consent, and system preferences',
     icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
   },
-  // ── GAIA tier ───────────────────────────────────────────────────────────
+  // ── GAIA tier ───────────────────────────────────────────────────────────────────
   {
     id: 'ask',
     label: 'Ask GAIA',
@@ -122,7 +129,7 @@ const NAV: NavItem[] = [
     tooltip: 'Multi-dimensional analysis and pattern recognition across your data',
     icon: 'M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z',
   },
-  // ── GAIAN tier ──────────────────────────────────────────────────────────
+  // ── GAIAN tier ───────────────────────────────────────────────────────────────────
   {
     id: 'chat',
     label: 'Companion',
@@ -390,53 +397,77 @@ const ShellMain: React.FC<{
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [sidebarOpen,   setSidebarOpen]   = useState(true);
   const [showEmrys,     setShowEmrys]     = useState(false);
-  const { tier: alignmentTier } = useAlignmentTheme();
+  const { tier: alignmentTier }           = useAlignmentTheme();
+
+  // ── GaiaPresenceBar mode ─────────────────────────────────────────────────────────
+  const { mode: gaiaMode, setMode: setGaiaMode } = useGaiaMode('resting');
+
+  // Chat event ref — passed down to GaiaChat so it can drive mode changes
+  // without prop drilling a full callback tree.
+  const setGaiaModeRef = useRef(setGaiaMode);
+  useEffect(() => { setGaiaModeRef.current = setGaiaMode; }, [setGaiaMode]);
 
   // Pull current GAIAN stage for EmrysPanel context.
-  // Graceful: passes undefined if currentStage isn't in the store yet.
   const currentStage = useOnboardingStore(
     s => (s as Record<string, unknown>).currentStage as string | undefined
   );
 
+  // ── Backend health check — drives offline mode ─────────────────────────────
   useEffect(() => {
     fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3_000) })
-      .then(r => setBackendOnline(r.ok))
-      .catch(() => setBackendOnline(false));
-  }, []);
+      .then(r => {
+        setBackendOnline(r.ok);
+        setGaiaMode(r.ok ? 'resting' : 'offline');
+      })
+      .catch(() => {
+        setBackendOnline(false);
+        setGaiaMode('offline');
+      });
+  }, [setGaiaMode]);
 
-  // Listen for 'gaia:navigate' Tauri events emitted by AmbientOrb.openMain().
-  //
-  // AmbientOrb calls mainWindow.emit('gaia:navigate', { section }) which dispatches
-  // a Tauri event on this webview — NOT a DOM CustomEvent. We must use Tauri's
-  // listen() API here, not window.addEventListener.
-  //
-  // In browser-only dev mode (no Tauri runtime), listen() may throw; the error
-  // is caught silently so the button trigger still works fine.
-  //
+  // ── Tauri gaia:navigate event ──────────────────────────────────────────────
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     listen<{ section: string }>('gaia:navigate', (e) => {
       if (e.payload.section === 'emrys') setShowEmrys(true);
     })
       .then(fn => { unlisten = fn; })
-      .catch(() => { /* non-Tauri environment — button trigger still works */ });
+      .catch(() => { /* non-Tauri environment */ });
     return () => { unlisten?.(); };
   }, []);
 
-  const activeItem = NAV.find(n => n.id === activeId) ?? NAV[4]; // default: Ask GAIA
+  const activeItem = NAV.find(n => n.id === activeId) ?? NAV[4];
+
+  // ── GaiaChat mode bridge callbacks ───────────────────────────────────────────
+  // These callbacks are stable refs — GaiaChat can call them during streaming
+  // without causing re-renders on the ShellMain parent.
+  const onChatUserInput    = useCallback(() => setGaiaModeRef.current('listening'),  []);
+  const onChatStreamStart  = useCallback(() => setGaiaModeRef.current('thinking'),   []);
+  const onChatFirstToken   = useCallback(() => setGaiaModeRef.current('speaking'),   []);
+  const onChatStreamEnd    = useCallback(() => setGaiaModeRef.current('resting'),    []);
 
   const renderContent = useCallback(() => {
     if (activeId === 'ask' || activeId === 'chat' || activeId === 'companion') {
-      return <GaiaChat token={token} gaianSlug="gaia" mode="control" />;
+      return (
+        <GaiaChat
+          token={token}
+          gaianSlug="gaia"
+          mode="control"
+          onUserInput={onChatUserInput}
+          onStreamStart={onChatStreamStart}
+          onFirstToken={onChatFirstToken}
+          onStreamEnd={onChatStreamEnd}
+        />
+      );
     }
     return <PlaceholderView item={activeItem} />;
-  }, [activeId, token, activeItem]);
+  }, [activeId, token, activeItem, onChatUserInput, onChatStreamStart, onChatFirstToken, onChatStreamEnd]);
 
   return (
     <div className="gs" data-alignment-tier={alignmentTier}>
       <FieldVisualiser tier={alignmentTier} />
 
-      {/* ── Top bar ─────────────────────────────────────────────────── */}
+      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <header className="gs__topbar">
         <button
           className="gs__topbar-toggle"
@@ -465,6 +496,21 @@ const ShellMain: React.FC<{
           <span>GAIA<em>OS</em></span>
         </div>
 
+        {/* ── GAIA Presence Bar ────────────────────────────────────────────── */}
+        <GaiaPresenceBar
+          mode={gaiaMode}
+          className="gs__presence-bar"
+          onClick={() => {
+            // Clicking the bar during offline mode re-checks the backend
+            if (gaiaMode === 'offline') {
+              setGaiaMode('resting');
+              fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3_000) })
+                .then(r => setGaiaMode(r.ok ? 'resting' : 'offline'))
+                .catch(() => setGaiaMode('offline'));
+            }
+          }}
+        />
+
         <div className="gs__topbar-center">
           <span className="gs__active-label">{activeItem.label}</span>
           <span className="gs__active-tier" data-tier={activeItem.tier}>
@@ -475,7 +521,7 @@ const ShellMain: React.FC<{
         <div className="gs__topbar-right">
           <ViritasWidget />
 
-          {/* ── Emrys L2 button ──────────────────────────────────── */}
+          {/* ── Emrys L2 button ──────────────────────────────────────────── */}
           <button
             className={`gs__emrys-btn${showEmrys ? ' gs__emrys-btn--active' : ''}`}
             onClick={() => setShowEmrys(v => !v)}
@@ -500,7 +546,7 @@ const ShellMain: React.FC<{
       </header>
 
       <div className="gs__body">
-        {/* ── Sidebar ───────────────────────────────────────────────── */}
+        {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
         <nav
           className={`gs__sidebar${sidebarOpen ? '' : ' gs__sidebar--collapsed'}`}
           aria-label="GAIA navigation"
@@ -529,7 +575,7 @@ const ShellMain: React.FC<{
           ))}
         </nav>
 
-        {/* ── Main content ──────────────────────────────────────────── */}
+        {/* ── Main content ────────────────────────────────────────────────────────── */}
         <main className="gs__main">
           {renderContent()}
         </main>
@@ -538,7 +584,7 @@ const ShellMain: React.FC<{
       <SovereignGuard />
       <ActionGateDialog />
 
-      {/* ── Emrys L2 Panel — portal-level overlay ──────────────────── */}
+      {/* ── Emrys L2 Panel ───────────────────────────────────────────────────────── */}
       <EmrysPanel
         open={showEmrys}
         onClose={() => setShowEmrys(false)}
@@ -550,7 +596,7 @@ const ShellMain: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GaiaShell — three-state boot guard
+// GaiaShell — four-state boot guard
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const GaiaShell: React.FC = () => {
@@ -559,25 +605,103 @@ export const GaiaShell: React.FC = () => {
   const completeOnboarding = useOnboardingStore(s => s.completeOnboarding);
   const [onboardingReady, setOnboardingReady] = useState(false);
 
-  useEffect(() => {
-    if (!token) { setOnboardingReady(false); return; }
-    loadPersistedState().then(persisted => {
-      if (persisted) useOnboardingStore.setState(persisted);
-      setOnboardingReady(true);
-    });
-  }, [token]);
+  // ── Awakening guard ───────────────────────────────────────────────────────────────
+  // Plays once per browser session. sessionStorage is cleared on tab close,
+  // so each cold boot gets the full awakening sequence.
+  // Hot-reloads during development skip it (flag already set in session).
+  const [awakened, setAwakened] = useState<boolean>(
+    () => sessionStorage.getItem(AWAKENING_KEY) === 'true'
+  );
 
+  const handleAwakeningComplete = useCallback(() => {
+    sessionStorage.setItem(AWAKENING_KEY, 'true');
+    setAwakened(true);
+  }, []);
+
+  // ── Show AwakeningScreen before anything else ───────────────────────────────────
+  if (!awakened) {
+    return <AwakeningScreen onComplete={handleAwakeningComplete} />;
+  }
+
+  // ── Auth guard ──────────────────────────────────────────────────────────────────
   if (!token) {
     return <AuthScreen onLogin={login} onRegister={register}
       loading={loading} error={error} onClear={clearError} />;
   }
+
+  // ── Onboarding guard ───────────────────────────────────────────────────────────
+  // NOTE: onboardingReady is not set here because useEffect cannot be called
+  // conditionally. The effect below runs regardless; this guard reads the flag.
+
+  if (!onboardingReady) {
+    // Trigger persisted state load
+    // (safe to call effect indirectly via the ref pattern)
+  }
+
+  // ── Onboarding state loader ─────────────────────────────────────────────────────
+  // This effect is always called (hooks rules) — the guard above is non-returning
+  // so we replicate the original logic here as a standalone component effect.
+  return (
+    <GaiaShellInner
+      token={token}
+      username={username}
+      loading={loading}
+      error={error}
+      register={register}
+      login={login}
+      logout={logout}
+      clearError={clearError}
+      completed={completed}
+      completeOnboarding={completeOnboarding}
+      onboardingReady={onboardingReady}
+      setOnboardingReady={setOnboardingReady}
+    />
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GaiaShellInner — handles onboarding state effect (hooks-rules safe)
+// The Awakening guard lives in GaiaShell above; this component only handles
+// the token/onboarding/ShellMain state machine.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GaiaShellInner: React.FC<{
+  token:               string;
+  username:            string | null;
+  loading:             boolean;
+  error:               string;
+  register:            (e: string, u: string, p: string) => Promise<void>;
+  login:               (id: string, pw: string) => Promise<void>;
+  logout:              () => void;
+  clearError:          () => void;
+  completed:           boolean;
+  completeOnboarding:  () => void;
+  onboardingReady:     boolean;
+  setOnboardingReady:  (v: boolean) => void;
+}> = ({
+  token, username, logout,
+  completed, completeOnboarding,
+  onboardingReady, setOnboardingReady,
+}) => {
+  useEffect(() => {
+    loadPersistedState().then(persisted => {
+      if (persisted) useOnboardingStore.setState(persisted);
+      setOnboardingReady(true);
+    });
+  }, [setOnboardingReady]);
 
   if (!onboardingReady) {
     return (
       <div className="gs-waking">
         <svg viewBox="0 0 32 32" width="28" height="28" fill="none" aria-hidden>
           <circle cx="16" cy="16" r="14" stroke="#4f98a3" strokeWidth="1.5"
-            strokeDasharray="3 2" style={{animationName:'gs-spin',animationDuration:'3s',animationTimingFunction:'linear',animationIterationCount:'infinite',transformOrigin:'center'}} />
+            strokeDasharray="3 2" style={{
+              animationName:           'gs-spin',
+              animationDuration:       '3s',
+              animationTimingFunction: 'linear',
+              animationIterationCount: 'infinite',
+              transformOrigin:         'center',
+            }} />
           <circle cx="16" cy="16" r="2" fill="#4f98a3"/>
         </svg>
         <span>GAIA is waking…</span>
