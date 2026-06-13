@@ -1,0 +1,12 @@
+wavelength_nm,frequency_THz,energy_eV,photonic_mass_e36_kg,color,hex,meaning,earth_layer,health_state,grey_risk
+400,750.0,3.1021,5.5217,Violet,#7B4FA6,Protection boundary — magnetospheric shield frequency,Magnetosphere,Protected — boundary intact field coherent,LOW
+420,714.286,2.9543,5.2587,Violet,#7B4FA6,Protection boundary — magnetospheric shield frequency,Magnetosphere,Protected — boundary intact field coherent,LOW
+470,638.298,2.6401,4.6993,Blue,#4169E1,Atmospheric depth — expansion clarity truth,Upper Atmosphere,Clear — open channel high coherence,LOW
+527,569.26,2.3545,4.191,Green,#228B22,Life frequency — biological center photosynthesis healing,Surface / Biosphere,Alive — full biological coherence growth state,LOW
+555,540.541,2.2357,3.9796,Green,#228B22,Life frequency — biological center photosynthesis healing,Surface / Biosphere,Alive — full biological coherence growth state,LOW
+580,517.241,2.1394,3.808,Yellow,#FFD700,Solar frequency — cognitive activation solar plexus,Transition Zone,Activated — mental clarity energized,LOW
+600,500.0,2.068,3.6811,Brown,#8B4513,Embedded orange — light that entered matter and stayed. Incarnation.,Upper Mantle,Grounded in matter — incarnate light embodied frequency,MODERATE — bioelectric coherence may be reduced
+620,483.871,2.0013,3.5624,Brown,#8B4513,Embedded orange — light that entered matter and stayed. Incarnation.,Outer Core,Grounded in matter — incarnate light embodied frequency,LOW
+644,465.839,1.9267,3.4296,Red,#DC143C,Electromagnetic engine — heat generator life blood core force,Outer Core,Grounded — root activated electromagnetic coherence,LOW
+694,432.277,1.7879,3.1825,Red,#DC143C,Electromagnetic engine — heat generator life blood core force,Outer Core,Grounded — root activated electromagnetic coherence,LOW
+550,545.455,2.256,4.0158,Green,#228B22,Life frequency — biological center photosynthesis healing,Surface / Biosphere,Alive — full biological coherence growth state,HIGH — disconnection from source frequency detected

@@ -1,0 +1,9 @@
+Layer,Depth,Temp_K_min,Temp_K_max,Temp_K_mid,Lambda_max_nm,Lambda_range_nm,Color_Region,Hex
+Inner Core,5100–6371 km,5000,6000,5500.0,526.9,483–580,Green,#228B22
+Outer Core,2900–5100 km,4000,5000,4500.0,644.0,580–724,Red,#DC143C
+Lower Mantle,660–2900 km,2500,3500,3000.0,966.0,828–1159,Near Infrared → Deep Red/Brown,#8B2500
+Upper Mantle,35–660 km,1000,1800,1400.0,2070.0,1610–2898,Infrared → Brown/Black (embedded),#4a1a00
+Crust/Surface,0–35 km,280,320,300.0,9660.0,9056–10350,Far Infrared (heat radiation),#1a0800
+Troposphere,0–12 km alt,210,290,250.0,11592.0,9993–13800,Far Infrared (heat radiation),#1a0800
+Stratosphere,12–50 km alt,200,270,235.0,12331.9,10733–14490,Far Infrared (heat radiation),#1a0800
+Magnetosphere,500–65000 km alt,800,1200,1000.0,2898.0,2415–3622,Infrared → Brown/Black (embedded),#4a1a00
