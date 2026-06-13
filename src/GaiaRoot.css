@@ -1,0 +1,29 @@
+/* GaiaRoot.css
+   Transition styles for the onboarding → shell crossfade. */
+
+.gaia-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Fade the onboarding shell out when onboarding is completing */
+.gaia-root--transitioning {
+  animation: gaia-root-fade-out 600ms ease forwards;
+  pointer-events: none;
+}
+
+/* Fade the GAIA shell in on first entry */
+.gaia-root--shell-enter {
+  animation: gaia-root-fade-in 600ms ease forwards;
+}
+
+@keyframes gaia-root-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes gaia-root-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

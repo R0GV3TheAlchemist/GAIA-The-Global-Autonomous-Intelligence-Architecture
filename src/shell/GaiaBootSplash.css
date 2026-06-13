@@ -1,0 +1,20 @@
+/* GaiaBootSplash.css */
+
+.gaia-boot-splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg, #0a0a0f);
+  z-index: 9999;
+}
+
+/* Fade the splash out once GaiaRoot swaps state */
+.gaia-boot-splash--exit {
+  animation: gaia-boot-fade-out 300ms ease forwards;
+}
+
+@keyframes gaia-boot-fade-out {
+  to { opacity: 0; pointer-events: none; }
+}
