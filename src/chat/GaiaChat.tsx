@@ -5,7 +5,7 @@
  * Canon: C90 — S.T.Q.I.O.S.
  *
  * Memory integration (v2)
- * ──────────────────────────────────────────────────────────────
+ * ──────────────────────────────────────────────────────────────────
  * Every conversation turn now:
  *   1. remembers the user's message (fire-and-forget)
  *   2. retrieves top-12 semantically relevant memories
@@ -15,6 +15,16 @@
  *
  * All memory calls fail silently — a cold memory store never
  * breaks the chat UI.
+ *
+ * Mode callback integration (GaiaPresenceBar + AmbientOrb)
+ * ──────────────────────────────────────────────────────────────────
+ * Four optional callbacks drive GAIA's living presence indicators:
+ *   onUserInput   → user submits       → setMode('listening')
+ *   onStreamStart → POST accepted      → setMode('thinking')
+ *   onFirstToken  → first SSE token    → setMode('speaking')
+ *   onStreamEnd   → stream done/error  → setMode('resting')
+ *
+ * All callbacks are optional — omitting them is safe.
  */
 
 import React, {
@@ -54,7 +64,7 @@ interface Message {
     canon_docs?: number;
     web?:        number;
     ms?:         number;
-    memHits?:    number;   // how many memory items were injected for this turn
+    memHits?:    number;
   };
 }
 
@@ -66,12 +76,25 @@ interface Props {
   token:      string | null;
   gaianSlug?: string;
   mode?:      string;
+  // ── Mode-presence callbacks ───────────────────────────────────────────────
+  /** Called immediately when the user submits a message. */
+  onUserInput?:   () => void;
+  /** Called when the SSE stream connection is established (before first token). */
+  onStreamStart?: () => void;
+  /** Called on the very first token received from the SSE stream. */
+  onFirstToken?:  () => void;
+  /** Called when the stream ends (done, error, or abort). */
+  onStreamEnd?:   () => void;
 }
 
 export const GaiaChat: React.FC<Props> = ({
   token,
   gaianSlug = DEFAULT_GAIAN,
   mode = 'control',
+  onUserInput,
+  onStreamStart,
+  onFirstToken,
+  onStreamEnd,
 }) => {
   const [messages,      setMessages]      = useState<Message[]>([]);
   const [input,         setInput]         = useState('');
@@ -84,10 +107,23 @@ export const GaiaChat: React.FC<Props> = ({
   const inputRef  = useRef<HTMLTextAreaElement>(null);
   const abortRef  = useRef<AbortController | null>(null);
 
+  // Stable callback refs — always current, never stale inside send()
+  const onUserInputRef   = useRef(onUserInput);
+  const onStreamStartRef = useRef(onStreamStart);
+  const onFirstTokenRef  = useRef(onFirstToken);
+  const onStreamEndRef   = useRef(onStreamEnd);
+  useEffect(() => { onUserInputRef.current   = onUserInput;   }, [onUserInput]);
+  useEffect(() => { onStreamStartRef.current = onStreamStart; }, [onStreamStart]);
+  useEffect(() => { onFirstTokenRef.current  = onFirstToken;  }, [onFirstToken]);
+  useEffect(() => { onStreamEndRef.current   = onStreamEnd;   }, [onStreamEnd]);
+
+  // firstTokenFired — guards onFirstToken so it only fires once per stream
+  const firstTokenFired = useRef(false);
+
   // Stable user-id derived from token (or device fallback)
   const userId = useMemo(() => resolveUserId(token), [token]);
 
-  // ── Memory hook ───────────────────────────────────────────────────────────
+  // ── Memory hook ───────────────────────────────────────────────────────────────
   const memory = useMemory({ userId, sessionId: sessionId.current });
 
   // Check backend on mount
@@ -102,7 +138,7 @@ export const GaiaChat: React.FC<Props> = ({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ── send ───────────────────────────────────────────────────────────────────
+  // ── send ─────────────────────────────────────────────────────────────────────────
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || streaming) return;
@@ -121,19 +157,24 @@ export const GaiaChat: React.FC<Props> = ({
     setMessages(prev => [...prev, userMsg, gaiaMsg]);
     setStreaming(true);
 
-    // ── MEMORY STEP 1: Remember the user's message (fire-and-forget) ────────────
+    // ── [1] USER INPUT: user just submitted — GAIA is now listening ────────────────
+    onUserInputRef.current?.();
+
+    // Reset first-token guard for this stream
+    firstTokenFired.current = false;
+
+    // ── Memory Step 1: Remember the user's message (fire-and-forget) ────────────
     void memory.rememberTurn('user', text);
 
-    // ── MEMORY STEP 2: Retrieve relevant context for this query ──────────────
+    // ── Memory Step 2: Retrieve relevant context ──────────────────────────────
     const hits = await memory.retrieveContext(text, { top_k: 12 });
 
-    // ── MEMORY STEP 3: Build the injected system prompt ───────────────────
+    // ── Memory Step 3: Build injected system prompt ──────────────────────────
     const memoryContext = memory.buildMemoryContext(hits);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    // Accumulate full GAIA reply text to store after streaming ends
     let fullGaiaText = '';
 
     try {
@@ -149,7 +190,6 @@ export const GaiaChat: React.FC<Props> = ({
           enable_web_search: webSearch,
           schumann_hz:       7.83,
           mode,
-          // ── injected memory context ─────────────────────────────────
           memory_context:    memoryContext || undefined,
         }),
         signal: ctrl.signal,
@@ -158,6 +198,9 @@ export const GaiaChat: React.FC<Props> = ({
       if (!res.ok || !res.body) {
         throw new Error(`HTTP ${res.status}`);
       }
+
+      // ── [2] STREAM START: response received, about to read tokens ──────────────
+      onStreamStartRef.current?.();
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -183,6 +226,13 @@ export const GaiaChat: React.FC<Props> = ({
               if (eventType === 'token') {
                 const chunk = data.text ?? '';
                 fullGaiaText += chunk;
+
+                // ── [3] FIRST TOKEN: GAIA has started speaking ────────────────
+                if (!firstTokenFired.current && chunk.length > 0) {
+                  firstTokenFired.current = true;
+                  onFirstTokenRef.current?.();
+                }
+
                 setMessages(prev => prev.map(m =>
                   m.id === gaiaMsg.id
                     ? { ...m, text: m.text + chunk }
@@ -190,7 +240,7 @@ export const GaiaChat: React.FC<Props> = ({
                 ));
 
               } else if (eventType === 'done') {
-                // ── MEMORY STEP 4: Remember GAIA's full reply ──────────────
+                // ── Memory Step 4: Remember GAIA's full reply ────────────────
                 if (fullGaiaText.trim()) {
                   void memory.rememberTurn('gaia', fullGaiaText, { importance: 0.6 });
                 }
@@ -204,7 +254,7 @@ export const GaiaChat: React.FC<Props> = ({
                         canon_docs: data.canon_docs,
                         web:        0,
                         ms:         data.inference_ms,
-                        memHits:    hits.length,  // show how many memories were used
+                        memHits:    hits.length,
                       }}
                     : m
                 ));
@@ -233,6 +283,9 @@ export const GaiaChat: React.FC<Props> = ({
         ));
       }
     } finally {
+      // ── [4] STREAM END: always fires — done, errored, or aborted ──────────
+      onStreamEndRef.current?.();
+
       setStreaming(false);
       abortRef.current = null;
       inputRef.current?.focus();
@@ -269,7 +322,7 @@ export const GaiaChat: React.FC<Props> = ({
              : 'Backend offline — start the server'}
         </span>
 
-        {/* Memory indicator — shows hit count from last retrieval */}
+        {/* Memory indicator */}
         {memory.hits.length > 0 && (
           <span
             className="gaia-chat__mem-chip"
