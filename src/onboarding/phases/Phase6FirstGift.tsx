@@ -1,30 +1,34 @@
-// C-OB01 — Phase 6: The First Gift v2
+// C-OB01 — Phase 6: The First Gift v3
 // GAIA gives something based on user intent before asking anything more.
 // Intentional inversion of standard onboarding psychology.
-// Upgraded: animated gift card entrance, improved aria-labels,
-// gift card uses full intent array (multi-intent aware),
-// 'Tell GAIA' variant seeds an initial conversation starter.
+// Rebuilt: TypewriterText intro, card gated on prompt completion,
+// 'other' intent personalisation, primary CTA hierarchy, keyboard support.
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
 import { useOnboardingStore, type OnboardingStore } from '../store/onboardingStore';
+import { TypewriterText } from '../components/TypewriterText';
+
+// ── Gift shape ────────────────────────────────────────────────────────────────────
 
 interface Gift {
-  icon:    string;
-  title:   string;
-  body:    string;
-  action:  string;
-  hint?:   string;
+  icon:   string;
+  title:  string;
+  body:   string;
+  action: string;
+  hint?:  string;
 }
 
-/**
- * Priority order: self_discovery > privacy > building > exploration > productivity > default
- * Multi-intent users see the gift most relevant to their first matched priority.
- */
-function selectGift(intent: string[]): Gift {
+// ── Gift selection ───────────────────────────────────────────────────────────────
+//
+// Priority: self_discovery > privacy > building > exploration >
+//           productivity > other (personalised) > default
+// Multi-intent users see the gift for their highest-priority intent.
+//
+function selectGift(intent: string[], intentOther: string): Gift {
   if (intent.includes('self_discovery')) return {
     icon:   '✦',
     title:  'A question to begin with',
-    body:   "What's one thing you want more of in your life right now? Ask me. I'll remember what you say.",
+    body:   "What’s one thing you want more of in your life right now? Ask me. I’ll remember what you say.",
     action: 'Ask GAIA',
     hint:   'This opens a conversation — not a form.',
   };
@@ -43,7 +47,7 @@ function selectGift(intent: string[]): Gift {
   };
   if (intent.includes('exploration')) return {
     icon:   '◎',
-    title:  "How GAIA's memory works",
+    title:  "How GAIA’s memory works",
     body:   "A short walkthrough of how I remember things, what I notice, and how you can guide what I learn about you.",
     action: 'Show me',
     hint:   'Takes about 2 minutes.',
@@ -55,61 +59,112 @@ function selectGift(intent: string[]): Gift {
     action: 'Open Daily Briefing',
     hint:   'You can edit this any time.',
   };
+  // 'other' with text — personalised using their own words
+  if (intent.includes('other') && intentOther.trim().length > 0) return {
+    icon:   '…',
+    title:  'Let’s start there',
+    body:   `You said you’re here for something else. I’d like to hear more. Start with: “${intentOther.trim().slice(0, 120)}”`,
+    action: 'Tell GAIA more',
+    hint:   'This opens our first real conversation.',
+  };
+  // Default fallback
   return {
     icon:   '◌',
     title:  'A place to begin',
-    body:   'GAIA is ready. Explore at whatever pace feels right. There is no wrong way to start.',
-    action: 'Continue',
+    body:   'I’m ready. Explore at whatever pace feels right. There is no wrong way to start.',
+    action: 'Let’s begin',
   };
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────────
+
 export function Phase6FirstGift() {
-  const intent    = useOnboardingStore((s: OnboardingStore) => s.intent);
-  const name      = useOnboardingStore((s: OnboardingStore) => s.name);
-  const nextPhase = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const intent        = useOnboardingStore((s: OnboardingStore) => s.intent);
+  const intentOther   = useOnboardingStore((s: OnboardingStore) => s.intent_other);
+  const name          = useOnboardingStore((s: OnboardingStore) => s.name);
+  const nextPhase     = useOnboardingStore((s: OnboardingStore) => s.nextPhase);
+  const markInterrupted = useOnboardingStore((s: OnboardingStore) => s.markInterrupted);
 
-  const gift   = useMemo(() => selectGift(intent), [intent]);
-  const [visible, setVisible] = useState(false);
+  const gift = useMemo(() => selectGift(intent, intentOther ?? ''), [intent, intentOther]);
 
-  // Slight delay so the card entrance animation plays after phase fade-in
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 320);
-    return () => clearTimeout(t);
+  // Typewriter prompt — lock key after first render so it never re-types
+  const promptShown = useRef(false);
+
+  // Gift card is hidden until the typewriter finishes
+  const [cardVisible, setCardVisible] = useState(false);
+
+  const handlePromptComplete = useCallback(() => {
+    promptShown.current = true;
+    // Small beat after prompt ends before card slides in
+    setTimeout(() => setCardVisible(true), 160);
   }, []);
+
+  // Keyboard: Enter → advance, Escape → interrupt
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { markInterrupted(); return; }
+      if (e.key === 'Enter')  nextPhase();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [nextPhase, markInterrupted]);
+
+  const introPrompt = name
+    ? `${name}, here is something to start with.`
+    : 'Here is something to start with.';
+
+  const titleId = 'gift-title';
 
   return (
     <section className="phase phase--first-gift phase--enter" aria-label="Your first gift from GAIA">
       <div className="phase__content phase__content--centered">
 
-        <p className="gaia-aside">
-          {name ? `${name}, here's something to start with.` : 'Here's something to start with.'}
-        </p>
+        {/* ── GAIA intro line ─────────────────────────────────────────────── */}
+        <TypewriterText
+          key={promptShown.current ? 'static' : 'type'}
+          text={introPrompt}
+          speed={28}
+          onComplete={handlePromptComplete}
+          tag="p"
+          className="q4-prompt gift-intro"
+        />
 
-        <div
-          className={`gift-card${visible ? ' gift-card--visible' : ''}`}
-          role="region"
-          aria-label={gift.title}
+        {/* ── Gift card ──────────────────────────────────────────────────── */}
+        <article
+          className={`gift-card${cardVisible ? ' gift-card--visible' : ''}`}
+          aria-labelledby={titleId}
+          aria-live="polite"
         >
           <span className="gift-card__icon" aria-hidden>{gift.icon}</span>
-          <h2 className="gift-card__title">{gift.title}</h2>
-          <p  className="gift-card__body">{gift.body}</p>
-          {gift.hint && <p className="gift-card__hint">{gift.hint}</p>}
+          <h2   className="gift-card__title" id={titleId}>{gift.title}</h2>
+          <p    className="gift-card__body">{gift.body}</p>
+          {gift.hint && (
+            <p className="gift-card__hint" aria-label={`Hint: ${gift.hint}`}>
+              {gift.hint}
+            </p>
+          )}
+
           <button
-            className="btn btn--secondary"
+            type="button"
+            className="btn btn--primary"
             onClick={nextPhase}
             aria-label={`${gift.action} — ${gift.title}`}
           >
             {gift.action}
           </button>
-        </div>
+        </article>
 
-        <button
-          className="btn btn--ghost btn--small"
-          onClick={nextPhase}
-          aria-label="Skip this gift and continue to account setup"
-        >
-          Skip for now
-        </button>
+        {/* ── Skip ───────────────────────────────────────────────────────────── */}
+        {cardVisible && (
+          <button
+            type="button"
+            className="gift-skip"
+            onClick={nextPhase}
+            aria-label="Skip this gift and continue"
+          >
+            Skip for now
+          </button>
+        )}
 
       </div>
     </section>
