@@ -533,7 +533,6 @@
   gap:            0.45rem;
 }
 
-/* Group heading line — 'On by default · stored only on your device' */
 .consent-group-label {
   font-size:      0.72rem;
   letter-spacing: 0.1em;
@@ -543,11 +542,8 @@
   margin-bottom:  0.1rem;
   padding-left:   0.1rem;
 }
-.consent-group-label--dim {
-  color: rgba(224, 221, 240, 0.28);
-}
+.consent-group-label--dim { color: rgba(224, 221, 240, 0.28); }
 
-/* Thin separator between groups */
 .consent-divider {
   height:     1px;
   background: rgba(155, 109, 219, 0.14);
@@ -555,7 +551,6 @@
   border:     none;
 }
 
-/* Each consent row — starts invisible, becomes visible via JS revealCount */
 .consent-item {
   display:     grid;
   grid-template-columns: 1.6rem 1fr auto;
@@ -565,11 +560,9 @@
   border-radius: 9px;
   border:      1.5px solid rgba(155, 109, 219, 0.14);
   background:  rgba(155, 109, 219, 0.03);
-  /* Hidden until revealed */
   opacity:     0;
   transform:   translateY(8px);
   transition:  border-color 200ms ease, background 200ms ease;
-  /* No motion transition here — handled by --visible class */
 }
 
 .consent-item--visible {
@@ -577,8 +570,8 @@
 }
 
 @keyframes consentItemIn {
-  from { opacity: 0; transform: translateY(8px);  }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
 .consent-item--on {
@@ -586,33 +579,11 @@
   background:   rgba(155, 109, 219, 0.09);
 }
 
-.consent-item__icon {
-  font-size:   1.1rem;
-  line-height: 1;
-  color:       rgba(155, 109, 219, 0.65);
-  justify-self: center;
-}
+.consent-item__icon   { font-size: 1.1rem; line-height: 1; color: rgba(155, 109, 219, 0.65); justify-self: center; }
+.consent-item__body   { display: flex; flex-direction: column; gap: 0.18rem; }
+.consent-item__label  { font-size: 0.9rem; font-weight: 500; color: rgba(224, 221, 240, 0.86); line-height: 1.3; }
+.consent-item__desc   { font-size: 0.78rem; color: rgba(224, 221, 240, 0.42); line-height: 1.5; }
 
-.consent-item__body {
-  display:        flex;
-  flex-direction: column;
-  gap:            0.18rem;
-}
-
-.consent-item__label {
-  font-size:   0.9rem;
-  font-weight: 500;
-  color:       rgba(224, 221, 240, 0.86);
-  line-height: 1.3;
-}
-
-.consent-item__desc {
-  font-size:   0.78rem;
-  color:       rgba(224, 221, 240, 0.42);
-  line-height: 1.5;
-}
-
-/* Toggle switch pill */
 .consent-toggle {
   flex-shrink:   0;
   width:         38px;
@@ -626,57 +597,41 @@
   outline:       none;
   padding:       0;
 }
-
-.consent-toggle--on {
-  background:   #9b6ddb;
-  border-color: #b48fe8;
-}
-
-/* Keyboard focus ring — visible only for keyboard nav */
-.consent-toggle:focus-visible {
-  box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.45);
-}
+.consent-toggle--on        { background: #9b6ddb; border-color: #b48fe8; }
+.consent-toggle:focus-visible { box-shadow: 0 0 0 3px rgba(155, 109, 219, 0.45); }
 
 .consent-toggle__thumb {
-  position:      absolute;
-  top:           3px;
-  left:          3px;
-  width:         14px;
-  height:        14px;
-  border-radius: 50%;
-  background:    rgba(224, 221, 240, 0.7);
-  transition:    transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
-  display:       block;
+  position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(224, 221, 240, 0.7);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+  display: block;
 }
+.consent-toggle--on .consent-toggle__thumb { transform: translateX(16px); background: #fff; }
 
-.consent-toggle--on .consent-toggle__thumb {
-  transform:  translateX(16px);
-  background: #fff;
-}
-
-/* Footer note */
 .consent-footer {
-  font-size:  0.8rem;
-  color:      rgba(224, 221, 240, 0.32);
-  line-height: 1.6;
-  text-align: center;
+  font-size: 0.8rem; color: rgba(224, 221, 240, 0.32);
+  line-height: 1.6; text-align: center;
 }
-
-.consent-footer__path {
-  color:       rgba(155, 109, 219, 0.7);
-  font-style:  normal;
-  font-weight: 500;
-}
+.consent-footer__path { color: rgba(155, 109, 219, 0.7); font-style: normal; font-weight: 500; }
 
 /* ── 10. Phase 6 — First Gift ────────────────────────────────────────────── */
 
-.gaia-aside {
-  font-size:   0.95rem;
-  color:       rgba(224, 221, 240, 0.5);
-  font-style:  italic;
+/*
+ * .gift-intro: slightly larger than .gaia-aside, not italic,
+ * centred — serves as GAIA's typed intro line for this phase.
+ * Reuses the q4-prompt type scale but with centred alignment.
+ */
+.gift-intro {
+  font-size:   1.1rem;
+  font-weight: 300;
+  color:       rgba(224, 221, 240, 0.82);
+  line-height: 1.55;
   text-align:  center;
+  margin-bottom: 0.25rem;
 }
 
+/* Gift card — revealed via JS gift-card--visible after intro completes */
 .gift-card {
   background:    rgba(155, 109, 219, 0.06);
   border:        1.5px solid rgba(155, 109, 219, 0.22);
@@ -687,17 +642,57 @@
   display:       flex;
   flex-direction: column;
   gap:           0.85rem;
+  /* Hidden state */
   opacity:       0;
-  transform:     scale(0.96) translateY(10px);
-  transition:    opacity 500ms ease, transform 500ms cubic-bezier(0.22, 1, 0.36, 1),
+  transform:     scale(0.95) translateY(12px);
+  transition:    opacity 480ms cubic-bezier(0.22, 1, 0.36, 1),
+                 transform 480ms cubic-bezier(0.22, 1, 0.36, 1),
                  border-color 300ms ease;
 }
-.gift-card--visible  { opacity: 1; transform: scale(1) translateY(0); }
+.gift-card--visible {
+  opacity:   1;
+  transform: scale(1) translateY(0);
+}
 .gift-card:hover     { border-color: rgba(155, 109, 219, 0.42); }
-.gift-card__icon     { font-size: 1.8rem; line-height: 1; }
-.gift-card__title    { font-size: 1.2rem; font-weight: 500; color: #e0ddf0; }
-.gift-card__body     { font-size: 0.97rem; line-height: 1.65; color: rgba(224, 221, 240, 0.72); }
-.gift-card__hint     { font-size: 0.8rem; color: rgba(224, 221, 240, 0.38); font-style: italic; }
+
+.gift-card__icon {
+  font-size:   2rem;
+  line-height: 1;
+  color:       rgba(155, 109, 219, 0.8);
+}
+.gift-card__title {
+  font-size:   1.2rem;
+  font-weight: 500;
+  color:       #e0ddf0;
+  margin:      0;
+}
+.gift-card__body {
+  font-size:   0.97rem;
+  line-height: 1.68;
+  color:       rgba(224, 221, 240, 0.72);
+}
+.gift-card__hint {
+  font-size:  0.8rem;
+  color:      rgba(224, 221, 240, 0.35);
+  font-style: italic;
+}
+
+/* Skip — plain text link, not a ghost button */
+.gift-skip {
+  background:          none;
+  border:              none;
+  color:               rgba(224, 221, 240, 0.3);
+  font-size:           0.8rem;
+  cursor:              pointer;
+  padding:             0;
+  text-decoration:     underline;
+  text-underline-offset: 3px;
+  font-family:         inherit;
+  transition:          color 180ms ease;
+  /* Fades in with a small delay after the card */
+  animation:           phaseEnter 400ms 200ms ease both;
+}
+.gift-skip:hover { color: rgba(224, 221, 240, 0.55); }
 
 /* ── 11. Phase 7 — Account Setup ─────────────────────────────────────────── */
 
@@ -781,6 +776,7 @@
   .intro-para,
   .name-input-wrap,
   .gift-card,
+  .gift-skip,
   .threshold-line,
   .onboarding-resume,
   .consent-item--visible,
