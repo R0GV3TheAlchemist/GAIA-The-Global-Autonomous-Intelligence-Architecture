@@ -1,5 +1,5 @@
 """
-GAIA API Server — FastAPI bootstrap v2.4.0
+GAIA API Server — FastAPI bootstrap v2.5.0
 
 Split from the monolith in Sprint C47+. All endpoints live in
 core/routers/. Shared process state lives in core/server_state.py.
@@ -9,8 +9,14 @@ v2.4.0 additions:
   - Goals router mounted at /goals  (CRUD + Spiritus birth-stamping)
   - patch_runtime() called at startup to wire live Spiritus into goal creation
 
+v2.5.0 additions (June 14, 2026):
+  - lci_router    mounted at /lci     ❤️  Love Coherence Index REST API
+  - status_router mounted at /status      Full runtime status dashboard
+  - Both set_dependencies() calls wired in server_lifecycle.py
+  - Canon ref C43 (epistemic integrity) added for LCI
+
 Canon Refs: C01, C04, C12, C15, C17, C20, C21, C27, C30, C42, C43, C44, C47, C48,
-            C128 (Spiritus Pneuma Canon)
+            C128 (Spiritus Pneuma Canon), C43 (LCI epistemic integrity)
 """
 
 import os
@@ -37,10 +43,12 @@ from core.routers import (
     goals_router,           # ★ Goals + Spiritus
     health_router,
     internal_router,
+    lci_router,             # ❤️ Love Coherence Index
     memory_router,
     mood_ws_router,
     query_router,
     room_router,
+    status_router,          # 📊 Runtime status dashboard
     system_router,
     zodiac_router,
 )
@@ -90,7 +98,9 @@ app.include_router(query_router)
 app.include_router(admin_router)
 app.include_router(mood_ws_router)
 app.include_router(room_router)
-app.include_router(goals_router, prefix="/goals", tags=["Goals"])  # ★ C128
+app.include_router(goals_router,  prefix="/goals",  tags=["Goals"])   # ★ C128
+app.include_router(lci_router)                                         # ❤️ GET+POST /lci/*
+app.include_router(status_router)                                      # 📊 GET /status/*
 
 # — Startup / shutdown lifecycle —
 register_lifecycle(app)
@@ -105,6 +115,10 @@ except Exception as e:
 # ★ Spiritus → Goals wire-up
 # Deferred to lifecycle startup so the runtime singleton is guaranteed to exist.
 # See: core/server_lifecycle.py — _wire_spiritu_goals()
+
+# ❤️ LCI + Status → set_dependencies() wire-up
+# Deferred to lifecycle startup alongside the existing router wiring.
+# See: core/server_lifecycle.py — startup event.
 
 log_event(
     GAIAEvent.CANON_LOADED,
