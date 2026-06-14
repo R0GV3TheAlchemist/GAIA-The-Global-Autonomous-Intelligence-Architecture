@@ -107,9 +107,9 @@ def _parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
             # comma-separated is enough for tags.
             if val.startswith("[") and val.endswith("]"):
                 inner = val[1:-1]
-                meta[key] = [v.strip().strip('"\"') for v in inner.split(",") if v.strip()]
+                meta[key] = [v.strip().strip('"') for v in inner.split(",") if v.strip()]
             else:
-                meta[key] = val.strip('"\"')
+                meta[key] = val.strip('"')
 
     body = text[match.end():].strip()
     return meta, body
