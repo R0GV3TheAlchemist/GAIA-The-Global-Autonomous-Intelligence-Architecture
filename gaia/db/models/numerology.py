@@ -13,6 +13,7 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
+import sqlalchemy as sa
 from sqlalchemy import (
     Boolean,
     Column,
@@ -21,12 +22,14 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     SmallInteger,
     String,
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
@@ -34,6 +37,17 @@ from gaia.db.base import Base
 
 if TYPE_CHECKING:
     pass  # forward-reference guard
+
+# ---------------------------------------------------------------------------
+# Dialect-aware column type helpers
+# ---------------------------------------------------------------------------
+# Use PostgreSQL-native JSONB when connected to Postgres (production / CI with
+# real Postgres), and fall back to plain JSON for SQLite (in-memory test runs).
+# Use PostgreSQL-native UUID when connected to Postgres, and String(36) for
+# SQLite (which has no native UUID type).
+
+_JSONB = JSON().with_variant(PG_JSONB(), "postgresql")
+_UUID  = String(36).with_variant(PG_UUID(as_uuid=True), "postgresql")
 
 
 # ---------------------------------------------------------------------------
@@ -50,16 +64,16 @@ class NumerologyProfile(Base):
     __tablename__ = "gaia_numerology_profiles"
 
     id = Column(
-        UUID(as_uuid=True),
+        _UUID,
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
         nullable=False,
     )
     # index=True intentionally OMITTED — covered by the named Index in
     # __table_args__.  Having both causes SQLAlchemy to emit two CREATE INDEX
     # statements for the same column, which SQLite rejects as a duplicate index.
     user_id = Column(
-        UUID(as_uuid=True),
+        _UUID,
         nullable=True,
         comment="FK to Gaian user identity; NULL for anonymous/ephemeral sessions",
     )
@@ -161,16 +175,16 @@ class NumerologyChart(Base):
     __tablename__ = "gaia_numerology_charts"
 
     id = Column(
-        UUID(as_uuid=True),
+        _UUID,
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
         nullable=False,
     )
     # index=True intentionally OMITTED — covered by the composite named Index
     # in __table_args__.  Adding index=True here would emit a second,
     # auto-named index on profile_id alone, duplicating the composite.
     profile_id = Column(
-        UUID(as_uuid=True),
+        _UUID,
         ForeignKey("gaia_numerology_profiles.id", ondelete="CASCADE", name="fk_chart_profile"),
         nullable=False,
     )
@@ -200,8 +214,10 @@ class NumerologyChart(Base):
     soul_urge_is_master = Column(Boolean(), nullable=False, default=False, server_default="false")
 
     # Forward-compatibility payload ---------------------------------------
+    # Uses PostgreSQL-native JSONB in production; falls back to JSON for
+    # SQLite in-memory test runs (SQLite has no JSONB compiler).
     raw_chart = Column(
-        JSONB(astext_type=Text()),
+        _JSONB,
         nullable=True,
         comment="Full chart serialised as JSONB; source of truth for fields not yet promoted to columns",
     )
@@ -293,15 +309,15 @@ class NumerologyNumber(Base):
     __tablename__ = "gaia_numerology_numbers"
 
     id = Column(
-        UUID(as_uuid=True),
+        _UUID,
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
         nullable=False,
     )
     # index=True intentionally OMITTED — covered by the named Index in
     # __table_args__.  Having both causes a duplicate index error on SQLite.
     chart_id = Column(
-        UUID(as_uuid=True),
+        _UUID,
         ForeignKey("gaia_numerology_charts.id", ondelete="CASCADE", name="fk_number_chart"),
         nullable=False,
     )
@@ -327,8 +343,9 @@ class NumerologyNumber(Base):
         comment="True when the reduced value is 11, 22, or 33",
     )
     # JSON array of intermediate steps, e.g. [29, 11] or [38, 11] or [48, 12, 3]
+    # Uses PostgreSQL-native JSONB in production; falls back to JSON for SQLite.
     reduction_path = Column(
-        JSONB(astext_type=Text()),
+        _JSONB,
         nullable=False,
         comment="Ordered list of values from raw_value to reduced_value, inclusive",
     )

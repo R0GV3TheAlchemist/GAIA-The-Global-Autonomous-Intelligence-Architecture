@@ -1,6 +1,6 @@
 """ConstitutionEngine — per-GAIAN constitutional constraint engine.
 
-Each GAIAN carries a ConstitutionSet derived from her human sovereign’s
+Each GAIAN carries a ConstitutionSet derived from her human sovereign's
 declared values, memory profile, and explicit consent records. Before any
 high-stakes action, GAIA generates a short alignment proof confirming the
 action is consistent with the constitution.
@@ -219,19 +219,28 @@ class ConstitutionEngine:
 
     @staticmethod
     def _tokenise(action_type: str, context: dict[str, Any]) -> set[str]:
-        """Build a flat token set from action_type and context string values."""
+        """Build a flat token set from action_type and context string values.
+
+        Includes both the raw string values (for compound forbidden keywords
+        such as 'shadow_write') AND the underscore/space-split tokens (for
+        single-word keywords such as 'override').
+        """
         tokens: set[str] = set()
+        # action_type: split tokens + full string
+        tokens.add(action_type.lower())
         tokens.update(re.split(r'[_\s]+', action_type.lower()))
         for v in context.values():
             if isinstance(v, str):
-                tokens.update(re.split(r'[_\s]+', v.lower()))
+                v_lower = v.lower()
+                tokens.add(v_lower)                          # full compound value
+                tokens.update(re.split(r'[_\s]+', v_lower)) # split tokens
             elif isinstance(v, bool) and v:
                 tokens.add(str(v).lower())
         return tokens
 
 
 class ConstitutionViolation(Exception):
-    """Raised when an action violates the GAIAN’s constitution."""
+    """Raised when an action violates the GAIAN's constitution."""
 
     def __init__(self, proof: AlignmentProof) -> None:
         self.proof = proof
