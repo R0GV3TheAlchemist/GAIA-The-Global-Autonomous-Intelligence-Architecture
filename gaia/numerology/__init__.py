@@ -1,4 +1,10 @@
-from .service import NumerologyService
-from .models import NumerologyInput, NumerologyChart, CoreNumber
+"""GAIA-OS Numerology package.
 
-__all__ = ["NumerologyService", "NumerologyInput", "NumerologyChart", "CoreNumber"]
+Public surface:
+  NumerologyService  — stateless computation + persistence service
+  NumerologyEngine   — pure-function calculation core (no DB)
+"""
+from gaia.numerology.engine import NumerologyEngine
+from gaia.numerology.service import NumerologyService
+
+__all__ = ["NumerologyEngine", "NumerologyService"]
