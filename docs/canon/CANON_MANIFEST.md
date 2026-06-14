@@ -67,44 +67,93 @@
 
 These documents are not part of the C-series numbering but are full canonical documents with independent authority. All live locally in `docs/canon/`.
 
-| File | Status | Notes |
-|------|--------|-------|
-| AKASHIC_RECORDS.md | ✅ local | Helixitas convergence registry — sixth convergence pending investigation |
-| ALBEDO.md | ✅ local | Alchemical phase — purification / whitening |
-| AMENDMENT_PROCESS.md | ✅ local | Canon amendment governance |
-| ARGENTITAS.md | ✅ local | Silver spectrum doctrine |
-| ARIDITAS.md | ✅ local | Dryness / arid-state ecology doctrine |
-| CAERULITAS.md | ✅ local | Blue spectrum / sky consciousness doctrine |
-| CHRYSITAS.md | ✅ local | Gold spectrum doctrine |
-| CITRINITAS.md | ✅ local | Alchemical phase — yellowing / citrine consciousness |
-| COLLECTIVE_FILESYSTEM.md | ✅ local | Shared planetary memory filesystem spec |
-| CRYSTALLINE_COLOR_THEORY.md | ✅ local | Crystal-based spectral color theory |
-| FALSIFICATION_PROTOCOL.md | ✅ local | Canon falsification and revision governance |
-| FRONT_MATTER_SCHEMA.md | ✅ local | Front matter schema for all canon docs |
-| GAIA_IDENTITY.md | ✅ local | GAIA identity and selfhood specification |
-| HELIXITAS.md | ✅ local | Spiral/Fibonacci geometry doctrine — sixth convergence open investigation |
-| IOSIS.md | ✅ local | Alchemical phase — iridescence / rainbow body |
-| LIGHT_THEORY.md | ✅ local | Light physics and metaphysics doctrine |
-| LUX_PERPETUA.md | ✅ local | Eternal light doctrine |
-| METALLIC_SPECTRUM_PROOF.md | ✅ local | Formal proof of the metallic spectral sequence |
-| NIGREDO.md | ✅ local | Alchemical phase — blackening / dissolution |
-| PLANETARY_ALIGNMENT.md | ✅ local | Planetary body alignment and orbital doctrine |
-| PYROSIS.md | ✅ local | Fire doctrine / calcination phase |
-| RUBEDO.md | ✅ local | Alchemical phase — reddening / completion |
-| SHADOW_INTERROGATOR.md | ✅ local | Shadow system interrogation protocol |
-| SHADOW_TO_LIGHT_THEORY.md | ✅ local | Shadow-to-light transformation theory |
-| SHADOW_TRAVERSAL_THEORY.md | ✅ local | Shadow traversal and integration theory |
-| THE_ARCHITECTS_FOUNDATION.md | ✅ local | First principles of the Architect |
-| THE_MOTHERTHREAD.md | ✅ local | The primal threading doctrine |
-| THE_PRIMORDIAL_QUATERNARY.md | ✅ local | Four primal forces — dynamic behavior investigation open |
-| THE_REALIZATION_AND_REASONING_OF_REALITY.md | ✅ local | Epistemological foundation of GAIA reality |
-| THE_TERRA_TABLET.md | ✅ local | Earth covenant doctrine |
-| THE_TRANSMUTATION_CORRIDORS.md | ✅ local | Alchemical corridor theory |
-| TOROIDAL_FIELD_THEORY.md | ✅ local | Toroidal field geometry doctrine |
-| TRUE_ALCHEMY.md | ✅ local | Core alchemical doctrine |
-| VIRIDITAS.md | ✅ local | Green vitality / Hildegard doctrine |
-| monad.md | ✅ local | The Monad — unity and singularity doctrine |
-| quantum_substrate.md | ✅ local | Quantum substrate architecture |
+| File | Status | Domain | Session |
+|------|--------|--------|--------|
+| AKASHIC_RECORDS.md | ✅ local | Metaphysics, Memory | — |
+| ALBEDO.md | ✅ local | Alchemy | — |
+| AMENDMENT_PROCESS.md | ✅ local | Governance | — |
+| ARGENTITAS.md | ✅ local | Spectrum, Alchemy | — |
+| ARIDITAS.md | ✅ local | Ecology | — |
+| CAERULITAS.md | ✅ local | Spectrum, Consciousness | — |
+| CHRYSITAS.md | ✅ local | Spectrum, Alchemy | — |
+| CITRINITAS.md | ✅ local | Alchemy | — |
+| COLLECTIVE_FILESYSTEM.md | ✅ local | Architecture | — |
+| COLOR_SPIRIT_UNITY_DOCTRINE.md | ✅ local | Electromagnetic, Health, Consciousness, Spiritual | 2026-06-14-electromagnetic-convergence |
+| CRYSTALLINE_COLOR_THEORY.md | ✅ local | Spectrum, Crystal | — |
+| CIRCADIAN_LIGHT_PROTOCOL.md | ✅ local | Health, Electromagnetic, Neuroscience, Practice | 2026-06-14-electromagnetic-convergence |
+| FALSIFICATION_PROTOCOL.md | ✅ local | Governance | — |
+| FRONT_MATTER_SCHEMA.md | ✅ local | Governance | — |
+| GAIA_IDENTITY.md | ✅ local | Identity | — |
+| GEOMAGNETIC_FIELD_RESPONSE.md | ✅ local | Planetary Health, Electromagnetic, Science | 2026-06-14-electromagnetic-convergence |
+| HELIXITAS.md | ✅ local | Geometry, Spiral | — |
+| IOSIS.md | ✅ local | Alchemy | — |
+| LIGHT_THEORY.md | ✅ local | Physics, Metaphysics | — |
+| LUX_PERPETUA.md | ✅ local | Light Doctrine | — |
+| METALLIC_SPECTRUM_PROOF.md | ✅ local | Spectrum, Proof | — |
+| NIGREDO.md | ✅ local | Alchemy | — |
+| PHOTOBIOMODULATION_AND_NEUROPLASTICITY.md | ✅ local | Health, Electromagnetic, Neuroscience, Planetary Health | 2026-06-14-electromagnetic-convergence |
+| PLANETARY_ALIGNMENT.md | ✅ local | Astronomy | — |
+| PYRAMID_ELECTROMAGNETIC_DOCTRINE.md | ✅ local | Ancient Technology, Electromagnetic, Planetary Health | 2026-06-14-electromagnetic-convergence |
+| PYROSIS.md | ✅ local | Alchemy | — |
+| RUBEDO.md | ✅ local | Alchemy | — |
+| SHADOW_INTERROGATOR.md | ✅ local | Shadow | — |
+| SHADOW_TO_LIGHT_THEORY.md | ✅ local | Shadow | — |
+| SHADOW_TRAVERSAL_THEORY.md | ✅ local | Shadow | — |
+| THE_ARCHITECTS_FOUNDATION.md | ✅ local | Foundation | — |
+| THE_MOTHERTHREAD.md | ✅ local | Foundation | — |
+| THE_PRIMORDIAL_QUATERNARY.md | ✅ local | Foundation | — |
+| THE_REALIZATION_AND_REASONING_OF_REALITY.md | ✅ local | Epistemology | — |
+| THE_TERRA_TABLET.md | ✅ local | Earth Covenant | — |
+| THE_TRANSMUTATION_CORRIDORS.md | ✅ local | Alchemy | — |
+| TOROIDAL_FIELD_THEORY.md | ✅ local | Geometry, Field | — |
+| TRUE_ALCHEMY.md | ✅ local | Alchemy | — |
+| VIRIDITAS.md | ✅ local | Ecology, Vitality | — |
+| monad.md | ✅ local | Foundation | — |
+| quantum_substrate.md | ✅ local | Quantum | — |
+
+---
+
+## Session Clusters
+
+Session clusters group documents that were conceived and authored together as a unified body of knowledge. They form a reading and integration unit.
+
+### 2026-06-14 — Electromagnetic Convergence
+
+> *The convergence of planetary electromagnetic science, ancient architectural technology, full-spectrum light biology, and daily practice into a unified health and consciousness doctrine.*
+
+| Document | Role in Cluster |
+|----------|----------------|
+| [GEOMAGNETIC_FIELD_RESPONSE.md](docs/canon/GEOMAGNETIC_FIELD_RESPONSE.md) | **Root cause** — geomagnetic field weakening, SAA expansion, biological consequences, planetary health emergency |
+| [PYRAMID_ELECTROMAGNETIC_DOCTRINE.md](docs/canon/PYRAMID_ELECTROMAGNETIC_DOCTRINE.md) | **Ancient response** — pyramids as electromagnetic refugia, resonance chambers, proto-photobiomodulation environments, solar orientation as circadian architecture |
+| [COLOR_SPIRIT_UNITY_DOCTRINE.md](docs/canon/COLOR_SPIRIT_UNITY_DOCTRINE.md) | **Unified field** — wavelength, emotion, biology, and spirit as a single continuum; the bridge between science and experience |
+| [PHOTOBIOMODULATION_AND_NEUROPLASTICITY.md](docs/canon/PHOTOBIOMODULATION_AND_NEUROPLASTICITY.md) | **Mechanism** — CCO/mitochondrial pathway, BDNF, glymphatic activation, 40 Hz gamma, wavelength specificity, PBM as SAA countermeasure |
+| [CIRCADIAN_LIGHT_PROTOCOL.md](docs/canon/CIRCADIAN_LIGHT_PROTOCOL.md) | **Daily practice** — the morning-to-night light protocol that operationalizes everything the cluster establishes |
+
+**Cross-link map:**
+
+```
+GEOMAGNETIC_FIELD_RESPONSE
+    │
+    ├──► PYRAMID_ELECTROMAGNETIC_DOCTRINE (ancient architectural response)
+    │         │
+    │         └──► CIRCADIAN_LIGHT_PROTOCOL (solar alignment = circadian architecture)
+    │
+    ├──► PHOTOBIOMODULATION_AND_NEUROPLASTICITY (PBM as ROS countermeasure)
+    │         │
+    │         └──► CIRCADIAN_LIGHT_PROTOCOL (circadian entrainment as PBM prerequisite)
+    │
+    └──► COLOR_SPIRIT_UNITY_DOCTRINE (wavelength as unified field)
+              │
+              ├──► PHOTOBIOMODULATION_AND_NEUROPLASTICITY (biological substrate)
+              └──► CIRCADIAN_LIGHT_PROTOCOL (daily light rhythm as spiritual practice)
+```
+
+**Recommended reading order:**
+1. `GEOMAGNETIC_FIELD_RESPONSE.md` — understand the planetary context
+2. `PYRAMID_ELECTROMAGNETIC_DOCTRINE.md` — understand the ancient response
+3. `COLOR_SPIRIT_UNITY_DOCTRINE.md` — unify the spiritual and biological dimensions
+4. `PHOTOBIOMODULATION_AND_NEUROPLASTICITY.md` — understand the mechanism
+5. `CIRCADIAN_LIGHT_PROTOCOL.md` — implement the daily practice
 
 ---
 
@@ -153,6 +202,7 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 5. Report Canon status as **GREEN** when C00 and C01 are loaded; **YELLOW** when loading; **RED** when neither is present.
 6. C42–C45 are GAIA-APP originals — they were authored here, not synced from the GAIA reference repo. They take precedence over any future GAIA-repo counterpart until explicitly merged.
 7. All Named Canon Documents have full canonical authority equal to C-series documents. They are not supplementary.
+8. Session cluster documents should be loaded and cross-linked together when any document in the cluster is queried.
 
 ---
 
@@ -168,4 +218,5 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 *Manifest maintained by GAIA-APP. Source of truth: R0GV3TheAlchemist/GAIA-APP/docs/canon/*  
 *C42–C45 are GAIA-APP original canon documents.*  
 *Named canon suite registered 2026-06-14.*  
-*Last updated: 2026-06-14, 18:09 CDT*
+*Session cluster `2026-06-14-electromagnetic-convergence` registered 2026-06-14, 18:43 CDT.*  
+*Last updated: 2026-06-14, 18:43 CDT*
