@@ -2,6 +2,11 @@
 
 No database, no I/O.  All computation is deterministic and testable
 in isolation.  See canon/C160 for the doctrinal rules encoded here.
+
+Pythagorean mapping formula: A=1, B=2, ... I=9, J=1, K=2 ... Z=8
+  ch_value = ((ord(ch) - ord('A')) % 9) + 1
+Spot-check: A=1, E=5, I=9, J=1, S=1, Z=8  ← verified against
+standard Pythagorean tables.
 """
 from __future__ import annotations
 
@@ -13,28 +18,40 @@ from typing import Dict, List, Optional, Tuple
 # Constants
 # ---------------------------------------------------------------------------
 
-# Pythagorean letter -> digit mapping (A=1 ... Z=8, wrapping at 9)
+# Pythagorean letter -> digit mapping
+# Formula: ((ord(ch) - ord('A')) % 9) + 1  produces standard wrap at 9.
+# Spot-checks (do not remove — guards against silent formula drift):
+#   A=1 B=2 C=3 D=4 E=5 F=6 G=7 H=8 I=9
+#   J=1 K=2 L=3 M=4 N=5 O=6 P=7 Q=8 R=9
+#   S=1 T=2 U=3 V=4 W=5 X=6 Y=7 Z=8
 PYTHAGOREAN: Dict[str, int] = {
     ch: ((ord(ch) - ord("A")) % 9) + 1
     for ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 }
 
+# Assertion guard — fails fast if the formula is ever accidentally changed.
+_SPOT_CHECKS = {"A": 1, "E": 5, "I": 9, "J": 1, "S": 1, "Z": 8, "Y": 7}
+assert all(
+    PYTHAGOREAN[k] == v for k, v in _SPOT_CHECKS.items()
+), f"PYTHAGOREAN table is corrupted: {PYTHAGOREAN}"
+
 VOWELS = frozenset("AEIOU")
 MASTER_NUMBERS = frozenset({11, 22, 33})
 
 ARCHETYPES: Dict[int, Tuple[str, str]] = {
-    1:  ("The Pioneer",       "Independence, leadership, initiation, willpower"),
-    2:  ("The Diplomat",      "Partnership, sensitivity, balance, cooperation"),
-    3:  ("The Creator",       "Expression, joy, communication, creativity"),
-    4:  ("The Builder",       "Structure, discipline, foundation, practicality"),
-    5:  ("The Freedom Seeker","Change, adventure, versatility, experience"),
-    6:  ("The Nurturer",      "Responsibility, love, harmony, service to family"),
-    7:  ("The Seeker",        "Introspection, wisdom, solitude, spiritual inquiry"),
-    8:  ("The Manifestor",    "Power, abundance, authority, material mastery"),
-    9:  ("The Humanitarian",  "Completion, compassion, universality, release"),
-    11: ("The Illuminator",   "Intuition, inspiration, idealism, spiritual messenger"),
-    22: ("The Master Builder","Grand vision, practical idealism, legacy-scale creation"),
-    33: ("The Master Teacher","Unconditional love, healing, cosmic responsibility"),
+    0:  ("The Void",           "Absent energy — no letter expression present for this position"),
+    1:  ("The Pioneer",        "Independence, leadership, initiation, willpower"),
+    2:  ("The Diplomat",       "Partnership, sensitivity, balance, cooperation"),
+    3:  ("The Creator",        "Expression, joy, communication, creativity"),
+    4:  ("The Builder",        "Structure, discipline, foundation, practicality"),
+    5:  ("The Freedom Seeker", "Change, adventure, versatility, experience"),
+    6:  ("The Nurturer",       "Responsibility, love, harmony, service to family"),
+    7:  ("The Seeker",         "Introspection, wisdom, solitude, spiritual inquiry"),
+    8:  ("The Manifestor",     "Power, abundance, authority, material mastery"),
+    9:  ("The Humanitarian",   "Completion, compassion, universality, release"),
+    11: ("The Illuminator",    "Intuition, inspiration, idealism, spiritual messenger"),
+    22: ("The Master Builder", "Grand vision, practical idealism, legacy-scale creation"),
+    33: ("The Master Teacher", "Unconditional love, healing, cosmic responsibility"),
 }
 
 
@@ -50,10 +67,14 @@ def _digit_sum(n: int) -> int:
 def reduce(n: int) -> Tuple[int, List[int]]:
     """Reduce n to a single digit or Master Number.
 
+    0 is returned as-is (absent energy — caller decides how to present).
+
     Returns:
         (reduced_value, reduction_path)
         reduction_path includes the original n and every intermediate value.
     """
+    if n == 0:
+        return 0, [0]
     path: List[int] = [n]
     current = n
     while current > 9 and current not in MASTER_NUMBERS:
@@ -130,6 +151,21 @@ class NumberResult:
 
 
 @dataclass
+class PersonalYearEntry:
+    """A single year in a personal year cycle."""
+    year: int
+    reduced_value: int
+    is_master_number: bool
+    archetype: Optional[str] = None
+    theme: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        arc = ARCHETYPES.get(self.reduced_value)
+        if arc and self.archetype is None:
+            self.archetype, self.theme = arc
+
+
+@dataclass
 class ChartResult:
     """Full computed numerology chart."""
     full_name: str
@@ -142,6 +178,8 @@ class ChartResult:
     birthday: NumberResult
     personal_year: NumberResult
     challenges: List[NumberResult] = field(default_factory=list)
+    # Next N years of personal year progressions (default: 3 years ahead)
+    personal_year_cycle: List[PersonalYearEntry] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         """Serialise for storage in raw_chart JSONB column."""
@@ -155,6 +193,16 @@ class ChartResult:
                 "archetype": r.archetype,
                 "theme": r.theme,
             }
+
+        def _pye(e: PersonalYearEntry) -> dict:
+            return {
+                "year": e.year,
+                "reduced_value": e.reduced_value,
+                "is_master_number": e.is_master_number,
+                "archetype": e.archetype,
+                "theme": e.theme,
+            }
+
         return {
             "full_name": self.full_name,
             "birth_date": self.birth_date.isoformat(),
@@ -166,6 +214,7 @@ class ChartResult:
             "birthday": _nr(self.birthday),
             "personal_year": _nr(self.personal_year),
             "challenges": [_nr(c) for c in self.challenges],
+            "personal_year_cycle": [_pye(e) for e in self.personal_year_cycle],
         }
 
 
@@ -187,15 +236,18 @@ class NumerologyEngine:
         reference_year: Optional[int] = None,
         system: str = "pythagorean",
         include_challenges: bool = True,
+        cycle_years: int = 3,
     ) -> ChartResult:
         """Compute a full numerology chart.
 
         Args:
-            full_name:        Birth name exactly as registered.
-            birth_date:       Date of birth.
-            reference_year:   Year for Personal Year calculation (defaults to current year).
-            system:           'pythagorean' only for now.
+            full_name:          Birth name exactly as registered.
+            birth_date:         Date of birth.
+            reference_year:     Year for Personal Year calculation (defaults to current year).
+            system:             'pythagorean' only for now.
             include_challenges: Whether to compute Challenge Numbers.
+            cycle_years:        How many future years to include in personal_year_cycle.
+                                Set to 0 to omit. Default 3.
 
         Returns:
             ChartResult dataclass with all positions populated.
@@ -203,18 +255,22 @@ class NumerologyEngine:
         if system != "pythagorean":
             raise NotImplementedError(f"System '{system}' is not yet implemented. Use 'pythagorean'.")
 
+        # Normalise name so DB stores canonical form and calculation is clean.
+        canonical_name = self.normalize_name(full_name)
+
         ref_year = reference_year or date.today().year
 
-        life_path = self._life_path(birth_date)
-        expression = self._expression(full_name)
-        soul_urge = self._soul_urge(full_name)
-        personality = self._personality(full_name)
-        birthday = self._birthday(birth_date)
+        life_path     = self._life_path(birth_date)
+        expression    = self._expression(canonical_name)
+        soul_urge     = self._soul_urge(canonical_name)
+        personality   = self._personality(canonical_name)
+        birthday      = self._birthday(birth_date)
         personal_year = self._personal_year(birth_date, ref_year)
-        challenges = self._challenges(birth_date) if include_challenges else []
+        challenges    = self._challenges(birth_date) if include_challenges else []
+        py_cycle      = self._personal_year_cycle(birth_date, ref_year, cycle_years)
 
         return ChartResult(
-            full_name=full_name,
+            full_name=canonical_name,
             birth_date=birth_date,
             system=system,
             life_path=life_path,
@@ -224,10 +280,13 @@ class NumerologyEngine:
             birthday=birthday,
             personal_year=personal_year,
             challenges=challenges,
+            personal_year_cycle=py_cycle,
         )
 
     def normalize_name(self, name: str) -> str:
-        """Return the normalised form of a name for storage."""
+        """Return the normalised (ASCII-safe, uppercased, collapsed-whitespace)
+        form of a name for storage and computation.
+        """
         import unicodedata
         nfkd = unicodedata.normalize("NFKD", name)
         ascii_str = nfkd.encode("ascii", "ignore").decode("ascii")
@@ -248,7 +307,13 @@ class NumerologyEngine:
         )
 
     def _life_path(self, birth_date: date) -> NumberResult:
-        """Sum month + day + year (each reduced independently), then reduce total."""
+        """Sum month + day + year (each reduced independently), then reduce total.
+
+        This is the standard independent-reduction Pythagorean method.
+        Month, day, and year are each reduced to a single digit or master number
+        before being summed — this preserves master numbers that might otherwise
+        be lost by summing all digits at once.
+        """
         m_reduced, _ = reduce(birth_date.month)
         d_reduced, _ = reduce(birth_date.day)
         y_reduced, _ = reduce(sum(int(d) for d in str(birth_date.year)))
@@ -275,8 +340,41 @@ class NumerologyEngine:
         d_reduced, _ = reduce(birth_date.day)
         y_reduced, _ = reduce(sum(int(d) for d in str(ref_year)))
         total = m_reduced + d_reduced + y_reduced
-        result = self._make_result("personal_year", total)
-        return result
+        return self._make_result("personal_year", total)
+
+    def _personal_year_cycle(
+        self,
+        birth_date: date,
+        ref_year: int,
+        cycle_years: int,
+    ) -> List[PersonalYearEntry]:
+        """Pre-compute personal year values for the current + next N years.
+
+        This gives GAIA's guidance layer a ready-made progression sequence
+        without requiring additional API calls.  The current year (ref_year)
+        is included as the first entry.
+
+        Example output for Tesla, starting 2026 (cycle_years=3):
+          [{year: 2026, reduced_value: 9, archetype: 'The Humanitarian'},
+           {year: 2027, reduced_value: 1, archetype: 'The Pioneer'},
+           {year: 2028, reduced_value: 11, archetype: 'The Illuminator'},
+           {year: 2029, reduced_value: 3, archetype: 'The Creator'}]
+        """
+        if cycle_years <= 0:
+            return []
+
+        entries: List[PersonalYearEntry] = []
+        for offset in range(cycle_years + 1):  # +1 includes current year
+            yr = ref_year + offset
+            result = self._personal_year(birth_date, yr)
+            entries.append(
+                PersonalYearEntry(
+                    year=yr,
+                    reduced_value=result.reduced_value,
+                    is_master_number=result.is_master_number,
+                )
+            )
+        return entries
 
     def _challenges(self, birth_date: date) -> List[NumberResult]:
         m, _ = reduce(birth_date.month)

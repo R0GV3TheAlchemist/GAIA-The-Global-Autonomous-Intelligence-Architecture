@@ -27,13 +27,23 @@ class NumberDetail(BaseModel):
         description="Position slug: life_path | expression | soul_urge | personality | birthday | personal_year | challenge_*"
     )
     raw_value: int = Field(description="Sum before any reduction")
-    reduced_value: int = Field(description="Final value after Pythagorean reduction (1-9, 11, 22, 33)")
+    reduced_value: int = Field(description="Final value after Pythagorean reduction (0-9, 11, 22, 33). 0 = absent energy.")
     is_master_number: bool = Field(default=False)
     reduction_path: List[int] = Field(
         description="Ordered steps from raw_value to reduced_value, inclusive"
     )
     archetype: Optional[str] = Field(default=None, description="Archetype label, e.g. 'The Seeker'")
     theme: Optional[str] = Field(default=None, description="Core theme of this archetype")
+
+
+class PersonalYearEntry(BaseModel):
+    """A single year in the personal year progression cycle."""
+
+    year: int = Field(description="Calendar year")
+    reduced_value: int = Field(description="Personal year number for this calendar year")
+    is_master_number: bool = Field(default=False)
+    archetype: Optional[str] = Field(default=None)
+    theme: Optional[str] = Field(default=None)
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +74,12 @@ class NumerologyInput(BaseModel):
     force_recompute: bool = Field(
         default=False,
         description="When True, always generate a fresh chart even if one already exists for this name/date.",
+    )
+    cycle_years: int = Field(
+        default=3,
+        ge=0,
+        le=9,
+        description="How many future years to include in personal_year_cycle (0 to omit, max 9).",
     )
 
     @field_validator("system")
@@ -111,6 +127,13 @@ class NumerologyChart(BaseModel):
     # Timing
     personal_year: NumberDetail
     computed_for_year: int = Field(description="Calendar year against which personal_year was computed")
+
+    # Personal year progression — current year + next N years
+    personal_year_cycle: List[PersonalYearEntry] = Field(
+        default_factory=list,
+        description="Personal year values for the current year and the next cycle_years years. "
+                    "Enables GAIA to surface proactive year-ahead guidance without additional API calls.",
+    )
 
     # Optional challenge numbers
     challenges: List[NumberDetail] = Field(default_factory=list)
