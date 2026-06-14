@@ -5,7 +5,7 @@ Async integration tests for NumerologyService.
 Uses an in-memory SQLite DB via the db_session / numerology_svc
 fixtures defined in tests/numerology/conftest.py.
 
-All tests are marked with @pytest.mark.asyncio.
+All tests run with asyncio_mode = auto (pyproject.toml).
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import pytest
 from gaia.numerology.service import NumerologyService
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Shared fixtures
 # ---------------------------------------------------------------------------
 
 _NAME = "Nikola Tesla"
@@ -111,6 +111,106 @@ class TestGetOrCreateChart:
         assert chart is not None
         assert chart.profile.user_id is None
 
+    # -- raw_chart JSONB cycle coverage (improvement #3) --------------------
+
+    async def test_raw_chart_contains_personal_year_cycle(
+        self, numerology_svc: NumerologyService
+    ):
+        """personal_year_cycle must be persisted inside raw_chart JSONB."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        assert "personal_year_cycle" in chart.raw_chart
+        assert isinstance(chart.raw_chart["personal_year_cycle"], list)
+
+    async def test_raw_chart_cycle_default_length(
+        self, numerology_svc: NumerologyService
+    ):
+        """Default cycle_years=3 → 4 entries (current + 3 ahead) in JSONB."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        cycle = chart.raw_chart["personal_year_cycle"]
+        assert len(cycle) == 4
+
+    async def test_raw_chart_cycle_entry_keys(
+        self, numerology_svc: NumerologyService
+    ):
+        """Every cycle entry in JSONB must carry all five required keys."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        for entry in chart.raw_chart["personal_year_cycle"]:
+            for key in ("year", "reduced_value", "is_master_number", "archetype", "theme"):
+                assert key in entry, f"JSONB cycle entry missing key: {key}"
+
+    async def test_raw_chart_cycle_first_matches_personal_year(
+        self, numerology_svc: NumerologyService
+    ):
+        """cycle[0].reduced_value must equal the standalone personal_year value."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        cycle = chart.raw_chart["personal_year_cycle"]
+        py = chart.raw_chart["personal_year"]
+        assert cycle[0]["reduced_value"] == py["reduced_value"]
+
+    async def test_raw_chart_cycle_years_are_consecutive(
+        self, numerology_svc: NumerologyService
+    ):
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        years = [e["year"] for e in chart.raw_chart["personal_year_cycle"]]
+        assert years == list(range(years[0], years[0] + len(years)))
+
+    async def test_cycle_years_zero_stores_empty_list(
+        self, numerology_svc: NumerologyService
+    ):
+        """cycle_years=0 must persist an empty list in raw_chart, not null."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER,
+            cycle_years=0,
+        )
+        assert chart.raw_chart["personal_year_cycle"] == []
+
+    async def test_cycle_years_custom_stored_correctly(
+        self, numerology_svc: NumerologyService
+    ):
+        """cycle_years=5 must persist 6 entries (current + 5) in raw_chart."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER,
+            force_recompute=True,
+            cycle_years=5,
+        )
+        assert len(chart.raw_chart["personal_year_cycle"]) == 6
+
+    async def test_cycle_archetype_non_null_in_jsonb(
+        self, numerology_svc: NumerologyService
+    ):
+        """No cycle entry in JSONB should have a null archetype or theme."""
+        chart = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        for entry in chart.raw_chart["personal_year_cycle"]:
+            assert entry["archetype"] is not None
+            assert entry["theme"] is not None
+
+    async def test_force_recompute_refreshes_cycle(
+        self, numerology_svc: NumerologyService
+    ):
+        """After force_recompute, raw_chart cycle should still be valid."""
+        await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        chart_new = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER,
+            force_recompute=True,
+        )
+        cycle = chart_new.raw_chart["personal_year_cycle"]
+        assert len(cycle) == 4
+        assert cycle[0]["archetype"] is not None
+
 
 # ---------------------------------------------------------------------------
 # get_chart_by_id
@@ -143,6 +243,17 @@ class TestGetChartById:
         fetched = await numerology_svc.get_chart_by_id(created.id)
         assert len(fetched.numbers) >= 6
 
+    async def test_fetched_chart_raw_chart_has_cycle(
+        self, numerology_svc: NumerologyService
+    ):
+        """Fetching by ID after persist must still expose personal_year_cycle."""
+        created = await numerology_svc.get_or_create_chart(
+            full_name=_NAME, birth_date=_DATE, user_id=_USER
+        )
+        fetched = await numerology_svc.get_chart_by_id(created.id)
+        assert "personal_year_cycle" in fetched.raw_chart
+        assert len(fetched.raw_chart["personal_year_cycle"]) == 4
+
 
 # ---------------------------------------------------------------------------
 # get_charts_for_user
@@ -170,7 +281,6 @@ class TestGetChartsForUser:
         self, numerology_svc: NumerologyService
     ):
         uid = uuid.uuid4()
-        # Create 3 charts via force_recompute
         for _ in range(3):
             await numerology_svc.get_or_create_chart(
                 full_name=_NAME, birth_date=_DATE,
@@ -178,6 +288,21 @@ class TestGetChartsForUser:
             )
         charts = await numerology_svc.get_charts_for_user(uid, limit=2)
         assert len(charts) <= 2
+
+    async def test_each_chart_has_cycle_in_raw_chart(
+        self, numerology_svc: NumerologyService
+    ):
+        """Every chart returned by get_charts_for_user must carry cycle data."""
+        uid = uuid.uuid4()
+        for _ in range(2):
+            await numerology_svc.get_or_create_chart(
+                full_name=_NAME, birth_date=_DATE,
+                user_id=uid, force_recompute=True,
+            )
+        charts = await numerology_svc.get_charts_for_user(uid)
+        for chart in charts:
+            assert "personal_year_cycle" in chart.raw_chart
+            assert len(chart.raw_chart["personal_year_cycle"]) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +350,7 @@ class TestDeleteProfile:
 
 
 # ---------------------------------------------------------------------------
-# Idempotency — different users, same name+date, separate profiles
+# Isolation — different users, same name+date, separate profiles
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
