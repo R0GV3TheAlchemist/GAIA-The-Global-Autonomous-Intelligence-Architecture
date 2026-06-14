@@ -30,6 +30,7 @@ _engine = NumerologyEngine()
 _CHART_ID = uuid.uuid4()
 _PROFILE_ID = uuid.uuid4()
 _USER_ID = uuid.uuid4()
+_REF_YEAR = 2026
 
 
 def _make_mock_orm_chart(
@@ -37,7 +38,7 @@ def _make_mock_orm_chart(
     personal_year: int = 7,
 ) -> MagicMock:
     """Build a MagicMock that looks like a NumerologyChart ORM row."""
-    computed = _engine.compute("Nikola Tesla", date(1856, 7, 10))
+    computed = _engine.compute("Nikola Tesla", date(1856, 7, 10), reference_year=_REF_YEAR)
     raw = computed.as_dict()
 
     mock = MagicMock()
@@ -49,14 +50,14 @@ def _make_mock_orm_chart(
     mock.personality = computed.personality.reduced_value
     mock.birthday = computed.birthday.reduced_value
     mock.personal_year = personal_year
-    mock.computed_for_year = 2026
+    mock.computed_for_year = _REF_YEAR
     mock.life_path_is_master = computed.life_path.is_master_number
     mock.expression_is_master = computed.expression.is_master_number
     mock.soul_urge_is_master = computed.soul_urge.is_master_number
     mock.raw_chart = raw
     mock.numbers = []
     mock.profile = MagicMock()
-    mock.profile.full_name = "Nikola Tesla"
+    mock.profile.full_name = "NIKOLA TESLA"
     mock.profile.birth_date = date(1856, 7, 10)
     mock.profile.system = "pythagorean"
     mock.profile.user_id = _USER_ID
@@ -131,6 +132,78 @@ class TestPostChartEphemeral:
         assert isinstance(resp.json()["challenges"], list)
         assert len(resp.json()["challenges"]) == 4
 
+    # -- personal_year_cycle route tests (improvement #3) -------------------
+
+    def test_personal_year_cycle_present_by_default(self):
+        """Default request (cycle_years omitted) must include personal_year_cycle."""
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Nikola Tesla",
+            "birth_date": "1856-07-10",
+        })
+        data = resp.json()
+        assert "personal_year_cycle" in data
+        assert isinstance(data["personal_year_cycle"], list)
+        assert len(data["personal_year_cycle"]) == 4  # current + 3
+
+    def test_personal_year_cycle_entry_shape(self):
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Nikola Tesla",
+            "birth_date": "1856-07-10",
+        })
+        cycle = resp.json()["personal_year_cycle"]
+        for entry in cycle:
+            assert "year" in entry
+            assert "reduced_value" in entry
+            assert "is_master_number" in entry
+            assert "archetype" in entry
+            assert "theme" in entry
+
+    def test_personal_year_cycle_zero_omits_field(self):
+        """cycle_years=0 must return an empty personal_year_cycle list."""
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Test User",
+            "birth_date": "1990-06-15",
+            "cycle_years": 0,
+        })
+        data = resp.json()
+        assert data["personal_year_cycle"] == []
+
+    def test_personal_year_cycle_custom_length(self):
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Test User",
+            "birth_date": "1990-06-15",
+            "cycle_years": 5,
+        })
+        assert len(resp.json()["personal_year_cycle"]) == 6  # current + 5
+
+    def test_personal_year_cycle_first_entry_matches_personal_year(self):
+        """cycle[0].reduced_value must equal personal_year.reduced_value."""
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Nikola Tesla",
+            "birth_date": "1856-07-10",
+        })
+        data = resp.json()
+        assert data["personal_year_cycle"][0]["reduced_value"] == data["personal_year"]["reduced_value"]
+
+    def test_personal_year_cycle_years_are_consecutive(self):
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Test User",
+            "birth_date": "1990-06-15",
+        })
+        years = [e["year"] for e in resp.json()["personal_year_cycle"]]
+        assert years == list(range(years[0], years[0] + len(years)))
+
+    def test_cycle_years_above_max_returns_422(self):
+        """cycle_years > 9 must be rejected by Pydantic validation."""
+        resp = self.client.post("/api/v1/numerology/chart", json={
+            "full_name": "Test User",
+            "birth_date": "1990-06-15",
+            "cycle_years": 10,
+        })
+        assert resp.status_code == 422
+
+    # -- existing validation tests ------------------------------------------
+
     def test_future_birth_date_returns_422(self):
         resp = self.client.post("/api/v1/numerology/chart", json={
             "full_name": "Future Person",
@@ -145,13 +218,13 @@ class TestPostChartEphemeral:
         })
         assert resp.status_code == 422
 
-    def test_unsupported_system_returns_400(self):
+    def test_unsupported_system_returns_422(self):
         resp = self.client.post("/api/v1/numerology/chart", json={
             "full_name": "Test User",
             "birth_date": "1990-01-01",
             "system": "chaldean",
         })
-        assert resp.status_code == 422  # Pydantic validator fires before route
+        assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------

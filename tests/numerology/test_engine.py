@@ -15,10 +15,13 @@ from gaia.numerology.engine import (
     ARCHETYPES,
     MASTER_NUMBERS,
     NumerologyEngine,
+    PersonalYearEntry,
     reduce,
 )
 
 engine = NumerologyEngine()
+
+_VALID_REDUCED = set(range(0, 10)) | MASTER_NUMBERS
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +62,21 @@ class TestReduce:
         assert val == 11
         assert len(path) == 2
 
+    def test_reduce_zero_returns_zero(self):
+        """reduce(0) must return (0, [0]) — absent energy, not infinite loop."""
+        val, path = reduce(0)
+        assert val == 0
+        assert path == [0]
+
+    def test_reduce_zero_does_not_loop(self):
+        """Regression: old code entered `while current > 9` which was fine for 0,
+        but explicit guard confirms no future regression."""
+        import signal
+        # Just calling reduce(0) and returning is enough — if it hangs the
+        # test runner will time out via pytest-timeout (60 s global limit).
+        result = reduce(0)
+        assert result == (0, [0])
+
 
 # ---------------------------------------------------------------------------
 # normalize_name()
@@ -75,9 +93,20 @@ class TestNormalizeName:
         assert engine.normalize_name("ada lovelace") == "ADA LOVELACE"
 
     def test_unicode_ligature(self):
-        # NFKD + ascii-ignore should handle ligatures gracefully
         result = engine.normalize_name("Ærøskøbing")
-        assert result == result.upper()   # at minimum, must be uppercase
+        assert result == result.upper()
+
+    def test_normalize_applied_in_compute(self):
+        """compute() must store the canonical name, not the raw user input."""
+        chart = engine.compute("nikola tesla", date(1856, 7, 10))
+        assert chart.full_name == "NIKOLA TESLA"
+
+    def test_accented_name_same_result_as_normalized(self):
+        """Accented and plain versions of the same name produce identical charts."""
+        chart_raw   = engine.compute("Nikolà Téslà", date(1856, 7, 10))
+        chart_plain = engine.compute("Nikola Tesla", date(1856, 7, 10))
+        assert chart_raw.life_path.reduced_value == chart_plain.life_path.reduced_value
+        assert chart_raw.expression.reduced_value == chart_plain.expression.reduced_value
 
 
 # ---------------------------------------------------------------------------
@@ -91,18 +120,8 @@ class TestLifePath:
         assert chart.life_path.reduced_value == 1
 
     def test_life_path_master_11(self):
-        # Find a date that yields 11: e.g. Nov 29, 1993 → 2 + 11 + 22 = 35 → 8
-        # Use Feb 9, 1964 → 2 + 9 + 20 = 31 → 4  — nope
-        # Use Nov 11, 2000 → 2 + 2 + 2 = 6 — nope
-        # Verified: Aug 29, 1958 → 8 + (2+9) + (1+9+5+8)=23→5 = 8+11+5=24→6 — nope
-        # Direct: choose a date where the sum of reduced m+d+y == 11
-        # m=2 d=9 y=2000(2+0+0+0=2) → 2+9+2=13→4 — nope
-        # m=2 d=2 y=1988(1+9+8+8=26→8) → 2+2+8=12→3 — nope
-        # m=9 d=2 y=2000(2) → 9+2+2=13→4 — nope
-        # m=11 d=9 y=1 → too old. use engine to verify instead:
         chart = engine.compute("Test Master", date(1964, 2, 2))
         lp = chart.life_path.reduced_value
-        # Just verify it's in valid range — master number or 1-9
         assert lp in set(range(1, 10)) | MASTER_NUMBERS
 
     def test_life_path_is_master_flag_set_correctly(self):
@@ -122,13 +141,12 @@ class TestLifePath:
 
 class TestNameNumbers:
     def test_expression_nikola_tesla(self):
-        # All letters of NIKOLA TESLA summed, then reduced
         chart = engine.compute("Nikola Tesla", date(1856, 7, 10))
         expr = chart.expression.reduced_value
         assert expr in set(range(1, 10)) | MASTER_NUMBERS
 
     def test_soul_urge_plus_personality_equals_expression_mod(self):
-        """Soul Urge (vowels) + Personality (consonants) digits should equal
+        """Soul Urge (vowels) + Personality (consonants) digits must equal
         the raw Expression value when summed together."""
         chart = engine.compute("Ada Lovelace", date(1815, 12, 10))
         raw_su = chart.soul_urge.raw_value
@@ -137,16 +155,30 @@ class TestNameNumbers:
         assert raw_su + raw_pe == raw_ex
 
     def test_personality_only_consonants(self):
-        # Name with only vowels ("Aeia") should yield personality raw_value == 0
-        # but engine still returns a valid NumberResult
+        """All-vowel name produces personality.raw_value == 0."""
         chart = engine.compute("Aeia", date(1990, 1, 1))
         assert chart.personality.raw_value == 0
-        assert chart.personality.reduced_value in set(range(0, 10)) | MASTER_NUMBERS
+        assert chart.personality.reduced_value == 0
 
     def test_soul_urge_only_vowels(self):
-        # Name with only consonants ("Nth") should have soul_urge raw == 0
+        """All-consonant name produces soul_urge.raw_value == 0."""
         chart = engine.compute("Nth", date(1990, 1, 1))
         assert chart.soul_urge.raw_value == 0
+        assert chart.soul_urge.reduced_value == 0
+
+    def test_zero_position_gets_void_archetype(self):
+        """A position with raw_value == 0 must carry the 'The Void' archetype."""
+        chart = engine.compute("Aeia", date(1990, 1, 1))  # personality == 0
+        assert chart.personality.archetype == "The Void"
+        assert chart.personality.theme is not None
+        assert len(chart.personality.theme) > 0
+
+    def test_zero_archetype_entry_exists_in_table(self):
+        """ARCHETYPES[0] must be present so NumberResult.__post_init__ populates it."""
+        assert 0 in ARCHETYPES
+        name, theme = ARCHETYPES[0]
+        assert name == "The Void"
+        assert "absent" in theme.lower() or "energy" in theme.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +192,6 @@ class TestBirthday:
 
     def test_birthday_29_reduces_to_11(self):
         chart = engine.compute("Test", date(1990, 6, 29))
-        # 29 → 11 (master number)
         assert chart.birthday.reduced_value == 11
         assert chart.birthday.is_master_number is True
 
@@ -183,16 +214,108 @@ class TestPersonalYear:
     def test_personal_year_changes_by_year(self):
         chart_a = engine.compute("Anyone", date(1985, 3, 14), reference_year=2025)
         chart_b = engine.compute("Anyone", date(1985, 3, 14), reference_year=2026)
-        # Personal year should differ between calendar years (not always, but
-        # very likely for different years — acceptable probabilistic check)
-        # Just verify both are valid
         assert chart_a.personal_year.reduced_value in set(range(1, 10)) | MASTER_NUMBERS
         assert chart_b.personal_year.reduced_value in set(range(1, 10)) | MASTER_NUMBERS
 
-    def test_computed_for_year_default_is_current_year(self):
-        from datetime import date as _date
+    def test_personal_year_number_type(self):
         chart = engine.compute("Anyone", date(1990, 1, 1))
         assert chart.personal_year.number_type == "personal_year"
+
+
+# ---------------------------------------------------------------------------
+# Personal Year Cycle  (new — covers improvement #3)
+# ---------------------------------------------------------------------------
+
+class TestPersonalYearCycle:
+    _DOB = date(1856, 7, 10)   # Tesla
+    _REF = 2026
+
+    def test_cycle_default_length(self):
+        """Default cycle_years=3 produces 4 entries: current + 3 ahead."""
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        assert len(chart.personal_year_cycle) == 4  # 2026, 2027, 2028, 2029
+
+    def test_cycle_years_zero_returns_empty(self):
+        chart = engine.compute(
+            "Nikola Tesla", self._DOB,
+            reference_year=self._REF,
+            cycle_years=0,
+        )
+        assert chart.personal_year_cycle == []
+
+    def test_cycle_years_custom_length(self):
+        chart = engine.compute(
+            "Nikola Tesla", self._DOB,
+            reference_year=self._REF,
+            cycle_years=5,
+        )
+        assert len(chart.personal_year_cycle) == 6  # current + 5
+
+    def test_cycle_first_entry_matches_personal_year(self):
+        """cycle[0] must be identical to the standalone personal_year result."""
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        assert chart.personal_year_cycle[0].year == self._REF
+        assert chart.personal_year_cycle[0].reduced_value == chart.personal_year.reduced_value
+
+    def test_cycle_years_are_consecutive(self):
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        years = [e.year for e in chart.personal_year_cycle]
+        assert years == list(range(self._REF, self._REF + len(years)))
+
+    def test_cycle_entries_are_personal_year_entry_instances(self):
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        for entry in chart.personal_year_cycle:
+            assert isinstance(entry, PersonalYearEntry)
+
+    def test_cycle_all_values_in_valid_range(self):
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        for entry in chart.personal_year_cycle:
+            assert entry.reduced_value in _VALID_REDUCED
+
+    def test_cycle_master_year_flagged_correctly(self):
+        """2028 is a master 11 year for Tesla — is_master_number must be True."""
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        entry_2028 = next(e for e in chart.personal_year_cycle if e.year == 2028)
+        assert entry_2028.reduced_value == 11
+        assert entry_2028.is_master_number is True
+
+    def test_cycle_archetype_populated(self):
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        for entry in chart.personal_year_cycle:
+            assert entry.archetype is not None
+            assert entry.theme is not None
+
+    def test_cycle_2026_is_humanitarian(self):
+        """Tesla 2026 personal year = 9 — The Humanitarian."""
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        entry_2026 = chart.personal_year_cycle[0]
+        assert entry_2026.reduced_value == 9
+        assert entry_2026.archetype == "The Humanitarian"
+
+    def test_cycle_2027_is_pioneer(self):
+        """Tesla 2027 personal year = 1 — The Pioneer."""
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        entry_2027 = next(e for e in chart.personal_year_cycle if e.year == 2027)
+        assert entry_2027.reduced_value == 1
+        assert entry_2027.archetype == "The Pioneer"
+
+    def test_cycle_independent_of_reference_year(self):
+        """Cycle starting from 2025 should produce different entries than 2026."""
+        chart_25 = engine.compute("Nikola Tesla", self._DOB, reference_year=2025)
+        chart_26 = engine.compute("Nikola Tesla", self._DOB, reference_year=2026)
+        # First entries differ in year
+        assert chart_25.personal_year_cycle[0].year == 2025
+        assert chart_26.personal_year_cycle[0].year == 2026
+
+    def test_as_dict_includes_cycle(self):
+        """personal_year_cycle must survive the as_dict() round-trip."""
+        chart = engine.compute("Nikola Tesla", self._DOB, reference_year=self._REF)
+        d = chart.as_dict()
+        assert "personal_year_cycle" in d
+        assert isinstance(d["personal_year_cycle"], list)
+        assert len(d["personal_year_cycle"]) == 4
+        first = d["personal_year_cycle"][0]
+        assert set(first.keys()) == {"year", "reduced_value", "is_master_number", "archetype", "theme"}
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +347,10 @@ class TestChallenges:
 # ---------------------------------------------------------------------------
 
 class TestArchetypes:
+    def test_zero_has_archetype(self):
+        """ARCHETYPES[0] must exist — guards against absent-energy null responses."""
+        assert 0 in ARCHETYPES
+
     def test_all_numbers_1_to_9_have_archetypes(self):
         for n in range(1, 10):
             assert n in ARCHETYPES, f"Missing archetype for {n}"
@@ -255,7 +382,7 @@ class TestAsDict:
         d = chart.as_dict()
         for key in ("full_name", "birth_date", "system", "life_path",
                     "expression", "soul_urge", "personality", "birthday",
-                    "personal_year", "challenges"):
+                    "personal_year", "challenges", "personal_year_cycle"):
             assert key in d, f"Missing key: {key}"
 
     def test_as_dict_birth_date_is_iso_string(self):
@@ -265,6 +392,14 @@ class TestAsDict:
     def test_as_dict_challenges_is_list(self):
         chart = engine.compute("Test", date(1990, 6, 15))
         assert isinstance(chart.as_dict()["challenges"], list)
+
+    def test_as_dict_cycle_entry_has_all_keys(self):
+        chart = engine.compute("Test", date(1990, 6, 15))
+        d = chart.as_dict()
+        if d["personal_year_cycle"]:
+            entry = d["personal_year_cycle"][0]
+            for k in ("year", "reduced_value", "is_master_number", "archetype", "theme"):
+                assert k in entry, f"personal_year_cycle entry missing key: {k}"
 
 
 # ---------------------------------------------------------------------------
