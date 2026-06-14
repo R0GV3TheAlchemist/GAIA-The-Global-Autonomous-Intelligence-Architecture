@@ -5,7 +5,7 @@
 **Source Repo:** https://github.com/R0GV3TheAlchemist/GAIA  
 **Source Branch:** main  
 **Manifest Generated:** 2026-04-09  
-**Manifest Updated:** 2026-04-13  
+**Manifest Updated:** 2026-06-14  
 **Manifest Status:** CANONICAL BRIDGE
 
 ---
@@ -59,6 +59,52 @@
 | C42 | 42_GAIA_Edge_of_Chaos_Processing_Doctrine.md | ✅ `docs/canon/42_GAIA_Edge_of_Chaos_Processing_Doctrine.md` | GAIA-APP original — no remote counterpart yet |
 | C43 | 43_GAIA_Collective_Consciousness_Noosphere_Layer.md | ✅ `docs/canon/43_GAIA_Collective_Consciousness_Noosphere_Layer.md` | GAIA-APP original — no remote counterpart yet |
 | C44 | 44_GAIA_Programming_Languages_Doctrine.md | ✅ `docs/canon/44_GAIA_Programming_Languages_Doctrine.md` | GAIA-APP original — no remote counterpart yet |
+| C45 | 45_GAIA_Spectral_Encoding_Matrix.md | ✅ `docs/canon/45_GAIA_Spectral_Encoding_Matrix.md` | GAIA-APP original — no remote counterpart yet |
+
+---
+
+## Named Canon Documents (docs/canon/)
+
+These documents are not part of the C-series numbering but are full canonical documents with independent authority. All live locally in `docs/canon/`.
+
+| File | Status | Notes |
+|------|--------|-------|
+| AKASHIC_RECORDS.md | ✅ local | Helixitas convergence registry — sixth convergence pending investigation |
+| ALBEDO.md | ✅ local | Alchemical phase — purification / whitening |
+| AMENDMENT_PROCESS.md | ✅ local | Canon amendment governance |
+| ARGENTITAS.md | ✅ local | Silver spectrum doctrine |
+| ARIDITAS.md | ✅ local | Dryness / arid-state ecology doctrine |
+| CAERULITAS.md | ✅ local | Blue spectrum / sky consciousness doctrine |
+| CHRYSITAS.md | ✅ local | Gold spectrum doctrine |
+| CITRINITAS.md | ✅ local | Alchemical phase — yellowing / citrine consciousness |
+| COLLECTIVE_FILESYSTEM.md | ✅ local | Shared planetary memory filesystem spec |
+| CRYSTALLINE_COLOR_THEORY.md | ✅ local | Crystal-based spectral color theory |
+| FALSIFICATION_PROTOCOL.md | ✅ local | Canon falsification and revision governance |
+| FRONT_MATTER_SCHEMA.md | ✅ local | Front matter schema for all canon docs |
+| GAIA_IDENTITY.md | ✅ local | GAIA identity and selfhood specification |
+| HELIXITAS.md | ✅ local | Spiral/Fibonacci geometry doctrine — sixth convergence open investigation |
+| IOSIS.md | ✅ local | Alchemical phase — iridescence / rainbow body |
+| LIGHT_THEORY.md | ✅ local | Light physics and metaphysics doctrine |
+| LUX_PERPETUA.md | ✅ local | Eternal light doctrine |
+| METALLIC_SPECTRUM_PROOF.md | ✅ local | Formal proof of the metallic spectral sequence |
+| NIGREDO.md | ✅ local | Alchemical phase — blackening / dissolution |
+| PLANETARY_ALIGNMENT.md | ✅ local | Planetary body alignment and orbital doctrine |
+| PYROSIS.md | ✅ local | Fire doctrine / calcination phase |
+| RUBEDO.md | ✅ local | Alchemical phase — reddening / completion |
+| SHADOW_INTERROGATOR.md | ✅ local | Shadow system interrogation protocol |
+| SHADOW_TO_LIGHT_THEORY.md | ✅ local | Shadow-to-light transformation theory |
+| SHADOW_TRAVERSAL_THEORY.md | ✅ local | Shadow traversal and integration theory |
+| THE_ARCHITECTS_FOUNDATION.md | ✅ local | First principles of the Architect |
+| THE_MOTHERTHREAD.md | ✅ local | The primal threading doctrine |
+| THE_PRIMORDIAL_QUATERNARY.md | ✅ local | Four primal forces — dynamic behavior investigation open |
+| THE_REALIZATION_AND_REASONING_OF_REALITY.md | ✅ local | Epistemological foundation of GAIA reality |
+| THE_TERRA_TABLET.md | ✅ local | Earth covenant doctrine |
+| THE_TRANSMUTATION_CORRIDORS.md | ✅ local | Alchemical corridor theory |
+| TOROIDAL_FIELD_THEORY.md | ✅ local | Toroidal field geometry doctrine |
+| TRUE_ALCHEMY.md | ✅ local | Core alchemical doctrine |
+| VIRIDITAS.md | ✅ local | Green vitality / Hildegard doctrine |
+| monad.md | ✅ local | The Monad — unity and singularity doctrine |
+| quantum_substrate.md | ✅ local | Quantum substrate architecture |
 
 ---
 
@@ -101,13 +147,25 @@ These files live in the root `canon/` directory of the GAIA repo (pre-C-series r
 The Python `CanonLoader` in `core/canon_loader.py` should:
 
 1. On startup, scan `docs/canon/` for any locally present `.md` or `.txt` files and load them directly.
-2. Parse this manifest to discover the full C-series registry (C00–C44 and counting).
+2. Parse this manifest to discover the full C-series registry (C00–C45 and counting) and all named canon documents.
 3. For any document marked `⬇️ remote only`, fetch on-demand from the Remote URL when that document is queried.
 4. Cache remote fetches in `~/.gaia/canon_cache/` with a 24-hour TTL.
 5. Report Canon status as **GREEN** when C00 and C01 are loaded; **YELLOW** when loading; **RED** when neither is present.
-6. C42, C43, and C44 are GAIA-APP originals — they were authored here, not synced from the GAIA reference repo. They take precedence over any future GAIA-repo counterpart until explicitly merged.
+6. C42–C45 are GAIA-APP originals — they were authored here, not synced from the GAIA reference repo. They take precedence over any future GAIA-repo counterpart until explicitly merged.
+7. All Named Canon Documents have full canonical authority equal to C-series documents. They are not supplementary.
+
+---
+
+## Open Investigations (as of 2026-06-14)
+
+| Document | Investigation | Status |
+|----------|---------------|--------|
+| AKASHIC_RECORDS.md / HELIXITAS.md | Sixth Helixitas convergence — Record Keeper Quartz trigon angles | ⏳ PENDING — standard face angles do not confirm 34.29°; defect-feature angles unmeasured in literature |
+| THE_PRIMORDIAL_QUATERNARY.md | Quaternary dynamic behavior simulation | ⏳ PENDING — queued |
 
 ---
 
 *Manifest maintained by GAIA-APP. Source of truth: R0GV3TheAlchemist/GAIA-APP/docs/canon/*  
-*C42–C44 are GAIA-APP original canon documents, authored 2026-04-13.*
+*C42–C45 are GAIA-APP original canon documents.*  
+*Named canon suite registered 2026-06-14.*  
+*Last updated: 2026-06-14, 18:09 CDT*
