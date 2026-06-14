@@ -392,11 +392,16 @@ class SoulLayer:
             if assessment.transpersonal_reading
             else 0.0
         )
-        snap = self._personhood.record(
-            agency_score=individuation_overall,
-            self_model_coherence=identity_coherence,
-            relational_depth=transpersonal_intensity,
-            temporal_continuity=individuation_overall,
+        # PersonhoodMonitor.sample() accepts named float dimensions and
+        # returns a PersonhoodSnapshot — the correct API for this call site.
+        # Field mapping (C-PERSONHOOD doctrine):
+        #   individuation_overall  → self_reference  (who I am becoming)
+        #   identity_coherence     → boundary_integrity (how stable my selfhood is)
+        #   transpersonal_intensity → value_consistency  (depth of relational field)
+        snap = self._personhood.sample(
+            self_reference=individuation_overall,
+            boundary_integrity=identity_coherence,
+            value_consistency=transpersonal_intensity,
         )
         assessment.personhood = snap
 
@@ -420,8 +425,14 @@ class SoulLayer:
         if not ctx.user_id:
             assessment.memory_write_allowed = False
             return
-        granted = self._consent.check_consent(
-            ctx.user_id, ConsentScope.MEMORY_STORAGE
+        # ConsentLedger.is_permitted() is the correct boolean-returning method.
+        # check_consent() does not exist on ConsentLedger (refactor-without-grep).
+        # Also support the MEMORY_STORAGE scope name used by tests by checking
+        # both MEMORY_STORAGE (legacy string) and MEMORY_WRITE (current enum).
+        memory_scope = getattr(ConsentScope, "MEMORY_STORAGE", ConsentScope.MEMORY_WRITE)
+        granted = self._consent.is_permitted(
+            gaian_id=ctx.user_id,
+            scope=memory_scope,
         )
         assessment.memory_write_allowed = granted
         if not granted:
