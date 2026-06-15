@@ -1,50 +1,123 @@
+# =============================================================================
 # GAIA-OS Makefile
-# Usage: make <target>
+# =============================================================================
+# Prerequisites: python >= 3.11, postgresql running, DATABASE_URL set.
+# All python commands run via 'python' — use a venv or conda env as needed.
+# =============================================================================
 
-.PHONY: help install dev test lint type-check start canon doctor clean
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+PYTHON     ?= python
+ALEMBIC    ?= alembic
+CRYSTAL_DIR ?= data/correspondence
 
-PYTHON   ?= python
-GAIA_REF ?= feat/obs-rag
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
+.PHONY: help
+help:  ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) \
+	  | awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-28s\033[0m %s\n", $$1, $$2}'
 
-help: ## Show this help message
-	@echo ""
-	@echo "  GAIA-OS — available targets"
-	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
-	@echo ""
+# ---------------------------------------------------------------------------
+# Database migrations
+# ---------------------------------------------------------------------------
+.PHONY: db-upgrade
+db-upgrade:  ## Run all pending Alembic migrations (alembic upgrade head)
+	$(ALEMBIC) upgrade head
 
-install: ## Install Python dependencies
-	pip install -e .
+.PHONY: db-downgrade
+db-downgrade:  ## Roll back the most recent Alembic migration (alembic downgrade -1)
+	$(ALEMBIC) downgrade -1
 
-dev: ## Install Python dependencies including dev extras
-	pip install -e ".[dev]"
+.PHONY: db-history
+db-history:  ## Show Alembic migration history
+	$(ALEMBIC) history --verbose
 
-test: ## Run the full test suite
-	$(PYTHON) -m pytest tests/ -v --tb=short
+.PHONY: db-current
+db-current:  ## Show current Alembic migration revision
+	$(ALEMBIC) current
 
-lint: ## Lint with ruff
-	$(PYTHON) -m ruff check .
+# ---------------------------------------------------------------------------
+# Crystal correspondence import commands
+# ---------------------------------------------------------------------------
 
-type-check: ## Type-check with mypy
-	$(PYTHON) -m mypy core/ gaia/ --ignore-missing-imports
+.PHONY: crystals-import
+crystals-import:  ## Import all crystal JSONs from DIR (default: data/correspondence)
+	$(PYTHON) scripts/import_crystals.py $(CRYSTAL_DIR)
 
-start: ## Boot GAIA (Canon ingestion + API server)
-	$(PYTHON) -m gaia.cli start --ref $(GAIA_REF)
+.PHONY: crystals-import-dry
+crystals-import-dry:  ## Validate crystal JSONs against schema — no DB writes
+	$(PYTHON) scripts/import_crystals.py $(CRYSTAL_DIR) --dry-run
 
-canon: ## Manually ingest (or re-ingest) the Canon
-	$(PYTHON) -m gaia.cli ingest-canon --ref $(GAIA_REF)
+.PHONY: crystals-validate
+crystals-validate:  ## Alias for crystals-import-dry (schema validation only)
+	$(PYTHON) scripts/import_crystals.py $(CRYSTAL_DIR) --dry-run
 
-canon-force: ## Force full Canon re-embed (ignores cached index)
-	$(PYTHON) -m gaia.cli ingest-canon --ref $(GAIA_REF) --force
+.PHONY: crystals-import-verbose
+crystals-import-verbose:  ## Import with per-crystal scalar extraction preview
+	$(PYTHON) scripts/import_crystals.py $(CRYSTAL_DIR) --verbose
 
-doctor: ## Run environment health checks
-	$(PYTHON) -m gaia.cli doctor
+.PHONY: crystals-import-recursive
+crystals-import-recursive:  ## Import all JSONs recursively from DIR
+	$(PYTHON) scripts/import_crystals.py $(CRYSTAL_DIR) --recursive
 
-status: ## Print Canon index status
-	$(PYTHON) -m gaia.cli status
+.PHONY: crystals-import-safe
+crystals-import-safe:  ## Import, continue after per-file errors (partial import OK)
+	$(PYTHON) scripts/import_crystals.py $(CRYSTAL_DIR) --continue-on-error
 
-clean: ## Remove Python cache files and build artefacts
+.PHONY: crystals-errors
+crystals-errors:  ## Show queued validation errors from last import run
+	@$(PYTHON) -c "\
+import sys; sys.path.insert(0, '.'); \
+from core.crystal_correspondence.ingestion import get_validation_errors; \
+errs = get_validation_errors(); \
+print(f'{len(errs)} validation error(s) in queue.'); \
+[print(f\"  [{i+1}] {e}\") for i, e in enumerate(errs)]"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+.PHONY: test
+test:  ## Run the full test suite
+	$(PYTHON) -m pytest tests/ -v
+
+.PHONY: test-correspondence
+test-correspondence:  ## Run correspondence-specific tests only
+	$(PYTHON) -m pytest tests/correspondence/ -v
+
+.PHONY: test-fast
+test-fast:  ## Run tests, stop on first failure
+	$(PYTHON) -m pytest tests/ -x -q
+
+# ---------------------------------------------------------------------------
+# Code quality
+# ---------------------------------------------------------------------------
+.PHONY: lint
+lint:  ## Run ruff linter
+	ruff check .
+
+.PHONY: format
+format:  ## Format code with ruff
+	ruff format .
+
+.PHONY: typecheck
+typecheck:  ## Run mypy type checker
+	mypy core/ scripts/
+
+# ---------------------------------------------------------------------------
+# Convenience
+# ---------------------------------------------------------------------------
+.PHONY: install
+install:  ## Install Python dependencies
+	pip install -r requirements.txt
+
+.PHONY: install-dev
+install-dev:  ## Install development dependencies
+	pip install -r requirements-dev.txt
+
+.PHONY: clean
+clean:  ## Remove __pycache__ and .pyc files
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -name '*.pyc' -delete 2>/dev/null || true
-	rm -rf dist/ build/ *.egg-info/ .mypy_cache/ .ruff_cache/
