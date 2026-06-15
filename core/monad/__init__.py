@@ -1,24 +1,24 @@
 """
-core/monad
-GAIA-OS Monad Layer — Public API
+GAIA-OS Monad Engine — Pre-Established Harmony Loop
+Canon: docs/canon/monad.md
 
-The Monad is the irreducible, self-contained unit of GAIA-OS.
-Each subsystem is a Monad. Pre-Established Harmony is the synchronisation loop.
-
-See docs/canon/monad.md for philosophical and technical foundations.
-See Issue #398 — The Monad and the Variety of Monads.
+8 concrete Monad implementations + MonadOrchestrator + HarmonyReport.
+Leibniz isolation law: no Monad imports another.
 """
-
 from .base import GaiaMonad, MonadState
-from .registry import MonadRegistry, MonadType, get_monad_registry
-from .simulation import MonadSimulation, SimulationReport
+from .cognitive import CognitiveMonad
+from .quantum import QuantumMonad
+from .process import ProcessMonad
+from .perception import PerceptionMonad
+from .somatic import SomaticMonad
+from .dream import DreamMonad
+from .noospheric import NoosphericMonad
+from .shadow import ShadowMonad
+from .orchestrator import MonadOrchestrator, HarmonyReport
 
 __all__ = [
-    "GaiaMonad",
-    "MonadState",
-    "MonadRegistry",
-    "MonadType",
-    "get_monad_registry",
-    "MonadSimulation",
-    "SimulationReport",
+    "GaiaMonad", "MonadState",
+    "CognitiveMonad", "QuantumMonad", "ProcessMonad", "PerceptionMonad",
+    "SomaticMonad", "DreamMonad", "NoosphericMonad", "ShadowMonad",
+    "MonadOrchestrator", "HarmonyReport",
 ]
