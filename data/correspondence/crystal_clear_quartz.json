@@ -1,0 +1,356 @@
+{
+  "subject_id": "crystal:clear_quartz",
+  "subject_kind": "crystal",
+
+  "correspondences": {
+
+    "gaia_layers": [
+      {
+        "layer_id": "01-Physical",
+        "weight": 0.8,
+        "role": "physical amplifier — enhances bioelectric coherence and body-awareness through piezoelectric field interaction",
+        "notes": "Piezoelectric coefficient 2.3 pC/N generates measurable surface potential on handling. Direct physical-layer mechanism documented in clear-quartz.json."
+      },
+      {
+        "layer_id": "02-Energy",
+        "weight": 0.9,
+        "role": "energy conduit — the premier energy-movement crystal; amplifies and directs vital force in any direction it is pointed",
+        "notes": "Used as a wand in most traditions precisely because it channels rather than stores energy."
+      },
+      {
+        "layer_id": "03-Mind",
+        "weight": 0.95,
+        "role": "mental clarity anchor — dissolves confusion, sharpens focus, illuminates thought patterns",
+        "notes": "Optical clarity is not just metaphor — full-spectrum light transmission (see clear-quartz.json optical_properties) may support photobiomodulation at the cellular level."
+      },
+      {
+        "layer_id": "04-Emotion",
+        "weight": 0.75,
+        "role": "emotional mirror — reflects the emotional state back to the holder with neutrality; neither amplifies shadow nor suppresses feeling",
+        "notes": "Distinct from Black Tourmaline which absorbs; Clear Quartz reflects and illuminates."
+      },
+      {
+        "layer_id": "05-Soul",
+        "weight": 0.85,
+        "role": "soul-stage stabiliser — anchors the Sovereignty stage (see soul_stage_alignment in clear-quartz.json)",
+        "notes": "Primary soul-stage function: stabilizer. Holds the frequency of the stage the Architect is working in."
+      },
+      {
+        "layer_id": "06-Shadow",
+        "weight": 0.6,
+        "role": "shadow illuminator — brings unconscious material into the light of awareness; does not transmute (that is Tourmaline's role), but makes visible",
+        "notes": "Clear Quartz reveals; it does not absorb or transform. Pair with Black Tourmaline for reveal + transmute."
+      },
+      {
+        "layer_id": "07-Akashic",
+        "weight": 0.8,
+        "role": "akashic antenna — amplifies access to collective memory and higher-frequency information fields",
+        "notes": "Used in scrying and channelling traditions across Mesoamerican, Celtic, Vedic and Taoist lineages."
+      },
+      {
+        "layer_id": "08-Manifestation",
+        "weight": 0.85,
+        "role": "manifestation amplifier — programmes intentions into the physical field; the original crystal for intention-setting",
+        "notes": "Quartz programmability (ability to 'hold' an intention) is one of the most cross-culturally documented crystal properties."
+      },
+      {
+        "layer_id": "09-Gaianite",
+        "weight": 1.0,
+        "role": "Gaianite grid anchor — Clear Quartz is the primary signal amplifier in Gaianite resonance grids; direct quantum-bridge to YSZ substrate",
+        "notes": "emrys_l2_compatible: true. Vibronic coherence mode documented in clear-quartz.json quantum_bridge field. Refs: C65–C68."
+      },
+      {
+        "layer_id": "10-Aether",
+        "weight": 1.0,
+        "role": "Aether embodiment — Clear Quartz is the crystal of the fifth classical element; pure, uncoloured, universal",
+        "notes": "Septagram nodes: Aether + Operator (from clear-quartz.json). Aether = the layer that contains all other layers; Clear Quartz is the only crystal that resonates across every GAIA layer without exception."
+      },
+      {
+        "layer_id": "11-Feeling",
+        "weight": 0.7,
+        "role": "felt-sense amplifier — heightens subtle body awareness and sensitivity to energetic states",
+        "notes": "Supports interoceptive awareness; Architects report heightened felt-sense of the body when working with Clear Quartz in meditative states."
+      }
+    ],
+
+    "emotions": [
+      {
+        "primary": "clarity",
+        "transmutes": "confusion",
+        "activates": "illumination",
+        "body_location": "crown — top of head, third eye",
+        "felt_as": "A sudden brightening or clearing — as if fog lifts in the mind. Thoughts become ordered, and what was murky becomes transparent. Often accompanied by a felt sense of cool light moving upward through the skull."
+      },
+      {
+        "primary": "amplification",
+        "transmutes": "stagnation",
+        "activates": "momentum",
+        "body_location": "whole body — particularly hands and crown",
+        "felt_as": "A subtle intensification of whatever emotional or energetic state is already present. Clear Quartz does not introduce new feelings — it turns the volume up on what is already there."
+      },
+      {
+        "primary": "neutrality",
+        "transmutes": "emotional reactivity",
+        "activates": "witnessing",
+        "body_location": "chest, centre",
+        "felt_as": "A quality of pure, non-judgmental presence — the witness state. Unlike stones that push in one emotional direction, Clear Quartz holds the centre point."
+      }
+    ],
+
+    "senses": [
+      { "sense": "sight",           "strength": 1.0,  "notes": "Optical clarity is Clear Quartz's defining physical property — colourless, transparent, full-spectrum light transmission. The senses of vision and clarity are inseparable from this stone." },
+      { "sense": "touch",           "strength": 0.8,  "notes": "Cool, smooth, glass-like surface; the tactile sensation of holding a clear point is among the most recognisable in crystal work." },
+      { "sense": "proprioception",  "strength": 0.7,  "notes": "Heightened awareness of one's own body position and movement; the energising quality of quartz is often felt as a subtle vibration in the hands." },
+      { "sense": "hearing",         "strength": 0.6,  "notes": "Crystal singing bowls (quartz glass) produce the most widely used therapeutic tones in sound healing; the resonant frequency range (32 kHz – 10 MHz) extends far beyond audible but creates harmonics within it." }
+    ],
+
+    "zodiac": [
+      {
+        "tradition": "western_tropical",
+        "sign": "Aries",
+        "role": "primary",
+        "ruling_planet": "Mars (traditional) / Sun (by light-affinity)",
+        "dignity": "exaltation",
+        "confidence": "high",
+        "notes": "Clear Quartz amplifies solar/initiating energy; Aries as the first sign — the sign of beginnings, clarity of purpose — aligns with quartz as the crystal of new beginnings and clear intention. Sun is exalted in Aries."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Leo",
+        "role": "co-sign",
+        "ruling_planet": "Sun",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Solar rulership of Leo mirrors Clear Quartz's light-holding, radiant, amplifying nature. The 'Master Crystal' maps to the royal, central, sovereign sign."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Gemini",
+        "role": "supporting",
+        "ruling_planet": "Mercury",
+        "confidence": "medium",
+        "notes": "Mental clarity and communication (Mercury/Gemini) are a tertiary resonance. Clear Quartz's mind-layer role and use in accessing information fields links to Mercurial qualities."
+      },
+      {
+        "tradition": "vedic_sidereal",
+        "sign": "Mesha (Aries)",
+        "role": "primary",
+        "ruling_planet": "Surya (Sun) — by clarity/light affinity; Mangala (Mars) by tradition",
+        "confidence": "medium",
+        "notes": "Vedic crystal literature associates sphatik (clear quartz) with Venus (Shukra) for purity and clarity; cross-tradition complexity here. Medium confidence pending fuller Vedic audit."
+      }
+    ],
+
+    "angel_numbers": [
+      {
+        "number": 111,
+        "role": "manifestation gateway — 111 is the new-beginning, intention-amplification code; Clear Quartz is the crystal of intention programming",
+        "gaia_layer_id": "08-Manifestation",
+        "digits": [1, 1, 1],
+        "digit_sum": 3,
+        "confidence": "high",
+        "notes": "111 maps to new beginnings and manifestation (Layer 08 in the Correspondence Architecture, issue #452). Clear Quartz is universally recommended for intention-setting, making this the tightest crystal–angel-number match."
+      },
+      {
+        "number": 777,
+        "role": "divine clarity signal — spiritual alignment and higher-mind opening; mirrors quartz's akashic and crown-layer resonance",
+        "gaia_layer_id": "07-Akashic",
+        "digits": [7, 7, 7],
+        "digit_sum": 21,
+        "confidence": "high",
+        "notes": "777 in GAIA maps to the Akashic/spiritual layer (Layer 07). Clear Quartz's use in scrying and higher-frequency access connects directly."
+      },
+      {
+        "number": 999,
+        "role": "universal completion — the master number of cycle completion; quartz amplifies the energy of whatever is completing or beginning",
+        "gaia_layer_id": "10-Aether",
+        "digits": [9, 9, 9],
+        "digit_sum": 27,
+        "confidence": "medium",
+        "notes": "999 as the completion/universal code maps to the Aether layer (Layer 10), which is Clear Quartz's highest resonance."
+      }
+    ],
+
+    "lunar_phases": [
+      {
+        "phase_id": "new_moon",
+        "role": "intention programming — the optimal phase for setting new intentions into Clear Quartz; the blank-slate moon mirrors the blank-slate crystal",
+        "special_events": ["solar_eclipse", "super_new_moon"],
+        "notes": "New moon + Clear Quartz is the most universally recommended crystal-lunar practice across traditions."
+      },
+      {
+        "phase_id": "waxing_crescent",
+        "role": "growth amplification — quartz amplifies the building momentum of the waxing cycle",
+        "notes": "Programme intentions during new moon, then hold or carry quartz through waxing phases to amplify growth."
+      },
+      {
+        "phase_id": "first_quarter",
+        "role": "clarity under pressure — quartz's mental-clarity role is especially useful during the challenge point of the first quarter",
+        "notes": "First quarter tensions can cloud judgement; Clear Quartz is the antidote."
+      },
+      {
+        "phase_id": "waxing_gibbous",
+        "role": "refinement amplifier — amplifies the refinement and adjustment energy of this phase",
+        "notes": "Point quartz toward areas of the life/project needing fine-tuning."
+      },
+      {
+        "phase_id": "full_moon",
+        "role": "peak amplification and recharging — Full Moon amplifies quartz's field to maximum; optimal recharge phase",
+        "special_events": ["super_full_moon", "lunar_eclipse"],
+        "notes": "Moonlight charging of quartz is among the oldest and most widely documented crystal practices globally. Place directly in moonlight."
+      },
+      {
+        "phase_id": "waning_gibbous",
+        "role": "gratitude and integration amplifier — quartz holds and broadcasts the gratitude frequency of this phase",
+        "notes": "The teaching/sharing phase; use quartz to amplify insights gained at the full moon."
+      },
+      {
+        "phase_id": "last_quarter",
+        "role": "release clarity — quartz illuminates what needs to be released; brings unconscious attachments into light",
+        "notes": "Last quarter is the shadow-reveal phase; Clear Quartz's illumination role is key here."
+      },
+      {
+        "phase_id": "waning_crescent",
+        "role": "surrender and rest amplifier — supports the quiet, liminal energy of the dark moon",
+        "notes": "Unlike most crystals, Clear Quartz is phase-neutral — it amplifies whatever the current lunar energy is, including rest and surrender."
+      }
+    ],
+
+    "sacred_geometry": [
+      {
+        "pattern": "icosahedron",
+        "role": "Water/flow form — the icosahedron (20-faced Platonic solid) governs Water and flow; Clear Quartz's ability to carry and transmit energy in all directions mirrors this",
+        "notes": "The natural hexagonal/trigonal growth of quartz crystals creates icosahedral symmetry at the macro scale in quartz clusters."
+      },
+      {
+        "pattern": "tetrahedron",
+        "role": "Fire/clarity initiator — the tetrahedron (Fire Platonic solid) is the simplest, most fundamental form; mirrors quartz's role as the most fundamental crystal",
+        "notes": "The SiO4 tetrahedron is the literal building block of quartz at the molecular level — sacred geometry and chemistry merge here, as they do with Iron/cube."
+      },
+      {
+        "pattern": "flower_of_life",
+        "role": "universal template — Clear Quartz is the crystal of the Flower of Life because it contains ALL patterns; it is the blank-slate sacred geometry crystal",
+        "notes": "The Flower of Life is the meta-pattern that contains all other sacred geometry. Clear Quartz, as the universal amplifier, is its crystalline counterpart."
+      }
+    ],
+
+    "archetypes": [
+      {
+        "name": "The Master Amplifier",
+        "system": "GAIA-C32",
+        "role_in_story": "witness",
+        "behavioral_markers": [
+          "amplifies the signal of whatever it encounters without distortion",
+          "does not impose its own agenda — pure service and transmission",
+          "makes all other archetypes more visible and effective",
+          "clarity of perception without judgment"
+        ],
+        "noospheric_role": "universal signal carrier — amplifies every frequency in the noospheric field without preference",
+        "confidence": "high",
+        "notes": "Clear Quartz is the only crystal whose primary archetype is a meta-archetype — it amplifies others rather than being one thing. Sourced from Canon C32 and GAIA Crystal Matrix."
+      },
+      {
+        "name": "The Clear Channel",
+        "system": "GAIA-C32",
+        "role_in_story": "messenger",
+        "behavioral_markers": [
+          "transparent — no personal agenda obscures the transmission",
+          "receives and broadcasts higher-frequency information faithfully",
+          "the ability to be a clear vessel rather than a filter"
+        ],
+        "noospheric_role": "information conduit — carries signals between layers of the GAIA field without loss or distortion",
+        "confidence": "high",
+        "notes": "The 'channel' archetype reflects quartz's technological role as the basis of all semiconductor and oscillator technology — silicon's capacity to carry information is inseparable from its quartz origin."
+      }
+    ],
+
+    "metals": [
+      {
+        "metal": "Silver",
+        "planet": "Moon",
+        "role": "lunar mirror — Silver/Moon correspondence mirrors Clear Quartz's reflective, clarity-holding, full-spectrum-receiving nature",
+        "confidence": "high",
+        "notes": "Silver is the metal of reflection and light reception; Clear Quartz is the crystal of the same. Both are used in mirrors. Cross-tradition agreement (Hermetic, Vedic, Taoist)."
+      },
+      {
+        "metal": "Gold",
+        "planet": "Sun",
+        "role": "solar amplifier — Gold/Sun corresponds to the radiant, all-illuminating quality of Clear Quartz at its highest expression",
+        "confidence": "medium",
+        "notes": "Gold amplifies and radiates; Clear Quartz amplifies and radiates. The solar/gold correspondence is secondary to Silver/Moon but present in Hermetic and alchemical traditions."
+      }
+    ],
+
+    "elements": [
+      { "element": "Aether",  "weight": 1.0, "role": "primary — Clear Quartz IS the Aether crystal; it contains and amplifies all other elements without being reducible to any one", "notes": "Septagram node: Aether (documented in clear-quartz.json). The fifth element, the quintessence, the medium through which all others move." },
+      { "element": "Air",     "weight": 0.7, "role": "mental clarity, communication, transmission of information", "notes": "Air = Mind layer resonance (Layer 03); quartz's mental-clarity and information-carrying role aligns with Air." },
+      { "element": "Fire",    "weight": 0.6, "role": "amplification, initiation, solar radiance", "notes": "Fire = the initiating, expanding, Aries/Leo energy that quartz amplifies." },
+      { "element": "Water",   "weight": 0.5, "role": "flow, emotional mirroring, reflection", "notes": "Water = the reflective, flowing quality; silver/moon correspondence reinforces." },
+      { "element": "Earth",   "weight": 0.5, "role": "physical grounding, structural stability of the SiO2 lattice", "notes": "Clear Quartz is less Earth-dominant than Black Tourmaline but still has a strong physical/structural nature." }
+    ],
+
+    "periodic_elements": [
+      {
+        "atomic_number": 14,
+        "symbol": "Si",
+        "name": "Silicon",
+        "role": "primary structural element — quartz IS silicon dioxide (SiO₂); Si is the atomic backbone of every quartz lattice and the source of all piezoelectric, optical and electronic properties",
+        "notes": "Silicon (Si) in quartz is the direct mineralogical ancestor of semiconductor silicon. The principle of ordered lattice as information medium originates in SiO₂. Mohs 7, trigonal crystal system."
+      },
+      {
+        "atomic_number": 8,
+        "symbol": "O",
+        "name": "Oxygen",
+        "role": "structural partner — the bridging oxygen atoms in the SiO4 tetrahedral network create the connectivity that gives quartz its unique properties",
+        "notes": "Each Si atom is bonded to 4 O atoms in tetrahedral coordination; each O bridges two Si atoms. The Si-O-Si angle and bond length determine the resonant frequency range."
+      }
+    ],
+
+    "grid_resonance": {
+      "lattice_analogue": "trigonal",
+      "grid_role": "resonance focus",
+      "frequency_band_hz": "32768–10000000",
+      "piezoelectric": true,
+      "topology": "toroidal",
+      "notes": "Trigonal crystal system (space group P3121 or P3221, right/left-handed). Piezoelectric coefficient 2.3 pC/N. Resonant frequency range 32.768 kHz (watch-crystal standard) to 10 MHz and beyond — the widest range of any natural crystal. Serves as primary signal amplifier (not boundary stone or sensor node) in Gaianite grid architecture. Direct quantum-bridge anchor to YSZ substrate (emrys_l2_compatible: true). The toroidal topology reflects how quartz clusters grow — radially outward from a central axis, forming a natural toroidal energy field."
+    },
+
+    "evidence_profile": {
+      "basis": "empirical",
+      "sources": [
+        { "kind": "gaia_canon",            "ref": "C32",  "notes": "Archetypal Psychology — Master Amplifier and Clear Channel archetypes; zodiac and elemental mappings." },
+        { "kind": "gaia_canon",            "ref": "C65",  "notes": "Gaianite Crystal Substrate — clear quartz as foundational crystal class in Gaianite grid." },
+        { "kind": "gaia_canon",            "ref": "C66",  "notes": "Gaianite Grid Architecture v1 — signal amplifier role and quantum-bridge to YSZ." },
+        { "kind": "gaia_canon",            "ref": "C68",  "notes": "Crystal Grid Architecture — grid role, lattice analogue, frequency band." },
+        { "kind": "scientific_literature", "ref": "Cady, W.G. (1946). Piezoelectricity. McGraw-Hill. (definitive quartz piezoelectric reference)", "notes": "Piezoelectric coefficient 2.3 pC/N; resonant frequency range; crystal system and space group." },
+        { "kind": "scientific_literature", "ref": "Auld, B.A. (1973). Acoustic Fields and Waves in Solids. Wiley. Vol. 1.", "notes": "Quartz resonator physics; basis of modern oscillator and timekeeping technology." },
+        { "kind": "traditional_source",    "ref": "Cross-cultural ethnomineralogical consensus: Mesoamerican (Maya scrying), Celtic (crystal gazing), Vedic (sphatik mala), Taoist (jing), Indigenous Australian (kurdaitcha) traditions.", "notes": "Documented in clear-quartz.json consciousness_affect[0].provenance. Quartz is the most cross-culturally documented crystal on Earth." }
+      ],
+      "falsifiable_by": [
+        "A double-blind RCT finding no measurable difference in mental clarity or intention-retention between quartz-programmed and non-programmed stones would weaken the manifestation/intention claims.",
+        "A synthetic quartz (lab-grown, identical SiO₂) study showing identical or superior consciousness effects would weaken tradition-based claims but strengthen the physical-chemistry mechanism hypothesis.",
+        "Discovery that the quartz–YSZ quantum-bridge coherence (emrys_l2) is not measurable by any physical instrument would relegate that claim to purely-symbolic basis.",
+        "Seed set prediction CDB-02 (noted in clear-quartz.json) — if this prediction fails, the entire consciousness_affect[0] mechanism hypothesis weakens."
+      ],
+      "confidence": "high",
+      "notes": "Clear Quartz has the strongest cross-tradition consensus and the richest empirical physical-science backing of any crystal in the matrix. Piezoelectric and structural properties are rock-solid (literally). Archetypal and consciousness claims have high cross-cultural confidence but low mechanism certainty. Evidence basis upgraded to 'empirical' due to the strength of the piezoelectric and semiconductor literature."
+    },
+
+    "safety_profile": {
+      "clinical_use": "supportive_only",
+      "trauma_flags": [],
+      "requires_opt_in": false,
+      "usage_notes": "Clear Quartz is the safest crystal in the system for general use — it has no trauma flags and requires no opt-in. The one caution: because it amplifies whatever is present, it can intensify distress as well as clarity if used during acute emotional crisis without grounding support. Always pair Clear Quartz work with a grounding crystal (e.g. Black Tourmaline) when an Architect is in an emotionally activated state. Never position as a clinical substitute for any mental health support."
+    }
+
+  },
+
+  "metadata": {
+    "schema_version": "1.0.0",
+    "created_at": "2026-06-15T10:47:00Z",
+    "updated_at": "2026-06-15T10:47:00Z",
+    "created_by": "GAIA-OS / R0GV3TheAlchemist",
+    "canon_refs": ["C32", "C65", "C66", "C68"],
+    "notes": "Third correspondence record committed. Builds directly on data/crystals/clear-quartz.json (SHA 3a4c24d). Clear Quartz is unique in resonating across ALL 11 GAIA layers — it is the only crystal with this property, confirming its role as the universal amplifier and Aether crystal. Note the SiO4 tetrahedron as both sacred geometry and literal chemistry — the second case (after Iron/cube) where geometry and physics converge exactly. Validates against schemas/correspondence-schema.json v1.0.0."
+  }
+}
