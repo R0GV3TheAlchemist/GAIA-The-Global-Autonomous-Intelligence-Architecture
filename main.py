@@ -1,6 +1,12 @@
 """
 GAIA Backend — FastAPI Entry Point
 Runs on http://localhost:8008
+
+Boot contract:
+  - ALWAYS starts, even if optional subsystems are missing
+  - Core Twin API (/twin/*) is always available
+  - Optional routers log a warning and are skipped if their module is missing
+  - Health endpoint reports per-subsystem readiness
 """
 
 import sys
@@ -16,40 +22,71 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# ── Path setup ────────────────────────────────────────────────────────────────────────────────────
-if getattr(sys, 'frozen', False):
-    ROOT = sys._MEIPASS
+# ── Path setup ────────────────────────────────────────────────────────────────
+if getattr(sys, "frozen", False):
+    ROOT = sys._MEIPASS  # type: ignore[attr-defined]
 else:
     ROOT = os.path.dirname(os.path.abspath(__file__))
 
 sys.path.insert(0, ROOT)
 
-# ── src-python/ on path (for emrys_engine and other src-python packages) ─────────────────────
 _SRC_PYTHON = os.path.join(ROOT, "src-python")
 if _SRC_PYTHON not in sys.path:
     sys.path.insert(0, _SRC_PYTHON)
 
-from api.routers import zodiac
-from api.routers import llm as llm_router
-from api.routers import gaian as gaian_router
-from api.routers import memory as memory_router
-from api.routers import alignment as alignment_router
-from api.routers import pair_programmer as pair_programmer_router
-from api.routers.observability import router as observability_router   # Issue #265
-from api.notifications import router as notifications_router
-from api.atlas import router as atlas_router
-from api.crypto import router as crypto_router
-from api.auth import router as auth_router
-from api.twin import router as twin_router                             # Twin session /twin/*
-from core.safety.router import router as safety_router
-from emrys_engine.router import emrys_router, init_emrys_engine
-from api.routes.numerology import router as numerology_router          # C160 — Numerology
-
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
 log = logging.getLogger("gaia")
 
 _START_TIME = time.time()
+_SUBSYSTEM_STATUS: dict[str, bool] = {}  # populated during lifespan
 
-# ── Graceful shutdown ─────────────────────────────────────────────────────────────────────────────────────────
+
+# ── Safe import helper ────────────────────────────────────────────────────────
+
+def _try_import(module_path: str, attr: str | None = None):
+    """
+    Import a module (and optionally an attribute from it) without crashing.
+    Returns the module/attr on success, None on failure.
+    Logs a WARNING so the operator knows what's missing.
+    """
+    try:
+        import importlib
+        mod = importlib.import_module(module_path)
+        if attr:
+            return getattr(mod, attr, None)
+        return mod
+    except Exception as exc:
+        log.warning(f"[GAIA] Optional import skipped — {module_path}: {exc}")
+        return None
+
+
+# ── Core router imports (always required — crash if missing) ──────────────────
+
+from api.twin import router as twin_router          # /twin/* — core product
+from api.auth import router as auth_router          # /auth/*
+
+# ── Optional router imports (safe — skipped if module missing) ────────────────
+
+_zodiac_router         = _try_import("api.routers.zodiac", "router")
+_llm_router            = _try_import("api.routers.llm", "router")
+_gaian_router          = _try_import("api.routers.gaian", "router")
+_memory_router         = _try_import("api.routers.memory", "router")
+_alignment_router      = _try_import("api.routers.alignment", "router")
+_pair_prog_router      = _try_import("api.routers.pair_programmer", "router")
+_observability_router  = _try_import("api.routers.observability", "router")
+_notifications_router  = _try_import("api.notifications", "router")
+_atlas_router          = _try_import("api.atlas", "router")
+_crypto_router         = _try_import("api.crypto", "router")
+_safety_router         = _try_import("core.safety.router", "router")
+_numerology_router     = _try_import("api.routes.numerology", "router")
+_emrys_router          = _try_import("emrys_engine.router", "emrys_router")
+_init_emrys            = _try_import("emrys_engine.router", "init_emrys_engine")
+
+
+# ── Graceful shutdown ─────────────────────────────────────────────────────────
 
 _shutdown_event = asyncio.Event()
 
@@ -60,15 +97,11 @@ def _signal_handler(signum, frame):
     _shutdown_event.set()
 
 
-try:
-    signal.signal(signal.SIGTERM, _signal_handler)
-except (OSError, ValueError):
-    pass
-
-try:
-    signal.signal(signal.SIGINT, _signal_handler)
-except (OSError, ValueError):
-    pass
+for _sig in (signal.SIGTERM, signal.SIGINT):
+    try:
+        signal.signal(_sig, _signal_handler)
+    except (OSError, ValueError):
+        pass
 
 
 async def _flush_state() -> None:
@@ -86,85 +119,124 @@ async def _flush_state() -> None:
     log.info("[GAIA] Shutdown complete.")
 
 
-# ── Ollama health probe ───────────────────────────────────────────────────────────────────────────────────────
+# ── Ollama health probe ───────────────────────────────────────────────────────
 
-OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("GAIA_MODEL", "llama3")
-OLLAMA_TIMEOUT_SECS = 10
+OLLAMA_BASE        = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL       = os.environ.get("GAIA_MODEL", "llama3")
+OLLAMA_TIMEOUT     = 10
 
 
 async def _check_ollama() -> dict:
     try:
-        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT_SECS) as client:
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
             r = await client.get(f"{OLLAMA_BASE}/api/tags")
             r.raise_for_status()
-            tags = r.json()
-
-            models = [m["name"] for m in tags.get("models", [])]
+            models = [m["name"] for m in r.json().get("models", [])]
             model_ready = any(m.startswith(OLLAMA_MODEL) for m in models)
-
             if not model_ready:
-                return {
-                    "ready": False,
-                    "model": None,
-                    "error": f"Model '{OLLAMA_MODEL}' not found in Ollama. Available: {models}",
-                }
-
+                return {"ready": False, "model": None,
+                        "error": f"Model '{OLLAMA_MODEL}' not found. Available: {models}"}
             probe = await client.post(
                 f"{OLLAMA_BASE}/api/generate",
                 json={"model": OLLAMA_MODEL, "prompt": "ping", "stream": False},
             )
             probe.raise_for_status()
-
             return {"ready": True, "model": OLLAMA_MODEL, "error": None}
-
     except httpx.ConnectError:
-        return {"ready": False, "model": None, "error": "Ollama not reachable — is it running?"}
+        return {"ready": False, "model": None, "error": "Ollama not reachable"}
     except httpx.TimeoutException:
-        return {"ready": False, "model": None, "error": f"Ollama probe timed out after {OLLAMA_TIMEOUT_SECS}s"}
+        return {"ready": False, "model": None, "error": f"Ollama probe timed out after {OLLAMA_TIMEOUT}s"}
     except Exception as e:
         return {"ready": False, "model": None, "error": str(e)}
 
 
-# ── FastAPI lifespan ───────────────────────────────────────────────────────────────────────────────────
+# ── FastAPI lifespan ──────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    log.info("[GAIA] Backend starting up — port 8008")
+    log.info("[GAIA] ✨ Backend starting — port 8008")
 
-    # ── Encryption layer ──────────────────────────────────────────────────────────────
-    from api.crypto import get_symmetric_key
+    # Encryption
     try:
+        from api.crypto import get_symmetric_key
         get_symmetric_key()
-        log.info("[GAIA] Encryption layer ready")
+        _SUBSYSTEM_STATUS["encryption"] = True
+        log.info("[GAIA] ✓ Encryption layer ready")
     except Exception as e:
-        log.warning(f"[GAIA] Encryption init warning: {e}")
+        _SUBSYSTEM_STATUS["encryption"] = False
+        log.warning(f"[GAIA] Encryption init skipped: {e}")
 
-    # ── Runtime orchestrator ────────────────────────────────────────────────────────────
-    from core.runtime import GAIAOrchestrator, init_orchestrator
+    # Runtime orchestrator
     try:
+        from core.runtime import init_orchestrator
         init_orchestrator()
-        log.info("[GAIA] Runtime orchestrator ready")
+        _SUBSYSTEM_STATUS["orchestrator"] = True
+        log.info("[GAIA] ✓ Runtime orchestrator ready")
     except Exception as e:
-        log.warning(f"[GAIA] Runtime orchestrator init warning: {e}")
+        _SUBSYSTEM_STATUS["orchestrator"] = False
+        log.warning(f"[GAIA] Runtime orchestrator skipped: {e}")
 
-    # ── Emrys L2 vibronic bridge ────────────────────────────────────────────────────────
+    # Emrys L2 vibronic bridge
     try:
-        init_emrys_engine()
-        log.info("[GAIA] Emrys L2 vibronic bridge ready")
+        if _init_emrys:
+            _init_emrys()
+            _SUBSYSTEM_STATUS["emrys"] = True
+            log.info("[GAIA] ✓ Emrys L2 vibronic bridge ready")
+        else:
+            _SUBSYSTEM_STATUS["emrys"] = False
     except Exception as e:
-        log.warning(f"[GAIA] Emrys engine init warning: {e}")
+        _SUBSYSTEM_STATUS["emrys"] = False
+        log.warning(f"[GAIA] Emrys engine skipped: {e}")
+
+    # Twin Memory Engine — warm-up
+    try:
+        from core.twin_memory_engine import TwinMemoryEngine
+        _SUBSYSTEM_STATUS["twin_memory"] = True
+        log.info("[GAIA] ✓ TwinMemoryEngine ready")
+    except Exception as e:
+        _SUBSYSTEM_STATUS["twin_memory"] = False
+        log.warning(f"[GAIA] TwinMemoryEngine skipped: {e}")
+
+    # Love Override Handler
+    try:
+        from core.love_override import get_override_handler
+        get_override_handler()
+        _SUBSYSTEM_STATUS["love_override"] = True
+        log.info("[GAIA] ✓ Love Override Handler ready")
+    except Exception as e:
+        _SUBSYSTEM_STATUS["love_override"] = False
+        log.warning(f"[GAIA] Love Override Handler skipped: {e}")
+
+    # Inference Router
+    try:
+        from core.inference_router import get_router
+        get_router()
+        _SUBSYSTEM_STATUS["inference_router"] = True
+        log.info("[GAIA] ✓ InferenceRouter ready")
+    except Exception as e:
+        _SUBSYSTEM_STATUS["inference_router"] = False
+        log.warning(f"[GAIA] InferenceRouter skipped: {e}")
+
+    # Zodiac Engine
+    try:
+        from core.zodiac_engine import get_zodiac_engine
+        get_zodiac_engine()
+        _SUBSYSTEM_STATUS["zodiac"] = True
+        log.info("[GAIA] ✓ ZodiacEngine ready")
+    except Exception as e:
+        _SUBSYSTEM_STATUS["zodiac"] = False
+        log.warning(f"[GAIA] ZodiacEngine skipped: {e}")
 
     routing_mode = os.environ.get("GAIA_ROUTING_MODE", "local-first")
     log.info(f"[GAIA] LLM routing mode: {routing_mode}")
+    log.info("[GAIA] ✨ GAIA is alive. Twin API ready at /twin/*")
 
     yield
 
-    # ── Teardown ────────────────────────────────────────────────────────────────────────────────────────────
     await _flush_state()
 
 
-# ── App ──────────────────────────────────────────────────────────────────────────────────────────────
+# ── App ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="GAIA Backend",
@@ -187,47 +259,75 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────────────────────────────
 
-app.include_router(auth_router)                                        # /auth/*
-app.include_router(zodiac.router,                   prefix="/api/zodiac",          tags=["Zodiac"])
-app.include_router(llm_router.router,               prefix="/api")
-app.include_router(gaian_router.router,             prefix="/api")
-app.include_router(memory_router.router,            prefix="/api/memory",          tags=["Memory"])
-app.include_router(alignment_router.router,         prefix="/alignment",           tags=["Alignment"])
-app.include_router(pair_programmer_router.router,   prefix="/api",                 tags=["Pair Programmer"])
-app.include_router(notifications_router)
-app.include_router(atlas_router)
-app.include_router(crypto_router)
-app.include_router(safety_router)                                      # /safety/*
-app.include_router(observability_router)                               # /metrics + /health/detailed  (Issue #265)
-app.include_router(emrys_router,                    prefix="/api/emrys",           tags=["Emrys"])
-app.include_router(numerology_router,               prefix="/api/v1",              tags=["Numerology"])  # C160
-app.include_router(twin_router)                                        # /twin/*
+# ── Router registration (always-on) ───────────────────────────────────────────
+
+app.include_router(auth_router)          # /auth/*
+app.include_router(twin_router)          # /twin/* — core product
 
 
-# ── Core endpoints ───────────────────────────────────────────────────────────────────────────────────────
+# ── Router registration (optional — only if import succeeded) ─────────────────
+
+def _mount(router, prefix: str = "", tags: list | None = None, label: str = "") -> None:
+    if router is None:
+        log.debug(f"[GAIA] Skipping optional router: {label or prefix}")
+        return
+    kw: dict = {}
+    if prefix:
+        kw["prefix"] = prefix
+    if tags:
+        kw["tags"] = tags
+    app.include_router(router, **kw)
+
+
+_mount(_zodiac_router,         prefix="/api/zodiac",   tags=["Zodiac"],          label="zodiac")
+_mount(_llm_router,            prefix="/api",                                     label="llm")
+_mount(_gaian_router,          prefix="/api",                                     label="gaian")
+_mount(_memory_router,         prefix="/api/memory",   tags=["Memory"],          label="memory")
+_mount(_alignment_router,      prefix="/alignment",    tags=["Alignment"],       label="alignment")
+_mount(_pair_prog_router,      prefix="/api",          tags=["Pair Programmer"], label="pair_programmer")
+_mount(_observability_router,                                                     label="observability")
+_mount(_notifications_router,                                                     label="notifications")
+_mount(_atlas_router,                                                             label="atlas")
+_mount(_crypto_router,                                                            label="crypto")
+_mount(_safety_router,                                                            label="safety")
+_mount(_numerology_router,     prefix="/api/v1",       tags=["Numerology"],      label="numerology")
+_mount(_emrys_router,          prefix="/api/emrys",    tags=["Emrys"],           label="emrys")
+
+
+# ── Core endpoints ────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
     uptime = round(time.time() - _START_TIME, 1)
     ollama = await _check_ollama()
 
+    # Core Twin API is always up if we got here
+    core_ready = _SUBSYSTEM_STATUS.get("twin_memory", True)
+
     payload = {
-        "status": "ok" if ollama["ready"] else "loading",
+        "status": "ok" if core_ready else "degraded",
         "service": "gaia-backend",
         "version": "0.1.0",
         "uptime": uptime,
-        "model": ollama["model"],
-        "model_ready": ollama["ready"],
         "routing_mode": os.environ.get("GAIA_ROUTING_MODE", "local-first"),
-        "error": ollama["error"],
+        "subsystems": _SUBSYSTEM_STATUS,
+        # Ollama is optional — presence of cloud LLM keys replaces it
+        "ollama": {
+            "ready": ollama["ready"],
+            "model": ollama["model"],
+            "error": ollama["error"],
+        },
+        "llm_backends": {
+            "openai":     bool(os.environ.get("OPENAI_API_KEY")),
+            "anthropic":  bool(os.environ.get("ANTHROPIC_API_KEY")),
+            "perplexity": bool(os.environ.get("PERPLEXITY_API_KEY")),
+            "ollama":     ollama["ready"],
+        },
     }
 
-    if not ollama["ready"]:
-        return JSONResponse(status_code=503, content=payload)
-
-    return payload
+    status_code = 200 if core_ready else 503
+    return JSONResponse(status_code=status_code, content=payload)
 
 
 @app.get("/api/state")
@@ -238,10 +338,11 @@ async def get_state():
         "attachment": {"style": "secure"},
         "coherence": 72,
         "solfeggio": {"frequency": 528, "chakra": "heart"},
+        "subsystems": _SUBSYSTEM_STATUS,
     }
 
 
-# ── Launch ────────────────────────────────────────────────────────────────────────────────────────────
+# ── Launch ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.environ.get("GAIA_PORT", 8008))
