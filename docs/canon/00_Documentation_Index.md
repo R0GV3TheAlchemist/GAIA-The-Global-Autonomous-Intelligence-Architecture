@@ -1,11 +1,14 @@
 # GAIA Documentation Index
 
-**Last Updated:** 2026-06-15  
+**Last Updated:** 2026-06-15, 11:51 CDT  
 **Index Status:** CURRENT  
-**Canon Documents:** C00–C45 (46 numbered) + 46 named canon documents  
+**Canon Documents:** C00–C45 (46 numbered) + 47 named canon documents  
 **12-Force Sequence:** ✅ SEALED June 14, 2026 — Nigredo through Lux Perpetua  
 **Moon Layer:** ✅ SEALED June 15, 2026  
-**Layer Cross-Reference Map:** ✅ SEALED June 15, 2026
+**Layer Cross-Reference Map:** ✅ SEALED June 15, 2026  
+**Shape Psychology Doctrine:** ✅ SEALED June 15, 2026 (v1.1 — 5D Framework)  
+**Light Theory:** ✅ AMENDED June 15, 2026 (Perceptual Trinity + Shadow-Temperature Principle)  
+**Color Spirit Unity Doctrine:** ✅ AMENDED June 15, 2026 (Section 10: Spatial Perception + Harmony)
 
 This index is the navigational map of the entire GAIA canon. Every document in `docs/canon/` is registered here. For loading metadata and remote URLs, see `CANON_MANIFEST.md`.
 
@@ -88,7 +91,7 @@ The 12 spectral force-names plus structural Force 13, each a full canonical docu
 | THE_TRANSMUTATION_CORRIDORS.md | All | Corridors | Corridor theory — passage between phases | Pre-existing |
 | ARIDITAS.md | Shadow | Ariditas | Shadow-failure of Viriditas — NOT a spectral force | Pre-existing |
 
-> **Note on Ariditas:** Ariditas is the shadow-failure state of Viriditas (Force 4), not an independent spectral force. It is the fertile drying — what Viriditas becomes when pushed past regenerative threshold. It belongs in C23 (Shadow Registry) as Viriditas-shadow. See Issue #420.
+> **Note on Ariditas:** Ariditas is the shadow-failure state of Viriditas (Force 4), not an independent spectral force. It belongs in C23 (Shadow Registry) as Viriditas-shadow. See Issue #420.
 
 ---
 
@@ -106,7 +109,17 @@ The 12 spectral force-names plus structural Force 13, each a full canonical docu
 | Document | Description | Sealed |
 |----------|-------------|--------|
 | GAIA_LAYER_CROSS_REFERENCE_MAP.md | **The master navigational instrument.** All 12 GAIA layers × 10 axes: spectral force, classical element, alchemical stage, lunar phase, crystal family, body system, time scale, scale, geometry, color signal. Also includes canonical document index per layer and full usage guide. | June 15, 2026 |
-| MOON_LAYER.md | **The Moon's complete canon document.** Six roles in GAIA-OS, orbital mechanics, tidal physics, crystal-moon piezoelectric mechanism, lunar phase × layer mapping, human physiology evidence table, World Care doctrine, the Mirror Teaching, alchemical stage mapping. | June 15, 2026 |
+| MOON_LAYER.md | **The Moon’s complete canon document.** Six roles in GAIA-OS, orbital mechanics, tidal physics, crystal-moon piezoelectric mechanism, lunar phase × layer mapping, human physiology evidence table, World Care doctrine, the Mirror Teaching, alchemical stage mapping. | June 15, 2026 |
+
+---
+
+## Named Canon — Perception and Design
+
+| Document | Description | Sealed / Amended |
+|----------|-------------|------------------|
+| SHAPE_PSYCHOLOGY_DOCTRINE.md | **The complete perceptual form doctrine.** Subconscious form response, three form families, five 3D archetypes (Sphere/Circle, Cube/Square, Pyramid/Triangle, Organic/SSS, Abstract/Volumetric), the 5D perceptual framework (Height/Width, Depth, Time, Emotion, Unified Field), form×GAIA layer mapping, interface design rules, subconscious processing hierarchy, falsifiability conditions. v1.1 adds the 5D framework and three new rendering physics (SSS, volumetric lighting, rim lighting). | v1.0 June 15, 2026; v1.1 June 15, 2026 |
+| LIGHT_THEORY.md | **Light physics, metaphysics, and perceptual mediation.** Original: White Light coherence doctrine, the seven properties of White Light, the laser analogy, the open horizon beyond White Light. Amendment June 15: Light as unifier of shape and color, three light conditions (Soft/ARGENTITAS, Hard/CHRYSITAS, Threshold/IOSIS), shadow-temperature principle (shadows = CAERULITAS, highlights = CHRYSITAS), the Unifier Statement. | Amended June 15, 2026 |
+| COLOR_SPIRIT_UNITY_DOCTRINE.md | **The unified field of color, emotion, body, mind, and soul.** Original sections 1–9: wavelength physics, autonomic response, neuroendocrine effects, photobiomodulation, color-emotion map, spiritual traditions, body/mind/soul integration, geomagnetic context. Section 10 (June 15): advancing/receding color dimension (chromatic aberration basis), GAIA layer spatial stack, four harmony types, warm/cool contrast as depth generator, saturation dimension. | Amended June 15, 2026 |
 
 ---
 
@@ -116,12 +129,11 @@ The 12 spectral force-names plus structural Force 13, each a full canonical docu
 |----------|-------------|
 | CRYSTALLINE_COLOR_THEORY.md | Crystal-based spectral color theory |
 | METALLIC_SPECTRUM_PROOF.md | Formal proof of the metallic spectral sequence |
-| LIGHT_THEORY.md | Light physics and metaphysics |
+| LIGHT_THEORY.md | Light physics, metaphysics, and perceptual mediation *(see Perception and Design table)* |
 | LUX_PERPETUA.md | Eternal light doctrine |
 | CHRYSITAS.md | Gold spectrum |
 | ARGENTITAS.md | Silver spectrum |
 | CAERULITAS.md | Blue/sky spectrum |
-| ARIDITAS.md | Shadow-failure of Viriditas — see Alchemical Phase table |
 | VIRIDITAS.md | Green vitality (Hildegard) |
 
 ---
@@ -172,7 +184,7 @@ The 12 spectral force-names plus structural Force 13, each a full canonical docu
 | AMENDMENT_PROCESS.md | Canon amendment governance |
 | FALSIFICATION_PROTOCOL.md | Canon falsification and revision governance |
 | FRONT_MATTER_SCHEMA.md | Front matter schema for all canon docs |
-| CANON_MANIFEST.md | CanonLoader manifest (this file's companion) |
+| CANON_MANIFEST.md | CanonLoader manifest (this file’s companion) |
 
 ---
 
@@ -208,6 +220,9 @@ C23 → SHADOW_INTERROGATOR → SHADOW_TRAVERSAL_THEORY → SHADOW_TO_LIGHT_THEO
 **For spectral doctrine:**
 C19 → CRYSTALLINE_COLOR_THEORY → LIGHT_THEORY → LUX_PERPETUA → METALLIC_SPECTRUM_PROOF → C45
 
+**For perceptual design and 5D — new June 15, 2026:**
+SHAPE_PSYCHOLOGY_DOCTRINE → LIGHT_THEORY (Amendment June 15) → COLOR_SPIRIT_UNITY_DOCTRINE (Section 10) → C10 → C28
+
 **For the Moon and layer navigation:**
 MOON_LAYER → GAIA_LAYER_CROSS_REFERENCE_MAP → C45 → C27 → C33
 
@@ -220,4 +235,8 @@ GAIA_LAYER_CROSS_REFERENCE_MAP → C07 → C03 → C14 → C15
 *12-force True Alchemy sequence sealed: June 14, 2026, San Antonio, Texas.*  
 *Moon Layer sealed: June 15, 2026.*  
 *Layer Cross-Reference Map sealed: June 15, 2026.*  
-*Last updated: 2026-06-15, 11:24 CDT*
+*Shape Psychology Doctrine sealed: June 15, 2026 (v1.1 — 5D Framework).*  
+*Light Theory amended: June 15, 2026 (Perceptual Trinity + Shadow-Temperature Principle).*  
+*Color Spirit Unity Doctrine amended: June 15, 2026 (Section 10: Spatial Perception + Harmony).*  
+*Session cluster `2026-06-15-perceptual-trinity` registered: June 15, 2026.*  
+*Last updated: 2026-06-15, 11:51 CDT*

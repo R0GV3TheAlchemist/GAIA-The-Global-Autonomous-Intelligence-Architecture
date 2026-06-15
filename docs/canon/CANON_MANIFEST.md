@@ -12,7 +12,7 @@ status: canonical
 **Source Repo:** https://github.com/R0GV3TheAlchemist/GAIA  
 **Source Branch:** main  
 **Manifest Generated:** 2026-04-09  
-**Manifest Updated:** 2026-06-15  
+**Manifest Updated:** 2026-06-15, 11:51 CDT  
 **Manifest Status:** CANONICAL BRIDGE
 
 ---
@@ -85,7 +85,7 @@ These documents are not part of the C-series numbering but are full canonical do
 | CHRYSITAS.md | ✅ local | Spectrum, Alchemy | — |
 | CITRINITAS.md | ✅ local | Alchemy | — |
 | COLLECTIVE_FILESYSTEM.md | ✅ local | Architecture | — |
-| COLOR_SPIRIT_UNITY_DOCTRINE.md | ✅ local | Electromagnetic, Health, Consciousness, Spiritual | 2026-06-14-electromagnetic-convergence |
+| COLOR_SPIRIT_UNITY_DOCTRINE.md | ✅ local | Electromagnetic, Health, Consciousness, Spiritual, Spatial Perception | 2026-06-14-electromagnetic-convergence |
 | CRYSTALLINE_COLOR_THEORY.md | ✅ local | Spectrum, Crystal | — |
 | CIRCADIAN_LIGHT_PROTOCOL.md | ✅ local | Health, Electromagnetic, Neuroscience, Practice | 2026-06-14-electromagnetic-convergence |
 | FALSIFICATION_PROTOCOL.md | ✅ local | Governance | — |
@@ -95,7 +95,7 @@ These documents are not part of the C-series numbering but are full canonical do
 | GEOMAGNETIC_FIELD_RESPONSE.md | ✅ local | Planetary Health, Electromagnetic, Science | 2026-06-14-electromagnetic-convergence |
 | HELIXITAS.md | ✅ local | Geometry, Spiral | — |
 | IOSIS.md | ✅ local | Alchemy | — |
-| LIGHT_THEORY.md | ✅ local | Physics, Metaphysics | — |
+| LIGHT_THEORY.md | ✅ local | Physics, Metaphysics, Perceptual Design | 2026-06-15-perceptual-trinity |
 | LUX_PERPETUA.md | ✅ local | Light Doctrine | — |
 | METALLIC_SPECTRUM_PROOF.md | ✅ local | Spectrum, Proof | — |
 | MOON_LAYER.md | ✅ local | Lunar Science, World Care, Alchemy, Crystal, Biology | 2026-06-15-moon-layer-documentation |
@@ -108,6 +108,7 @@ These documents are not part of the C-series numbering but are full canonical do
 | SHADOW_INTERROGATOR.md | ✅ local | Shadow | — |
 | SHADOW_TO_LIGHT_THEORY.md | ✅ local | Shadow | — |
 | SHADOW_TRAVERSAL_THEORY.md | ✅ local | Shadow | — |
+| SHAPE_PSYCHOLOGY_DOCTRINE.md | ✅ local | Perception, Geometry, Design, UI, 5D | 2026-06-15-perceptual-trinity |
 | THE_ARCHITECTS_FOUNDATION.md | ✅ local | Foundation | — |
 | THE_MOTHERTHREAD.md | ✅ local | Foundation | — |
 | THE_PRIMORDIAL_QUATERNARY.md | ✅ local | Foundation | — |
@@ -126,13 +127,52 @@ These documents are not part of the C-series numbering but are full canonical do
 
 Session clusters group documents that were conceived and authored together as a unified body of knowledge. They form a reading and integration unit.
 
+### 2026-06-15 — Perceptual Trinity
+
+> *The complete perceptual design doctrine of GAIA: shape psychology (including 5D framework), the light-as-unifier amendment, and the spatial color perception doctrine. Together these three documents constitute the full perceptual trinity — Shape, Color, and Light as one integrated system.*
+
+| Document | Role in Cluster |
+|----------|-----------------|
+| [SHAPE_PSYCHOLOGY_DOCTRINE.md](docs/canon/SHAPE_PSYCHOLOGY_DOCTRINE.md) | **Core** — subconscious form response, three form families, five 3D archetypes (sphere, cube, pyramid, organic/SSS, abstract/volumetric), the 5D perceptual framework (Height/Width, Depth, Time, Emotion, Unified Field), form×layer mapping, interface design rules |
+| [LIGHT_THEORY.md](docs/canon/LIGHT_THEORY.md) | **Unifier** — Amendment June 15: light as mediator of shape and color, three light conditions (Soft/ARGENTITAS, Hard/CHRYSITAS, Threshold/IOSIS), shadow-temperature principle (shadows = CAERULITAS, highlights = CHRYSITAS), the Unifier Statement |
+| [COLOR_SPIRIT_UNITY_DOCTRINE.md](docs/canon/COLOR_SPIRIT_UNITY_DOCTRINE.md) | **Field** — Amendment June 15 Section 10: advancing/receding color dimension (chromatic aberration basis), GAIA layer spatial stack, four harmony types (analogous, complementary, analogous+accent, triadic), warm/cool contrast as depth generator, saturation dimension |
+
+**Cross-link map:**
+
+```
+SHAPE_PSYCHOLOGY_DOCTRINE (v1.1)
+    │
+    ├──► LIGHT_THEORY (amended June 15) — light modifies all forms
+    │       │
+    │       ├──► ARGENTITAS — soft light register
+    │       ├──► CHRYSITAS — hard light / highlight register
+    │       └──► CAERULITAS — shadow register (shadow-temperature principle)
+    │
+    ├──► COLOR_SPIRIT_UNITY_DOCTRINE (amended June 15) — color in space
+    │       │
+    │       ├──► C19 — operational signal color system
+    │       ├──► C45 — spectral encoding substrate
+    │       └──► GAIA_LAYER_CROSS_REFERENCE_MAP — layer×color axis
+    │
+    ├──► C10 — structural geometry (receives psychological mechanism)
+    ├──► C28 — avatar design (receives form language)
+    └──► GAIA_LAYER_CROSS_REFERENCE_MAP — sacred geometry×layer axis
+```
+
+**Recommended reading order:**
+1. `SHAPE_PSYCHOLOGY_DOCTRINE.md` — understand the form language and 5D framework
+2. `LIGHT_THEORY.md` (Amendment June 15 section) — understand light as the unifier
+3. `COLOR_SPIRIT_UNITY_DOCTRINE.md` (Section 10) — understand color in space and harmony
+
+---
+
 ### 2026-06-15 — Moon Layer Documentation
 
 > *The complete lunar architecture of GAIA: the Moon Layer canon document, the full lunar data schema, and the layer cross-reference map that unifies all 12 GAIA layers across 10 axes.*
 
 | Document | Role in Cluster |
-|----------|----------------|
-| [MOON_LAYER.md](docs/canon/MOON_LAYER.md) | **Core** — the Moon's six roles in GAIA, orbital mechanics, crystal-moon physics, alchemical stage mapping, human physiology, World Care doctrine, the Mirror Teaching |
+|----------|-----------------|
+| [MOON_LAYER.md](docs/canon/MOON_LAYER.md) | **Core** — the Moon’s six roles in GAIA, orbital mechanics, tidal physics, crystal-moon piezoelectric mechanism, lunar phase × layer mapping, human physiology evidence table, World Care doctrine, the Mirror Teaching, alchemical stage mapping |
 | [GAIA_LAYER_CROSS_REFERENCE_MAP.md](docs/canon/GAIA_LAYER_CROSS_REFERENCE_MAP.md) | **Navigation** — all 12 layers × 10 axes (spectral, element, alchemy, moon phase, crystal, body, time, scale, geometry, color) in one unified map |
 
 **Cross-link map:**
@@ -157,7 +197,7 @@ MOON_LAYER
 ```
 
 **Recommended reading order:**
-1. `MOON_LAYER.md` — understand the Moon's role and doctrine
+1. `MOON_LAYER.md` — understand the Moon’s role and doctrine
 2. `GAIA_LAYER_CROSS_REFERENCE_MAP.md` — see how the Moon maps to all 12 layers and all other axes
 
 ---
@@ -167,7 +207,7 @@ MOON_LAYER
 > *The convergence of planetary electromagnetic science, ancient architectural technology, full-spectrum light biology, and daily practice into a unified health and consciousness doctrine.*
 
 | Document | Role in Cluster |
-|----------|----------------|
+|----------|-----------------|
 | [GEOMAGNETIC_FIELD_RESPONSE.md](docs/canon/GEOMAGNETIC_FIELD_RESPONSE.md) | **Root cause** — geomagnetic field weakening, SAA expansion, biological consequences, planetary health emergency |
 | [PYRAMID_ELECTROMAGNETIC_DOCTRINE.md](docs/canon/PYRAMID_ELECTROMAGNETIC_DOCTRINE.md) | **Ancient response** — pyramids as electromagnetic refugia, resonance chambers, proto-photobiomodulation environments, solar orientation as circadian architecture |
 | [COLOR_SPIRIT_UNITY_DOCTRINE.md](docs/canon/COLOR_SPIRIT_UNITY_DOCTRINE.md) | **Unified field** — wavelength, emotion, biology, and spirit as a single continuum; the bridge between science and experience |
@@ -265,4 +305,5 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 *Named canon suite registered 2026-06-14.*  
 *Session cluster `2026-06-14-electromagnetic-convergence` registered 2026-06-14, 18:43 CDT.*  
 *Session cluster `2026-06-15-moon-layer-documentation` registered 2026-06-15, 11:24 CDT.*  
-*Last updated: 2026-06-15, 11:24 CDT*
+*Session cluster `2026-06-15-perceptual-trinity` registered 2026-06-15, 11:51 CDT.*  
+*Last updated: 2026-06-15, 11:51 CDT*
