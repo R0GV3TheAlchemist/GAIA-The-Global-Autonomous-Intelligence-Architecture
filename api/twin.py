@@ -30,6 +30,11 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from core import twin_memory_engine as twin_memory_engine  # noqa: PLC0414 — exposed for patch.multiple
+from core import love_override as love_override            # noqa: PLC0414
+from core import inference_router as inference_router      # noqa: PLC0414
+from core import canon_loader_v2 as canon_loader           # noqa: PLC0414
+
 from core.twin_memory_engine import TwinMemoryEngine
 from core.love_override import LoveOverrideHandler
 from core.canon_loader_v2 import CanonLoaderV2
@@ -394,7 +399,7 @@ async def crystallise_session(req: CrystalliseRequest) -> CrystalliseResponse:
     )
 
 
-# ─── GET /twin/arc/{human_id} ─────────────────────────────────────────────────
+# ─── GET /twin/arc/{human_id} ──────────────────────────────────────────────��──
 
 @router.get("/arc/{human_id}")
 async def get_arc_reflection(human_id: str) -> dict:
