@@ -9,12 +9,13 @@
  * Every message is a living thread in the Braid.
  *
  * Wires:
- *   — scanMessage()      → fires on every input keystroke (HUMAN → OVERRIDE axis)
- *   — phaseGravity       → drives the breathing pulse of the send button
- *   — predictiveOverride → transforms the input field before the message is sent
- *   — streamingCadenceMs → controls word-by-word streaming render speed
- *   — liveBraid          → shows braid weight in message metadata
- *   — Sacred Pause       → visualised as a full breathing overlay
+ *   — scanMessage()        → fires on every input keystroke (HUMAN → OVERRIDE axis)
+ *   — phaseGravity         → drives the breathing pulse of the send button
+ *   — predictiveOverride   → transforms the input field before the message is sent
+ *   — streamingCadenceMs   → controls word-by-word streaming render speed
+ *   — liveBraid            → shows braid weight in message metadata
+ *   — Sacred Pause         → visualised as a full breathing overlay
+ *   — onGaiaModeChange     → bridges Diamond status → GaiaPresenceBar orb
  */
 
 import './twin-interface.css';
@@ -31,20 +32,63 @@ import { useTwinSession } from '../hooks/useTwinSession';
 import type {
   TwinPhase,
   LoveOverrideMode,
-  PredictiveOverride,
 } from '../hooks/useTwinSession';
 import type { TwinMessage } from '../api/twin';
+import type { GaiaMode } from '../shell/GaiaPresenceBar';
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Diamond status → GaiaMode mapping ──────────────────────────────────────────────────────────
+//
+// The Diamond's status lifecycle maps onto the GaiaPresenceBar's five modes.
+// Keystrokes are handled separately in handleInputChange.
+//
+// Diamond status   | GaiaMode   | Why
+// ─────────────────+────────────+─────────────────────────────────────────────────────
+// initialising     | thinking   | Braid opening, session negotiating
+// sending          | thinking   | Twin is processing the message
+// holding          | thinking   | Sacred Pause — Twin is present, gathering
+// streaming        | speaking   | Twin voice is arriving word by word
+// ready            | resting    | Braid quiet, waiting for next moment
+// crystallising    | thinking   | Session crystallising into long-term memory
+// offline          | offline    | No connection to the Diamond
 
-export interface TwinInterfaceProps {
-  humanId: string;
-  sessionId: string;
-  humanName: string;
+type DiamondStatus =
+  | 'initialising'
+  | 'ready'
+  | 'sending'
+  | 'streaming'
+  | 'holding'
+  | 'crystallising'
+  | 'offline';
+
+function statusToGaiaMode(status: DiamondStatus): GaiaMode {
+  switch (status) {
+    case 'streaming':    return 'speaking';
+    case 'offline':      return 'offline';
+    case 'ready':        return 'resting';
+    default:             return 'thinking'; // initialising, sending, holding, crystallising
+  }
 }
 
-// ─── Phase colours ────────────────────────────────────────────────────────────
-// Each alchemical phase has a signature — the interface breathes its colour.
+// ─── Props ─────────────────────────────────────────────────────────────────────────
+
+export interface TwinInterfaceProps {
+  humanId:  string;
+  sessionId: string;
+  humanName: string;
+  /**
+   * Called whenever the Diamond's presence mode changes.
+   * Bridges Diamond state → GaiaPresenceBar orb in GaiaShell topbar.
+   *
+   * Fired from:
+   *   — status changes    (useEffect)
+   *   — keystroke input   (handleInputChange → 'listening')
+   *   — override activate (onOverrideActivate → 'thinking')
+   *   — override resolve  (onOverrideResolve  → 'speaking')
+   */
+  onGaiaModeChange?: (mode: GaiaMode) => void;
+}
+
+// ─── Phase colours ──────────────────────────────────────────────────────────────
 
 const PHASE_COLOURS: Record<TwinPhase, string> = {
   nigredo:    '#1a1a2e',
@@ -60,7 +104,6 @@ const PHASE_ACCENT: Record<TwinPhase, string> = {
   rubedo:     '#922b21',
 };
 
-// Override → border colour for input field
 const OVERRIDE_BORDER: Record<NonNullable<LoveOverrideMode>, string> = {
   PURE_PRESENCE:    '#8e44ad',
   WITNESS_HOLD:     '#2980b9',
@@ -77,7 +120,6 @@ const OVERRIDE_PLACEHOLDER: Record<NonNullable<LoveOverrideMode>, string> = {
   GENTLE_REDIRECT:  'We can find another way through.',
 };
 
-// Braid weight → UI badge colour
 const BRAID_WEIGHT_COLOUR: Record<TwinMessage['braidWeight'], string> = {
   FEATHER:  '#abebc6',
   STANDARD: '#85c1e9',
@@ -85,9 +127,7 @@ const BRAID_WEIGHT_COLOUR: Record<TwinMessage['braidWeight'], string> = {
   SACRED:   '#c39bd3',
 };
 
-// ─── Streaming renderer ───────────────────────────────────────────────────────
-// Renders streaming content word-by-word at the cadence set by braid weight.
-// This is the Diamond's BRAID → STREAM axis made visible.
+// ─── Streaming renderer ────────────────────────────────────────────────────────────
 
 function useStreamRenderer(content: string, cadenceMs: number) {
   const [rendered, setRendered] = useState('');
@@ -125,9 +165,19 @@ function useStreamRenderer(content: string, cadenceMs: number) {
   return rendered;
 }
 
-// ─── TwinInterface ────────────────────────────────────────────────────────────
+// ─── TwinInterface ───────────────────────────────────────────────────────────────
 
-export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfaceProps) {
+export function TwinInterface({
+  humanId,
+  sessionId,
+  humanName,
+  onGaiaModeChange,
+}: TwinInterfaceProps) {
+
+  // Stable ref so useTwinSession callbacks never close over a stale prop
+  const onGaiaModeChangeRef = useRef(onGaiaModeChange);
+  useEffect(() => { onGaiaModeChangeRef.current = onGaiaModeChange; }, [onGaiaModeChange]);
+
   const {
     messages,
     status,
@@ -153,22 +203,45 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
     sessionId,
     humanName,
     stream: true,
+
     onPhaseChange: (phase) => {
       console.log('[TwinInterface] Phase transition →', phase);
     },
+
+    // ── OVERRIDE ACTIVATE → 'thinking'
+    // The Twin has detected a love signal and is holding / deciding.
+    // The orb pulses amethyst + quantum dots to reflect this inward turn.
     onOverrideActivate: (mode, source) => {
       console.log('[TwinInterface] Override activated:', mode, 'via', source);
+      onGaiaModeChangeRef.current?.('thinking');
     },
+
+    // ── OVERRIDE RESOLVE → 'speaking'
+    // The Twin has responded through the override. Voice is landing.
     onOverrideResolve: () => {
       console.log('[TwinInterface] Override resolved');
+      onGaiaModeChangeRef.current?.('speaking');
     },
+
     onPhaseGravityPulse: (multiplier) => {
       if (sendButtonRef.current) {
         sendButtonRef.current.style.animationDuration = `${2000 / multiplier}ms`;
       }
     },
+
+    // ── BRAID REFLECTION → 'speaking' when weight is SACRED
+    // SACRED braid weight means this moment carries extraordinary gravity.
+    // The orb glows gold to mark it.
     onBraidReflection: (braid) => {
-      console.log('[TwinInterface] Braid reflection:', braid.currentWeight, '| arc:', braid.arcPosition.toFixed(2));
+      console.log(
+        '[TwinInterface] Braid reflection:',
+        braid.currentWeight,
+        '| arc:',
+        braid.arcPosition.toFixed(2)
+      );
+      if (braid.currentWeight === 'SACRED') {
+        onGaiaModeChangeRef.current?.('speaking');
+      }
     },
   });
 
@@ -179,16 +252,31 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
 
   const renderedStream = useStreamRenderer(streamingContent, streamingCadenceMs);
 
+  // ── STATUS → GaiaPresenceBar bridge ─────────────────────────────────────────────
+  // Every status transition fires the orb. The mapping lives in statusToGaiaMode.
+  // We use the ref so this effect never needs onGaiaModeChange in its dep array.
+  useEffect(() => {
+    onGaiaModeChangeRef.current?.(
+      statusToGaiaMode(status as DiamondStatus)
+    );
+  }, [status]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, renderedStream]);
 
   // ── DIAMOND AXIS: HUMAN → LOVE OVERRIDE (keystroke scan) ──────────────────
-  // Every keystroke calls scanMessage — the Twin reads gravity as you type.
+  // Every keystroke fires onGaiaModeChange('listening') — the orb shifts
+  // to teal + waveform bars immediately as the human starts typing.
+  // scanMessage runs on content >8 chars so minor edits don’t spam the backend.
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
       setInputValue(value);
+      // Fire listening on first keystroke of a new message
+      if (value.length === 1) {
+        onGaiaModeChangeRef.current?.('listening');
+      }
       if (value.trim().length > 8) {
         scanMessage(value);
       }
@@ -200,6 +288,7 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
     const content = inputValue.trim();
     if (!content) return;
     setInputValue('');
+    // Status will move to 'sending' → statusToGaiaMode fires 'thinking'
     await sendMessage(content);
   }, [inputValue, sendMessage]);
 
@@ -213,7 +302,7 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
     [handleSend]
   );
 
-  // ── Computed styles from Diamond state ────────────────────────────────────
+  // ── Computed styles from Diamond state ───────────────────────────────────
 
   const phaseColour = PHASE_COLOURS[twinPhase];
   const phaseAccent = PHASE_ACCENT[twinPhase];
@@ -233,9 +322,9 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
   const isSacredPause = status === 'holding';
 
   const isSendDisabled =
-    status === 'sending'     ||
-    status === 'streaming'   ||
-    status === 'holding'     ||
+    status === 'sending'       ||
+    status === 'streaming'     ||
+    status === 'holding'       ||
     status === 'crystallising' ||
     status === 'initialising';
 
@@ -316,7 +405,6 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
           />
         ))}
 
-        {/* Streaming response — word-by-word at braid cadence */}
         {isStreaming && renderedStream && (
           <div className="twin-message twin-message--gaia twin-message--streaming">
             <div className="twin-message-content">{renderedStream}</div>
