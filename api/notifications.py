@@ -1,3 +1,4 @@
+"""api/notifications.py — stub router for main.py import compatibility."""
+from fastapi import APIRouter
 
-# Alias for main.py import compatibility
-router = routers
+router = APIRouter(prefix="/notifications", tags=["notifications"])
