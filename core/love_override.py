@@ -83,6 +83,8 @@ class OverrideSignal:
 
 @dataclass
 class OverrideDecision:
+    def __bool__(self) -> bool:
+        return self.activated
     """The handler's decision after evaluating the signal."""
     activated: bool
     condition: Optional[OverrideCondition]
@@ -197,9 +199,10 @@ class LoveOverrideHandler:
         self._active_overrides: dict[str, OverrideDecision] = {}  # session_id → decision
         self._override_history: list[dict] = []
 
-    def evaluate(self, signal: OverrideSignal = None, *, human_id: str = "", text: str = "", session_id: str = "") -> OverrideDecision:
-        # Convenience call: evaluate(human_id=..., text=...) used by api/twin.py and tests
-        if signal is None:
+    def evaluate(self, signal: OverrideSignal = None, *, human_id: str = "", text: str = "", session_id: str = ""):
+        # Convenience call: evaluate(human_id=..., text=...) — returns bool for simple callers
+        _convenience = signal is None
+        if _convenience:
             signal = OverrideSignal(human_id=human_id, text=text, session_id=session_id)
         """
         Evaluate an inbound signal and decide whether to activate the Override.

@@ -465,4 +465,13 @@ class TwinMemoryEngine(TemporalBraidEngine):
         if not self._human_id or self._human_id != human_id:
             super().__init__(human_id)
             self._human_id = human_id
-        return await super().load_session(human_id, session_id)
+        session = self.open_session(session_id or None)
+        return {
+            "human_name": self.profile.name if self.profile else human_id,
+            "twin_phase": self.profile.current_phase if self.profile else "nigredo",
+            "session_count": self.profile.total_sessions if self.profile else 0,
+            "arc_summary": self.get_arc_summary(),
+            "session_id": session.session_id,
+            "sacred_memory_active": False,
+            "arc_position": 0.0,
+        }
