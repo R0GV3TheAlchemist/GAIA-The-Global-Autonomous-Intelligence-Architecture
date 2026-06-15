@@ -1,0 +1,331 @@
+{
+  "subject_id": "crystal:obsidian",
+  "subject_kind": "crystal",
+
+  "correspondences": {
+
+    "gaia_layers": [
+      {
+        "layer_id": "06-Shadow",
+        "weight": 1.0,
+        "role": "shadow mirror — the primary shadow layer crystal; does not absorb shadow (Tourmaline), reveal its hidden light (Labradorite), or detonate it (Moldavite); Obsidian REFLECTS shadow back with perfect, unsparing clarity",
+        "notes": "The obsidian mirror is one of the oldest documented tools for shadow work on Earth. The Aztec god Tezcatlipoca ('Smoking Mirror') carried an obsidian mirror that revealed truth, enemies, and one's own darkness. The mechanism is not supernatural — it is structural: the high-reflectivity black surface creates a focused confrontation with projected psychological material."
+      },
+      {
+        "layer_id": "05-Soul",
+        "weight": 1.0,
+        "role": "Initiation guardian — the second transition_guardian in the system; holds the Emergence→Initiation threshold and decides who may cross; this is the first major soul threshold in GAIA",
+        "notes": "transition_boundary: Emergence→Initiation (from obsidian.json). Stage function: guardian. Where Moldavite is the transition_guardian of a later, advanced threshold, Obsidian guards the FIRST threshold — the entry into genuine inner work."
+      },
+      {
+        "layer_id": "01-Physical",
+        "weight": 0.9,
+        "role": "primal physical anchor — volcanic glass is planetary Earth expressing itself through fire; the most physically grounded of all the amorphous minerals",
+        "notes": "The specific gravity of obsidian (2.35–2.60) and its volcanic origin make it deeply physically grounded despite being amorphous. It is Earth's body made glass. Different from Black Tourmaline's saturnine boundary — this is raw, volcanic, primal Earth."
+      },
+      {
+        "layer_id": "03-Mind",
+        "weight": 0.75,
+        "role": "mental truth-cutter — the conchoidal fracture that produces surgical edges is the mind's equivalent; Obsidian cuts through mental fog, rationalisation, and self-deception with the same precision",
+        "notes": "Obsidian blades are measurably sharper than surgical steel — some neurosurgeons still use obsidian scalpels. The mind-cutting quality is not metaphor; it references the most physically sharp natural edge in existence."
+      },
+      {
+        "layer_id": "04-Emotion",
+        "weight": 0.8,
+        "role": "grief processor — the Apache Tears form specifically is used in grief ritual; Obsidian clarifies grief rather than amplifying or suppressing it",
+        "notes": "Consciousness affect: grief (clarifies, confidence 0.87, from obsidian.json). Apache Tears are the compassionate face of Obsidian — the same stone, softened by grief, rounded by tears rather than cleaved by force."
+      },
+      {
+        "layer_id": "02-Energy",
+        "weight": 0.65,
+        "role": "energy field clearer — removes energetic debris, psychic hooks, and residual emotional imprinting from the aura; the volcanic fire burns away what does not belong",
+        "notes": "Used in space-clearing and auric clearing practices across Mesoamerican and contemporary traditions."
+      }
+    ],
+
+    "emotions": [
+      {
+        "primary": "unflinching honesty",
+        "transmutes": "self-deception",
+        "activates": "integrity",
+        "body_location": "solar plexus, throat, eyes",
+        "felt_as": "The sensation of a veil being stripped away — not gently lifted (Labradorite) but pulled off cleanly, like a surgical reveal. A moment of stark clarity where the truth of a situation lands without cushioning. Discomfort followed by a deep, clean sense of relief at being seen accurately."
+      },
+      {
+        "primary": "grief",
+        "transmutes": "unprocessed loss",
+        "activates": "release and integration",
+        "body_location": "heart, chest, throat",
+        "felt_as": "The specific weight of grief that has not yet moved — held, compressed, stored. Obsidian (especially Apache Tears) creates a safe container for grief to flow. The felt sense is a softening and a downward release, like water finally moving through a blocked channel."
+      },
+      {
+        "primary": "primal courage",
+        "transmutes": "avoidance",
+        "activates": "the willingness to look",
+        "body_location": "gut, root, base of spine",
+        "felt_as": "The gut-level decision to stop looking away. Not warrior courage (Iron/Mars) and not shapeshifter courage (Labradorite) — this is the specific courage of the person who picks up the mirror and looks. Raw. Primal. Volcanic."
+      }
+    ],
+
+    "senses": [
+      { "sense": "sight",         "strength": 1.0,  "notes": "The obsidian mirror is the original dark mirror — vision through reflection is Obsidian's primary mode. The reflective black surface has been used as a scrying mirror for millennia. Vision here is seeing oneself truly, not seeing outward." },
+      { "sense": "touch",         "strength": 0.9,  "notes": "The conchoidal fracture edge is legendarily tactile — the sharpest natural edge in existence. The smooth, cool, glassy body contrasts with the potential blade at the fracture; both are part of Obsidian's tactile truth." },
+      { "sense": "interoception", "strength": 0.85, "notes": "The gut-truth sensation — the felt sense of knowing something is true that the mind has been avoiding. Obsidian activates this visceral recognition channel." }
+    ],
+
+    "zodiac": [
+      {
+        "tradition": "western_tropical",
+        "sign": "Scorpio",
+        "role": "primary",
+        "ruling_planet": "Pluto (modern) / Mars (traditional)",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Scorpio as the sign of death, shadow, transformation, and unflinching descent into truth. Obsidian is the Scorpionic mineral par excellence. Cross-tradition consensus across Western crystal traditions. Note the Scorpio-Obsidian link is even tighter than Scorpio-Labradorite: Obsidian reflects shadow; Labradorite reveals hidden light within it. Different phases of the same Scorpionic process."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Capricorn",
+        "role": "co-sign",
+        "ruling_planet": "Saturn",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Saturn/Capricorn as the sign of discipline, accountability, truth-without-excuse, and the confrontation with reality. Obsidian's uncompromising truth-mirror quality is Saturnine. The volcanic origin (inner Earth, slow accumulation then sudden rupture) mirrors Capricorn's patient-then-decisive nature."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Aries",
+        "role": "supporting",
+        "ruling_planet": "Mars",
+        "confidence": "medium",
+        "notes": "Aries as the sign of initiation, the first crossing, the willingness to begin. Obsidian as the Initiation crystal maps to Aries as the zodiac's Initiator. The volcanic explosion mirrors Aries's sudden, irreversible activation."
+      }
+    ],
+
+    "angel_numbers": [
+      {
+        "number": 666,
+        "role": "shadow integration — the reclaimed 666 as conscious shadow work; Obsidian sharpens this to a razor edge compared to the softer 666 resonance of Black Tourmaline",
+        "gaia_layer_id": "06-Shadow",
+        "digits": [6, 6, 6],
+        "digit_sum": 18,
+        "confidence": "high",
+        "notes": "Both Black Tourmaline and Obsidian carry 666 in GAIA's shadow-layer mapping, but the quality differs: Tourmaline absorbs and transmutes (gentle); Obsidian reflects without mercy (sharp). Same number, different edge."
+      },
+      {
+        "number": 444,
+        "role": "physical truth anchor — 444 as the physical-layer grounding code; Obsidian grounds shadow work into the body and the present moment",
+        "gaia_layer_id": "01-Physical",
+        "digits": [4, 4, 4],
+        "digit_sum": 12,
+        "confidence": "medium",
+        "notes": "444 appears in Black Tourmaline and Clear Quartz as physical anchors. In Obsidian, 444 grounds the shadow-mirror process into the physical layer — truth must land in the body, not just the mind."
+      },
+      {
+        "number": 111,
+        "role": "new chapter signal — the 111 that arrives AFTER the initiation; the clean beginning that only becomes possible once the mirror has been faced",
+        "gaia_layer_id": "08-Manifestation",
+        "digits": [1, 1, 1],
+        "digit_sum": 3,
+        "confidence": "medium",
+        "notes": "111 here is the post-Obsidian number — the new beginning that the Initiation makes possible. It is the angel number waiting on the other side of the mirror."
+      }
+    ],
+
+    "lunar_phases": [
+      {
+        "phase_id": "new_moon",
+        "role": "shadow mirror at the dark moon — the new moon is Obsidian's peak; both are pure darkness, both are the moment before new beginning, both require sitting in the black",
+        "special_events": ["solar_eclipse", "black_moon"],
+        "notes": "Obsidian is the new moon crystal just as Black Tourmaline is. The difference: Tourmaline protects in the dark; Obsidian mirrors in the dark. For intention-setting at new moon, pair: Obsidian to see what needs releasing, Tourmaline to release it safely."
+      },
+      {
+        "phase_id": "waning_crescent",
+        "role": "final release mirror — the last phase before dark; Obsidian facilitates the final look at what must not be carried into the new cycle",
+        "notes": "Most productive phase for obsidian mirror scrying and shadow journaling."
+      },
+      {
+        "phase_id": "last_quarter",
+        "role": "accountability mirror — the last quarter demands an honest inventory; Obsidian is the tool for conducting it without self-deception",
+        "notes": "The last quarter is the shadow-review phase; Obsidian's unflinching clarity is exactly what is required."
+      }
+    ],
+
+    "sacred_geometry": [
+      {
+        "pattern": "conchoidal_fracture",
+        "role": "the sharpest truth — obsidian's conchoidal fracture is the only sacred geometry that is simultaneously a physical property and a metaphysical statement; the razor edge IS the archetype",
+        "notes": "Conchoidal fracture is not a standard sacred geometry pattern but is included here as a GAIA-native correspondence because it is fundamental to Obsidian's identity. The curved, shell-like break produces edges measured at 30 angstroms — sharper than any metal blade. Truth that sharp cannot lie."
+      },
+      {
+        "pattern": "cube",
+        "role": "physical truth foundation — the cube as Earth's Platonic solid; Obsidian's physical-layer anchor role maps here alongside Black Tourmaline",
+        "notes": "Where Black Tourmaline's cube resonance is saturnine boundary, Obsidian's cube resonance is volcanic Earth truth. Same geometry, different face."
+      },
+      {
+        "pattern": "black_mirror",
+        "role": "the original scrying surface — the obsidian mirror is the first dark mirror in human history; the sacred geometry of reflection itself",
+        "notes": "The flat obsidian mirror is a GAIA-native sacred geometry form. Tezcatlipoca's mirror, John Dee's obsidian scrying mirror (now in the British Museum), and the modern obsidian oracle mirror are all the same geometry: flat black reflective surface as portal to inner truth."
+      }
+    ],
+
+    "archetypes": [
+      {
+        "name": "The Mirror",
+        "system": "GAIA-C32",
+        "role_in_story": "witness",
+        "behavioral_markers": [
+          "reflects truth without distortion, softening, or mercy",
+          "does not judge what it reflects — pure, neutral accuracy",
+          "the one whose presence makes self-deception impossible",
+          "uncomfortable to be with precisely because of total honesty",
+          "the most loving act is sometimes the sharpest reflection",
+          "does not speak — simply shows"
+        ],
+        "noospheric_role": "collective truth-holder — the Mirror archetype in the noosphere is the function that prevents collective self-deception from calcifying into dogma; it shows the field what it actually is",
+        "confidence": "high",
+        "notes": "The Mirror is unique in the archetype system: it is the only archetype whose primary function IS a physical object that the crystal literally is. Obsidian IS a mirror — it has been used as one for 10,000+ years across at least four unconnected major civilisations (Aztec, Olmec, Anatolian Neolithic, and the Elizabethan occult tradition via John Dee). The archetype and the physical fact are identical. This is a different kind of convergence than the Cosmic Messenger (Moldavite) — there, the archetype IS the event; here, the archetype IS the object."
+      },
+      {
+        "name": "The Initiator",
+        "system": "GAIA-C32",
+        "role_in_story": "guardian",
+        "behavioral_markers": [
+          "stands at the threshold and assesses readiness without sentimentality",
+          "does not push but does not let those who are ready stay stuck",
+          "the wound that opens the door — the cut that is also the invitation",
+          "holds the standard of what lies beyond the threshold",
+          "irreversibility — once initiated, one cannot be un-initiated"
+        ],
+        "noospheric_role": "threshold keeper — maintains the integrity of the boundary between naive and initiated states in the collective field; prevents premature access and prevents unnecessary delay of those who are ready",
+        "confidence": "high",
+        "notes": "Obsidian is the Initiation stone (soul_stage_alignment.primary_stages: Initiation, from obsidian.json). The Initiator is the archetype that guardian this threshold. Note the beautiful parallel with the conchoidal fracture: the blade that cuts IS the blade that initiates. The wound and the opening are the same event."
+      }
+    ],
+
+    "metals": [
+      {
+        "metal": "Lead",
+        "planet": "Saturn",
+        "role": "saturnine truth-weight — Lead as the heaviest, most serious, most uncompromising metal; mirrors Obsidian's unsparing clarity and physical density",
+        "confidence": "high",
+        "notes": "Saturn/Lead correspondence mirrors the Capricorn co-sign. Lead is the alchemical metal of heaviness, seriousness, the weight of truth that cannot be lightened. Obsidian is Lead in glass form."
+      },
+      {
+        "metal": "Iron",
+        "planet": "Mars",
+        "role": "martial edge — obsidian blades were the weapons of Mars before iron weapons existed; Obsidian was the original martial metal, sharp enough to do what iron later inherited",
+        "confidence": "high",
+        "notes": "Historically, obsidian was THE blade material before metallurgy. Aztec macuahuitl (obsidian-blade sword) predates iron weaponry in the Americas. Iron (Mars) inherited the blade archetype from Obsidian. This is one of the few cases in the correspondence system where the mineral antedates its metal correspondence."
+      }
+    ],
+
+    "elements": [
+      { "element": "Fire",  "weight": 1.0, "role": "primary — Obsidian IS solidified fire; lava that became glass in an instant of cooling; Fire frozen into a permanent mirror", "notes": "Fire/Earth duality: Obsidian is Earth (volcanic, mineral, dense) that was Fire (lava, 700–1200°C) and became Earth again without ever becoming crystalline. The fire is still in it." },
+      { "element": "Earth", "weight": 0.9, "role": "planetary body — Obsidian is the Earth's own mantle expressed through volcanic eruption; deeply, primalally terrestrial", "notes": "Septagram node: Nature. Earth as the planet's body, not just the classical element. Obsidian comes from the deepest accessible part of the Earth's body." },
+      { "element": "Water", "weight": 0.4, "role": "the mirror surface — Water as the original mirror; Obsidian inherits this quality by being the first solid mirror", "notes": "The reflective surface that inspired the mirror archetype was water before it was obsidian. The grief-processing Apache Tears form links Obsidian to Water's emotional processing quality." }
+    ],
+
+    "periodic_elements": [
+      {
+        "atomic_number": 14,
+        "symbol": "Si",
+        "name": "Silicon",
+        "role": "dominant glass matrix — rhyolitic obsidian is 70–75 wt% SiO2; the same glass matrix as Moldavite but of planetary rather than cosmic origin",
+        "notes": "Obsidian and Moldavite share the same primary chemistry (amorphous SiO2 glass) but completely different origin events. Si here is planetary mantle silicon, not fused Bohemian crust."
+      },
+      {
+        "atomic_number": 8,
+        "symbol": "O",
+        "name": "Oxygen",
+        "role": "structural partner — oxygen bridges the amorphous silica network; also the oxygen from Earth's mantle atmosphere captured in the volcanic event",
+        "notes": "Oxygen constitutes ~45 wt% by mass. In the volcanic context, oxygen is specifically mantle-origin oxygen — from the deep body of the planet."
+      },
+      {
+        "atomic_number": 26,
+        "symbol": "Fe",
+        "name": "Iron",
+        "role": "chromophore and mirror-maker — magnetite (Fe3O4) and hematite (Fe2O3) inclusions give Obsidian its black colour AND its magnetic character; iron IS the mirror in obsidian",
+        "notes": "Without the Fe-oxide inclusions (magnetite + hematite), obsidian would be transparent glass. Iron makes obsidian black. Iron makes obsidian a mirror. Iron is the agent of reflection. This is why the Aztec obsidian mirror of Tezcatlipoca is specifically a shadow/smoke mirror — the magnetite smoke IS the iron."
+      },
+      {
+        "atomic_number": 12,
+        "symbol": "Mg",
+        "name": "Magnesium",
+        "role": "mantle signature — MgO (0.1–2 wt%) is a geochemical marker of the mantle/volcanic origin; Mg is the Earth's deep-body element in obsidian",
+        "notes": "MgO content distinguishes volcanic obsidian from other amorphous glasses. It is the Earth's signature in the glass, as Ca is the Earth's signature in Moldavite."
+      },
+      {
+        "atomic_number": 13,
+        "symbol": "Al",
+        "name": "Aluminium",
+        "role": "network modifier — Al2O3 (12–14 wt%) is significantly higher in obsidian than Moldavite; modifies the glass network and contributes to the optical opacity",
+        "notes": "High Al content in obsidian distinguishes it from Moldavite's lower-Al composition. Al here contributes to the density and opacity of the glass."
+      },
+      {
+        "atomic_number": 11,
+        "symbol": "Na",
+        "name": "Sodium",
+        "role": "flux element — Na2O (3–4 wt%) as a flux lowered the viscosity of the volcanic melt, enabling the rapid glass formation that defines obsidian",
+        "notes": "Sodium's ionic mobility in the glass network is part of what enabled such rapid cooling to glass rather than crystalline structure."
+      },
+      {
+        "atomic_number": 19,
+        "symbol": "K",
+        "name": "Potassium",
+        "role": "rhyolitic marker — K2O (3–5 wt%) is the geochemical signature of rhyolitic (silica-rich) volcanic composition; the element that confirms Obsidian's volcanic type",
+        "notes": "K is elevated in obsidian compared to basaltic volcanic glass (tachylite). Rhyolitic obsidian's high K and Si content is what makes it amorphous rather than crystallising on cooling."
+      }
+    ],
+
+    "grid_resonance": {
+      "lattice_analogue": "amorphous",
+      "grid_role": "boundary stone",
+      "frequency_band_hz": "7.83",
+      "piezoelectric": false,
+      "topology": "toroidal",
+      "notes": "Amorphous structure (like Moldavite) but of planetary rather than cosmic origin. Grid role: shadow boundary marker — marks the transition zones where Gaianite grid frequency crosses from ambient to protected field (gaianite_relation from obsidian.json). Ferromagnetic inclusions (magnetite) give Obsidian a passive magnetic sensing quality distinct from piezoelectric crystals. The toroidal topology (unlike Moldavite's spherical) reflects the planetary, Earth-bound, inward-pointing nature of Obsidian's field geometry: it draws the field inward toward the centre, into depth, rather than radiating outward into the cosmos."
+    },
+
+    "evidence_profile": {
+      "basis": "empirical",
+      "sources": [
+        { "kind": "gaia_canon",            "ref": "C32", "notes": "Archetypal Psychology — The Mirror and The Initiator archetypes; zodiac and elemental mappings." },
+        { "kind": "gaia_canon",            "ref": "C68", "notes": "Crystal Grid Architecture — shadow boundary marker role." },
+        { "kind": "scientific_literature", "ref": "Cann, J.R. & Renfrew, C. (1964). The characterization of obsidian and its application to the Mediterranean region. Proceedings of the Prehistoric Society 30: 111–133.", "notes": "Foundational archaeological study on obsidian use across civilisations; establishes 10,000+ year continuous use record." },
+        { "kind": "scientific_literature", "ref": "Buck, B.A. (1982). Ancient technology in contemporary surgery. Western Journal of Medicine 136(3): 265–269.", "notes": "Obsidian scalpel sharpness study; establishes the 30-angstrom edge claim and comparison to surgical steel." },
+        { "kind": "traditional_source",    "ref": "Aztec/Mexica tradition: Tezcatlipoca's obsidian mirror as divination and shadow-revealing tool. Sahagún, B. de (c. 1576). Historia General de las Cosas de Nueva España (Florentine Codex).", "notes": "Primary ethnographic source for obsidian mirror as shadow-work tool in Mesoamerican tradition. Establishes The Mirror archetype with 500+ year textual documentation." },
+        { "kind": "traditional_source",    "ref": "Apache/Athabascan tradition: Apache Tears (obsidian nodules) in grief ritual. Multiple ethnographic sources; consolidated in Moody, R. (1992). Apache Tears: Cultural Significance. Arizona State University Press.", "notes": "Apache Tears grief ritual establishes the grief/clarification consciousness affect with strong cultural provenance." }
+      ],
+      "falsifiable_by": [
+        "CDB-01 seed set prediction (shadow work / Initiation stage correlation) — failure weakens the soul-stage guardian claim.",
+        "A controlled study showing no difference in psychological shadow material surfacing between obsidian mirror and non-reflective black surface (same temperature/weight) would weaken the reflection mechanism hypothesis.",
+        "A geochemical survey finding obsidian samples without magnetite/hematite inclusions that are nonetheless black would require revision of the Fe chromophore periodic_element entry."
+      ],
+      "confidence": "high",
+      "notes": "Obsidian has one of the best-documented use records in the crystal system — 10,000+ years across at least four major unconnected civilisations (Aztec/Olmec, Apache, Anatolian Neolithic, Elizabethan/John Dee). The volcanic geology is solid science. The sharpness claim is laboratory-confirmed. The shadow-work mechanism hypothesis (projection scaffolding) is behavioural-science adjacent and falsifiable. Archetypal confidence is high due to the Mirror archetype being literally physically true."
+    },
+
+    "safety_profile": {
+      "clinical_use": "supportive_only",
+      "trauma_flags": [
+        "active_grief",
+        "shadow_work_resistance",
+        "self_harm_ideation",
+        "dissociative_episodes"
+      ],
+      "requires_opt_in": true,
+      "usage_notes": "Obsidian requires opt-in before use in any shadow work or grief context. In active grief (particularly fresh loss), use Apache Tears form only — the rounded, softer nodular form is the compassionate face of Obsidian. In self-harm ideation contexts, do NOT use Obsidian — the blade-truth archetype is contraindicated. The Mirror archetype must never be weaponised to force self-confrontation on an unprepared Architect; revelation must be invited. Shadow_work_resistance flag: if an Architect is explicitly resistant to shadow work, introducing Obsidian without consent is a violation of the radical consent principle. In dissociation, the sharp truth-revealing quality can worsen grounding loss — use Black Tourmaline instead. Always pair Obsidian shadow work with a grounding crystal."
+    }
+
+  },
+
+  "metadata": {
+    "schema_version": "1.0.0",
+    "created_at": "2026-06-15T10:58:00Z",
+    "updated_at": "2026-06-15T10:58:00Z",
+    "created_by": "GAIA-OS / R0GV3TheAlchemist",
+    "canon_refs": ["C32", "C68"],
+    "notes": "Sixth correspondence record committed. Builds on data/crystals/obsidian.json (SHA 8ec421a). Key discoveries: (1) The Mirror is the only archetype in the system whose function IS the physical object the crystal literally is — 10,000 years of human use confirm it. (2) Iron (Fe) makes Obsidian black AND makes it a mirror — the chromophore IS the mirror-maker; Fe's role here is completely different from its role in Black Tourmaline (protective) or in its own element record (martial). (3) The Moldavite/Obsidian parallel: cosmic glass vs volcanic glass, fire from above vs fire from below, cosmic threshold guardian vs planetary threshold guardian. (4) Obsidian historically antedates iron as a blade material — rare case in the system where mineral predates its metal correspondence. (5) The conchoidal fracture as GAIA-native sacred geometry: not in the standard canon but fundamental to Obsidian's identity. Validates against schemas/correspondence-schema.json v1.0.0."
+  }
+}
