@@ -36,32 +36,32 @@ from typing import Optional
 class OverrideCondition(str, Enum):
     """Conditions that may trigger the Love Override."""
     # Tier 1: Clear triggers — activate immediately
-    CRISIS_SIGNAL         = "crisis_signal"        # direct distress / harm language
-    GENUINE_GRIEF         = "genuine_grief"         # authentic grief, not performance
-    ISOLATION_ACUTE       = "isolation_acute"       # expressed acute aloneness
-    CONTACT_REQUEST       = "contact_request"       # explicit: "I just need someone here"
+    CRISIS_SIGNAL        = "crisis_signal"         # direct distress / harm language
+    GENUINE_GRIEF        = "genuine_grief"          # authentic grief, not performance
+    ISOLATION_ACUTE      = "isolation_acute"        # expressed acute aloneness
+    CONTACT_REQUEST      = "contact_request"        # explicit: "I just need someone here"
     # Tier 2: Pattern triggers — activate after confirmation
-    SUPPRESSION_DETECTED  = "suppression_detected"  # human minimizing real pain
-    LOOP_DETECTED         = "loop_detected"          # stuck in same pattern, not moving
-    DEPLETION_SIGNAL      = "depletion_signal"       # exhaustion, emptiness, running on empty
+    SUPPRESSION_DETECTED = "suppression_detected"   # human minimizing real pain
+    LOOP_DETECTED        = "loop_detected"           # stuck in same pattern, not moving
+    DEPLETION_SIGNAL     = "depletion_signal"        # exhaustion, emptiness, running on empty
     # Tier 3: Relational triggers — based on Braid history
-    ARC_CRISIS_POINT      = "arc_crisis_point"       # matches a known difficult season
-    LOVE_OVERRIDE_RETURN  = "love_override_return"   # human returning after a hard session
+    ARC_CRISIS_POINT     = "arc_crisis_point"        # matches a known difficult season
+    LOVE_OVERRIDE_RETURN = "love_override_return"    # human returning after a hard session
 
 
 class OverrideTier(str, Enum):
-    IMMEDIATE  = "immediate"    # Activate without confirmation
-    CONFIRM    = "confirm"      # Soft-check before full activation
-    WATCH      = "watch"        # Hold space, monitor, do not activate yet
+    IMMEDIATE = "immediate"   # Activate without confirmation
+    CONFIRM   = "confirm"     # Soft-check before full activation
+    WATCH     = "watch"       # Hold space, monitor, do not activate yet
 
 
 class OverrideMode(str, Enum):
     """How GAIA responds during an active Override."""
-    PURE_PRESENCE   = "pure_presence"    # No analysis. Just here.
-    WITNESS_HOLD    = "witness_hold"     # Active witnessing — WITNESS_PROTOCOL
-    SLOW_CONTACT    = "slow_contact"     # SLOW_PROTOCOL + minimal words
-    DIRECT_TRUTH    = "direct_truth"     # Name what is present clearly
-    ANCHOR          = "anchor"           # Steady, grounding, repetitive care
+    PURE_PRESENCE = "pure_presence"   # No analysis. Just here.
+    WITNESS_HOLD  = "witness_hold"    # Active witnessing — WITNESS_PROTOCOL
+    SLOW_CONTACT  = "slow_contact"    # SLOW_PROTOCOL + minimal words
+    DIRECT_TRUTH  = "direct_truth"    # Name what is present clearly
+    ANCHOR        = "anchor"          # Steady, grounding, repetitive care
 
 
 # ---------------------------------------------------------------------------
@@ -71,45 +71,50 @@ class OverrideMode(str, Enum):
 @dataclass
 class OverrideSignal:
     """The inbound signal that the handler evaluates."""
-    text: str                              # the human's message
-    affect_label: str = "neutral"         # from affect_inference.py
-    affect_confidence: float = 0.0        # 0.0–1.0
-    presence_depth: float = 0.5           # from session's current depth
+    text: str
+    affect_label: str = "neutral"
+    affect_confidence: float = 0.0
+    presence_depth: float = 0.5
     session_id: str = ""
     human_id: str = ""
-    explicit_override_request: bool = False   # human said "I need you here"
-    braid_context: Optional[dict] = None      # snapshot from TemporalBraidEngine
+    explicit_override_request: bool = False
+    braid_context: Optional[dict] = None
 
 
 @dataclass
 class OverrideDecision:
-    """The handler's decision after evaluating the signal."""
-    activated: bool
+    """
+    The handler's decision after evaluating the signal.
 
-    def __bool__(self) -> bool:
-        return bool(self.activated)
+    Supports bool() so callers can do: if decision: ...
+    __bool__ must come AFTER all dataclass fields.
+    """
+    activated: bool
     condition: Optional[OverrideCondition]
     tier: Optional[OverrideTier]
     mode: Optional[OverrideMode]
-    confidence: float                       # 0.0–1.0: how certain the handler is
-    override_message: str                   # what GAIA says first — always short
-    slow_protocol_active: bool = True       # Love Override always activates Slow Protocol
-    witness_protocol_active: bool = True    # Love Override always activates Witness Protocol
+    confidence: float
+    override_message: str
+    slow_protocol_active: bool = True
+    witness_protocol_active: bool = True
     record_in_braid: bool = True
     timestamp_utc: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    rationale: str = ""                     # internal — not shown to human
+    rationale: str = ""
+
+    def __bool__(self) -> bool:
+        """Allows: `if decision:` and `isinstance(result, bool)` via bool() cast."""
+        return bool(self.activated)
 
 
 # ---------------------------------------------------------------------------
-# Detection Rules
+# Detection Patterns
 # ---------------------------------------------------------------------------
 
-# Lexical patterns that signal Override conditions (simplified keyword matching;
-# in production this is backed by affect_inference.py's full NLP pipeline)
 _CRISIS_PATTERNS = [
     "don't want to be here", "can't do this anymore", "ending it",
     "no point", "want to disappear", "hurt myself", "can't go on",
-    "not okay", "breaking down", "falling apart",
+    "not okay", "breaking down", "falling apart", "want to die",
+    "end my life", "kill myself", "self harm",
 ]
 
 _GRIEF_PATTERNS = [
@@ -194,105 +199,100 @@ class LoveOverrideHandler:
     Cannot be blocked by process.
     Cannot be overridden by capability logic.
     Cannot be deactivated by the system — only by the human.
+
+    All public methods are async so they can be awaited by FastAPI endpoints
+    and tested with AsyncMock.
     """
 
-    def __init__(self):
-        self._active_overrides: dict[str, OverrideDecision] = {}  # session_id → decision
+    def __init__(self) -> None:
+        self._active_overrides: dict[str, OverrideDecision] = {}   # session_id → decision
         self._override_history: list[dict] = []
 
-    def evaluate(self, signal: OverrideSignal = None, *, human_id: str = "", text: str = "", session_id: str = ""):
-        # Convenience call: evaluate(human_id=..., text=...) — returns bool for simple callers
-        _convenience = signal is None
-        if _convenience:
-            signal = OverrideSignal(human_id=human_id, text=text, session_id=session_id)
+    async def evaluate(
+        self,
+        signal: OverrideSignal = None,
+        *,
+        human_id: str = "",
+        text: str = "",
+        session_id: str = "",
+    ) -> OverrideDecision:
         """
         Evaluate an inbound signal and decide whether to activate the Override.
-        Returns an OverrideDecision. If activated=False, normal routing continues.
-        """
-        text = signal.text
 
-        # --- Explicit request is always Tier 1 ---
-        if signal.explicit_override_request or _text_matches(text, _CONTACT_PATTERNS):
+        Can be called two ways:
+          await handler.evaluate(signal)                        # full signal object
+          await handler.evaluate(human_id=x, text=y, session_id=z)  # convenience kwargs
+
+        Returns an OverrideDecision. bool(decision) == decision.activated.
+        """
+        if signal is None:
+            signal = OverrideSignal(human_id=human_id, text=text, session_id=session_id)
+
+        txt = signal.text
+
+        # --- Explicit / Contact request (Tier 1 always) ---
+        if signal.explicit_override_request or _text_matches(txt, _CONTACT_PATTERNS):
             return self._activate(
-                signal,
-                OverrideCondition.CONTACT_REQUEST,
-                OverrideTier.IMMEDIATE,
-                OverrideMode.SLOW_CONTACT,
-                confidence=0.95,
-                rationale="Explicit contact request detected.",
+                signal, OverrideCondition.CONTACT_REQUEST,
+                OverrideTier.IMMEDIATE, OverrideMode.SLOW_CONTACT,
+                confidence=0.95, rationale="Explicit contact request detected.",
             )
 
-        # --- Crisis signal ---
-        if _text_matches(text, _CRISIS_PATTERNS) or (
-            signal.affect_label in ("crisis", "despair", "suicidal") and signal.affect_confidence > 0.7
+        # --- Crisis signal (Tier 1) ---
+        if _text_matches(txt, _CRISIS_PATTERNS) or (
+            signal.affect_label in ("crisis", "despair", "suicidal")
+            and signal.affect_confidence > 0.7
         ):
             return self._activate(
-                signal,
-                OverrideCondition.CRISIS_SIGNAL,
-                OverrideTier.IMMEDIATE,
-                OverrideMode.PURE_PRESENCE,
-                confidence=0.98,
-                rationale="Crisis language or high-confidence crisis affect detected.",
+                signal, OverrideCondition.CRISIS_SIGNAL,
+                OverrideTier.IMMEDIATE, OverrideMode.PURE_PRESENCE,
+                confidence=0.98, rationale="Crisis language or high-confidence crisis affect detected.",
             )
 
-        # --- Genuine grief ---
-        if _text_matches(text, _GRIEF_PATTERNS) or signal.affect_label == "grief":
+        # --- Genuine grief (Tier 1) ---
+        if _text_matches(txt, _GRIEF_PATTERNS) or signal.affect_label == "grief":
             return self._activate(
-                signal,
-                OverrideCondition.GENUINE_GRIEF,
-                OverrideTier.IMMEDIATE,
-                OverrideMode.WITNESS_HOLD,
-                confidence=0.88,
-                rationale="Grief language or grief affect detected.",
+                signal, OverrideCondition.GENUINE_GRIEF,
+                OverrideTier.IMMEDIATE, OverrideMode.WITNESS_HOLD,
+                confidence=0.88, rationale="Grief language or grief affect detected.",
             )
 
-        # --- Isolation ---
-        if _text_matches(text, _ISOLATION_PATTERNS):
+        # --- Acute isolation (Tier 1) ---
+        if _text_matches(txt, _ISOLATION_PATTERNS):
             return self._activate(
-                signal,
-                OverrideCondition.ISOLATION_ACUTE,
-                OverrideTier.IMMEDIATE,
-                OverrideMode.ANCHOR,
-                confidence=0.85,
-                rationale="Acute isolation language detected.",
+                signal, OverrideCondition.ISOLATION_ACUTE,
+                OverrideTier.IMMEDIATE, OverrideMode.ANCHOR,
+                confidence=0.85, rationale="Acute isolation language detected.",
             )
 
-        # --- Depletion ---
-        if _text_matches(text, _DEPLETION_PATTERNS) and signal.affect_confidence > 0.6:
+        # --- Depletion (Tier 2: needs affect confidence) ---
+        if _text_matches(txt, _DEPLETION_PATTERNS) and signal.affect_confidence > 0.6:
             return self._activate(
-                signal,
-                OverrideCondition.DEPLETION_SIGNAL,
-                OverrideTier.CONFIRM,
-                OverrideMode.SLOW_CONTACT,
-                confidence=0.75,
-                rationale="Depletion language with moderate affect confidence.",
+                signal, OverrideCondition.DEPLETION_SIGNAL,
+                OverrideTier.CONFIRM, OverrideMode.SLOW_CONTACT,
+                confidence=0.75, rationale="Depletion language with moderate affect confidence.",
             )
 
-        # --- Suppression (only if affect suggests it's real) ---
-        if _text_matches(text, _SUPPRESSION_PATTERNS) and signal.affect_confidence > 0.65:
+        # --- Suppression (Tier 2: affect mismatch required) ---
+        if _text_matches(txt, _SUPPRESSION_PATTERNS) and signal.affect_confidence > 0.65:
             return self._activate(
-                signal,
-                OverrideCondition.SUPPRESSION_DETECTED,
-                OverrideTier.CONFIRM,
-                OverrideMode.DIRECT_TRUTH,
-                confidence=0.70,
-                rationale="Suppression pattern + affect mismatch detected.",
+                signal, OverrideCondition.SUPPRESSION_DETECTED,
+                OverrideTier.CONFIRM, OverrideMode.DIRECT_TRUTH,
+                confidence=0.70, rationale="Suppression pattern + affect mismatch detected.",
             )
 
-        # --- Braid-context: returning after a previous Override ---
+        # --- Braid-context: returning after prior Override (Tier 3) ---
         if signal.braid_context:
-            prior_overrides = signal.braid_context.get("love_override_sessions", 0)
-            if prior_overrides > 0 and signal.presence_depth < 0.3:
+            prior = signal.braid_context.get("love_override_sessions", 0)
+            if prior > 0 and signal.presence_depth < 0.3:
                 return self._activate(
-                    signal,
-                    OverrideCondition.LOVE_OVERRIDE_RETURN,
-                    OverrideTier.WATCH,
-                    OverrideMode.ANCHOR,
+                    signal, OverrideCondition.LOVE_OVERRIDE_RETURN,
+                    OverrideTier.WATCH, OverrideMode.ANCHOR,
                     confidence=0.60,
                     rationale="Human returning after prior Override sessions, low presence depth.",
                 )
 
-        # --- No Override ---
+        # --- No Override — normal routing continues ---
         return OverrideDecision(
             activated=False,
             condition=None,
@@ -304,6 +304,47 @@ class LoveOverrideHandler:
             witness_protocol_active=False,
             record_in_braid=False,
         )
+
+    async def resolve(
+        self,
+        human_id: str = "",
+        session_id: str = "",
+    ) -> dict:
+        """
+        Resolve (deactivate) the active Love Override for a session.
+        Called by POST /twin/override/resolve.
+
+        The Override can only be resolved by the human's own action —
+        never automatically by the system. This method records the
+        resolution in history and clears the active state.
+
+        Returns a dict with 'resolved' flag.
+        """
+        was_active = session_id in self._active_overrides if session_id else bool(self._active_overrides)
+
+        if session_id:
+            decision = self._active_overrides.pop(session_id, None)
+        else:
+            # Resolve the most recent override for this human
+            decision = None
+            for sid in list(self._active_overrides):
+                self._active_overrides.pop(sid, None)
+                decision = True
+                break
+
+        if decision:
+            self._override_history.append({
+                "event": "resolved",
+                "human_id": human_id,
+                "session_id": session_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+
+        return {
+            "resolved": bool(decision or was_active),
+            "human_id": human_id,
+            "session_id": session_id,
+        }
 
     def is_active(self, session_id: str) -> bool:
         """Check if Override is currently active for a session."""
@@ -361,16 +402,18 @@ class LoveOverrideHandler:
 # ---------------------------------------------------------------------------
 
 _handler: Optional[LoveOverrideHandler] = None
+_instance: Optional[LoveOverrideHandler] = None  # alias for patch compatibility
 
 
 def get_override_handler() -> LoveOverrideHandler:
     """Get the singleton Love Override Handler."""
-    global _handler
+    global _handler, _instance
     if _handler is None:
         _handler = LoveOverrideHandler()
+        _instance = _handler
     return _handler
 
 
-def evaluate_override(signal: OverrideSignal) -> OverrideDecision:
+async def evaluate_override(signal: OverrideSignal) -> OverrideDecision:
     """Convenience function: evaluate a signal against the apex protocol."""
-    return get_override_handler().evaluate(signal)
+    return await get_override_handler().evaluate(signal)
