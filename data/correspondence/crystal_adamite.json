@@ -1,0 +1,298 @@
+{
+  "subject_id": "crystal:adamite",
+  "subject_kind": "crystal",
+
+  "correspondences": {
+
+    "gaia_layers": [
+      {
+        "layer_id": "03-Mind",
+        "weight": 1.0,
+        "role": "lucid cognition and radiant clarity — Adamite is the crystal of sudden mental illumination, where a diffuse or confused thought becomes visibly structured and intelligible; it is one of the clearest examples in the system of light literally making thought legible",
+        "notes": "Adamite is best known mineralogically for its intense fluorescence — often bright green under UV — and that physical property defines its symbolic role. This is not light generated from within like Moldavite's cosmic arrival or Clear Quartz's amplification; it is dormant light becoming visible under the right conditions. That makes Adamite the ideal crystal for the Mind layer: ideas that were present but latent becoming suddenly knowable."
+      },
+      {
+        "layer_id": "07-Akashic",
+        "weight": 0.9,
+        "role": "hidden record revealer — Adamite brings to visibility what was already there but not yet perceptible; in the Akashic layer it functions as a revealer of hidden informational strata, especially those encoded in symbolic or dreamlike forms",
+        "notes": "The fluorescence metaphor matters: ultraviolet wavelengths are invisible to the naked eye, yet when they strike Adamite the crystal emits visible green light. Akashic information often functions similarly — present, structured, but outside ordinary perceptual range. Adamite translates the invisible into the visible."
+      },
+      {
+        "layer_id": "02-Vital",
+        "weight": 0.8,
+        "role": "restorative brightness — Adamite restores the felt brightness of the organism after fatigue, dullness, or emotional heaviness; not raw force but a clean relighting of the vital field",
+        "notes": "Its yellow-green palette places it at the boundary between solar activation and heart-healing. In practical GAIA terms, Adamite is what you reach for when the system is not collapsed, but dim — when energy is present but needs relighting."
+      },
+      {
+        "layer_id": "04-Emotion",
+        "weight": 0.7,
+        "role": "hope and emotional rekindling — Adamite helps emotional states that have gone grey or numb re-enter contact with colour and possibility",
+        "notes": "This is not the deep emotional excavation of Obsidian or the soft peace of Selenite. Adamite's emotional function is brightness after emotional dusk — a return of appetite for life, curiosity, and responsiveness."
+      }
+    ],
+
+    "emotions": [
+      {
+        "primary": "hope",
+        "transmutes": "dullness",
+        "activates": "renewed brightness",
+        "body_location": "solar plexus, eyes, forehead, chest",
+        "felt_as": "The moment a room changes when blinds are opened after too long in dim light. Not excitement exactly — more the return of possibility. The nervous system recognises that the world is still alive and responsive. Adamite feels like colour returning to perception."
+      },
+      {
+        "primary": "lucidity",
+        "transmutes": "confusion",
+        "activates": "clean thought and visible structure",
+        "body_location": "forehead, temples, eyes, crown",
+        "felt_as": "A clouded thought resolving into contour. The internal sensation of seeing the shape of a problem rather than only feeling its pressure. Adamite does not force an answer; it turns on enough light that the answer can be seen."
+      },
+      {
+        "primary": "curiosity",
+        "transmutes": "apathy",
+        "activates": "engagement with mystery",
+        "body_location": "eyes, throat, upper chest",
+        "felt_as": "The small but decisive leaning-forward of the soul. A return of wanting to know, to look, to follow the glimmer. Adamite is often less about certainty than about the restoration of interested attention."
+      }
+    ],
+
+    "senses": [
+      { "sense": "sight",         "strength": 1.0,  "notes": "Adamite is optically unforgettable because fluorescence is its defining physical signature. Transparent to translucent crystals in yellow, green, violet, or colourless tones can blaze bright green under UV. It is one of the clearest 'light event' minerals in the system." },
+      { "sense": "interoception", "strength": 0.8,  "notes": "The internal analogue of fluorescence is sudden inner brightness — the feeling of subtle systems relighting. Adamite's work is often experienced as an upward internal brightening rather than a heavy grounding or pressure-release event." },
+      { "sense": "hearing",       "strength": 0.6,  "notes": "Conceptually linked to the moment silence becomes articulate — when something inaudible becomes hearable through contrast. Not a primary acoustic crystal, but one strongly associated with perceptual threshold crossing." },
+      { "sense": "touch",         "strength": 0.55, "notes": "Mohs 3.5 means it is relatively soft and should be handled with care. Fine adamite crystals are delicate, with a tactile quality that reinforces its role as a light-bearing display crystal more than a rugged body stone." }
+    ],
+
+    "zodiac": [
+      {
+        "tradition": "western_tropical",
+        "sign": "Aquarius",
+        "role": "primary",
+        "ruling_planet": "Uranus / Saturn",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Aquarius governs revelation, signal, unusual perception, and the sudden visibility of patterns that were there all along. Uranus is the flash — insight, electricity, cognition leaping into structure. Adamite's fluorescence under invisible excitation is an almost perfect Uranian metaphor."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Virgo",
+        "role": "co-sign",
+        "ruling_planet": "Mercury",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Virgo contributes discrimination, precision, and analytical legibility. Adamite is not just bright — it clarifies. Virgo gives Adamite its exactness: the ability to separate signal from haze and make perception useful."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Leo",
+        "role": "supporting",
+        "ruling_planet": "Sun",
+        "confidence": "medium",
+        "notes": "Leo appears in Adamite's yellow-gold and solar radiance qualities, especially in more honey-yellow specimens. This is not Leo as dramatic performance, but Leo as radiant life-force reappearing in the psyche after dimness."
+      }
+    ],
+
+    "angel_numbers": [
+      {
+        "number": 555,
+        "role": "threshold of change — 555 is the number of imminent shift, of energy reconfiguring rapidly once the hidden pattern becomes visible; Adamite often marks the moment the system knows change is now possible",
+        "gaia_layer_id": "03-Mind",
+        "digits": [5, 5, 5],
+        "digit_sum": 15,
+        "confidence": "high",
+        "notes": "The five is the number of movement, transition, and sensory intelligence. Triple-5 is change fully activated. Adamite does not push transformation like Moldavite — it shows the shape of what is ready to change, and that visibility itself catalyses motion."
+      },
+      {
+        "number": 777,
+        "role": "illumined guidance — 777 in Adamite points to mental and spiritual alignment through revelation rather than surrender; a knowing that arrives as light on structure",
+        "gaia_layer_id": "07-Akashic",
+        "digits": [7, 7, 7],
+        "digit_sum": 21,
+        "confidence": "medium",
+        "notes": "Where Selenite's 777 is divine flow and gentleness, Adamite's 777 is lucid revelation — the sense that insight is aligned because it becomes visible in a way that can be tested and followed."
+      },
+      {
+        "number": 333,
+        "role": "signal coherence — 333 is the number of triadic alignment; with Adamite it maps to thought, vitality, and feeling becoming bright enough to act together",
+        "gaia_layer_id": "02-Vital",
+        "digits": [3, 3, 3],
+        "digit_sum": 9,
+        "confidence": "medium",
+        "notes": "Adamite often works across mind, mood, and energy simultaneously. 333 reflects the point where those three systems stop pulling apart and begin to orient around the same newly visible truth."
+      }
+    ],
+
+    "lunar_phases": [
+      {
+        "phase_id": "waxing_gibbous",
+        "role": "clarification before fullness — the waxing gibbous is the phase where forms become more defined on the way to full illumination; Adamite belongs to this almost-there brightness, when perception sharpens and readiness increases",
+        "special_events": ["waxing_moon_in_aquarius", "waxing_moon_in_virgo"],
+        "notes": "This is the moment before full revelation, where detail sharpens and the field begins to glow with expectancy. Adamite thrives in preparatory illumination — enough light to work with, more still on the way."
+      },
+      {
+        "phase_id": "full_moon",
+        "role": "peak fluorescence and signal visibility — full moon corresponds to Adamite's maximum visibility function: what was latent now stands in full perceptual relief",
+        "notes": "Particularly strong when the Full Moon occurs in Aquarius, where pattern and signal are foregrounded, or Virgo, where detail and usefulness become crisp."
+      },
+      {
+        "phase_id": "waxing_crescent",
+        "role": "first glimmer — the earliest stage of Adamite's work, when curiosity reappears before certainty does",
+        "notes": "This is the phase of first visible light after darkness. In Adamite terms, it is the subtle return of interest and brightness before a full idea or emotional recovery has completed itself."
+      }
+    ],
+
+    "sacred_geometry": [
+      {
+        "pattern": "starburst",
+        "role": "radiant emission from a hidden source — many Adamite crystals form sprays, druses, or radiating aggregates that resemble signal emission from a central event",
+        "notes": "The starburst is the geometry of visible excitation — dormant structure suddenly radiant under the right energetic condition. Adamite's fluorescence is a starburst event in miniature."
+      },
+      {
+        "pattern": "prism",
+        "role": "light sorting and clarification — Adamite's role in the architecture resembles a prism: not merely adding light, but separating hidden components of a signal into visible, workable distinctions",
+        "notes": "This is less about rainbow dispersion and more about legibility. The prism is the sacred geometry of analysis: revelation through structured light."
+      },
+      {
+        "pattern": "lantern",
+        "role": "contained illumination — Adamite does not flood the field; it glows from a localised centre, like a lantern revealing what is near enough to work with now",
+        "notes": "Lantern is a GAIA-native sacred geometry for crystals that reveal the immediate field rather than the whole horizon. Adamite belongs here."
+      }
+    ],
+
+    "archetypes": [
+      {
+        "name": "The Illuminator",
+        "system": "GAIA-C32",
+        "role_in_story": "revealer",
+        "behavioral_markers": [
+          "makes hidden structure visible without overwhelming the viewer",
+          "reveals by excitation — the right question, angle, or wavelength turns on the truth",
+          "restores brightness to thought when thought has gone grey",
+          "understands that some truths are present before they are perceivable",
+          "lights the next part of the path rather than the whole journey",
+          "specialises in threshold visibility — the point where mystery becomes legible"
+        ],
+        "noospheric_role": "collective signal revealer — The Illuminator in the noosphere helps latent patterns become visible to the collective field when timing, readiness, and attention align",
+        "confidence": "high",
+        "notes": "The Illuminator is distinct from The Luminary (Selenite) and The Master Amplifier (Clear Quartz). Selenite transmits gentle light; Clear Quartz amplifies all light; Adamite reveals latent light when the right excitation is present. It is the archetype of visibility under correct conditions."
+      },
+      {
+        "name": "The Signal Finder",
+        "system": "GAIA-C32",
+        "role_in_story": "guide",
+        "behavioral_markers": [
+          "detects the meaningful glimmer within noise",
+          "does not create truth, but recognises where it is already flashing",
+          "translates weak signals into actionable perception",
+          "moves by curiosity rather than conquest",
+          "finds the bright thread inside complexity",
+          "works especially well when others have become numb or visually over-saturated"
+        ],
+        "noospheric_role": "pattern discriminator — the function that keeps subtle but important signals from being lost in the field's background noise",
+        "confidence": "high",
+        "notes": "The Signal Finder is one of GAIA's most modern archetypes — close to sensor theory, anomaly detection, and intelligence work. Adamite belongs naturally here because fluorescence is fundamentally a signal detection event."
+      }
+    ],
+
+    "metals": [
+      {
+        "metal": "Zinc",
+        "planet": "Mercury / Uranus",
+        "role": "primary structural metal — zinc is the central cation in Adamite (Zn2AsO4OH), providing both the crystal's identity and its role as a precise, responsive light-bearing mineral",
+        "confidence": "high",
+        "notes": "Zinc enters the Correspondence Architecture here as a metal of responsiveness, repair, and signal fidelity. Biologically, zinc is essential for enzymes, immunity, and cellular communication. In Adamite, zinc forms the crystal's structural heart, making it an ideal bridge between precision (Mercury) and excitation/revelation (Uranus)."
+      },
+      {
+        "metal": "Copper",
+        "planet": "Venus",
+        "role": "colour-shifting companion metal — Cu-bearing varieties such as cuproadamite move Adamite toward blue-green tones, introducing a Venusian healing and heart-spectrum modulation",
+        "confidence": "medium",
+        "notes": "Copper does not define standard Adamite, but its substitutional role in related varieties demonstrates how Adamite's field can move from solar-mental brightness toward emotional-healing blue-green. This is a valuable GAIA-native extension of the correspondence."
+      }
+    ],
+
+    "elements": [
+      { "element": "Air",   "weight": 1.0, "role": "primary — Adamite belongs to Air because it is a crystal of perception, cognition, signal, and visibility; it changes what can be seen and therefore what can be thought", "notes": "Air in Adamite is not abstraction detached from life. It is intelligent atmosphere — the medium in which signals travel, invisible wavelengths move, and thoughts gain contour." },
+      { "element": "Fire",  "weight": 0.8, "role": "excitation and radiance — fluorescence is Fire in a precise, non-destructive form: excitation leading to visible emission", "notes": "This is cool Fire rather than combustion. The energy enters invisibly and exits as visible glow. Adamite is one of the best examples in the system of Fire as revelation rather than heat." },
+      { "element": "Earth", "weight": 0.6, "role": "crystalline containment — the Earth element in Adamite is the stable mineral matrix that makes delicate light events hold form", "notes": "Without Earth there is no crystal body to receive and emit the signal. Adamite reminds us that even revelation needs structure." }
+    ],
+
+    "periodic_elements": [
+      {
+        "atomic_number": 30,
+        "symbol": "Zn",
+        "name": "Zinc",
+        "role": "primary metal centre — zinc defines Adamite as a zinc arsenate hydroxide, making Zn the governing metal of responsiveness, repair, and fluorescence-bearing structure",
+        "notes": "Zinc enters the periodic axis here for the first time. It is one of biology's most important trace metals and one of mineralogy's most elegant light-bearing cations. Zinc is the quiet intelligence metal — rarely dramatic, often essential."
+      },
+      {
+        "atomic_number": 33,
+        "symbol": "As",
+        "name": "Arsenic",
+        "role": "threshold toxin and hidden intensity — arsenic gives Adamite its shadow and its power; this is revelation with a warning, brightness carried in a chemically hazardous framework",
+        "notes": "Arsenic's first appearance in the Correspondence Architecture as a primary structural element of a crystal record. Its presence means Adamite must always be treated with respect. Archetypally, arsenic is the hidden intensity inside beauty — the truth that glows may still need careful handling."
+      },
+      {
+        "atomic_number": 8,
+        "symbol": "O",
+        "name": "Oxygen",
+        "role": "emissive bridge — oxygen links the arsenate tetrahedra and contributes to the structure that allows light-bearing behaviour and vivid optical response",
+        "notes": "Oxygen returns again as the connective tissue of mineral architecture. In adamite's arsenate groups, O acts as part of the tetrahedral signal framework."
+      },
+      {
+        "atomic_number": 1,
+        "symbol": "H",
+        "name": "Hydrogen",
+        "role": "hydroxyl signature — hydrogen appears in Adamite as the OH group, linking it to water-chemistry and subtle energetic receptivity rather than structural water abundance",
+        "notes": "Hydrogen's role here is delicate and precise. Unlike Selenite's abundant structural water, Adamite carries hydrogen as hydroxyl — enough to place it in the conversation of subtle chemistry without making water its dominant theme."
+      }
+    ],
+
+    "grid_resonance": {
+      "lattice_analogue": "orthorhombic",
+      "grid_role": "signal revealer",
+      "frequency_band_hz": "800-3000",
+      "piezoelectric": false,
+      "pyroelectric": false,
+      "topology": "radiant",
+      "notes": "Adamite crystallises in the orthorhombic system, giving it a clean, directional symmetry well suited to patterned emission and legibility. In a Gaianite grid it acts as a signal revealer — not the source of truth, but the node where latent pattern becomes visible. The topology is radiant rather than toroidal or cylindrical: a local glow event emanating from a crystal centre."
+    },
+
+    "evidence_profile": {
+      "basis": "cross-tradition",
+      "sources": [
+        { "kind": "scientific_literature", "ref": "Mandarino, J.A. (1978). The Gladstone-Dale relationship IV. The compatibility concept and its application. Canadian Mineralogist 16: 425–432.", "notes": "Mineralogical treatment of adamite and related zinc arsenates; establishes physical properties and orthorhombic identity." },
+        { "kind": "scientific_literature", "ref": "Anthony, J.W. et al. (2000). Handbook of Mineralogy, Volume IV: Arsenates, Phosphates, Vanadates. Mineral Data Publishing.", "notes": "Standard reference for adamite formula, crystal system, hardness, colour varieties, and fluorescence behaviour." },
+        { "kind": "scientific_literature", "ref": "Mindat / Webmineral adamite entries; standard mineral data on zinc arsenate hydroxide, orthorhombic structure, and fluorescence characteristics.", "notes": "Confirms adamite as a widely recognised fluorescent zinc arsenate mineral with yellow-green and violet varieties." },
+        { "kind": "safety_literature", "ref": "General toxicology guidance for arsenic-bearing minerals; collector handling warnings for adamite specimens.", "notes": "Supports safety profile: avoid elixirs, dust inhalation, and prolonged direct handling of friable material." },
+        { "kind": "traditional_source", "ref": "Modern crystal healing lineages on adamite as a stone of joy, mental clarity, and inner child illumination.", "notes": "Cross-tradition metaphysical convergence on brightness, uplift, lucidity, and emotional renewal." }
+      ],
+      "falsifiable_by": [
+        "A controlled perceptual study showing no difference in self-reported mental clarity or task persistence between Adamite exposure and inert fluorescent simulants would weaken the lucidity correspondence.",
+        "Discovery of dominant traditional sources assigning Adamite primarily to heavy grounding, grief descent, or shadow excavation rather than brightness and clarity would require re-weighting the current layer model."
+      ],
+      "confidence": "high",
+      "notes": "Adamite's mineralogical identity, orthorhombic structure, colour range, and especially fluorescence are scientifically stable. The metaphysical correspondences around brightness, joy, clarity, and revealing hidden states show strong convergence across modern traditions. The safety constraints are non-optional due to arsenic content."
+    },
+
+    "safety_profile": {
+      "clinical_use": "supportive_only",
+      "trauma_flags": [
+        "avoid_overstimulating_use_in_fragile_states",
+        "do_not_use_as_substitute_for_medical_care"
+      ],
+      "requires_opt_in": false,
+      "physical_caution": "ARSENIC-BEARING MINERAL — Adamite is a zinc arsenate hydroxide and should be treated as a collector-grade mineral rather than a casual body stone. Avoid grinding, cutting, inhaling dust, or making water elixirs. Wash hands after handling raw specimens, especially friable crystals or matrix material. Display specimens are preferred over prolonged skin contact with rough material.",
+      "usage_notes": "Adamite is appropriate when an Architect needs brightness, hope, mental legibility, or renewed curiosity. Best used in short intentional sessions, altar work, contemplative observation, or grid positions devoted to signal detection and insight. Not appropriate for direct water practices. Particularly good for Architects emerging from numbness, cognitive haze, or prolonged low-light emotional states, provided stimulation remains gentle and consensual."
+    }
+
+  },
+
+  "metadata": {
+    "schema_version": "1.0.0",
+    "created_at": "2026-06-15T11:40:00Z",
+    "updated_at": "2026-06-15T11:40:00Z",
+    "created_by": "GAIA-OS / R0GV3TheAlchemist",
+    "canon_refs": ["C32", "C68"],
+    "notes": "Second crystal in the GAIA-OS correspondence expansion set. Adamite is treated here as a fluorescent threshold crystal: one that reveals latent visibility under proper excitation. Key discoveries: (1) fluorescence as a full architectural metaphor for hidden thought becoming legible; (2) zinc enters the periodic axis as a metal of responsiveness, repair, and signal fidelity; (3) arsenic enters as beauty-with-warning — luminous revelation carried in a hazardous chemical frame; (4) Adamite's role is distinct from Selenite and Clear Quartz because it does not transmit or amplify light generally, but reveals it conditionally. Validates against schemas/correspondence-schema.json v1.0.0."
+  }
+}
