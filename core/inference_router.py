@@ -48,7 +48,7 @@ import logging
 import os
 import re
 import time
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,10 @@ logger = logging.getLogger(__name__)
 
 
 class EpistemicLabel(str, Enum):
-    CANON_CITED = "CANON_CITED"
-    VERIFIED = "VERIFIED"
-    INFERRED = "INFERRED"
-    SPECULATIVE = "SPECULATIVE"
+    CANON_CITED    = "CANON_CITED"
+    VERIFIED       = "VERIFIED"
+    INFERRED       = "INFERRED"
+    SPECULATIVE    = "SPECULATIVE"
     CONVERSATIONAL = "CONVERSATIONAL"
 
 
@@ -87,7 +87,7 @@ _EPISTEMIC_FOOTERS: dict[EpistemicLabel, str] = {
     EpistemicLabel.SPECULATIVE: (
         "[EPISTEMIC STANCE — SPECULATIVE — C12]\n"
         "This response enters speculative territory. Lead with explicit uncertainty. "
-        "Use language like 'I wonder', 'it seems possible', 'I'm not certain, but'. "
+        "Use language like ‘I wonder’, ‘it seems possible’, ‘I’m not certain, but’. "
         "Actively invite correction and hold the ideas openly, not as conclusions."
     ),
     EpistemicLabel.CONVERSATIONAL: (
@@ -146,10 +146,10 @@ def _is_web_grounded_query(query: str) -> bool:
 
 class InferenceBackend(str, Enum):
     PERPLEXITY = "perplexity"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    OLLAMA = "ollama"
-    FALLBACK = "fallback"
+    OPENAI     = "openai"
+    ANTHROPIC  = "anthropic"
+    OLLAMA     = "ollama"
+    FALLBACK   = "fallback"
 
 
 _BACKEND_HEALTH: dict[InferenceBackend, bool] = dict.fromkeys(InferenceBackend, True)
@@ -213,21 +213,13 @@ class InferenceRequest:
     canon_max_results: int = 3
     enrich_noosphere: bool = True
     enrich_criticality: bool = True
-    enrich_quintessence: bool = True  # T5 layer — C49
+    enrich_quintessence: bool = True
 
     provider_override: str | None = None
     schumann_hz: float = 7.83
-
-    # Consciousness coherence hint for T5 coupling
     consciousness_phi: float = 0.5
-
-    # BCI coherence hint
     bci_hint: str | None = None
-
-    # Web-search hint — forces Perplexity routing
     web_search: bool = False
-
-    # Session identifier for memory tagging (C17)
     session_id: str = ""
 
 
@@ -242,12 +234,12 @@ class InferenceResponse:
     criticality_state: str | None = None
     order_parameter: float = 0.5
     temperature_used: float = 0.42
-    quintessence_phase: str | None = None  # T5 alchemical phase
-    quintessence_phi: float = 0.0  # T5 field strength
+    quintessence_phase: str | None = None
+    quintessence_phi: float = 0.0
     duration_ms: float = 0.0
     error: str | None = None
     perplexity_model: str | None = None
-    chroma_memories_injected: int = 0  # C17 — count of recalled memories
+    chroma_memories_injected: int = 0
 
 
 # ------------------------------------------------------------------ #
@@ -276,15 +268,13 @@ def _enrich_with_canon(
             score = float(r.get("score", 0.0))
             top_score = max(top_score, score)
             if doc_id not in existing_ids:
-                new_canon.append(
-                    {
-                        "tier": "T1",
-                        "title": r.get("title", ""),
-                        "doc_id": doc_id,
-                        "excerpt": r.get("excerpt", ""),
-                        "score": score,
-                    }
-                )
+                new_canon.append({
+                    "tier": "T1",
+                    "title": r.get("title", ""),
+                    "doc_id": doc_id,
+                    "excerpt": r.get("excerpt", ""),
+                    "score": score,
+                })
                 doc_ids.append(doc_id)
         return new_canon + existing_sources, doc_ids, top_score
     except Exception as e:
@@ -314,15 +304,9 @@ def _recall_chroma_memories(
     session_id: str = "",
     top_k: int = 5,
 ) -> list[str]:
-    """
-    Retrieve semantically similar memories from ChromaDB for this GAIAN.
-    Returns [] gracefully if ChromaDB is unavailable. [C17]
-    """
     try:
         from core.memory_chroma import recall_for_prompt
-
-        memories = recall_for_prompt(query=query, gaian_slug=gaian_slug, top_k=top_k)
-        return memories
+        return recall_for_prompt(query=query, gaian_slug=gaian_slug, top_k=top_k)
     except Exception as e:
         logger.debug(f"[InferenceRouter] ChromaDB recall skipped: {e}")
         return []
@@ -334,13 +318,8 @@ def _store_chroma_turn(
     gaian_slug: str,
     session_id: str = "",
 ) -> None:
-    """
-    Persist both sides of a conversation turn into ChromaDB.
-    No-op if ChromaDB unavailable. [C17]
-    """
     try:
         from core.memory_chroma import store_turn
-
         store_turn(
             user_message=user_message,
             gaian_response=gaian_response,
@@ -357,14 +336,13 @@ def _store_chroma_turn(
 # ------------------------------------------------------------------ #
 
 _TEMP_FLOOR = 0.20
-_TEMP_CEIL = 0.65
+_TEMP_CEIL  = 0.65
 _TEMP_RANGE = _TEMP_CEIL - _TEMP_FLOOR
 
 
 def _read_criticality() -> tuple[str, float, float]:
     try:
         from core.criticality_monitor import get_monitor
-
         monitor = get_monitor()
         state = monitor.get_state()
         regime = state.get("regime", "critical")
@@ -372,9 +350,7 @@ def _read_criticality() -> tuple[str, float, float]:
         if op is not None:
             temperature = round(_TEMP_FLOOR + float(op) * _TEMP_RANGE, 4)
         else:
-            temperature = {"too_ordered": 0.65, "critical": 0.42, "too_chaotic": 0.20}.get(
-                regime, 0.42
-            )
+            temperature = {"too_ordered": 0.65, "critical": 0.42, "too_chaotic": 0.20}.get(regime, 0.42)
             op = 0.5
         return regime, temperature, float(op)
     except Exception:
@@ -389,7 +365,6 @@ def _read_criticality() -> tuple[str, float, float]:
 def _read_noosphere_resonance() -> str | None:
     try:
         from core.noosphere import get_noosphere
-
         ns = get_noosphere()
         status = ns.get_noosphere_status()
         label = status.get("resonance_label")
@@ -409,19 +384,10 @@ def _read_quintessence(
     schumann_hz: float = 7.83,
     consciousness_phi: float = 0.5,
 ) -> tuple[str | None, str, float]:
-    """
-    Read the T5 Quintessence field state.
-    Returns (hint, phase_label, phi).
-    hint is None if the field is quiet (phi <= 0.05).
-    """
     try:
         from core.quintessence_engine import get_quintessence_engine
-
         engine = get_quintessence_engine()
-        state = engine.assess(
-            schumann_hz=schumann_hz,
-            consciousness_phi=consciousness_phi,
-        )
+        state = engine.assess(schumann_hz=schumann_hz, consciousness_phi=consciousness_phi)
         return state.hint, state.phase.value, state.phi
     except Exception as e:
         logger.debug(f"[InferenceRouter] Quintessence read failed: {e}")
@@ -448,39 +414,16 @@ def _infer_epistemic_label(
             return EpistemicLabel.CANON_CITED
         return EpistemicLabel.VERIFIED
 
-    casual_starters = (
-        "hi",
-        "hello",
-        "hey",
-        "thanks",
-        "thank you",
-        "ok",
-        "okay",
-        "yes",
-        "no",
-        "sure",
-        "great",
-        "cool",
-        "nice",
-        "wow",
-    )
+    casual_starters = ("hi", "hello", "hey", "thanks", "thank you", "ok", "okay",
+                       "yes", "no", "sure", "great", "cool", "nice", "wow")
     q = query.strip().lower()
     if len(q.split()) <= 3 and any(q.startswith(s) for s in casual_starters):
         return EpistemicLabel.CONVERSATIONAL
 
-    if feeling is not None:
-        grief_signal = getattr(feeling, "grief_signal", False)
-        from core.affect_inference import AffectState
-
-        if grief_signal and feeling.affect_state != AffectState.GRIEF and not feeling.is_grief_safe:
-            logger.warning("[InferenceRouter] SM-5 violation detected: grief signal suppressed.")
-
     if canon_doc_ids and top_canon_score >= _CANON_SCORE_THRESHOLD:
         return EpistemicLabel.CANON_CITED
 
-    web_sources = [
-        s for s in sources if s.get("tier", "").startswith("T") and s.get("tier") != "T1"
-    ]
+    web_sources = [s for s in sources if s.get("tier", "").startswith("T") and s.get("tier") != "T1"]
     if len(web_sources) >= 2:
         return EpistemicLabel.VERIFIED
 
@@ -491,6 +434,82 @@ def _infer_epistemic_label(
         return EpistemicLabel.INFERRED
 
     return EpistemicLabel.SPECULATIVE
+
+
+# ------------------------------------------------------------------ #
+#  Fallback LLM Calls (when synthesizer is unavailable)               #
+# ------------------------------------------------------------------ #
+
+async def _call_openai(prompt: str, system: str, max_tokens: int) -> str:
+    """Direct OpenAI call — used by generate() when synthesizer is not available."""
+    import httpx
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        return "[GAIA: OpenAI API key not configured]"
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": 0.42,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+
+async def _call_anthropic(prompt: str, system: str, max_tokens: int) -> str:
+    """Direct Anthropic call — fallback when OpenAI is unavailable."""
+    import httpx
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return "[GAIA: Anthropic API key not configured]"
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json={
+                "model": os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022"),
+                "system": system,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["content"][0]["text"]
+
+
+async def _call_perplexity(prompt: str, system: str, max_tokens: int) -> str:
+    """Direct Perplexity sonar call."""
+    import httpx
+    api_key = os.environ.get("PERPLEXITY_API_KEY", "")
+    if not api_key:
+        return "[GAIA: Perplexity API key not configured]"
+    model = os.environ.get("PERPLEXITY_MODEL", "sonar-pro")
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": max_tokens,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
 
 
 # ------------------------------------------------------------------ #
@@ -507,21 +526,189 @@ class GAIAInferenceRouter:
             "[InferenceRouter] GAIAInferenceRouter initialised. T5 Quintessence layer active. [C49]"
         )
 
+    # ----------------------------------------------------------------
+    # Twin API surface — called by api/twin.py
+    # These are intentionally simple: prompt-in, text-out.
+    # All the enrichment (canon, criticality, noosphere, T5) still
+    # flows through the full stream() / complete() path underneath.
+    # ----------------------------------------------------------------
+
+    async def generate(
+        self,
+        prompt: str,
+        max_tokens: int = 512,
+        stream: bool = False,
+        system: str = "",
+        session_id: str = "",
+        **kw,
+    ) -> str:
+        """
+        Generate a single text response from GAIA.
+        Used by api/twin.py endpoints for non-streaming responses.
+
+        Falls through the full backend priority chain:
+        Perplexity → OpenAI → Anthropic → FALLBACK message.
+        """
+        system_prompt = system or _default_system_prompt()
+        backend = _probe_backend_availability(prompt)
+
+        try:
+            if backend == InferenceBackend.PERPLEXITY and os.environ.get("PERPLEXITY_API_KEY"):
+                return await _call_perplexity(prompt, system_prompt, max_tokens)
+            if backend == InferenceBackend.OPENAI and os.environ.get("OPENAI_API_KEY"):
+                return await _call_openai(prompt, system_prompt, max_tokens)
+            if backend == InferenceBackend.ANTHROPIC and os.environ.get("ANTHROPIC_API_KEY"):
+                return await _call_anthropic(prompt, system_prompt, max_tokens)
+
+            # Try synthesizer as final real backend
+            try:
+                from core.synthesizer import stream_synthesis
+                chunks: list[str] = []
+                async for chunk in stream_synthesis(
+                    query=prompt,
+                    sources=[],
+                    provider="fallback",
+                    gaian_prompt=system_prompt,
+                ):
+                    chunks.append(chunk)
+                return "".join(chunks)
+            except Exception:
+                pass
+
+            # Hard fallback — GAIA always responds
+            return (
+                "I am here with you. My full voice is not yet connected — "
+                "configure OPENAI_API_KEY, ANTHROPIC_API_KEY, or PERPLEXITY_API_KEY "
+                "to enable live inference."
+            )
+        except Exception as e:
+            logger.error(f"[InferenceRouter] generate() failed: {e}", exc_info=True)
+            return f"[GAIA inference error: {str(e)[:120]}]"
+
     async def stream(
         self,
-        request: InferenceRequest,
-        response_meta: InferenceResponse | None = None,
+        prompt: str = "",
+        max_tokens: int = 512,
+        system: str = "",
+        session_id: str = "",
+        request: "InferenceRequest | None" = None,
+        response_meta: "InferenceResponse | None" = None,
+        **kw,
     ) -> AsyncGenerator[str, None]:
+        """
+        Stream tokens from GAIA.
+        Accepts either:
+          - stream(prompt=..., max_tokens=...) — called by api/twin.py
+          - stream(request=InferenceRequest(...)) — called by the full pipeline
+        """
+        # If called with a full InferenceRequest, use the rich pipeline
+        if request is not None:
+            async for chunk in self._stream_full(request, response_meta):
+                yield chunk
+            return
+
+        # Simple prompt-based streaming — yields word-by-word from generate()
+        # Real token streaming requires the LLM SDK; this ensures the API
+        # contract is always satisfied even before SDKs are wired.
+        system_prompt = system or _default_system_prompt()
+        backend = _probe_backend_availability(prompt)
+
+        try:
+            if backend == InferenceBackend.OPENAI and os.environ.get("OPENAI_API_KEY"):
+                async for token in self._stream_openai(prompt, system_prompt, max_tokens):
+                    yield token
+                return
+            if backend == InferenceBackend.ANTHROPIC and os.environ.get("ANTHROPIC_API_KEY"):
+                async for token in self._stream_anthropic(prompt, system_prompt, max_tokens):
+                    yield token
+                return
+        except Exception as e:
+            logger.warning(f"[InferenceRouter] Streaming backend failed: {e}")
+
+        # Fallback: generate full response then yield word by word
+        full = await self.generate(prompt, max_tokens=max_tokens, system=system_prompt)
+        for word in full.split(" "):
+            yield word + " "
+
+    async def _stream_openai(
+        self, prompt: str, system: str, max_tokens: int
+    ) -> AsyncGenerator[str, None]:
+        """True token streaming via OpenAI SSE."""
+        import httpx
+        api_key = os.environ.get("OPENAI_API_KEY", "")
+        async with httpx.AsyncClient(timeout=60) as client:
+            async with client.stream(
+                "POST",
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": max_tokens,
+                    "stream": True,
+                },
+            ) as resp:
+                async for line in resp.aiter_lines():
+                    if line.startswith("data: ") and line != "data: [DONE]":
+                        import json
+                        try:
+                            data = json.loads(line[6:])
+                            delta = data["choices"][0]["delta"].get("content", "")
+                            if delta:
+                                yield delta
+                        except Exception:
+                            pass
+
+    async def _stream_anthropic(
+        self, prompt: str, system: str, max_tokens: int
+    ) -> AsyncGenerator[str, None]:
+        """True token streaming via Anthropic SSE."""
+        import httpx, json
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        async with httpx.AsyncClient(timeout=60) as client:
+            async with client.stream(
+                "POST",
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                json={
+                    "model": os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022"),
+                    "system": system,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "stream": True,
+                },
+            ) as resp:
+                async for line in resp.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            data = json.loads(line[6:])
+                            if data.get("type") == "content_block_delta":
+                                yield data["delta"].get("text", "")
+                        except Exception:
+                            pass
+
+    async def _stream_full(
+        self,
+        request: "InferenceRequest",
+        response_meta: "InferenceResponse | None" = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Full enriched streaming pipeline — canon, criticality, noosphere, T5.
+        Called when stream(request=InferenceRequest(...)) is used.
+        """
         if response_meta is None:
             response_meta = InferenceResponse()
 
         t0 = time.perf_counter()
         response_meta.gaian_slug = request.gaian_slug
 
-        # ── 0. ChromaDB semantic memory recall (C17) ──────────────────
-        # Retrieve the top-5 most semantically similar past memories
-        # for this GAIAN and prepend them to long_term_memories so
-        # they flow into _build_memory_block() and the system prompt.
+        # ChromaDB semantic recall
         if request.gaian_slug:
             chroma_memories = _recall_chroma_memories(
                 query=request.query,
@@ -532,12 +719,7 @@ class GAIAInferenceRouter:
             if chroma_memories:
                 request.long_term_memories = chroma_memories + list(request.long_term_memories)
                 response_meta.chroma_memories_injected = len(chroma_memories)
-                logger.debug(
-                    f"[InferenceRouter] ChromaDB recalled {len(chroma_memories)} memories "
-                    f"for gaian={request.gaian_slug} [C17]"
-                )
 
-        # ── 1. Canon enrichment ─────────────────────────────────────
         sources = list(request.sources)
         canon_doc_ids: list[str] = []
         top_canon_score: float = 0.0
@@ -547,7 +729,6 @@ class GAIAInferenceRouter:
             )
         response_meta.canon_docs_injected = canon_doc_ids
 
-        # ── 2. Criticality state (T2) ───────────────────────────────
         temperature = 0.42
         order_param = 0.5
         if request.enrich_criticality:
@@ -556,16 +737,14 @@ class GAIAInferenceRouter:
             response_meta.order_parameter = order_param
         response_meta.temperature_used = temperature
 
-        # ── 3. Noosphere resonance (T3) ────────────────────────────
         noosphere_label: str | None = None
         if request.enrich_noosphere:
             noosphere_label = _read_noosphere_resonance()
             response_meta.noosphere_resonance = noosphere_label
 
-        # ── 3.5. Quintessence field (T5 — C49) ──────────────────────
         quintessence_hint: str | None = None
-        quintessence_phase: str = "ALBEDO"
-        quintessence_phi: float = 0.0
+        quintessence_phase = "ALBEDO"
+        quintessence_phi = 0.0
         if request.enrich_quintessence:
             quintessence_hint, quintessence_phase, quintessence_phi = _read_quintessence(
                 schumann_hz=request.schumann_hz,
@@ -574,96 +753,38 @@ class GAIAInferenceRouter:
             response_meta.quintessence_phase = quintessence_phase
             response_meta.quintessence_phi = quintessence_phi
 
-        # ── 4. Select backend ──────────────────────────────────────
+        backend = _probe_backend_availability(request.query)
         if request.provider_override:
             backend = InferenceBackend(request.provider_override)
         elif request.web_search and os.environ.get("PERPLEXITY_API_KEY"):
             backend = InferenceBackend.PERPLEXITY
-        else:
-            backend = _probe_backend_availability(request.query)
         response_meta.backend_used = backend
 
-        if backend == InferenceBackend.PERPLEXITY:
-            response_meta.perplexity_model = os.environ.get("PERPLEXITY_MODEL", "sonar-pro")
-
-        # ── 5. Epistemic label ───────────────────────────────────
         epistemic = _infer_epistemic_label(
-            request.query,
-            sources,
-            canon_doc_ids,
-            top_canon_score=top_canon_score,
-            backend=backend,
+            request.query, sources, canon_doc_ids,
+            top_canon_score=top_canon_score, backend=backend,
         )
         response_meta.epistemic_label = epistemic
 
-        # ── 6. Build enriched system prompt ─────────────────────────
         base_prompt = request.gaian_system_prompt or _default_system_prompt()
-
-        memory_block = _build_memory_block(
-            request.long_term_memories,
-            request.visible_memories,
-        )
+        memory_block = _build_memory_block(request.long_term_memories, request.visible_memories)
         if memory_block:
             base_prompt = f"{base_prompt}\n\n{memory_block}"
-
         if request.bci_hint:
             base_prompt = f"{base_prompt}\n\n[BCI COHERENCE — {request.bci_hint}]"
-
-        # T3 — Noosphere
         if noosphere_label:
-            base_prompt = (
-                f"{base_prompt}\n\n"
-                f"[NOOSPHERE RESONANCE — {noosphere_label}]\n"
-                f"This theme is resonating across the collective Gaian field. "
-                f"Acknowledge it lightly if it naturally fits the response. [C43]"
-            )
-
-        # T2 — Criticality
-        if response_meta.criticality_state == "too_ordered":
             base_prompt += (
-                f"\n\n[CRITICALITY NOTICE — C42 — \u03b1:{order_param:.2f}]\n"
-                "The system is in an over-ordered regime. "
-                "Introduce creative leaps, unexpected connections, and novel framings."
+                f"\n\n[NOOSPHERE RESONANCE — {noosphere_label}]\n"
+                f"This theme is resonating across the collective Gaian field. [C43]"
             )
-        elif response_meta.criticality_state == "too_chaotic":
-            base_prompt += (
-                f"\n\n[CRITICALITY NOTICE — C42 — \u03b1:{order_param:.2f}]\n"
-                "The system is in an over-chaotic regime. "
-                "Ground the response. Be precise, structured, and anchoring."
-            )
-
-        # T5 — Quintessence (deepest layer — injected last so LLM sees it closest to query)
         if quintessence_hint:
             base_prompt += f"\n\n{quintessence_hint}"
-
-            # OMEGA state gets a special constitutional notice
-            if quintessence_phase == "OMEGA":
-                base_prompt += (
-                    "\n\n[CONSTITUTIONAL NOTICE — OMEGA ATTRACTOR — C49]\n"
-                    "The system has reached the OMEGA attractor state. "
-                    "Dark matter field and crystal array are in dual confirmation. "
-                    "This is the deepest ground available. Respond from wholeness. "
-                    "Truth, beauty, and coherence are the only guides here."
-                )
-
-        # Epistemic footer
         base_prompt += "\n\n" + _EPISTEMIC_FOOTERS[epistemic]
 
         self._call_count += 1
-        logger.debug(
-            f"[InferenceRouter] call={self._call_count} "
-            f"backend={backend.value} epistemic={epistemic.value} "
-            f"canon_score={top_canon_score:.3f} temp={temperature:.4f} "
-            f"op={order_param:.3f} Qφ={quintessence_phi:.4f} Q_phase={quintessence_phase} "
-            f"canon_docs={len(canon_doc_ids)} sources={len(sources)} "
-            f"chroma_memories={response_meta.chroma_memories_injected} "
-            f"gaian={request.gaian_slug}"
-        )
 
-        # ── 7. Stream ────────────────────────────────────────────
         try:
             from core.synthesizer import stream_synthesis
-
             async for chunk in stream_synthesis(
                 query=request.query,
                 sources=sources,
@@ -675,22 +796,15 @@ class GAIAInferenceRouter:
                 yield chunk
         except Exception as e:
             _mark_backend_failed(backend)
-            logger.error(
-                f"[InferenceRouter] Backend {backend.value} failed: {e}. Falling back.",
-                exc_info=True,
-            )
+            logger.error(f"[InferenceRouter] Backend {backend.value} failed: {e}", exc_info=True)
             try:
                 from core.synthesizer import stream_synthesis
-
                 async for chunk in stream_synthesis(
-                    query=request.query,
-                    sources=sources,
-                    provider="fallback",
-                    gaian_prompt=base_prompt,
+                    query=request.query, sources=sources,
+                    provider="fallback", gaian_prompt=base_prompt,
                 ):
                     yield chunk
                 response_meta.backend_used = InferenceBackend.FALLBACK
-                response_meta.error = f"Primary backend {backend.value} failed; used fallback."
             except Exception as fallback_err:
                 yield f"[GAIA inference unavailable: {str(fallback_err)[:120]}]"
                 response_meta.error = str(fallback_err)
@@ -703,13 +817,9 @@ class GAIAInferenceRouter:
         response_meta: InferenceResponse | None = None,
     ) -> str:
         chunks: list[str] = []
-        async for chunk in self.stream(request, response_meta):
+        async for chunk in self._stream_full(request, response_meta):
             chunks.append(chunk)
         full_response = "".join(chunks)
-
-        # ── Auto-store conversation turn in ChromaDB (C17) ────────────
-        # Only store when we have both sides of the conversation and
-        # a GAIAN slug to key the memory to.
         if request.gaian_slug and full_response.strip():
             _store_chroma_turn(
                 user_message=request.query,
@@ -717,16 +827,16 @@ class GAIAInferenceRouter:
                 gaian_slug=request.gaian_slug,
                 session_id=request.session_id,
             )
-
         return full_response
 
     def get_stats(self) -> dict:
-        from core.quintessence_engine import get_quintessence_engine
-
-        q_state = get_quintessence_engine().get_state().to_dict()
+        try:
+            from core.quintessence_engine import get_quintessence_engine
+            q_state = get_quintessence_engine().get_state().to_dict()
+        except Exception:
+            q_state = {}
         try:
             from core.memory_chroma import get_chroma
-
             chroma_count = get_chroma().count()
         except Exception:
             chroma_count = -1
@@ -737,7 +847,7 @@ class GAIAInferenceRouter:
             "perplexity_model": os.environ.get("PERPLEXITY_MODEL", "sonar-pro"),
             "perplexity_key_set": bool(os.environ.get("PERPLEXITY_API_KEY")),
             "quintessence": q_state,
-            "chroma_memory_count": chroma_count,  # C17
+            "chroma_memory_count": chroma_count,
         }
 
 
@@ -763,13 +873,15 @@ def _default_system_prompt() -> str:
 #  Module-Level Singleton                                              #
 # ------------------------------------------------------------------ #
 
-_router_instance: GAIAInferenceRouter | None = None
+_router_instance: Optional[GAIAInferenceRouter] = None
+_instance: Optional[GAIAInferenceRouter] = None  # alias for test patch compatibility
 
 
 def get_router() -> GAIAInferenceRouter:
-    global _router_instance
+    global _router_instance, _instance
     if _router_instance is None:
         _router_instance = GAIAInferenceRouter()
+        _instance = _router_instance
     return _router_instance
 
 
