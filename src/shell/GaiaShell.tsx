@@ -1,7 +1,7 @@
 /**
  * src/shell/GaiaShell.tsx
  * GAIA-OS App Shell — Three-Tier UI
- * Canon: C90, C-OB01
+ * Canon: C90, C-OB01, GAIAN_TWIN_DOCTRINE
  *
  * Navigation architecture (three principals):
  *   HUMAN  tier → My Gaian · Memory · Goals · Settings
@@ -13,6 +13,10 @@
  *   1. !token                       → AuthScreen
  *   2. token + !onboardingCompleted → OnboardingRouter  ← C-OB01
  *   3. token + onboardingCompleted  → ShellMain
+ *
+ * Companion slot:
+ *   'companion' nav ID renders TwinInterface (Diamond architecture).
+ *   'ask' / 'chat' render GaiaChat (search/world layer).
  *
  * Mode broadcast:
  *   ShellMain emits 'gaia:mode' via Tauri event API whenever gaiaMode
@@ -35,6 +39,8 @@ import { OnboardingRouter }  from '../onboarding/OnboardingRouter';
 import { EmrysPanel }        from '../crystal-view';
 import { AwakeningScreen }   from './AwakeningScreen';
 import { GaiaPresenceBar, useGaiaMode } from './GaiaPresenceBar';
+import { TwinInterface }     from '../components/TwinInterface';
+import type { GaiaMode }     from './GaiaPresenceBar';
 import {
   useOnboardingStore,
   loadPersistedState,
@@ -49,9 +55,6 @@ const DEV_BYPASS_AUTH = true; // ⚠️ set false before production
 const AWAKENING_KEY = 'gaia:awakened';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface AuthResult {
   access_token: string;
   user_id:      string;
@@ -65,18 +68,15 @@ type Tier = 'human' | 'gaia' | 'gaian';
 interface NavItem {
   id:      string;
   label:   string;
-  icon:    string;       // SVG path data (24×24 viewBox)
+  icon:    string;
   tier:    Tier;
-  tooltip: string;       // plain-English description (no metaphysics)
+  tooltip: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Navigation definition — three tiers, plain-English labels
-// Metaphysical names stay in tooltips only
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Navigation ────────────────────────────────────────────────────────────────────
 
 const NAV: NavItem[] = [
-  // ── HUMAN tier ───────────────────────────────────────────────────────────────────
+  // ── HUMAN tier ─────────────────────────────────────────────────────────────────────────────
   {
     id: 'companion',
     label: 'My Gaian',
@@ -105,7 +105,7 @@ const NAV: NavItem[] = [
     tooltip: 'Your account, consent, and system preferences',
     icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
   },
-  // ── GAIA tier ───────────────────────────────────────────────────────────────────
+  // ── GAIA tier ─────────────────────────────────────────────────────────────────────────────
   {
     id: 'ask',
     label: 'Ask GAIA',
@@ -134,7 +134,7 @@ const NAV: NavItem[] = [
     tooltip: 'Multi-dimensional analysis and pattern recognition across your data',
     icon: 'M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z',
   },
-  // ── GAIAN tier ───────────────────────────────────────────────────────────────────
+  // ── GAIAN tier ─────────────────────────────────────────────────────────────────────────────
   {
     id: 'chat',
     label: 'Companion',
@@ -171,9 +171,7 @@ const TIER_LABELS: Record<Tier, string> = {
   gaian:  'Your Gaian',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// useAuth hook
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── useAuth ───────────────────────────────────────────────────────────────────────
 
 function useAuth() {
   const [token,    setToken]    = useState<string | null>(
@@ -235,9 +233,7 @@ function useAuth() {
   return { token, username, loading, error, register, login, logout, clearError: () => setError('') };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AuthScreen
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── AuthScreen ─────────────────────────────────────────────────────────────────────
 
 type AuthTab = 'signin' | 'signup';
 
@@ -355,9 +351,7 @@ const AuthScreen: React.FC<{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SVG icon helper
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Icon helper ────────────────────────────────────────────────────────────────────────
 
 const Icon: React.FC<{ d: string; size?: number; 'aria-hidden'?: boolean }> = ({
   d, size = 18, 'aria-hidden': hidden = true,
@@ -372,9 +366,7 @@ const Icon: React.FC<{ d: string; size?: number; 'aria-hidden'?: boolean }> = ({
   </svg>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PlaceholderView — for nav items without a full component yet
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── PlaceholderView ────────────────────────────────────────────────────────────────────
 
 const PlaceholderView: React.FC<{ item: NavItem }> = ({ item }) => (
   <div className="gs-placeholder">
@@ -389,41 +381,50 @@ const PlaceholderView: React.FC<{ item: NavItem }> = ({ item }) => (
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ShellMain — authenticated experience
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── ShellMain ─────────────────────────────────────────────────────────────────────────
 
 const ShellMain: React.FC<{
   token:    string;
   username: string | null;
   onLogout: () => void;
 }> = ({ token, username, onLogout }) => {
-  const [activeId,      setActiveId]      = useState<string>('ask');
+  const [activeId,      setActiveId]      = useState<string>('companion');
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [sidebarOpen,   setSidebarOpen]   = useState(true);
   const [showEmrys,     setShowEmrys]     = useState(false);
   const { tier: alignmentTier }           = useAlignmentTheme();
 
-  // ── GaiaPresenceBar mode ─────────────────────────────────────────────────────────
-  const { mode: gaiaMode, setMode: setGaiaMode } = useGaiaMode('resting');
+  // Stable session ID for TwinInterface — one per ShellMain mount
+  const twinSessionIdRef = useRef<string>(
+    `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+  );
 
-  // Stable ref so GaiaChat callbacks never go stale inside closures
+  // humanId derived from username (fallback to 'human' in dev)
+  const humanId   = username ?? 'human';
+  const humanName = username ?? 'Human';
+
+  // ── GaiaPresenceBar mode ────────────────────────────────────────────────────
+  const { mode: gaiaMode, setMode: setGaiaMode } = useGaiaMode('resting');
   const setGaiaModeRef = useRef(setGaiaMode);
   useEffect(() => { setGaiaModeRef.current = setGaiaMode; }, [setGaiaMode]);
 
-  // ── Broadcast gaiaMode to AmbientOrb window via Tauri event ─────────────────
-  // emit() is fire-and-forget. If Tauri is unavailable (browser dev mode),
-  // the catch silences the error — presence bar still works in isolation.
+  // TwinInterface → GaiaPresenceBar bridge
+  // TwinInterface fires onGaiaModeChange with the raw mode string.
+  // We map Diamond status → PresenceBar mode here, in the shell.
+  const handleTwinModeChange = useCallback((mode: GaiaMode) => {
+    setGaiaModeRef.current(mode);
+  }, []);
+
+  // ── Broadcast gaiaMode to AmbientOrb ──────────────────────────────────────
   useEffect(() => {
     emit('gaia:mode', { mode: gaiaMode }).catch(() => {});
   }, [gaiaMode]);
 
-  // Pull current GAIAN stage for EmrysPanel context.
   const currentStage = useOnboardingStore(
     s => (s as Record<string, unknown>).currentStage as string | undefined
   );
 
-  // ── Backend health check — drives offline mode ─────────────────────────────
+  // ── Backend health check ──────────────────────────────────────────────────────
   useEffect(() => {
     fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3_000) })
       .then(r => {
@@ -436,27 +437,41 @@ const ShellMain: React.FC<{
       });
   }, [setGaiaMode]);
 
-  // ── Tauri gaia:navigate event ──────────────────────────────────────────────
+  // ── Tauri gaia:navigate event ────────────────────────────────────────────────
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     listen<{ section: string }>('gaia:navigate', (e) => {
       if (e.payload.section === 'emrys') setShowEmrys(true);
     })
       .then(fn => { unlisten = fn; })
-      .catch(() => { /* non-Tauri environment */ });
+      .catch(() => {});
     return () => { unlisten?.(); };
   }, []);
 
-  const activeItem = NAV.find(n => n.id === activeId) ?? NAV[4];
+  const activeItem = NAV.find(n => n.id === activeId) ?? NAV[0];
 
-  // ── GaiaChat mode bridge callbacks ───────────────────────────────────────────
+  // ── GaiaChat mode bridge (for 'ask' / 'chat') ─────────────────────────────
   const onChatUserInput   = useCallback(() => setGaiaModeRef.current('listening'), []);
   const onChatStreamStart = useCallback(() => setGaiaModeRef.current('thinking'),  []);
   const onChatFirstToken  = useCallback(() => setGaiaModeRef.current('speaking'),  []);
   const onChatStreamEnd   = useCallback(() => setGaiaModeRef.current('resting'),   []);
 
+  // ── renderContent ───────────────────────────────────────────────────────────────────
   const renderContent = useCallback(() => {
-    if (activeId === 'ask' || activeId === 'chat' || activeId === 'companion') {
+    // ◆ COMPANION — The Diamond face. TwinInterface owns its own session.
+    if (activeId === 'companion') {
+      return (
+        <TwinInterface
+          humanId={humanId}
+          sessionId={twinSessionIdRef.current}
+          humanName={humanName}
+          onGaiaModeChange={handleTwinModeChange}
+        />
+      );
+    }
+
+    // GAIA-tier search / world layer — GaiaChat unchanged
+    if (activeId === 'ask' || activeId === 'chat') {
       return (
         <GaiaChat
           token={token}
@@ -469,14 +484,19 @@ const ShellMain: React.FC<{
         />
       );
     }
+
     return <PlaceholderView item={activeItem} />;
-  }, [activeId, token, activeItem, onChatUserInput, onChatStreamStart, onChatFirstToken, onChatStreamEnd]);
+  }, [
+    activeId, token, activeItem, humanId, humanName,
+    handleTwinModeChange,
+    onChatUserInput, onChatStreamStart, onChatFirstToken, onChatStreamEnd,
+  ]);
 
   return (
     <div className="gs" data-alignment-tier={alignmentTier}>
       <FieldVisualiser tier={alignmentTier} />
 
-      {/* ── Top bar ──────────────────────────────────────────────────────────── */}
+      {/* ── Top bar ───────────────────────────────────────────────────────── */}
       <header className="gs__topbar">
         <button
           className="gs__topbar-toggle"
@@ -505,7 +525,6 @@ const ShellMain: React.FC<{
           <span>GAIA<em>OS</em></span>
         </div>
 
-        {/* ── GAIA Presence Bar ────────────────────────────────────────────── */}
         <GaiaPresenceBar
           mode={gaiaMode}
           className="gs__presence-bar"
@@ -528,8 +547,6 @@ const ShellMain: React.FC<{
 
         <div className="gs__topbar-right">
           <ViritasWidget />
-
-          {/* ── Emrys L2 button ──────────────────────────────────────────── */}
           <button
             className={`gs__emrys-btn${showEmrys ? ' gs__emrys-btn--active' : ''}`}
             onClick={() => setShowEmrys(v => !v)}
@@ -539,7 +556,6 @@ const ShellMain: React.FC<{
           >
             ⚡
           </button>
-
           <span
             className={`gs__status-dot gs__status-dot--${
               backendOnline === null ? 'checking' : backendOnline ? 'online' : 'offline'
@@ -554,7 +570,7 @@ const ShellMain: React.FC<{
       </header>
 
       <div className="gs__body">
-        {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
+        {/* ── Sidebar ────────────────────────────────────────────────────────────────── */}
         <nav
           className={`gs__sidebar${sidebarOpen ? '' : ' gs__sidebar--collapsed'}`}
           aria-label="GAIA navigation"
@@ -565,17 +581,13 @@ const ShellMain: React.FC<{
               {NAV.filter(n => n.tier === tier).map(item => (
                 <button
                   key={item.id}
-                  className={`gs__nav-item${
-                    item.id === activeId ? ' gs__nav-item--active' : ''
-                  }`}
+                  className={`gs__nav-item${item.id === activeId ? ' gs__nav-item--active' : ''}`}
                   data-tier={item.tier}
                   onClick={() => setActiveId(item.id)}
                   title={item.tooltip}
                   aria-pressed={item.id === activeId}
                 >
-                  <span className="gs__nav-icon">
-                    <Icon d={item.icon} />
-                  </span>
+                  <span className="gs__nav-icon"><Icon d={item.icon} /></span>
                   <span className="gs__nav-label">{item.label}</span>
                 </button>
               ))}
@@ -583,7 +595,7 @@ const ShellMain: React.FC<{
           ))}
         </nav>
 
-        {/* ── Main content ────────────────────────────────────────────────────────── */}
+        {/* ── Main content ───────────────────────────────────────────────────────────────── */}
         <main className="gs__main">
           {renderContent()}
         </main>
@@ -592,7 +604,6 @@ const ShellMain: React.FC<{
       <SovereignGuard />
       <ActionGateDialog />
 
-      {/* ── Emrys L2 Panel ───────────────────────────────────────────────────────── */}
       <EmrysPanel
         open={showEmrys}
         onClose={() => setShowEmrys(false)}
@@ -603,9 +614,7 @@ const ShellMain: React.FC<{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GaiaShell — four-state boot guard
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── GaiaShell — four-state boot guard ───────────────────────────────────────────────
 
 export const GaiaShell: React.FC = () => {
   const { token, username, loading, error, register, login, logout, clearError } = useAuth();
@@ -613,7 +622,6 @@ export const GaiaShell: React.FC = () => {
   const completeOnboarding = useOnboardingStore(s => s.completeOnboarding);
   const [onboardingReady, setOnboardingReady] = useState(false);
 
-  // ── Awakening guard ───────────────────────────────────────────────────────────────
   const [awakened, setAwakened] = useState<boolean>(
     () => sessionStorage.getItem(AWAKENING_KEY) === 'true'
   );
@@ -650,9 +658,7 @@ export const GaiaShell: React.FC = () => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GaiaShellInner — hooks-rules safe inner component
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── GaiaShellInner ─────────────────────────────────────────────────────────────────
 
 const GaiaShellInner: React.FC<{
   token:               string;
