@@ -7,20 +7,17 @@
  *   — OnboardingRouter  (first visit)
  *   — TwinInterface     (all subsequent visits)
  *
- * Reads onboarding completion from localStorage.
- * Passes useTwinSession-powered props into TwinInterface.
- *
+ * TwinInterface now owns its own useTwinSession call (Diamond architecture).
+ * GaiaRoot only concerns itself with identity + routing.
  * This is the door.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { OnboardingRouter } from './onboarding/OnboardingRouter';
-import { TwinInterface } from './components/TwinInterface/TwinInterface';
-import { useTwinSession } from './hooks/useTwinSession';
-import type { TwinPhase } from './api/twin';
+import { TwinInterface } from './components/TwinInterface';
 import './GaiaRoot.css';
 
-// ─── Onboarding check ─────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getOnboardingState(): {
   completed: boolean;
@@ -43,53 +40,8 @@ function getOnboardingState(): {
   }
 }
 
-function newSessionId(): string {
+function generateSessionId(): string {
   return `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
-
-// ─── Twin Shell (post-onboarding) ─────────────────────────────────────────────
-
-interface TwinShellProps {
-  humanId: string;
-  humanName: string;
-}
-
-function TwinShell({ humanId, humanName }: TwinShellProps) {
-  const sessionId = newSessionId();
-
-  const twin = useTwinSession({
-    humanId,
-    sessionId,
-    humanName,
-    stream: true,
-    onPhaseChange: (phase: TwinPhase) => {
-      console.info('[GAIA] Twin phase transition →', phase);
-    },
-    onOverrideActivate: (mode) => {
-      console.info('[GAIA] Love Override activated →', mode);
-    },
-    onOverrideResolve: () => {
-      console.info('[GAIA] Love Override resolved');
-    },
-  });
-
-  return (
-    <TwinInterface
-      humanName={humanName}
-      twinPhase={twin.twinPhase}
-      messages={twin.messages}
-      isThinking={
-        twin.status === 'sending' ||
-        twin.status === 'streaming' ||
-        twin.status === 'holding'
-      }
-      isOverrideActive={twin.activeOverride !== null}
-      overrideMode={twin.activeOverride ?? undefined}
-      streamingContent={twin.streamingContent}
-      onSend={twin.sendMessage}
-      onEndSession={twin.crystallise}
-    />
-  );
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -100,6 +52,9 @@ export function GaiaRoot() {
     humanId: string;
     humanName: string;
   } | null>(null);
+
+  // Session ID is stable for this mount — generated once, not on every render.
+  const sessionIdRef = useRef<string>(generateSessionId());
 
   useEffect(() => {
     const ob = getOnboardingState();
@@ -112,10 +67,11 @@ export function GaiaRoot() {
   }, []);
 
   const handleOnboardingComplete = useCallback(() => {
-    // Re-read state now that onboarding wrote to localStorage
     const ob = getOnboardingState();
     if (ob.humanId && ob.humanName) {
       setIdentity({ humanId: ob.humanId, humanName: ob.humanName });
+      // New session for first post-onboarding interaction
+      sessionIdRef.current = generateSessionId();
     }
     setState('twin');
   }, []);
@@ -136,13 +92,16 @@ export function GaiaRoot() {
 
   if (state === 'twin' && identity) {
     return (
-      <TwinShell
-        humanId={identity.humanId}
-        humanName={identity.humanName}
-      />
+      <div className="gaia-twin-root">
+        <TwinInterface
+          humanId={identity.humanId}
+          sessionId={sessionIdRef.current}
+          humanName={identity.humanName}
+        />
+      </div>
     );
   }
 
-  // Fallback — should never reach here
+  // Fallback
   return <OnboardingRouter onFinish={handleOnboardingComplete} />;
 }

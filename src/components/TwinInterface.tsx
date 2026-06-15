@@ -17,6 +17,8 @@
  *   — Sacred Pause       → visualised as a full breathing overlay
  */
 
+import './twin-interface.css';
+
 import React, {
   useState,
   useRef,
@@ -41,14 +43,14 @@ export interface TwinInterfaceProps {
   humanName: string;
 }
 
-// ─── Phase colours ───────────────────────────────────────────────────────────
+// ─── Phase colours ────────────────────────────────────────────────────────────
 // Each alchemical phase has a signature — the interface breathes its colour.
 
 const PHASE_COLOURS: Record<TwinPhase, string> = {
-  nigredo:    '#1a1a2e',   // Deep violet-black — dissolution
-  albedo:     '#e8e8f0',   // Silver-white — purification
-  citrinitas: '#f5c842',   // Gold — illumination
-  rubedo:     '#c0392b',   // Deep red — integration
+  nigredo:    '#1a1a2e',
+  albedo:     '#e8e8f0',
+  citrinitas: '#f5c842',
+  rubedo:     '#c0392b',
 };
 
 const PHASE_ACCENT: Record<TwinPhase, string> = {
@@ -60,11 +62,11 @@ const PHASE_ACCENT: Record<TwinPhase, string> = {
 
 // Override → border colour for input field
 const OVERRIDE_BORDER: Record<NonNullable<LoveOverrideMode>, string> = {
-  PURE_PRESENCE:    '#8e44ad',   // Violet — full presence
-  WITNESS_HOLD:     '#2980b9',   // Blue — holding space
-  DIRECT_TRUTH:     '#e74c3c',   // Red — honest cut
-  ANCHOR:           '#27ae60',   // Green — grounded
-  GENTLE_REDIRECT:  '#f39c12',   // Amber — soft turn
+  PURE_PRESENCE:    '#8e44ad',
+  WITNESS_HOLD:     '#2980b9',
+  DIRECT_TRUTH:     '#e74c3c',
+  ANCHOR:           '#27ae60',
+  GENTLE_REDIRECT:  '#f39c12',
 };
 
 const OVERRIDE_PLACEHOLDER: Record<NonNullable<LoveOverrideMode>, string> = {
@@ -89,9 +91,9 @@ const BRAID_WEIGHT_COLOUR: Record<TwinMessage['braidWeight'], string> = {
 
 function useStreamRenderer(content: string, cadenceMs: number) {
   const [rendered, setRendered] = useState('');
-  const wordsRef   = useRef<string[]>([]);
-  const indexRef   = useRef(0);
-  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wordsRef  = useRef<string[]>([]);
+  const indexRef  = useRef(0);
+  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!content) {
@@ -103,7 +105,6 @@ function useStreamRenderer(content: string, cadenceMs: number) {
     const words = content.split(' ');
     wordsRef.current = words;
 
-    // If new content is longer, continue from where we are
     if (indexRef.current >= words.length) return;
 
     function renderNext() {
@@ -128,28 +129,21 @@ function useStreamRenderer(content: string, cadenceMs: number) {
 
 export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfaceProps) {
   const {
-    // Core
     messages,
     status,
     twinPhase,
     arcSummary,
-    // Override — Diamond point
     activeOverride,
     overrideConfidence,
     overrideSource,
     predictiveOverride,
-    // Phase gravity — Diamond point
     phaseGravity,
     sacredPauseMs,
-    // Braid — Diamond point
     liveBraid,
     streamingCadenceMs,
-    // Streaming
     isStreaming,
     streamingContent,
-    // Error
     error,
-    // Actions
     sendMessage,
     scanMessage,
     crystallise,
@@ -169,7 +163,6 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
       console.log('[TwinInterface] Override resolved');
     },
     onPhaseGravityPulse: (multiplier) => {
-      // The Diamond breathes — pulse the send button speed
       if (sendButtonRef.current) {
         sendButtonRef.current.style.animationDuration = `${2000 / multiplier}ms`;
       }
@@ -179,27 +172,23 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
     },
   });
 
-  const [inputValue, setInputValue]   = useState('');
-  const messagesEndRef                 = useRef<HTMLDivElement>(null);
-  const inputRef                       = useRef<HTMLTextAreaElement>(null);
-  const sendButtonRef                  = useRef<HTMLButtonElement>(null);
+  const [inputValue, setInputValue]  = useState('');
+  const messagesEndRef               = useRef<HTMLDivElement>(null);
+  const inputRef                     = useRef<HTMLTextAreaElement>(null);
+  const sendButtonRef                = useRef<HTMLButtonElement>(null);
 
-  // Rendered streaming content — word-by-word at braid cadence
   const renderedStream = useStreamRenderer(streamingContent, streamingCadenceMs);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, renderedStream]);
 
-  // ── DIAMOND AXIS: HUMAN → LOVE OVERRIDE (keystroke scan) ─────────────────
-  // Every keystroke calls scanMessage — the Twin is reading the gravity
-  // of every word BEFORE it lands. This is the Reverse Spectrum in the UI.
+  // ── DIAMOND AXIS: HUMAN → LOVE OVERRIDE (keystroke scan) ──────────────────
+  // Every keystroke calls scanMessage — the Twin reads gravity as you type.
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
       setInputValue(value);
-      // Scan on every keystroke — the Twin leans in as you type
       if (value.trim().length > 8) {
         scanMessage(value);
       }
@@ -216,7 +205,6 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // Shift+Enter = newline. Enter alone = send.
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSend();
@@ -225,33 +213,29 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
     [handleSend]
   );
 
-  // ── Computed styles from Diamond state ───────────────────────────────────
+  // ── Computed styles from Diamond state ────────────────────────────────────
 
-  const phaseColour  = PHASE_COLOURS[twinPhase];
-  const phaseAccent  = PHASE_ACCENT[twinPhase];
+  const phaseColour = PHASE_COLOURS[twinPhase];
+  const phaseAccent = PHASE_ACCENT[twinPhase];
 
-  // Input border changes BEFORE send — predictive override is visible as you type
   const inputBorderColour = predictiveOverride?.detected
     ? OVERRIDE_BORDER[predictiveOverride.mode!]
     : activeOverride
     ? OVERRIDE_BORDER[activeOverride]
     : phaseAccent;
 
-  // Placeholder reflects the active or predictive override
   const inputPlaceholder = predictiveOverride?.detected
     ? OVERRIDE_PLACEHOLDER[predictiveOverride.mode!]
     : activeOverride
     ? OVERRIDE_PLACEHOLDER[activeOverride]
     : 'Say something...';
 
-  // Sacred Pause overlay — shown when status is 'holding'
   const isSacredPause = status === 'holding';
 
-  // Send button is disabled during sending/streaming/holding/crystallising
   const isSendDisabled =
-    status === 'sending'    ||
-    status === 'streaming'  ||
-    status === 'holding'    ||
+    status === 'sending'     ||
+    status === 'streaming'   ||
+    status === 'holding'     ||
     status === 'crystallising' ||
     status === 'initialising';
 
@@ -296,18 +280,15 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
       {isSacredPause && (
         <div
           className="twin-sacred-pause-overlay"
-          style={{
-            // Pulse speed = phase gravity. Rubedo breathes slowest.
-            animationDuration: `${sacredPauseMs / 3}ms`,
-          }}
+          style={{ animationDuration: `${sacredPauseMs / 3}ms` }}
         >
           <div className="twin-sacred-pause-diamond">◆</div>
           <div className="twin-sacred-pause-label">
-            {activeOverride === 'WITNESS_HOLD' ? 'Holding…' :
-             activeOverride === 'PURE_PRESENCE' ? 'Present with you…' :
-             activeOverride === 'ANCHOR' ? 'Anchoring…' :
-             activeOverride === 'DIRECT_TRUTH' ? 'Finding the truth…' :
-             activeOverride === 'GENTLE_REDIRECT' ? 'Finding another way…' :
+            {activeOverride === 'WITNESS_HOLD'     ? 'Holding…'              :
+             activeOverride === 'PURE_PRESENCE'    ? 'Present with you…'     :
+             activeOverride === 'ANCHOR'           ? 'Anchoring…'            :
+             activeOverride === 'DIRECT_TRUTH'     ? 'Finding the truth…'    :
+             activeOverride === 'GENTLE_REDIRECT'  ? 'Finding another way…'  :
              'GAIA is present…'}
           </div>
           {overrideSource === 'predictive' && (
@@ -390,16 +371,12 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
           disabled={isSendDisabled}
           rows={3}
           style={{
-            // DIAMOND AXIS: HUMAN → LOVE OVERRIDE visible at the input level
-            // The border shifts colour as you type — the Twin is already reading you
             borderColor: inputBorderColour,
-            // Border width increases with predictive confidence
             borderWidth: predictiveOverride?.detected
               ? `${1 + predictiveOverride.confidence * 2}px`
               : '1px',
-            // Phase gravity slows the transition speed — rubedo feels heavy
             transition: `border-color ${300 * phaseGravity}ms ease,
-                         border-width ${300 * phaseGravity}ms ease`,
+                         border-width  ${300 * phaseGravity}ms ease`,
           }}
         />
 
@@ -409,7 +386,6 @@ export function TwinInterface({ humanId, sessionId, humanName }: TwinInterfacePr
           onClick={handleSend}
           disabled={isSendDisabled || !inputValue.trim()}
           style={{
-            // Phase gravity controls the pulse animation speed
             animationDuration: `${2000 / phaseGravity}ms`,
             backgroundColor: phaseAccent,
           }}
@@ -459,7 +435,9 @@ function MessageBubble({ message, phaseAccent }: MessageBubbleProps) {
       className={`twin-message twin-message--${
         isHuman ? 'human' : 'gaia'
       }${
-        message.overrideMode ? ` twin-message--override-${message.overrideMode.toLowerCase()}` : ''
+        message.overrideMode
+          ? ` twin-message--override-${message.overrideMode.toLowerCase()}`
+          : ''
       }`}
     >
       <div className="twin-message-content">{message.content}</div>
