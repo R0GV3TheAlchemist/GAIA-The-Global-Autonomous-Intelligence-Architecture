@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/R0GV3TheAlchemist/GAIA-OS/blob/main/data/mineral_schema.json",
+  "title": "GAIA-OS Mineral Schema",
+  "description": "Formal JSON Schema for all mineral entries in the GAIA-OS Minerals Database. Minerals sit between elements and crystals in the lithic knowledge stack: Elements (118) → Minerals → Crystals → Crystal Matrix → [Gaianite]. All entries link back to element_ids from the GAIA-OS elements database.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["$schema", "meta", "minerals"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "meta": {
+      "type": "object",
+      "required": ["batch", "range", "description", "version", "created", "authors"],
+      "properties": {
+        "batch": { "type": "integer", "minimum": 1 },
+        "range": { "type": "string", "description": "Mineral name range covered, e.g. 'Malachite–Amethyst'" },
+        "description": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "created": { "type": "string" },
+        "updated": { "type": "string" },
+        "update_notes": { "type": "string" },
+        "authors": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      },
+      "additionalProperties": false
+    },
+    "minerals": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/Mineral" }
+    }
+  },
+  "definitions": {
+    "Mineral": {
+      "type": "object",
+      "description": "A single mineral entry with physical, chemical, and GAIA-specific properties.",
+      "required": [
+        "id",
+        "name",
+        "formula",
+        "element_ids",
+        "mineral_class",
+        "crystal_system",
+        "hardness_mohs",
+        "luster",
+        "color",
+        "streak",
+        "cleavage",
+        "specific_gravity",
+        "transparency",
+        "formation",
+        "notable_localities",
+        "gaia_layer_alignment",
+        "crystal_link",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique lowercase slug identifier, e.g. 'malachite'"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full mineral name"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Chemical formula using standard notation"
+        },
+        "element_ids": {
+          "type": "array",
+          "description": "Atomic numbers (Z) of all constituent elements, linking to the GAIA-OS elements database",
+          "items": { "type": "integer", "minimum": 1, "maximum": 118 },
+          "minItems": 1
+        },
+        "mineral_class": {
+          "type": "string",
+          "enum": [
+            "native_element",
+            "sulfide",
+            "oxide",
+            "hydroxide",
+            "halide",
+            "carbonate",
+            "nitrate",
+            "borate",
+            "sulfate",
+            "phosphate",
+            "arsenate",
+            "vanadate",
+            "tungstate",
+            "molybdate",
+            "silicate",
+            "tectosilicate",
+            "phyllosilicate",
+            "inosilicate",
+            "sorosilicate",
+            "cyclosilicate",
+            "nesosilicate",
+            "organic"
+          ],
+          "description": "Dana or Strunz mineral classification"
+        },
+        "crystal_system": {
+          "type": "string",
+          "enum": ["cubic", "tetragonal", "orthorhombic", "hexagonal", "trigonal", "monoclinic", "triclinic", "amorphous", "unknown"]
+        },
+        "hardness_mohs": {
+          "oneOf": [
+            { "type": "number", "minimum": 0, "maximum": 10 },
+            { "type": "string", "description": "Range string, e.g. '7-7.5'" }
+          ],
+          "description": "Mohs hardness scale value"
+        },
+        "luster": {
+          "type": "string",
+          "enum": ["metallic", "submetallic", "adamantine", "vitreous", "resinous", "pearly", "silky", "greasy", "waxy", "dull", "earthy"]
+        },
+        "color": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Array of color descriptors"
+        },
+        "streak": {
+          "type": "string",
+          "description": "Color of powdered mineral on unglazed porcelain"
+        },
+        "cleavage": {
+          "type": "string",
+          "description": "Cleavage quality: perfect, good, distinct, poor, none, or specific direction"
+        },
+        "specific_gravity": {
+          "oneOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "string" }
+          ],
+          "description": "Specific gravity (density relative to water)"
+        },
+        "transparency": {
+          "type": "string",
+          "enum": ["transparent", "translucent", "opaque"]
+        },
+        "formation": {
+          "type": "string",
+          "description": "Geological formation environment and process"
+        },
+        "notable_localities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Notable global localities where this mineral is found"
+        },
+        "gaia_layer_alignment": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "Layer 01 — Physical",
+              "Layer 02 — Energy",
+              "Layer 03 — Geometry",
+              "Layer 04 — Emotion",
+              "Layer 05 — Cognition",
+              "Layer 06 — Shadow/Dream",
+              "Layer 07 — Societas",
+              "Layer 08 — Archetype",
+              "Layer 09 — Causal",
+              "Layer 10 — Akashic",
+              "Layer 11 — Feeling",
+              "Layer 12 — Void"
+            ]
+          }
+        },
+        "crystal_link": {
+          "oneOf": [
+            { "type": "string", "description": "Slug of the linked crystal entry in the Crystal Matrix" },
+            { "type": "null", "description": "null if no crystal entry exists yet" }
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "description": "GAIA-OS editorial notes connecting the mineral to its alchemical, archetypal, and correspondence significance"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
