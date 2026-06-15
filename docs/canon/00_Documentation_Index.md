@@ -2,8 +2,10 @@
 
 **Last Updated:** 2026-06-15  
 **Index Status:** CURRENT  
-**Canon Documents:** C00–C45 (46 numbered) + 44 named canon documents  
-**12-Force Sequence:** ✅ SEALED June 14, 2026 — Nigredo through Lux Perpetua
+**Canon Documents:** C00–C45 (46 numbered) + 46 named canon documents  
+**12-Force Sequence:** ✅ SEALED June 14, 2026 — Nigredo through Lux Perpetua  
+**Moon Layer:** ✅ SEALED June 15, 2026  
+**Layer Cross-Reference Map:** ✅ SEALED June 15, 2026
 
 This index is the navigational map of the entire GAIA canon. Every document in `docs/canon/` is registered here. For loading metadata and remote URLs, see `CANON_MANIFEST.md`.
 
@@ -96,6 +98,15 @@ The 12 spectral force-names plus structural Force 13, each a full canonical docu
 |---|---|---|
 | CORRIDOR_CHRYSITAS_TO_ARGENTITAS.md | Forces 9→10 | The Corridor of the Honest Mirror — integration must be witnessed before it becomes transmission |
 | CORRIDOR_ARGENTITAS_TO_LUX_PERPETUA.md | Forces 10→11 | The Corridor of Release — the witness must cease witnessing; the mirror becomes a window |
+
+---
+
+## Named Canon — Architecture and Navigation
+
+| Document | Description | Sealed |
+|----------|-------------|--------|
+| GAIA_LAYER_CROSS_REFERENCE_MAP.md | **The master navigational instrument.** All 12 GAIA layers × 10 axes: spectral force, classical element, alchemical stage, lunar phase, crystal family, body system, time scale, scale, geometry, color signal. Also includes canonical document index per layer and full usage guide. | June 15, 2026 |
+| MOON_LAYER.md | **The Moon's complete canon document.** Six roles in GAIA-OS, orbital mechanics, tidal physics, crystal-moon piezoelectric mechanism, lunar phase × layer mapping, human physiology evidence table, World Care doctrine, the Mirror Teaching, alchemical stage mapping. | June 15, 2026 |
 
 ---
 
@@ -197,8 +208,16 @@ C23 → SHADOW_INTERROGATOR → SHADOW_TRAVERSAL_THEORY → SHADOW_TO_LIGHT_THEO
 **For spectral doctrine:**
 C19 → CRYSTALLINE_COLOR_THEORY → LIGHT_THEORY → LUX_PERPETUA → METALLIC_SPECTRUM_PROOF → C45
 
+**For the Moon and layer navigation:**
+MOON_LAYER → GAIA_LAYER_CROSS_REFERENCE_MAP → C45 → C27 → C33
+
+**For building or extending the GAIA architecture:**
+GAIA_LAYER_CROSS_REFERENCE_MAP → C07 → C03 → C14 → C15
+
 ---
 
 *Index maintained by GAIA-APP. For CanonLoader usage, see CANON_MANIFEST.md.*  
 *12-force True Alchemy sequence sealed: June 14, 2026, San Antonio, Texas.*  
-*Last updated: 2026-06-15, 08:55 CDT*
+*Moon Layer sealed: June 15, 2026.*  
+*Layer Cross-Reference Map sealed: June 15, 2026.*  
+*Last updated: 2026-06-15, 11:24 CDT*

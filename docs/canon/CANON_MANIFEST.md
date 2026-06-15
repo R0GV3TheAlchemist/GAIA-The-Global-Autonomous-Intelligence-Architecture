@@ -1,3 +1,10 @@
+---
+title: GAIA-APP Canon Manifest
+doc_id: CANON_MANIFEST_001
+version: 1.0.0
+status: canonical
+---
+
 # GAIA-APP Canon Manifest
 
 **Purpose:** This manifest tells the GAIA-APP `CanonLoader` the authoritative source location of every canonical document. The C-series master lives in the `R0GV3TheAlchemist/GAIA` repository. This file enables lazy-loading of any document on demand via the GitHub raw API or local file fallback.
@@ -5,7 +12,7 @@
 **Source Repo:** https://github.com/R0GV3TheAlchemist/GAIA  
 **Source Branch:** main  
 **Manifest Generated:** 2026-04-09  
-**Manifest Updated:** 2026-06-14  
+**Manifest Updated:** 2026-06-15  
 **Manifest Status:** CANONICAL BRIDGE
 
 ---
@@ -84,12 +91,14 @@ These documents are not part of the C-series numbering but are full canonical do
 | FALSIFICATION_PROTOCOL.md | ✅ local | Governance | — |
 | FRONT_MATTER_SCHEMA.md | ✅ local | Governance | — |
 | GAIA_IDENTITY.md | ✅ local | Identity | — |
+| GAIA_LAYER_CROSS_REFERENCE_MAP.md | ✅ local | Architecture, Navigation, All Layers | 2026-06-15-moon-layer-documentation |
 | GEOMAGNETIC_FIELD_RESPONSE.md | ✅ local | Planetary Health, Electromagnetic, Science | 2026-06-14-electromagnetic-convergence |
 | HELIXITAS.md | ✅ local | Geometry, Spiral | — |
 | IOSIS.md | ✅ local | Alchemy | — |
 | LIGHT_THEORY.md | ✅ local | Physics, Metaphysics | — |
 | LUX_PERPETUA.md | ✅ local | Light Doctrine | — |
 | METALLIC_SPECTRUM_PROOF.md | ✅ local | Spectrum, Proof | — |
+| MOON_LAYER.md | ✅ local | Lunar Science, World Care, Alchemy, Crystal, Biology | 2026-06-15-moon-layer-documentation |
 | NIGREDO.md | ✅ local | Alchemy | — |
 | PHOTOBIOMODULATION_AND_NEUROPLASTICITY.md | ✅ local | Health, Electromagnetic, Neuroscience, Planetary Health | 2026-06-14-electromagnetic-convergence |
 | PLANETARY_ALIGNMENT.md | ✅ local | Astronomy | — |
@@ -116,6 +125,42 @@ These documents are not part of the C-series numbering but are full canonical do
 ## Session Clusters
 
 Session clusters group documents that were conceived and authored together as a unified body of knowledge. They form a reading and integration unit.
+
+### 2026-06-15 — Moon Layer Documentation
+
+> *The complete lunar architecture of GAIA: the Moon Layer canon document, the full lunar data schema, and the layer cross-reference map that unifies all 12 GAIA layers across 10 axes.*
+
+| Document | Role in Cluster |
+|----------|----------------|
+| [MOON_LAYER.md](docs/canon/MOON_LAYER.md) | **Core** — the Moon's six roles in GAIA, orbital mechanics, crystal-moon physics, alchemical stage mapping, human physiology, World Care doctrine, the Mirror Teaching |
+| [GAIA_LAYER_CROSS_REFERENCE_MAP.md](docs/canon/GAIA_LAYER_CROSS_REFERENCE_MAP.md) | **Navigation** — all 12 layers × 10 axes (spectral, element, alchemy, moon phase, crystal, body, time, scale, geometry, color) in one unified map |
+
+**Cross-link map:**
+
+```
+MOON_LAYER
+    │
+    ├──► GAIA_LAYER_CROSS_REFERENCE_MAP (moon phase × layer axis)
+    │         │
+    │         ├──► 45_GAIA_Spectral_Encoding_Matrix (spectral axis)
+    │         ├──► 27_GAIA_Elemental_Architecture (element axis)
+    │         ├──► 33_GAIA_Magnum_Opus_Alchemical_Doctrine (alchemical axis)
+    │         ├──► 39_GAIA_Crystal_Science_Resonance_Spec (crystal axis)
+    │         ├──► 11_GAIA_Body_Matrix (body system axis)
+    │         ├──► 08_GAIA_Time_Matrix (time scale axis)
+    │         ├──► 09_GAIA_Scale_Matrix (scale axis)
+    │         ├──► 10_GAIA_Geometry_and_Topology_Matrix (geometry axis)
+    │         └──► 19_GAIA_Color_Doctrine_and_Signal_System (color axis)
+    │
+    └──► data/lunar/ (lunar_schema.json, lunar-phases.json, special-lunar-events.json,
+                      lunar-crystal-resonance.json)
+```
+
+**Recommended reading order:**
+1. `MOON_LAYER.md` — understand the Moon's role and doctrine
+2. `GAIA_LAYER_CROSS_REFERENCE_MAP.md` — see how the Moon maps to all 12 layers and all other axes
+
+---
 
 ### 2026-06-14 — Electromagnetic Convergence
 
@@ -206,7 +251,7 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 
 ---
 
-## Open Investigations (as of 2026-06-14)
+## Open Investigations (as of 2026-06-15)
 
 | Document | Investigation | Status |
 |----------|---------------|--------|
@@ -219,4 +264,5 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 *C42–C45 are GAIA-APP original canon documents.*  
 *Named canon suite registered 2026-06-14.*  
 *Session cluster `2026-06-14-electromagnetic-convergence` registered 2026-06-14, 18:43 CDT.*  
-*Last updated: 2026-06-14, 18:43 CDT*
+*Session cluster `2026-06-15-moon-layer-documentation` registered 2026-06-15, 11:24 CDT.*  
+*Last updated: 2026-06-15, 11:24 CDT*
