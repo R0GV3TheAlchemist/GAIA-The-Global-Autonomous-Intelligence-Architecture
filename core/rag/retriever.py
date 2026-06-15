@@ -130,3 +130,7 @@ class Retriever:
     @staticmethod
     def _is_duplicate(doc: RetrievedDoc, existing: list[RetrievedDoc]) -> bool:
         return any(d.doc_id == doc.doc_id for d in existing)
+
+
+# Compatibility alias  RetrievalResult was renamed to RetrieverConfig
+RetrievalResult = RetrieverConfig

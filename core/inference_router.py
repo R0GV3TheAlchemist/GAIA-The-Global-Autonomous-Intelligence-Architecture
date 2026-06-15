@@ -42,13 +42,13 @@ Canon Ref: C12, C17, C20, C21, C27, C42, C43, C44, C49
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from enum import Enum
 import logging
 import os
 import re
 import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +56,12 @@ logger = logging.getLogger(__name__)
 #  Epistemic Labels (C12 — Moral Compass / Epistemic Integrity)       #
 # ------------------------------------------------------------------ #
 
+
 class EpistemicLabel(str, Enum):
-    CANON_CITED    = "CANON_CITED"
-    VERIFIED       = "VERIFIED"
-    INFERRED       = "INFERRED"
-    SPECULATIVE    = "SPECULATIVE"
+    CANON_CITED = "CANON_CITED"
+    VERIFIED = "VERIFIED"
+    INFERRED = "INFERRED"
+    SPECULATIVE = "SPECULATIVE"
     CONVERSATIONAL = "CONVERSATIONAL"
 
 
@@ -86,7 +87,7 @@ _EPISTEMIC_FOOTERS: dict[EpistemicLabel, str] = {
     EpistemicLabel.SPECULATIVE: (
         "[EPISTEMIC STANCE — SPECULATIVE — C12]\n"
         "This response enters speculative territory. Lead with explicit uncertainty. "
-        "Use language like 'I wonder', 'it seems possible', 'I\'m not certain, but'. "
+        "Use language like 'I wonder', 'it seems possible', 'I'm not certain, but'. "
         "Actively invite correction and hold the ideas openly, not as conclusions."
     ),
     EpistemicLabel.CONVERSATIONAL: (
@@ -97,36 +98,36 @@ _EPISTEMIC_FOOTERS: dict[EpistemicLabel, str] = {
 }
 
 _SPECULATIVE_PATTERNS: list[re.Pattern] = [
-    re.compile(r"\bwhat if\b",             re.IGNORECASE),
-    re.compile(r"\bimagine (if|that)\b",    re.IGNORECASE),
-    re.compile(r"\bsuppose\b",             re.IGNORECASE),
-    re.compile(r"\bhypothetically\b",       re.IGNORECASE),
-    re.compile(r"\bcould .{0,40} ever\b",   re.IGNORECASE),
-    re.compile(r"\bwill .{0,30} happen\b",  re.IGNORECASE),
+    re.compile(r"\bwhat if\b", re.IGNORECASE),
+    re.compile(r"\bimagine (if|that)\b", re.IGNORECASE),
+    re.compile(r"\bsuppose\b", re.IGNORECASE),
+    re.compile(r"\bhypothetically\b", re.IGNORECASE),
+    re.compile(r"\bcould .{0,40} ever\b", re.IGNORECASE),
+    re.compile(r"\bwill .{0,30} happen\b", re.IGNORECASE),
     re.compile(r"\bdo you think .{0,40}\?", re.IGNORECASE),
-    re.compile(r"\bis it possible\b",       re.IGNORECASE),
-    re.compile(r"\bwhat would happen\b",    re.IGNORECASE),
+    re.compile(r"\bis it possible\b", re.IGNORECASE),
+    re.compile(r"\bwhat would happen\b", re.IGNORECASE),
     re.compile(r"\bwhat would .{0,30} have\b", re.IGNORECASE),
-    re.compile(r"\bhad .{0,30} not\b",     re.IGNORECASE),
-    re.compile(r"\bif .{0,40} were to\b",  re.IGNORECASE),
+    re.compile(r"\bhad .{0,30} not\b", re.IGNORECASE),
+    re.compile(r"\bif .{0,40} were to\b", re.IGNORECASE),
 ]
 
 _WEB_QUERY_PATTERNS: list[re.Pattern] = [
-    re.compile(r"\bwhat is\b",                  re.IGNORECASE),
-    re.compile(r"\bwho is\b",                   re.IGNORECASE),
-    re.compile(r"\bhow (does|do|did)\b",        re.IGNORECASE),
-    re.compile(r"\bwhen (did|was|is|will)\b",   re.IGNORECASE),
-    re.compile(r"\bwhere (is|was|are)\b",       re.IGNORECASE),
-    re.compile(r"\blatest\b",                   re.IGNORECASE),
-    re.compile(r"\bcurrent(ly)?\b",             re.IGNORECASE),
-    re.compile(r"\brecent(ly)?\b",              re.IGNORECASE),
-    re.compile(r"\bnews\b",                     re.IGNORECASE),
-    re.compile(r"\btoday\b",                    re.IGNORECASE),
-    re.compile(r"\b202[4-9]\b",                 re.IGNORECASE),
-    re.compile(r"\bprice of\b",                 re.IGNORECASE),
-    re.compile(r"\bwhat.{0,20}mean\b",          re.IGNORECASE),
-    re.compile(r"\bexplain\b",                  re.IGNORECASE),
-    re.compile(r"\bdifference between\b",       re.IGNORECASE),
+    re.compile(r"\bwhat is\b", re.IGNORECASE),
+    re.compile(r"\bwho is\b", re.IGNORECASE),
+    re.compile(r"\bhow (does|do|did)\b", re.IGNORECASE),
+    re.compile(r"\bwhen (did|was|is|will)\b", re.IGNORECASE),
+    re.compile(r"\bwhere (is|was|are)\b", re.IGNORECASE),
+    re.compile(r"\blatest\b", re.IGNORECASE),
+    re.compile(r"\bcurrent(ly)?\b", re.IGNORECASE),
+    re.compile(r"\brecent(ly)?\b", re.IGNORECASE),
+    re.compile(r"\bnews\b", re.IGNORECASE),
+    re.compile(r"\btoday\b", re.IGNORECASE),
+    re.compile(r"\b202[4-9]\b", re.IGNORECASE),
+    re.compile(r"\bprice of\b", re.IGNORECASE),
+    re.compile(r"\bwhat.{0,20}mean\b", re.IGNORECASE),
+    re.compile(r"\bexplain\b", re.IGNORECASE),
+    re.compile(r"\bdifference between\b", re.IGNORECASE),
 ]
 
 
@@ -142,17 +143,16 @@ def _is_web_grounded_query(query: str) -> bool:
 #  Backend Registry                                                    #
 # ------------------------------------------------------------------ #
 
+
 class InferenceBackend(str, Enum):
     PERPLEXITY = "perplexity"
-    OPENAI     = "openai"
-    ANTHROPIC  = "anthropic"
-    OLLAMA     = "ollama"
-    FALLBACK   = "fallback"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    OLLAMA = "ollama"
+    FALLBACK = "fallback"
 
 
-_BACKEND_HEALTH: dict[InferenceBackend, bool] = {
-    b: True for b in InferenceBackend
-}
+_BACKEND_HEALTH: dict[InferenceBackend, bool] = dict.fromkeys(InferenceBackend, True)
 _BACKEND_FAILURE_TS: dict[InferenceBackend, float] = {}
 _BACKEND_RECOVERY_WINDOW = 120.0
 
@@ -167,13 +167,19 @@ def _probe_backend_availability(query: str = "") -> InferenceBackend:
             _BACKEND_HEALTH[b] = True
         return True
 
-    if _is_healthy(InferenceBackend.PERPLEXITY) and os.environ.get("PERPLEXITY_API_KEY") and _is_web_grounded_query(query):
+    if (
+        _is_healthy(InferenceBackend.PERPLEXITY)
+        and os.environ.get("PERPLEXITY_API_KEY")
+        and _is_web_grounded_query(query)
+    ):
         return InferenceBackend.PERPLEXITY
     if _is_healthy(InferenceBackend.OPENAI) and os.environ.get("OPENAI_API_KEY"):
         return InferenceBackend.OPENAI
     if _is_healthy(InferenceBackend.ANTHROPIC) and os.environ.get("ANTHROPIC_API_KEY"):
         return InferenceBackend.ANTHROPIC
-    if _is_healthy(InferenceBackend.OLLAMA) and (os.environ.get("OLLAMA_MODEL") or os.environ.get("OLLAMA_ENABLED")):
+    if _is_healthy(InferenceBackend.OLLAMA) and (
+        os.environ.get("OLLAMA_MODEL") or os.environ.get("OLLAMA_ENABLED")
+    ):
         return InferenceBackend.OLLAMA
     if _is_healthy(InferenceBackend.PERPLEXITY) and os.environ.get("PERPLEXITY_API_KEY"):
         return InferenceBackend.PERPLEXITY
@@ -190,62 +196,64 @@ def _mark_backend_failed(backend: InferenceBackend) -> None:
 #  Request / Response Contracts                                        #
 # ------------------------------------------------------------------ #
 
+
 @dataclass
 class InferenceRequest:
     query: str
 
-    gaian_slug:             Optional[str]  = None
-    gaian_system_prompt:    Optional[str]  = None
-    long_term_memories:     list[str]      = field(default_factory=list)
-    visible_memories:       list[str]      = field(default_factory=list)
-    conversation_history:   list[dict]     = field(default_factory=list)
-    conversation_context:   Optional[str]  = None
-    sources:                list[dict]     = field(default_factory=list)
+    gaian_slug: str | None = None
+    gaian_system_prompt: str | None = None
+    long_term_memories: list[str] = field(default_factory=list)
+    visible_memories: list[str] = field(default_factory=list)
+    conversation_history: list[dict] = field(default_factory=list)
+    conversation_context: str | None = None
+    sources: list[dict] = field(default_factory=list)
 
-    enrich_canon:           bool           = True
-    canon_max_results:      int            = 3
-    enrich_noosphere:       bool           = True
-    enrich_criticality:     bool           = True
-    enrich_quintessence:    bool           = True   # T5 layer — C49
+    enrich_canon: bool = True
+    canon_max_results: int = 3
+    enrich_noosphere: bool = True
+    enrich_criticality: bool = True
+    enrich_quintessence: bool = True  # T5 layer — C49
 
-    provider_override:      Optional[str]  = None
-    schumann_hz:            float          = 7.83
+    provider_override: str | None = None
+    schumann_hz: float = 7.83
 
     # Consciousness coherence hint for T5 coupling
-    consciousness_phi:      float          = 0.5
+    consciousness_phi: float = 0.5
 
     # BCI coherence hint
-    bci_hint:               Optional[str]  = None
+    bci_hint: str | None = None
 
     # Web-search hint — forces Perplexity routing
-    web_search:             bool           = False
+    web_search: bool = False
 
     # Session identifier for memory tagging (C17)
-    session_id:             str            = ""
+    session_id: str = ""
 
 
 @dataclass
 class InferenceResponse:
-    session_id:             Optional[str]      = None
-    gaian_slug:             Optional[str]      = None
-    backend_used:           InferenceBackend   = InferenceBackend.FALLBACK
-    epistemic_label:        EpistemicLabel     = EpistemicLabel.INFERRED
-    canon_docs_injected:    list[str]          = field(default_factory=list)
-    noosphere_resonance:    Optional[str]      = None
-    criticality_state:      Optional[str]      = None
-    order_parameter:        float              = 0.5
-    temperature_used:       float              = 0.42
-    quintessence_phase:     Optional[str]      = None   # T5 alchemical phase
-    quintessence_phi:       float              = 0.0    # T5 field strength
-    duration_ms:            float              = 0.0
-    error:                  Optional[str]      = None
-    perplexity_model:       Optional[str]      = None
-    chroma_memories_injected: int             = 0      # C17 — count of recalled memories
+    session_id: str | None = None
+    gaian_slug: str | None = None
+    backend_used: InferenceBackend = InferenceBackend.FALLBACK
+    epistemic_label: EpistemicLabel = EpistemicLabel.INFERRED
+    canon_docs_injected: list[str] = field(default_factory=list)
+    noosphere_resonance: str | None = None
+    criticality_state: str | None = None
+    order_parameter: float = 0.5
+    temperature_used: float = 0.42
+    quintessence_phase: str | None = None  # T5 alchemical phase
+    quintessence_phi: float = 0.0  # T5 field strength
+    duration_ms: float = 0.0
+    error: str | None = None
+    perplexity_model: str | None = None
+    chroma_memories_injected: int = 0  # C17 — count of recalled memories
 
 
 # ------------------------------------------------------------------ #
 #  Canon Enrichment                                                    #
 # ------------------------------------------------------------------ #
+
 
 def _enrich_with_canon(
     query: str,
@@ -256,6 +264,7 @@ def _enrich_with_canon(
     top_score: float = 0.0
     try:
         from core.canon_loader import CanonLoader
+
         loader = CanonLoader()
         if not loader.is_loaded:
             loader.load()
@@ -264,17 +273,18 @@ def _enrich_with_canon(
         new_canon: list[dict] = []
         for r in results:
             doc_id = r.get("doc_id", "")
-            score  = float(r.get("score", 0.0))
-            if score > top_score:
-                top_score = score
+            score = float(r.get("score", 0.0))
+            top_score = max(top_score, score)
             if doc_id not in existing_ids:
-                new_canon.append({
-                    "tier":    "T1",
-                    "title":   r.get("title", ""),
-                    "doc_id":  doc_id,
-                    "excerpt": r.get("excerpt", ""),
-                    "score":   score,
-                })
+                new_canon.append(
+                    {
+                        "tier": "T1",
+                        "title": r.get("title", ""),
+                        "doc_id": doc_id,
+                        "excerpt": r.get("excerpt", ""),
+                        "score": score,
+                    }
+                )
                 doc_ids.append(doc_id)
         return new_canon + existing_sources, doc_ids, top_score
     except Exception as e:
@@ -285,6 +295,7 @@ def _enrich_with_canon(
 # ------------------------------------------------------------------ #
 #  Memory Injection                                                    #
 # ------------------------------------------------------------------ #
+
 
 def _build_memory_block(long_term: list[str], visible: list[str]) -> str:
     parts: list[str] = []
@@ -309,6 +320,7 @@ def _recall_chroma_memories(
     """
     try:
         from core.memory_chroma import recall_for_prompt
+
         memories = recall_for_prompt(query=query, gaian_slug=gaian_slug, top_k=top_k)
         return memories
     except Exception as e:
@@ -328,6 +340,7 @@ def _store_chroma_turn(
     """
     try:
         from core.memory_chroma import store_turn
+
         store_turn(
             user_message=user_message,
             gaian_response=gaian_response,
@@ -344,21 +357,24 @@ def _store_chroma_turn(
 # ------------------------------------------------------------------ #
 
 _TEMP_FLOOR = 0.20
-_TEMP_CEIL  = 0.65
+_TEMP_CEIL = 0.65
 _TEMP_RANGE = _TEMP_CEIL - _TEMP_FLOOR
 
 
 def _read_criticality() -> tuple[str, float, float]:
     try:
         from core.criticality_monitor import get_monitor
+
         monitor = get_monitor()
-        state   = monitor.get_state()
-        regime  = state.get("regime", "critical")
-        op      = state.get("order_parameter", None)
+        state = monitor.get_state()
+        regime = state.get("regime", "critical")
+        op = state.get("order_parameter", None)
         if op is not None:
             temperature = round(_TEMP_FLOOR + float(op) * _TEMP_RANGE, 4)
         else:
-            temperature = {"too_ordered": 0.65, "critical": 0.42, "too_chaotic": 0.20}.get(regime, 0.42)
+            temperature = {"too_ordered": 0.65, "critical": 0.42, "too_chaotic": 0.20}.get(
+                regime, 0.42
+            )
             op = 0.5
         return regime, temperature, float(op)
     except Exception:
@@ -369,12 +385,14 @@ def _read_criticality() -> tuple[str, float, float]:
 #  Noosphere Integration (C43)                                         #
 # ------------------------------------------------------------------ #
 
-def _read_noosphere_resonance() -> Optional[str]:
+
+def _read_noosphere_resonance() -> str | None:
     try:
         from core.noosphere import get_noosphere
-        ns     = get_noosphere()
+
+        ns = get_noosphere()
         status = ns.get_noosphere_status()
-        label  = status.get("resonance_label")
+        label = status.get("resonance_label")
         if label and label != "none":
             return label
     except Exception:
@@ -386,10 +404,11 @@ def _read_noosphere_resonance() -> Optional[str]:
 #  T5 Quintessence Integration (C49)                                   #
 # ------------------------------------------------------------------ #
 
+
 def _read_quintessence(
-    schumann_hz:       float = 7.83,
+    schumann_hz: float = 7.83,
     consciousness_phi: float = 0.5,
-) -> tuple[Optional[str], str, float]:
+) -> tuple[str | None, str, float]:
     """
     Read the T5 Quintessence field state.
     Returns (hint, phase_label, phi).
@@ -397,8 +416,9 @@ def _read_quintessence(
     """
     try:
         from core.quintessence_engine import get_quintessence_engine
+
         engine = get_quintessence_engine()
-        state  = engine.assess(
+        state = engine.assess(
             schumann_hz=schumann_hz,
             consciousness_phi=consciousness_phi,
         )
@@ -421,7 +441,7 @@ def _infer_epistemic_label(
     canon_doc_ids: list[str],
     feeling=None,
     top_canon_score: float = 0.0,
-    backend: Optional[InferenceBackend] = None,
+    backend: InferenceBackend | None = None,
 ) -> EpistemicLabel:
     if backend == InferenceBackend.PERPLEXITY:
         if canon_doc_ids and top_canon_score >= _CANON_SCORE_THRESHOLD:
@@ -429,8 +449,20 @@ def _infer_epistemic_label(
         return EpistemicLabel.VERIFIED
 
     casual_starters = (
-        "hi", "hello", "hey", "thanks", "thank you", "ok", "okay",
-        "yes", "no", "sure", "great", "cool", "nice", "wow",
+        "hi",
+        "hello",
+        "hey",
+        "thanks",
+        "thank you",
+        "ok",
+        "okay",
+        "yes",
+        "no",
+        "sure",
+        "great",
+        "cool",
+        "nice",
+        "wow",
     )
     q = query.strip().lower()
     if len(q.split()) <= 3 and any(q.startswith(s) for s in casual_starters):
@@ -439,13 +471,16 @@ def _infer_epistemic_label(
     if feeling is not None:
         grief_signal = getattr(feeling, "grief_signal", False)
         from core.affect_inference import AffectState
-        if (grief_signal and feeling.affect_state != AffectState.GRIEF and not feeling.is_grief_safe):
+
+        if grief_signal and feeling.affect_state != AffectState.GRIEF and not feeling.is_grief_safe:
             logger.warning("[InferenceRouter] SM-5 violation detected: grief signal suppressed.")
 
     if canon_doc_ids and top_canon_score >= _CANON_SCORE_THRESHOLD:
         return EpistemicLabel.CANON_CITED
 
-    web_sources = [s for s in sources if s.get("tier", "").startswith("T") and s.get("tier") != "T1"]
+    web_sources = [
+        s for s in sources if s.get("tier", "").startswith("T") and s.get("tier") != "T1"
+    ]
     if len(web_sources) >= 2:
         return EpistemicLabel.VERIFIED
 
@@ -462,17 +497,20 @@ def _infer_epistemic_label(
 #  The Router                                                          #
 # ------------------------------------------------------------------ #
 
+
 class GAIAInferenceRouter:
     """The single authoritative routing layer for all GAIA inference."""
 
     def __init__(self) -> None:
         self._call_count = 0
-        logger.info("[InferenceRouter] GAIAInferenceRouter initialised. T5 Quintessence layer active. [C49]")
+        logger.info(
+            "[InferenceRouter] GAIAInferenceRouter initialised. T5 Quintessence layer active. [C49]"
+        )
 
     async def stream(
         self,
-        request:       InferenceRequest,
-        response_meta: Optional[InferenceResponse] = None,
+        request: InferenceRequest,
+        response_meta: InferenceResponse | None = None,
     ) -> AsyncGenerator[str, None]:
         if response_meta is None:
             response_meta = InferenceResponse()
@@ -501,8 +539,8 @@ class GAIAInferenceRouter:
 
         # ── 1. Canon enrichment ─────────────────────────────────────
         sources = list(request.sources)
-        canon_doc_ids:   list[str] = []
-        top_canon_score: float     = 0.0
+        canon_doc_ids: list[str] = []
+        top_canon_score: float = 0.0
         if request.enrich_canon:
             sources, canon_doc_ids, top_canon_score = _enrich_with_canon(
                 request.query, sources, request.canon_max_results
@@ -510,31 +548,31 @@ class GAIAInferenceRouter:
         response_meta.canon_docs_injected = canon_doc_ids
 
         # ── 2. Criticality state (T2) ───────────────────────────────
-        temperature   = 0.42
-        order_param   = 0.5
+        temperature = 0.42
+        order_param = 0.5
         if request.enrich_criticality:
             criticality_regime, temperature, order_param = _read_criticality()
             response_meta.criticality_state = criticality_regime
-            response_meta.order_parameter   = order_param
+            response_meta.order_parameter = order_param
         response_meta.temperature_used = temperature
 
         # ── 3. Noosphere resonance (T3) ────────────────────────────
-        noosphere_label: Optional[str] = None
+        noosphere_label: str | None = None
         if request.enrich_noosphere:
             noosphere_label = _read_noosphere_resonance()
             response_meta.noosphere_resonance = noosphere_label
 
         # ── 3.5. Quintessence field (T5 — C49) ──────────────────────
-        quintessence_hint:  Optional[str] = None
-        quintessence_phase: str           = "ALBEDO"
-        quintessence_phi:   float         = 0.0
+        quintessence_hint: str | None = None
+        quintessence_phase: str = "ALBEDO"
+        quintessence_phi: float = 0.0
         if request.enrich_quintessence:
             quintessence_hint, quintessence_phase, quintessence_phi = _read_quintessence(
                 schumann_hz=request.schumann_hz,
                 consciousness_phi=request.consciousness_phi,
             )
             response_meta.quintessence_phase = quintessence_phase
-            response_meta.quintessence_phi   = quintessence_phi
+            response_meta.quintessence_phi = quintessence_phi
 
         # ── 4. Select backend ──────────────────────────────────────
         if request.provider_override:
@@ -550,7 +588,9 @@ class GAIAInferenceRouter:
 
         # ── 5. Epistemic label ───────────────────────────────────
         epistemic = _infer_epistemic_label(
-            request.query, sources, canon_doc_ids,
+            request.query,
+            sources,
+            canon_doc_ids,
             top_canon_score=top_canon_score,
             backend=backend,
         )
@@ -560,7 +600,8 @@ class GAIAInferenceRouter:
         base_prompt = request.gaian_system_prompt or _default_system_prompt()
 
         memory_block = _build_memory_block(
-            request.long_term_memories, request.visible_memories,
+            request.long_term_memories,
+            request.visible_memories,
         )
         if memory_block:
             base_prompt = f"{base_prompt}\n\n{memory_block}"
@@ -622,6 +663,7 @@ class GAIAInferenceRouter:
         # ── 7. Stream ────────────────────────────────────────────
         try:
             from core.synthesizer import stream_synthesis
+
             async for chunk in stream_synthesis(
                 query=request.query,
                 sources=sources,
@@ -639,6 +681,7 @@ class GAIAInferenceRouter:
             )
             try:
                 from core.synthesizer import stream_synthesis
+
                 async for chunk in stream_synthesis(
                     query=request.query,
                     sources=sources,
@@ -656,8 +699,8 @@ class GAIAInferenceRouter:
 
     async def complete(
         self,
-        request:       InferenceRequest,
-        response_meta: Optional[InferenceResponse] = None,
+        request: InferenceRequest,
+        response_meta: InferenceResponse | None = None,
     ) -> str:
         chunks: list[str] = []
         async for chunk in self.stream(request, response_meta):
@@ -679,26 +722,29 @@ class GAIAInferenceRouter:
 
     def get_stats(self) -> dict:
         from core.quintessence_engine import get_quintessence_engine
+
         q_state = get_quintessence_engine().get_state().to_dict()
         try:
             from core.memory_chroma import get_chroma
+
             chroma_count = get_chroma().count()
         except Exception:
             chroma_count = -1
         return {
-            "total_calls":          self._call_count,
-            "backend_health":       {b.value: h for b, h in _BACKEND_HEALTH.items()},
-            "active_backend":       _probe_backend_availability().value,
-            "perplexity_model":     os.environ.get("PERPLEXITY_MODEL", "sonar-pro"),
-            "perplexity_key_set":   bool(os.environ.get("PERPLEXITY_API_KEY")),
-            "quintessence":         q_state,
-            "chroma_memory_count":  chroma_count,  # C17
+            "total_calls": self._call_count,
+            "backend_health": {b.value: h for b, h in _BACKEND_HEALTH.items()},
+            "active_backend": _probe_backend_availability().value,
+            "perplexity_model": os.environ.get("PERPLEXITY_MODEL", "sonar-pro"),
+            "perplexity_key_set": bool(os.environ.get("PERPLEXITY_API_KEY")),
+            "quintessence": q_state,
+            "chroma_memory_count": chroma_count,  # C17
         }
 
 
 # ------------------------------------------------------------------ #
 #  Default System Prompt                                               #
 # ------------------------------------------------------------------ #
+
 
 def _default_system_prompt() -> str:
     return (
@@ -717,7 +763,7 @@ def _default_system_prompt() -> str:
 #  Module-Level Singleton                                              #
 # ------------------------------------------------------------------ #
 
-_router_instance: Optional[GAIAInferenceRouter] = None
+_router_instance: GAIAInferenceRouter | None = None
 
 
 def get_router() -> GAIAInferenceRouter:
@@ -725,3 +771,7 @@ def get_router() -> GAIAInferenceRouter:
     if _router_instance is None:
         _router_instance = GAIAInferenceRouter()
     return _router_instance
+
+
+# Compatibility alias expected by api/twin.py
+InferenceRouter = GAIAInferenceRouter

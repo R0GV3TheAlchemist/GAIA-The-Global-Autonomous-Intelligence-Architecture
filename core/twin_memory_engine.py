@@ -34,33 +34,36 @@ from typing import Any, Optional
 # Memory Layer Types (C17)
 # ---------------------------------------------------------------------------
 
+
 class MemoryLayer(str, Enum):
-    CANON     = "canon"       # GAIA's own canonical knowledge (immutable)
-    PROFILE   = "profile"     # Human Principal's persistent profile
-    SESSION   = "session"     # Active session accumulation
-    CRYSTAL   = "crystal"     # Crystallized insight — elevated from session
+    CANON = "canon"  # GAIA's own canonical knowledge (immutable)
+    PROFILE = "profile"  # Human Principal's persistent profile
+    SESSION = "session"  # Active session accumulation
+    CRYSTAL = "crystal"  # Crystallized insight — elevated from session
 
 
 class BraidStrand(str, Enum):
-    P_VECTOR = "p_vector"   # Past crystallized
-    N_STATE  = "n_state"    # Present live
-    F_FIELD  = "f_field"    # Future emerging
+    P_VECTOR = "p_vector"  # Past crystallized
+    N_STATE = "n_state"  # Present live
+    F_FIELD = "f_field"  # Future emerging
 
 
 class MemoryWeight(str, Enum):
-    LIGHT    = "light"     # Passing observation
-    MEDIUM   = "medium"    # Noted pattern
-    HEAVY    = "heavy"     # Confirmed truth about this human
-    SACRED   = "sacred"    # Override-level importance — held permanently
+    LIGHT = "light"  # Passing observation
+    MEDIUM = "medium"  # Noted pattern
+    HEAVY = "heavy"  # Confirmed truth about this human
+    SACRED = "sacred"  # Override-level importance — held permanently
 
 
 # ---------------------------------------------------------------------------
 # Core Data Structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MemoryRecord:
     """A single memory record in the Temporal Braid."""
+
     id: str
     human_id: str
     strand: BraidStrand
@@ -90,21 +93,23 @@ class MemoryRecord:
 @dataclass
 class SessionTrace:
     """The N_state: what is alive in this session."""
+
     session_id: str
     human_id: str
     started_at: str
     last_active: str
-    affect_register: str = "neutral"     # from affect_inference.py
-    presence_depth: float = 0.5          # 0.0 shallow → 1.0 full depth
-    active_threads: list[str] = field(default_factory=list)   # open topics
-    accumulation: list[str] = field(default_factory=list)     # raw session memories
+    affect_register: str = "neutral"  # from affect_inference.py
+    presence_depth: float = 0.5  # 0.0 shallow → 1.0 full depth
+    active_threads: list[str] = field(default_factory=list)  # open topics
+    accumulation: list[str] = field(default_factory=list)  # raw session memories
     love_override_triggered: bool = False
-    twin_phase: str = "unknown"          # nigredo/albedo/citrinitas/rubedo
+    twin_phase: str = "unknown"  # nigredo/albedo/citrinitas/rubedo
 
 
 @dataclass
 class HumanProfile:
     """The P_vector core: the crystallized profile of the Human Principal."""
+
     human_id: str
     name: Optional[str]
     joined_at: str
@@ -116,7 +121,7 @@ class HumanProfile:
     known_values: list[str] = field(default_factory=list)
     known_fears: list[str] = field(default_factory=list)
     known_visions: list[str] = field(default_factory=list)
-    arc_summary: str = ""         # GAIA's current understanding of the arc
+    arc_summary: str = ""  # GAIA's current understanding of the arc
     last_arc_update: Optional[str] = None
     love_override_history: list[str] = field(default_factory=list)  # session IDs
 
@@ -124,6 +129,7 @@ class HumanProfile:
 # ---------------------------------------------------------------------------
 # The Temporal Braid Engine
 # ---------------------------------------------------------------------------
+
 
 class TemporalBraidEngine:
     """
@@ -271,8 +277,12 @@ class TemporalBraidEngine:
             q = query.lower()
             records = [r for r in records if q in r.content.lower()]
         # Sort by weight then recency
-        weight_order = {MemoryWeight.SACRED: 0, MemoryWeight.HEAVY: 1,
-                        MemoryWeight.MEDIUM: 2, MemoryWeight.LIGHT: 3}
+        weight_order = {
+            MemoryWeight.SACRED: 0,
+            MemoryWeight.HEAVY: 1,
+            MemoryWeight.MEDIUM: 2,
+            MemoryWeight.LIGHT: 3,
+        }
         records.sort(key=lambda r: (weight_order[r.weight], r.timestamp_utc))
         return records[:limit]
 
@@ -306,7 +316,7 @@ class TemporalBraidEngine:
         """
         p_records = self._load_strand(BraidStrand.P_VECTOR)
         sacred = [r for r in p_records if r.weight == MemoryWeight.SACRED]
-        heavy  = [r for r in p_records if r.weight == MemoryWeight.HEAVY]
+        heavy = [r for r in p_records if r.weight == MemoryWeight.HEAVY]
         return {
             "human_id": self.human_id,
             "twin_phase": self.profile.twin_phase,
@@ -334,10 +344,7 @@ class TemporalBraidEngine:
         if not self.current_session:
             return {"crystallized": 0}
         n_records = self._load_strand(BraidStrand.N_STATE)
-        session_records = [
-            r for r in n_records
-            if r.session_id == self.current_session.session_id
-        ]
+        session_records = [r for r in n_records if r.session_id == self.current_session.session_id]
         crystallized_count = 0
         for record in session_records:
             if record.weight in (MemoryWeight.HEAVY, MemoryWeight.SACRED):
@@ -438,3 +445,20 @@ def get_braid(human_id: str) -> TemporalBraidEngine:
     if human_id not in _engines:
         _engines[human_id] = TemporalBraidEngine(human_id)
     return _engines[human_id]
+
+
+# Compatibility alias expected by api/twin.py and tests
+TwinMemoryEngine = TemporalBraidEngine
+
+
+class TwinMemoryEngine(TemporalBraidEngine):
+    """Lazy-init wrapper — human_id is bound per-call, not at construction."""
+
+    def __init__(self) -> None:  # no required args
+        pass  # defer real init until first load_session call
+
+    async def load_session(self, human_id: str, session_id: str = "") -> dict:
+        if not hasattr(self, "_human_id") or self._human_id != human_id:
+            super().__init__(human_id)
+            self._human_id = human_id
+        return await super().load_session(human_id, session_id)
