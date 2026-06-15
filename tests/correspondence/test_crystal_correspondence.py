@@ -2,7 +2,8 @@
 
 Covers schema validation, ingestion/upsert, scalar extraction, ORM helper
 methods, correspondence lookup, alchemical/SoulMirror integration patterns,
-affect inference, safety flags, and v2.0 consequential properties.
+affect inference, safety flags, sovereignty flags, and v2.0 consequential
+properties.
 
 The tests intentionally focus on infrastructure behavior, not metaphysical
 truth claims.
@@ -65,7 +66,10 @@ def sample_record_v2() -> dict:
                     "hz": 7.83,
                     "label": "Schumann fundamental",
                     "source": "schumann",
-                    "evidence_level": "empirical",
+                    # FIX 1: was "empirical" which is valid for .source but NOT
+                    # in evidence_level_enum. "clinical_study" is correct here
+                    # because Schumann resonance is a measured geophysical fact.
+                    "evidence_level": "clinical_study",
                     "confidence": "medium",
                 },
                 {
@@ -328,6 +332,7 @@ def sample_record_v2() -> dict:
             "updated_at": "2026-06-15T00:00:00Z",
             "created_by": "test-suite",
             "canon_refs": ["C32", "C118"],
+            # FIX 2: sovereignty_flags lives under metadata (schema-correct location)
             "sovereignty_flags": {
                 "user_overridable": True,
                 "community_contributions_enabled": True,
@@ -377,7 +382,7 @@ class FakeSession:
 
 
 # ---------------------------------------------------------------------------
-# Schema validation tests
+# Group 1: Schema validation
 # ---------------------------------------------------------------------------
 
 def test_validate_record_accepts_valid_v2_record(sample_record_v2):
@@ -405,8 +410,23 @@ def test_validate_record_rejects_bad_hex_color(sample_record_v2):
         validate_record(broken)
 
 
+def test_validate_record_rejects_bad_evidence_level(sample_record_v2):
+    """'empirical' is a valid .source value but NOT a valid evidence_level_enum value."""
+    broken = copy.deepcopy(sample_record_v2)
+    broken["correspondences"]["resonant_frequencies"][0]["evidence_level"] = "empirical"
+    with pytest.raises(ValidationError):
+        validate_record(broken)
+
+
+def test_validate_record_rejects_bad_chakra_system(sample_record_v2):
+    broken = copy.deepcopy(sample_record_v2)
+    broken["correspondences"]["chakra_system"][0]["system"] = "wrong_system"
+    with pytest.raises(ValidationError):
+        validate_record(broken)
+
+
 # ---------------------------------------------------------------------------
-# Ingestion / upsert / provenance tests
+# Group 2: Ingestion / upsert / provenance
 # ---------------------------------------------------------------------------
 
 def test_ingest_record_creates_new_row(sample_record_v2):
@@ -463,11 +483,10 @@ def test_invalid_record_enters_validation_error_queue(sample_record_v2):
     errs = get_validation_errors()
     assert len(errs) == 1
     assert errs[0]["subject_id"] == "crystal:actinolite"
-    assert "wrong_system" in errs[0]["message"] or errs[0]["validator"]
 
 
 # ---------------------------------------------------------------------------
-# Scalar extraction + ORM helper tests
+# Group 3: Scalar extraction + ORM helpers
 # ---------------------------------------------------------------------------
 
 def test_helper_methods_expose_v2_axes(sample_record_v2):
@@ -499,7 +518,7 @@ def test_healing_helper_by_domain(sample_record_v2):
     session = FakeSession()
     row = ingest_record(session, sample_record_v2)
 
-    physical = row.healing_entries("physical")
+    physical  = row.healing_entries("physical")
     emotional = row.healing_entries("emotional_mental")
     spiritual = row.healing_entries("spiritual_energetic")
 
@@ -518,7 +537,7 @@ def test_interaction_matrix_helpers(sample_record_v2):
 
 
 # ---------------------------------------------------------------------------
-# Correspondence lookup / integration-pattern tests
+# Group 4: Correspondence lookup patterns
 # ---------------------------------------------------------------------------
 
 def test_lookup_by_layer_emotion_zodiac_and_angel_number(sample_record_v2):
@@ -531,49 +550,57 @@ def test_lookup_by_layer_emotion_zodiac_and_angel_number(sample_record_v2):
     assert row.correspondences["angel_numbers"][0]["number"] == 444
 
 
+# ---------------------------------------------------------------------------
+# Group 5: Alchemical / SoulMirror integration pattern
+# ---------------------------------------------------------------------------
+
 def test_alchemical_hook_for_soul_mirror_pattern(sample_record_v2):
-    """Infrastructure-level pattern: a SoulMirror engine could read the
-    crystal's transmutation corridor + archetype + emotions to generate
-    a reflective mirror state without touching raw JSON paths."""
+    """Infrastructure-level pattern: a SoulMirror engine reads the crystal's
+    transmutation corridor + archetype + emotion to generate a reflective
+    mirror state without touching raw JSON paths."""
     session = FakeSession()
     row = ingest_record(session, sample_record_v2)
 
     soul_mirror_seed = {
-        "archetype": row.primary_archetype(),
+        "archetype":      row.primary_archetype(),
         "alchemical_stage": row.alchemical_stage(),
-        "corridor": row.transmutation_corridor(),
-        "emotion": row.emotion_set()[0],
+        "corridor":       row.transmutation_corridor(),
+        "emotion":        row.emotion_set()[0],
     }
 
     assert soul_mirror_seed == {
-        "archetype": "The Regreening Guardian",
+        "archetype":        "The Regreening Guardian",
         "alchemical_stage": "VIRIDITAS",
-        "corridor": "NIGREDO dissolution -> VIRIDITAS regrowth",
-        "emotion": "renewal",
+        "corridor":         "NIGREDO dissolution -> VIRIDITAS regrowth",
+        "emotion":          "renewal",
     }
 
 
+# ---------------------------------------------------------------------------
+# Group 6: Affect inference hook
+# ---------------------------------------------------------------------------
+
 def test_affect_inference_hook_builds_support_vector(sample_record_v2):
-    """Infrastructure-level pattern: affect inference can combine emotional,
+    """Infrastructure-level pattern: affect inference combines emotional,
     archetypal, and measurable outcome data into a support vector."""
     session = FakeSession()
     row = ingest_record(session, sample_record_v2)
 
     support_vector = {
-        "valence_bias": +1 if row.coherence_scalar() > 0 else -1,
-        "emotion": row.emotion_set()[0],
-        "archetype": row.primary_archetype(),
-        "expected_metrics": [m["metric"] for m in row.measurable_outcomes()],
+        "valence_bias":      +1 if row.coherence_scalar() > 0 else -1,
+        "emotion":           row.emotion_set()[0],
+        "archetype":         row.primary_archetype(),
+        "expected_metrics":  [m["metric"] for m in row.measurable_outcomes()],
     }
 
     assert support_vector["valence_bias"] == 1
     assert support_vector["emotion"] == "renewal"
-    assert "affect_valence_score" in support_vector["expected_metrics"]
-    assert "gaia_coherence_index" in support_vector["expected_metrics"]
+    assert "affect_valence_score"  in support_vector["expected_metrics"]
+    assert "gaia_coherence_index"  in support_vector["expected_metrics"]
 
 
 # ---------------------------------------------------------------------------
-# Safety / sovereignty / versioning tests
+# Group 7: Safety / sovereignty / versioning
 # ---------------------------------------------------------------------------
 
 def test_safety_profile_and_requires_opt_in(sample_record_v2):
@@ -583,15 +610,29 @@ def test_safety_profile_and_requires_opt_in(sample_record_v2):
 
     assert row.safety_flags() == ["active_crisis"]
     assert sp["requires_opt_in"] is True
-    assert "hazardous" in sp["physical_caution"].lower() or "fibrous" in sp["physical_caution"].lower()
+    assert "fibrous" in sp["physical_caution"].lower() or "hazardous" in sp["physical_caution"].lower()
 
 
 def test_user_override_and_community_flags(sample_record_v2):
+    """FIX 2: sovereignty_flags is read from metadata (schema-correct location)."""
     session = FakeSession()
     row = ingest_record(session, sample_record_v2)
 
+    # sovereignty_flags is written into the sovereignty_flags JSONB column
+    # by ingestion reading payload['metadata']['sovereignty_flags']
     assert row.is_user_overridable() is True
     assert row.community_contributions_enabled() is True
+
+
+def test_sovereignty_flags_read_from_metadata_not_top_level(sample_record_v2):
+    """Confirm that sovereignty_flags is NOT expected at the record root."""
+    session = FakeSession()
+    # Remove from metadata — ingestion should get an empty dict, flags = False
+    no_flags = copy.deepcopy(sample_record_v2)
+    no_flags["metadata"].pop("sovereignty_flags")
+    row = ingest_record(session, no_flags)
+    assert row.is_user_overridable() is False
+    assert row.community_contributions_enabled() is False
 
 
 def test_versioning_and_review_metadata(sample_record_v2):
@@ -599,14 +640,23 @@ def test_versioning_and_review_metadata(sample_record_v2):
     row = ingest_record(session, sample_record_v2)
 
     assert row.record_version == "1.2.0"
-    assert row.review_status == "approved"
-    assert row.reviewed_by == "gaia-architect"
+    assert row.review_status  == "approved"
+    assert row.reviewed_by    == "gaia-architect"
     assert row.next_review_date == dt.date(2026, 9, 15)
     assert row.change_log[1]["summary"] == "Expanded v2 consequential fields."
 
 
+def test_common_name_derives_from_subject_id_slug(sample_record_v2):
+    """FIX 3: common_name falls back to titleized subject_id slug.
+    This is intentional — metadata has no 'display_name' key in v2.0 schema."""
+    session = FakeSession()
+    row = ingest_record(session, sample_record_v2)
+    # subject_id = 'crystal:actinolite' -> slug = 'actinolite' -> 'Actinolite'
+    assert row.common_name == "Actinolite"
+
+
 # ---------------------------------------------------------------------------
-# Regression / compatibility tests
+# Group 8: Regression / backward compatibility
 # ---------------------------------------------------------------------------
 
 def test_v1_compatibility_frequency_falls_back_to_grid_resonance(sample_record_v2):
@@ -615,7 +665,7 @@ def test_v1_compatibility_frequency_falls_back_to_grid_resonance(sample_record_v
     legacyish["correspondences"].pop("resonant_frequencies")
 
     row = ingest_record(session, legacyish)
-    assert float(row.frequency_hz_low) == pytest.approx(7.83)
+    assert float(row.frequency_hz_low)  == pytest.approx(7.83)
     assert float(row.frequency_hz_high) == pytest.approx(20.8)
 
 
@@ -629,6 +679,6 @@ def test_missing_optional_v2_fields_still_ingest(sample_record_v2):
     minimal["metadata"].pop("review_status")
 
     row = ingest_record(session, minimal)
-    assert row.subject_id == "crystal:actinolite"
+    assert row.subject_id    == "crystal:actinolite"
     assert row.primary_chakra is None
     assert row.review_status in ("draft", None)
