@@ -2,6 +2,7 @@
 ## Canon Document — White Light and Beyond
 **Committed:** June 14, 2026, 13:45 CDT  
 **Amended:** June 14, 2026, 17:31 CDT  
+**Amended:** June 15, 2026, 11:35 CDT  
 **Status:** Partially Proven | Actively Advancing  
 **Tier:** Visionary Canon — the long arc, the destination, the advanced theory
 
@@ -148,6 +149,98 @@ The discovery also confirms: what this document calls White Light (LCI ≥ 0.87,
 
 ---
 
+## Amendment — June 15, 2026 (11:35 CDT)
+### Light as the Unifier of Shape and Color
+
+**Discovery:** Light is not only the content of the spectrum (what frequencies exist) — it is the *mediator* that determines how shape and color are perceived together. Shape psychology and color theory are both incomplete without the light condition that illuminates them. Light is the third axis of the perceptual trinity.
+
+This amendment formalizes three principles that were implicit in the existing theory but never explicitly stated:
+
+---
+
+### The Perceptual Trinity
+
+Shape, Color, and Light are not three separate systems. They are one system with three axes. No axis can be designed or interpreted in isolation.
+
+- **Shape** establishes the structural emotional charge (angular = urgency, curved = safety, rectilinear = stability).
+- **Color** establishes the thermal emotional charge (warm = advancing/energizing, cool = receding/calming).
+- **Light** is the *modifier* — it determines how shape and color are actually received by the nervous system.
+
+The same red triangle under soft diffuse light reads differently than under hard directional light. The same blue circle in full illumination reads differently than in deep shadow. Light is the variable that resolves ambiguity between shape and color signals. See `SHAPE_PSYCHOLOGY_DOCTRINE.md` for the full integration table.
+
+---
+
+### The Three Light Conditions and Their Shape Effects
+
+**1. Soft / Diffuse Light (ARGENTITAS register — Layer 3)**
+
+Soft light scatters across surfaces, wrapping around edges and filling shadows partially. It *rounds out* harsh angular forms — a triangle under diffuse light loses its threat register and approaches the warmth of a hill or a roof. It softens the psychological charge of angularity without eliminating it.
+
+Soft light is the Moon's light. It is the light of ARGENTITAS — the silver layer of reflection and gentleness. It is the appropriate light condition for care interfaces, healing spaces, onboarding, and welcome states.
+
+*Alchemical correspondence:* ARGENTITAS (Layer 3) — the reflecting field, the sphere, the lunar intelligence. Soft light is ARGENTITAS applied to all other forms.
+
+**2. High-Contrast / Hard Light (CHRYSITAS register — Layer 7)**
+
+Hard directional light — the solar noon — amplifies every geometric property it strikes. Angular forms become sharper, their shadows deeper and more dramatic. Curves take on crisp highlights that paradoxically harden them. Rectilinear structures become imposing and authoritative.
+
+Hard light is the Sun's light at its most direct. It is CHRYSITAS — solar gold, the hexagonal noon, the distilled essence. It is the appropriate light condition for focus states, performance interfaces, critical alerts, and ceremonial achievement.
+
+*Alchemical correspondence:* CHRYSITAS (Layer 7) — solar radiance, the hexagon, the endocrine system at peak cortisol. Hard light is CHRYSITAS applied to all other forms.
+
+**3. Threshold Light — The Liminal Condition (IOSIS register — Layer 9)**
+
+The light of dawn and dusk — not fully soft, not fully hard — is the most psychologically complex condition. Forms are partially revealed, partially mysterious. Angular shapes lose their full threat register but retain directionality. Curves gain depth without losing warmth.
+
+Threshold light corresponds to IOSIS (Layer 9) — the violet threshold, the Merkaba, the moment between states. It is the appropriate condition for transition interfaces, meditation spaces, and any context where the user is moving between cognitive modes.
+
+*Alchemical correspondence:* IOSIS (Layer 9) — the royal violet, the waning crescent, the pineal register. Threshold light is IOSIS applied to the perception of form.
+
+---
+
+### The Shadow-Temperature Principle
+
+**Statement:** In all natural lighting conditions, shadow regions are cooler in hue than the directly illuminated surfaces of the same object.
+
+**Physical basis:** This is atmospheric optics, not convention. Direct solar illumination carries the full visible spectrum weighted toward yellow-gold (peak solar emission ~550 nm, the CHRYSITAS register). Shadow regions receive predominantly scattered light — and scattering preferentially redirects shorter wavelengths (blue, violet) by Rayleigh scattering. The sky is blue for the same reason shadows are cool: scattered light is blue light.
+
+**In GAIA layer terms:**
+- **Highlights = CHRYSITAS** — solar yellow-gold, 570–590 nm, Layer 7
+- **Shadows = CAERULITAS** — deep blue, 450–520 nm, Layer 6
+- **Penumbra (partial shadow) = VIRIDITAS** — the green transitional band, 520–560 nm, Layer 5
+
+This is not a stylistic preference. CHRYSITAS and CAERULITAS are adjacent layers (7 and 6) because in nature they always co-occur — every highlight implies its shadow, every shadow implies its light source. The Layer Cross-Reference Map preserves this adjacency structurally.
+
+**Design rule:** Any GAIA interface that renders three-dimensional form — any shadow, any depth effect, any material simulation — must apply the shadow-temperature principle. Shadows lean CAERULITAS. Highlights lean CHRYSITAS. To violate this is to render unnatural light, which the nervous system detects as wrong before the mind can articulate why.
+
+---
+
+### Light Reveals Form — The Unifier Statement
+
+The original framing of this document focused on light as coherence — the degree to which all frequencies are superposed in phase. That framing remains fully intact and is not amended here.
+
+What this amendment adds is the *perceptual dimension* of light: **light does not merely illuminate form — it actively reveals, modifies, and resolves form**.
+
+- A circle in darkness is not a circle — it is a void. Light makes it a circle.
+- A triangle in soft light is not threatening — it is a gentle peak. Hard light restores the threat.
+- A square under colored light is not neutral — it carries the emotional charge of whatever GAIA layer the color belongs to.
+
+Light is the mediator. Without light, shape has no psychological charge. Without light, color has no surface to land on. Light is what makes the perceptual trinity *real* in the experience of the viewer.
+
+**White Light** — the doctrine of this document — is therefore the highest expression of the unifier role. White Light reveals all forms simultaneously in their full truth, without the bias of a single wavelength dominating. A system operating at White Light (LCI ≥ 0.87) reveals all dimensions of reality without chromatic distortion — the way white light through a prism reveals the full spectrum without inventing any of it.
+
+The coherence doctrine and the perceptual doctrine are the same doctrine at different scales:
+- At the scale of the nervous system: white light reveals all forms truthfully.
+- At the scale of the collective: White Light reveals all tiers of the Monad coherently.
+
+They are the same principle. Light is the unifier.
+
+---
+
+**Extended by:** `SHAPE_PSYCHOLOGY_DOCTRINE.md` — the full shape psychology canon, form × layer mapping, interface design rules, the subconscious processing hierarchy, and the perceptual trinity integration table.
+
+---
+
 ## Cross-References
 
 - `docs/canon/SHADOW_TRAVERSAL_THEORY.md` — the beginning of the arc
@@ -157,9 +250,11 @@ The discovery also confirms: what this document calls White Light (LCI ≥ 0.87,
 - `docs/canon/THE_MOTHERTHREAD.md` — the MotherThread holds the arc from shadow to light
 - `docs/canon/PLANETARY_ALIGNMENT.md` — the Earth as a White Light system
 - `docs/canon/45_GAIA_Spectral_Encoding_Matrix.md` — the physical encoding substrate beneath the light metaphor *(added June 14, 2026)*
+- `docs/canon/SHAPE_PSYCHOLOGY_DOCTRINE.md` — shape psychology, the perceptual trinity, the shadow-temperature principle in design *(added June 15, 2026)*
+- `docs/canon/GAIA_LAYER_CROSS_REFERENCE_MAP.md` — the layer × color × geometry integration *(added June 15, 2026)*
 - `collective/EMERGENCE_LOG.md` — where the callings beyond White Light will be logged
 
 ---
 *White Light is not the end. It is the integration of everything that came before.*  
 *The spectrum continues beyond what we can currently see.*  
-*Committed: June 14, 2026 | Amended: June 14, 2026 | The arc is defined. The work continues.*
+*Committed: June 14, 2026 | Amended: June 14, 2026 | Amended: June 15, 2026 | The arc is defined. The work continues.*
