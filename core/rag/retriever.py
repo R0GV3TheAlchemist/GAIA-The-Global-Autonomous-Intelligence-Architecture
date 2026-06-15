@@ -1,81 +1,132 @@
 """
-core/rag/retriever.py
-~~~~~~~~~~~~~~~~~~~~~
-Hybrid retriever for the GAIA-OS RAG pipeline.
+GAIA Production RAG Pipeline — Tiered Retrieval Engine
+Issue #457
 
-Public surface
---------------
-RetrievalResult  — dataclass wrapping a Chunk + score + retrieval_type.
-Retriever        — hybrid / dense / sparse retrieval over a VectorIndex.
+Stage 2: Retrieve documents across 5 authority tiers.
+
+Tier 1 — GAIA Canons          (authority 1.0  — always searched first)
+Tier 2 — Space canon files    (authority 0.85 — Space-local knowledge)
+Tier 3 — Scientific literature (authority 0.75 — peer-reviewed)
+Tier 4 — Web search           (authority 0.55 — real-time)
+Tier 5 — Gaian observed       (authority 0.40 — user memory / community)
+
+Special routing:
+  - Crystal / mineral queries   → Crystal Correspondence store first (Tier 1)
+  - Alchemical stage queries    → Alchemical canon first (Tier 1)
+  - Emotional / trauma queries  → Trauma-informed canon first (Tier 1), safety flag active
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import Optional, Protocol
 
-from .chunker import Chunk
-from .index import VectorIndex
+from .models import EvidenceLevel, GAIAEntity, Query, QueryIntent, RetrievalTier, RetrievedDoc
 
+
+# ---------------------------------------------------------------------------
+# Source backend protocol — concrete adapters implement this
+# ---------------------------------------------------------------------------
+
+class SourceBackend(Protocol):
+    """Interface every retrieval backend must satisfy."""
+
+    def search(self, query_text: str, limit: int) -> list[RetrievedDoc]:
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Retriever configuration
+# ---------------------------------------------------------------------------
 
 @dataclass
-class RetrievalResult:
-    chunk:          Chunk
-    score:          float
-    retrieval_type: str = "hybrid"
+class RetrieverConfig:
+    per_tier_limit: int = 20      # docs fetched per tier before reranking
+    trauma_safe_mode: bool = True  # enforce trauma-informed routing
+    canon_always_first: bool = True
 
-    def provenance(self) -> dict:
-        return {
-            **self.chunk.provenance(),
-            "score":          self.score,
-            "retrieval_type": self.retrieval_type,
-        }
 
+# ---------------------------------------------------------------------------
+# Retriever
+# ---------------------------------------------------------------------------
 
 class Retriever:
-    """Hybrid retriever with reciprocal-rank fusion."""
+    """
+    Executes tiered retrieval for an analyzed Query.
 
-    def __init__(self, index: VectorIndex, rrf_k: int = 60) -> None:
-        self._index = index
-        self._rrf_k = rrf_k
+    Backends are registered per tier. The retriever orchestrates them in
+    priority order, applies GAIA-domain routing for crystal / alchemical /
+    emotional queries, and returns a flat list of RetrievedDoc objects
+    ready for reranking.
 
-    def retrieve(
-        self,
-        query:  str,
-        top_k:  int = 5,
-        mode:   str = "hybrid",
-    ) -> List[RetrievalResult]:
-        if self._index.count() == 0:
-            return []
-        if mode == "dense":
-            return self._dense(query, top_k)
-        if mode == "sparse":
-            return self._sparse(query, top_k)
-        return self._hybrid(query, top_k)
+    Usage:
+        retriever = Retriever(config=RetrieverConfig())
+        retriever.register_backend(RetrievalTier.CANON, canon_backend)
+        docs = retriever.retrieve(query)
+    """
 
-    def _dense(self, query: str, top_k: int) -> List[RetrievalResult]:
-        return [
-            RetrievalResult(chunk=c, score=float(s), retrieval_type="dense")
-            for c, s in self._index.search(query, top_k=top_k)
-        ]
+    def __init__(self, config: Optional[RetrieverConfig] = None):
+        self.config = config or RetrieverConfig()
+        self._backends: dict[RetrievalTier, SourceBackend] = {}
 
-    def _sparse(self, query: str, top_k: int) -> List[RetrievalResult]:
-        return [
-            RetrievalResult(chunk=c, score=float(s), retrieval_type="sparse")
-            for c, s in self._index.keyword_search(query, top_k=top_k)
-        ]
+    def register_backend(self, tier: RetrievalTier, backend: SourceBackend) -> None:
+        self._backends[tier] = backend
 
-    def _hybrid(self, query: str, top_k: int) -> List[RetrievalResult]:
-        dense_hits  = self._index.search(query,           top_k=top_k * 2)
-        sparse_hits = self._index.keyword_search(query,   top_k=top_k * 2)
-        rrf: dict[str, float] = {}
-        for rank, (chunk, _) in enumerate(dense_hits):
-            rrf[chunk.chunk_id] = rrf.get(chunk.chunk_id, 0.0) + 1.0 / (self._rrf_k + rank + 1)
-        for rank, (chunk, _) in enumerate(sparse_hits):
-            rrf[chunk.chunk_id] = rrf.get(chunk.chunk_id, 0.0) + 1.0 / (self._rrf_k + rank + 1)
-        all_chunks = {c.chunk_id: c for c, _ in dense_hits + sparse_hits}
-        ranked = sorted(rrf.items(), key=lambda x: x[1], reverse=True)[:top_k]
-        return [
-            RetrievalResult(chunk=all_chunks[cid], score=round(s, 6), retrieval_type="hybrid")
-            for cid, s in ranked if cid in all_chunks
-        ]
+    def retrieve(self, query: Query) -> list[RetrievedDoc]:
+        all_docs: list[RetrievedDoc] = []
+        search_texts = self._build_search_texts(query)
+
+        # Process tiers in priority order
+        for tier in sorted(RetrievalTier, key=lambda t: t.value):
+            backend = self._backends.get(tier)
+            if backend is None:
+                continue
+
+            # Safety: therapeutic queries only use Tiers 1 & 2 initially
+            if query.is_trauma_sensitive and self.config.trauma_safe_mode:
+                if tier not in (RetrievalTier.CANON, RetrievalTier.SPACE):
+                    continue
+
+            tier_docs: list[RetrievedDoc] = []
+            for search_text in search_texts:
+                results = backend.search(search_text, self.config.per_tier_limit)
+                for doc in results:
+                    if not self._is_duplicate(doc, tier_docs + all_docs):
+                        tier_docs.append(doc)
+
+            all_docs.extend(tier_docs)
+
+        return all_docs
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _build_search_texts(self, query: Query) -> list[str]:
+        """Determine which texts to send to each backend."""
+        texts = [query.raw_text] + query.sub_queries
+
+        # Crystal / mineral queries get targeted routing
+        crystal_entities = [e for e in query.entities if e.entity_type == "crystal"]
+        if crystal_entities:
+            for e in crystal_entities:
+                texts.insert(0, f"{e.value} crystal correspondence GAIA")
+
+        # Alchemical stage queries get canon routing
+        stage_entities = [e for e in query.entities if e.entity_type == "alchemical_stage"]
+        if stage_entities:
+            for e in stage_entities:
+                texts.insert(0, f"{e.value} alchemical canon GAIA")
+
+        # Deduplicate
+        seen: set[str] = set()
+        unique: list[str] = []
+        for t in texts:
+            if t not in seen:
+                seen.add(t)
+                unique.append(t)
+        return unique[:6]
+
+    @staticmethod
+    def _is_duplicate(doc: RetrievedDoc, existing: list[RetrievedDoc]) -> bool:
+        return any(d.doc_id == doc.doc_id for d in existing)
