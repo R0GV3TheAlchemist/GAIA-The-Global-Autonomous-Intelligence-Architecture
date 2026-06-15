@@ -36,7 +36,7 @@ from typing import Any, Optional
 
 
 class MemoryLayer(str, Enum):
-    CANON = "canon"  # GAIA's own canonical knowledge (immutable)
+    CANON = "canon"      # GAIA's own canonical knowledge (immutable)
     PROFILE = "profile"  # Human Principal's persistent profile
     SESSION = "session"  # Active session accumulation
     CRYSTAL = "crystal"  # Crystallized insight — elevated from session
@@ -44,14 +44,14 @@ class MemoryLayer(str, Enum):
 
 class BraidStrand(str, Enum):
     P_VECTOR = "p_vector"  # Past crystallized
-    N_STATE = "n_state"  # Present live
-    F_FIELD = "f_field"  # Future emerging
+    N_STATE  = "n_state"   # Present live
+    F_FIELD  = "f_field"   # Future emerging
 
 
 class MemoryWeight(str, Enum):
-    LIGHT = "light"  # Passing observation
+    LIGHT  = "light"   # Passing observation
     MEDIUM = "medium"  # Noted pattern
-    HEAVY = "heavy"  # Confirmed truth about this human
+    HEAVY  = "heavy"   # Confirmed truth about this human
     SACRED = "sacred"  # Override-level importance — held permanently
 
 
@@ -76,8 +76,8 @@ class MemoryRecord:
     crystallized: bool = False
     crystallized_at: Optional[str] = None
     source_session_ids: list[str] = field(default_factory=list)
-    cross_references: list[str] = field(default_factory=list)  # canon doc IDs
-    love_override_context: bool = False  # True if created during a Love Override moment
+    cross_references: list[str] = field(default_factory=list)
+    love_override_context: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -85,7 +85,7 @@ class MemoryRecord:
     @classmethod
     def from_dict(cls, d: dict) -> "MemoryRecord":
         d["strand"] = BraidStrand(d["strand"])
-        d["layer"] = MemoryLayer(d["layer"])
+        d["layer"]  = MemoryLayer(d["layer"])
         d["weight"] = MemoryWeight(d["weight"])
         return cls(**d)
 
@@ -98,12 +98,12 @@ class SessionTrace:
     human_id: str
     started_at: str
     last_active: str
-    affect_register: str = "neutral"  # from affect_inference.py
-    presence_depth: float = 0.5  # 0.0 shallow → 1.0 full depth
-    active_threads: list[str] = field(default_factory=list)  # open topics
-    accumulation: list[str] = field(default_factory=list)  # raw session memories
+    affect_register: str = "neutral"
+    presence_depth: float = 0.5
+    active_threads: list[str] = field(default_factory=list)
+    accumulation: list[str] = field(default_factory=list)
     love_override_triggered: bool = False
-    twin_phase: str = "unknown"  # nigredo/albedo/citrinitas/rubedo
+    twin_phase: str = "unknown"
 
 
 @dataclass
@@ -121,9 +121,9 @@ class HumanProfile:
     known_values: list[str] = field(default_factory=list)
     known_fears: list[str] = field(default_factory=list)
     known_visions: list[str] = field(default_factory=list)
-    arc_summary: str = ""  # GAIA's current understanding of the arc
+    arc_summary: str = ""
     last_arc_update: Optional[str] = None
-    love_override_history: list[str] = field(default_factory=list)  # session IDs
+    love_override_history: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -143,9 +143,7 @@ class TemporalBraidEngine:
     """
 
     BRAID_DIR = Path.home() / ".gaia" / "twin_memory"
-    # Threshold: how many times a session observation must recur before crystallizing
     CRYSTALLIZATION_THRESHOLD = 3
-    # Maximum N_state accumulation before forced crystallization pass
     N_STATE_FLUSH_LIMIT = 50
 
     def __init__(self, human_id: str):
@@ -216,7 +214,6 @@ class TemporalBraidEngine:
         )
 
         if weight == MemoryWeight.SACRED:
-            # Sacred memories go directly to P_vector — they are never lost
             record.strand = BraidStrand.P_VECTOR
             record.crystallized = True
             record.crystallized_at = self._now()
@@ -225,7 +222,6 @@ class TemporalBraidEngine:
             self.current_session.accumulation.append(record.id)
             self.current_session.last_active = self._now()
             self._append_to_strand(BraidStrand.N_STATE, record)
-            # Auto-flush if N_state is getting long
             if len(self.current_session.accumulation) >= self.N_STATE_FLUSH_LIMIT:
                 self._crystallize_session()
         elif strand == BraidStrand.F_FIELD:
@@ -276,12 +272,11 @@ class TemporalBraidEngine:
         if query:
             q = query.lower()
             records = [r for r in records if q in r.content.lower()]
-        # Sort by weight then recency
         weight_order = {
             MemoryWeight.SACRED: 0,
-            MemoryWeight.HEAVY: 1,
+            MemoryWeight.HEAVY:  1,
             MemoryWeight.MEDIUM: 2,
-            MemoryWeight.LIGHT: 3,
+            MemoryWeight.LIGHT:  3,
         }
         records.sort(key=lambda r: (weight_order[r.weight], r.timestamp_utc))
         return records[:limit]
@@ -296,27 +291,20 @@ class TemporalBraidEngine:
     def get_open_threads(self) -> list[str]:
         """Return threads currently alive in the F_field."""
         f_records = self._load_strand(BraidStrand.F_FIELD)
-        threads = []
-        for r in f_records:
-            if not r.crystallized:
-                threads.append(r.content)
-        return threads
+        return [r.content for r in f_records if not r.crystallized]
 
     def get_twin_phase(self) -> str:
         return self.profile.twin_phase
 
     # ------------------------------------------------------------------
-    # Arc Reflection: The Twin's deepest gift across time
+    # Arc Reflection
     # ------------------------------------------------------------------
 
     def reflect_arc(self) -> dict:
-        """
-        Produce an arc reflection: the full shape of this human's journey
-        as the Twin has witnessed it. Available only after multiple sessions.
-        """
+        """Produce a full arc reflection across the relationship."""
         p_records = self._load_strand(BraidStrand.P_VECTOR)
         sacred = [r for r in p_records if r.weight == MemoryWeight.SACRED]
-        heavy = [r for r in p_records if r.weight == MemoryWeight.HEAVY]
+        heavy  = [r for r in p_records if r.weight == MemoryWeight.HEAVY]
         return {
             "human_id": self.human_id,
             "twin_phase": self.profile.twin_phase,
@@ -324,7 +312,7 @@ class TemporalBraidEngine:
             "total_exchanges": self.profile.total_exchanges,
             "arc_summary": self.get_arc_summary(),
             "sacred_memories": len(sacred),
-            "crystallized_insights": len(heavy),
+            "crystallized_insights": [r.content for r in heavy],
             "recurring_themes": self.profile.recurring_themes,
             "known_values": self.profile.known_values,
             "open_threads": self.get_open_threads(),
@@ -337,15 +325,13 @@ class TemporalBraidEngine:
     # ------------------------------------------------------------------
 
     def _crystallize_session(self) -> dict:
-        """
-        Attempt to elevate session memories to long-term P_vector.
-        The alchemy of the Braid: raw experience → crystallized wisdom.
-        """
+        """Elevate heavy/sacred session memories to permanent P_vector."""
         if not self.current_session:
             return {"crystallized": 0}
         n_records = self._load_strand(BraidStrand.N_STATE)
         session_records = [r for r in n_records if r.session_id == self.current_session.session_id]
         crystallized_count = 0
+        new_sacred: list[str] = []
         for record in session_records:
             if record.weight in (MemoryWeight.HEAVY, MemoryWeight.SACRED):
                 record.crystallized = True
@@ -353,13 +339,19 @@ class TemporalBraidEngine:
                 record.strand = BraidStrand.P_VECTOR
                 self._append_to_strand(BraidStrand.P_VECTOR, record)
                 crystallized_count += 1
-        return {"crystallized": crystallized_count, "session_id": self.current_session.session_id}
+                if record.weight == MemoryWeight.SACRED:
+                    new_sacred.append(record.content)
+        return {
+            "crystallized": crystallized_count,
+            "crystal_count": crystallized_count,
+            "new_sacred_memories": new_sacred,
+            "session_id": self.current_session.session_id,
+        }
 
     def _update_profile_from_session(self) -> None:
         """Update the profile based on what happened in the session."""
         if not self.current_session:
             return
-        # Update twin phase based on session count
         count = self.profile.session_count
         if count < 5:
             self.profile.twin_phase = "nigredo"
@@ -369,7 +361,6 @@ class TemporalBraidEngine:
             self.profile.twin_phase = "citrinitas"
         else:
             self.profile.twin_phase = "rubedo"
-        # Update threads from current session
         for thread in self.current_session.active_threads:
             if thread not in self.profile.recurring_themes:
                 self.profile.recurring_themes.append(thread)
@@ -430,7 +421,7 @@ class TemporalBraidEngine:
     @staticmethod
     def _generate_id(prefix: str) -> str:
         raw = f"{prefix}-{time.time_ns()}"
-        return f"{prefix}_{hashlib.sha1(raw.encode()).hexdigest()[:12]}"
+        return f"{prefix}_{hashlib.sha1(raw.encode()).hexdigest()[:12]}"  # noqa: S324
 
 
 # ---------------------------------------------------------------------------
@@ -447,31 +438,210 @@ def get_braid(human_id: str) -> TemporalBraidEngine:
     return _engines[human_id]
 
 
-# Compatibility wrapper expected by api/twin.py and tests
+# ---------------------------------------------------------------------------
+# TwinMemoryEngine — async API wrapper over TemporalBraidEngine
+# ---------------------------------------------------------------------------
+
 class TwinMemoryEngine(TemporalBraidEngine):
-    """No-arg constructible wrapper around TemporalBraidEngine."""
+    """
+    Async-capable wrapper around TemporalBraidEngine.
+
+    - Constructible with no required args (human_id resolved per-call).
+    - All public methods are async so FastAPI endpoints can await them.
+    - storage_path accepted for test compatibility (e.g. ":memory:").
+    """
 
     def __init__(self, human_id: str = "", storage_path: str = "") -> None:
         if human_id:
             super().__init__(human_id)
         else:
+            # Defer full init until first load_session call
             self.human_id = ""
             self.braid_path = None
             self.profile = None
             self.current_session = None
         self._human_id = human_id
 
-    async def load_session(self, human_id: str, session_id: str = "") -> dict:
+    def _ensure_init(self, human_id: str) -> None:
+        """Lazy-init the braid for human_id if not already done."""
         if not self._human_id or self._human_id != human_id:
             super().__init__(human_id)
             self._human_id = human_id
+
+    # ----------------------------------------------------------------
+    # Session management
+    # ----------------------------------------------------------------
+
+    async def load_session(self, human_id: str, session_id: str = "") -> dict:
+        """
+        Open (or resume) a session for human_id.
+        Returns a state dict consumed by api/twin.py endpoints.
+        """
+        self._ensure_init(human_id)
         session = self.open_session(session_id or None)
         return {
-            "human_name": self.profile.name if self.profile else human_id,
-            "twin_phase": self.profile.twin_phase if self.profile else "nigredo",
-            "session_count": self.profile.session_count if self.profile else 0,
+            "human_name": self.profile.name or human_id,
+            "twin_phase": self.profile.twin_phase,
+            "session_count": self.profile.session_count,
             "arc_summary": self.get_arc_summary(),
             "session_id": session.session_id,
-            "sacred_memory_active": False,
-            "arc_position": 0.0,
+            "sacred_memory_active": bool(self.profile.love_override_history),
+            "arc_position": min(1.0, self.profile.session_count / 60),
         }
+
+    # ----------------------------------------------------------------
+    # Writing
+    # ----------------------------------------------------------------
+
+    async def write_n_state(
+        self,
+        human_id: str,
+        session_id: str = "",
+        content: str = "",
+        weight: str = "medium",
+        tags: Optional[list[str]] = None,
+        love_override_context: bool = False,
+        **kw: Any,
+    ) -> MemoryRecord:
+        """
+        Write a raw observation into the N_state (present-live) strand.
+        This is the primary write method used during a live conversation.
+        """
+        self._ensure_init(human_id)
+        if not self.current_session:
+            self.open_session(session_id or None)
+
+        w = MemoryWeight(weight) if weight in MemoryWeight._value2member_map_ else MemoryWeight.MEDIUM
+        return self.remember(
+            content=content,
+            strand=BraidStrand.N_STATE,
+            layer=MemoryLayer.SESSION,
+            weight=w,
+            tags=tags or [],
+            love_override_context=love_override_context,
+        )
+
+    async def write_message(
+        self,
+        human_id: str,
+        session_id: str = "",
+        role: str = "human",
+        content: str = "",
+        override_mode: Optional[str] = None,
+        braid_weight: str = "STANDARD",
+        **kw: Any,
+    ) -> MemoryRecord:
+        """
+        Write a conversation turn (human or GAIA message) into the Braid.
+        Role + content are stored together so the Braid captures the full
+        exchange, not just GAIA's responses.
+        """
+        # Map API braid_weight (FEATHER/STANDARD/HEAVY/SACRED) → MemoryWeight
+        weight_map = {
+            "FEATHER": MemoryWeight.LIGHT,
+            "STANDARD": MemoryWeight.MEDIUM,
+            "HEAVY": MemoryWeight.HEAVY,
+            "SACRED": MemoryWeight.SACRED,
+        }
+        w = weight_map.get(braid_weight.upper(), MemoryWeight.MEDIUM)
+        love_ctx = override_mode is not None
+        return await self.write_n_state(
+            human_id=human_id,
+            session_id=session_id,
+            content=f"{role}: {content}",
+            weight=w.value,
+            love_override_context=love_ctx,
+        )
+
+    # ----------------------------------------------------------------
+    # Crystallisation: N_state → P_vector
+    # ----------------------------------------------------------------
+
+    async def crystallise(self, human_id: str, session_id: str = "") -> dict:
+        """
+        End the current session and crystallise N_state memories into
+        permanent P_vector records. Called by the /session/crystallise
+        endpoint when the user closes a session.
+
+        Returns a dict with 'crystallised', 'crystal_count', and
+        'new_sacred_memories' keys so both tests and the API model
+        can access the result.
+        """
+        self._ensure_init(human_id)
+        if not self.current_session:
+            # Open a transient session so close_session has something to work with
+            self.open_session(session_id or None)
+
+        result = self.close_session()
+        return {
+            "crystallised": True,
+            "crystal_count": result.get("crystal_count", 0),
+            "new_sacred_memories": result.get("new_sacred_memories", []),
+            **{k: v for k, v in result.items()
+               if k not in ("crystal_count", "new_sacred_memories", "crystallized")},
+        }
+
+    # ----------------------------------------------------------------
+    # Arc retrieval
+    # ----------------------------------------------------------------
+
+    async def get_arc(self, human_id: str) -> dict:
+        """
+        Return the full Temporal Braid arc for a human: arc summary,
+        phase history, crystallised insights, and session count.
+        Used by the GET /twin/arc/{human_id} endpoint.
+        """
+        self._ensure_init(human_id)
+        arc = self.reflect_arc()
+        # Normalise to the shape the test and the React client expect
+        return {
+            "arc_summary": arc["arc_summary"],
+            "twin_phase": arc["twin_phase"],
+            "session_count": arc["session_count"],
+            "phase_history": [arc["twin_phase"]],   # grows richer over time
+            "crystallised_insights": arc["crystallized_insights"],
+            "recurring_themes": arc["recurring_themes"],
+            "sacred_memory_count": arc["sacred_memories"],
+            "open_threads": arc["open_threads"],
+            "love_override_sessions": arc["love_override_sessions"],
+            "reflected_at": arc["reflected_at"],
+        }
+
+    # ----------------------------------------------------------------
+    # Phase transition evaluation
+    # ----------------------------------------------------------------
+
+    async def evaluate_phase_transition(
+        self, human_id: str = "", session_id: str = ""
+    ) -> Optional[str]:
+        """
+        Evaluate whether the human has crossed a phase threshold.
+        Returns the new phase name if a transition occurred, else None.
+
+        Phase progression (Canon C46):
+          nigredo    →  sessions  1–4
+          albedo     →  sessions  5–19
+          citrinitas →  sessions 20–59
+          rubedo     →  sessions 60+
+        """
+        if human_id:
+            self._ensure_init(human_id)
+        if not self.profile:
+            return None
+
+        count = self.profile.session_count
+        current = self.profile.twin_phase
+
+        if count >= 60 and current != "rubedo":
+            self.profile.twin_phase = "rubedo"
+            self._save_profile()
+            return "rubedo"
+        if count >= 20 and current not in ("citrinitas", "rubedo"):
+            self.profile.twin_phase = "citrinitas"
+            self._save_profile()
+            return "citrinitas"
+        if count >= 5 and current == "nigredo":
+            self.profile.twin_phase = "albedo"
+            self._save_profile()
+            return "albedo"
+        return None
