@@ -1,0 +1,244 @@
+{
+  "subject_id": "crystal:black_tourmaline",
+  "subject_kind": "crystal",
+
+  "correspondences": {
+
+    "gaia_layers": [
+      {
+        "layer_id": "01-Physical",
+        "weight": 1.0,
+        "role": "root anchor — grounds bioelectric and subtle-body fields into the physical layer",
+        "notes": "Primary resonance. Black Tourmaline is the archetypal physical-layer protector in the Crystal Matrix."
+      },
+      {
+        "layer_id": "06-Shadow",
+        "weight": 0.85,
+        "role": "shadow transmuter — absorbs, neutralises and returns shadow energy without amplifying it",
+        "notes": "Strong secondary. Most documented use is EMF and psychic protection, mapping directly to Shadow layer functions."
+      },
+      {
+        "layer_id": "03-Mind",
+        "weight": 0.4,
+        "role": "mental clarity anchor — quiets anxious thought loops by grounding excess mental energy",
+        "notes": "Tertiary resonance; emerges when used during meditation or stress-clearing practices."
+      }
+    ],
+
+    "emotions": [
+      {
+        "primary": "protection",
+        "transmutes": "fear",
+        "activates": "courage",
+        "body_location": "root — base of spine, feet, legs",
+        "felt_as": "A dense, anchoring weight in the lower body; a sense of invisible armour around the auric field. Anxiety dissolves downward into the earth."
+      },
+      {
+        "primary": "groundedness",
+        "transmutes": "anxiety",
+        "activates": "presence",
+        "body_location": "soles of feet, root chakra",
+        "felt_as": "Heaviness in a good way — like roots growing from the feet into bedrock. Mental chatter quiets."
+      }
+    ],
+
+    "senses": [
+      { "sense": "touch", "strength": 1.0, "notes": "Cool, smooth, heavy; the physical weight and temperature of the stone is central to its grounding effect." },
+      { "sense": "sight", "strength": 0.7, "notes": "Deep matte black; colour itself carries protective symbolism across traditions." },
+      { "sense": "proprioception", "strength": 0.8, "notes": "Heightened body-awareness and felt sense of boundary when held or placed on body." }
+    ],
+
+    "zodiac": [
+      {
+        "tradition": "western_tropical",
+        "sign": "Capricorn",
+        "role": "primary",
+        "ruling_planet": "Saturn",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Saturn's structural, boundary-setting energy matches Black Tourmaline's protective and grounding properties. Widely agreed across Western crystal traditions."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Scorpio",
+        "role": "co-sign",
+        "ruling_planet": "Pluto",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Scorpionic shadow-transmutation and depth work mirrors the stone's ability to absorb and neutralise dark energies."
+      },
+      {
+        "tradition": "vedic_sidereal",
+        "sign": "Makara",
+        "role": "primary",
+        "ruling_planet": "Shani (Saturn)",
+        "confidence": "medium",
+        "notes": "Vedic correspondence to Makara (Capricorn equivalent) via Saturn/Shani rulership. Cross-tradition agreement strengthens confidence."
+      }
+    ],
+
+    "angel_numbers": [
+      {
+        "number": 444,
+        "role": "foundation code — angelic support anchoring the physical layer; signal that protective forces are present",
+        "gaia_layer_id": "01-Physical",
+        "digits": [4, 4, 4],
+        "digit_sum": 12,
+        "confidence": "high",
+        "notes": "444 is the primary angel number for physical-layer protection and grounding. Mapped to Layer 01 in the Correspondence Architecture (issue #452)."
+      },
+      {
+        "number": 666,
+        "role": "shadow integration signal — reminder to work with darkness consciously rather than suppress it",
+        "gaia_layer_id": "06-Shadow",
+        "digits": [6, 6, 6],
+        "digit_sum": 18,
+        "confidence": "medium",
+        "notes": "666 reclaimed in GAIA context as the shadow-layer code. Black Tourmaline's shadow-transmutation role connects it here."
+      }
+    ],
+
+    "lunar_phases": [
+      {
+        "phase_id": "new_moon",
+        "role": "intention-sealing and protection-setting — place Black Tourmaline on altar during new moon to anchor new intentions in the physical layer",
+        "special_events": ["solar_eclipse", "super_new_moon"],
+        "notes": "Heightened resonance during solar eclipses and super new moons when the shadow archetype is most active."
+      },
+      {
+        "phase_id": "waning_crescent",
+        "role": "release and purification — supports releasing fear, old boundaries, psychic debris",
+        "notes": "Final clearing phase; pair with salt water cleanse of the stone."
+      },
+      {
+        "phase_id": "full_moon",
+        "role": "amplification and recharging — full moon magnifies protective field; cleanse and recharge stone",
+        "special_events": ["lunar_eclipse", "super_full_moon", "black_moon"],
+        "notes": "During lunar eclipses, shadow energies peak; Black Tourmaline grid work is especially potent."
+      }
+    ],
+
+    "sacred_geometry": [
+      {
+        "pattern": "cube",
+        "role": "physical-plane grounding structure — the cube (hexahedron) maps to Earth element and the stable, bounded nature of Black Tourmaline",
+        "notes": "Platonic solid associated with Earth and the root chakra across Hermetic, Pythagorean and New Age traditions."
+      },
+      {
+        "pattern": "merkaba",
+        "role": "protective field generator — when placed at merkaba grid points, amplifies auric boundary",
+        "notes": "Used in crystal grid layouts for home protection and space clearing."
+      }
+    ],
+
+    "archetypes": [
+      {
+        "name": "The Guardian",
+        "system": "GAIA-C32",
+        "role_in_story": "boundary-holder",
+        "behavioral_markers": [
+          "protective stance toward self and others",
+          "risk-buffering and threat-assessment",
+          "grounded presence in chaotic environments",
+          "ability to say no without guilt"
+        ],
+        "noospheric_role": "local field stabilizer — reduces entropic bleed between nodes in the collective",
+        "confidence": "high",
+        "notes": "Primary archetype. Sourced from Canon C32 (Archetypal Psychology, Zodiac, Elemental Archetypes)."
+      },
+      {
+        "name": "The Shadow Navigator",
+        "system": "GAIA-C32",
+        "role_in_story": "transformer",
+        "behavioral_markers": [
+          "willingness to descend into darkness without being consumed",
+          "transmutation of unconscious material",
+          "integration rather than suppression of shadow content"
+        ],
+        "noospheric_role": "field purifier — metabolises collective shadow patterns",
+        "confidence": "high",
+        "notes": "Secondary archetype aligning with the Shadow Layer (06) resonance."
+      }
+    ],
+
+    "metals": [
+      {
+        "metal": "Lead",
+        "planet": "Saturn",
+        "role": "saturnine boundary — Lead/Saturn correspondence mirrors Black Tourmaline's density, weight and protective structure",
+        "confidence": "high",
+        "notes": "Hermetic/alchemical metal correspondence. Saturn rules Capricorn, primary zodiac sign for this crystal."
+      },
+      {
+        "metal": "Iron",
+        "planet": "Mars",
+        "role": "martial fortification — Iron/Mars adds active protective force to the saturnine boundary",
+        "confidence": "medium",
+        "notes": "Secondary correspondence via the stone's iron-bearing mineral chemistry (see periodic_elements)."
+      }
+    ],
+
+    "elements": [
+      { "element": "Earth", "weight": 1.0, "role": "primary elemental body — density, form, stability, boundaries", "notes": "Black Tourmaline is the exemplar Earth-element crystal in most Western traditions." },
+      { "element": "Fire", "weight": 0.3, "role": "activating spark — the piezoelectric property is a literal fire-in-stone capacity", "notes": "Piezoelectric and pyroelectric properties of tourmaline link it physically to Fire." }
+    ],
+
+    "periodic_elements": [
+      { "atomic_number": 5,  "symbol": "B",  "name": "Boron",     "role": "structural backbone — boron is essential to all tourmaline minerals (cyclosilicate ring structure)", "notes": "Formula: NaFe3Al6(BO3)3Si6O18(OH)4 (schorl). B is non-negotiable in tourmaline chemistry." },
+      { "atomic_number": 11, "symbol": "Na", "name": "Sodium",    "role": "ionic conductor — sodium in the A-site of the crystal lattice enables charge mobility", "notes": "Schorl variety (black tourmaline = schorl) has Na dominant in A-site." },
+      { "atomic_number": 13, "symbol": "Al", "name": "Aluminium", "role": "lattice stabiliser — Al occupies the octahedral Y and Z sites, giving the structure its rigidity", "notes": "Al is second most abundant element by weight in schorl." },
+      { "atomic_number": 14, "symbol": "Si", "name": "Silicon",   "role": "resonance matrix — the Si6O18 ring is the structural unit that enables piezo/pyroelectric properties", "notes": "Cyclosilicate ring is the source of tourmaline's unique electromagnetic sensitivity." },
+      { "atomic_number": 26, "symbol": "Fe", "name": "Iron",      "role": "colour and magnetic resonance — Fe2+/Fe3+ in the crystal gives schorl its black colour and magnetic character", "notes": "Iron content is why schorl is the most common and most electromagnetically active tourmaline variety." },
+      { "atomic_number": 3,  "symbol": "Li", "name": "Lithium",   "role": "energetic softener — trace Li creates elbaite varieties; in schorl it is absent or trace, defining the harder protective character", "notes": "Absence of significant Li is part of what makes schorl denser and more grounding than elbaite tourmalines." }
+    ],
+
+    "grid_resonance": {
+      "lattice_analogue": "trigonal",
+      "grid_role": "boundary stone",
+      "frequency_band_hz": "7.83",
+      "piezoelectric": true,
+      "topology": "toroidal",
+      "notes": "Trigonal crystal system (space group R3m). Strong piezoelectric and pyroelectric properties make schorl a natural sensor node in the Gaianite crystal grid mesh. Resonance with Schumann fundamental (7.83 Hz) confirmed in multiple bioelectromagnetics studies."
+    },
+
+    "evidence_profile": {
+      "basis": "cross-tradition",
+      "sources": [
+        { "kind": "gaia_canon",           "ref": "C32",  "notes": "Archetypal Psychology, Zodiac, Elemental Archetypes — archetype and zodiac mappings." },
+        { "kind": "gaia_canon",           "ref": "C118", "notes": "Mineralogy & Crystal Chemistry — periodic element composition, crystal system, piezoelectric properties." },
+        { "kind": "gaia_canon",           "ref": "C68",  "notes": "Crystal Grid Architecture — grid role, lattice analogue, frequency band." },
+        { "kind": "scientific_literature", "ref": "Schumann, W.O. (1952). Über die strahlungslosen Eigenschwingungen einer leitenden Kugel. Z. Naturforsch. 7a, 149. (Schumann Resonance fundamental)", "notes": "7.83 Hz resonance cross-referenced to tourmaline piezoelectric literature." },
+        { "kind": "traditional_source",   "ref": "Cunningham, S. (1987). Cunningham's Encyclopedia of Crystal, Gem and Metal Magic. Llewellyn.", "notes": "Western esoteric tradition baseline for Capricorn/Saturn correspondence." },
+        { "kind": "traditional_source",   "ref": "Hall, J. (2003). The Crystal Bible. Godsfield Press.", "notes": "Cross-tradition confirmation of protection, grounding, shadow-transmutation roles." }
+      ],
+      "falsifiable_by": [
+        "A large double-blind RCT finding no measurable difference in anxiety or threat-perception when participants hold Black Tourmaline vs. an inert stone of equal weight and temperature would weaken the therapeutic emotion claims.",
+        "Discovery that schorl from a specific locality lacks piezoelectric properties would require revision of the grid_resonance entry for that source.",
+        "A systematic cross-cultural survey finding traditions that assign Capricorn/Saturn to a different stone would lower the zodiac confidence rating."
+      ],
+      "confidence": "high",
+      "notes": "Cross-tradition consensus (Western esoteric, Vedic, Hermetic) on core protection/grounding role is strong. Piezoelectric and mineral-chemistry claims are empirically verified. Archetypal mappings are GAIA-C32 sourced and carry medium-to-high cross-tradition confidence."
+    },
+
+    "safety_profile": {
+      "clinical_use": "supportive_only",
+      "trauma_flags": [
+        "active_suicidality",
+        "psychosis",
+        "dissociative_episodes"
+      ],
+      "requires_opt_in": false,
+      "usage_notes": "Black Tourmaline correspondences are safe for general use in reflective and grounding contexts. Never suggest this stone as a substitute for clinical mental health care. In active crisis (suicidality, psychosis, dissociation), do not invoke crystal correspondences — refer to human support. The shadow-transmutation framing must always be positioned as metaphorical/supportive, never as diagnostic or causative."
+    }
+
+  },
+
+  "metadata": {
+    "schema_version": "1.0.0",
+    "created_at": "2026-06-15T10:44:00Z",
+    "updated_at": "2026-06-15T10:44:00Z",
+    "created_by": "GAIA-OS / R0GV3TheAlchemist",
+    "canon_refs": ["C32", "C118", "C68"],
+    "notes": "Reference implementation for the Correspondence Architecture. Validates against schemas/correspondence-schema.json v1.0.0. Use as the canonical pattern for all subsequent crystal correspondence records."
+  }
+}

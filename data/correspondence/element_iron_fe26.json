@@ -1,0 +1,232 @@
+{
+  "subject_id": "element:fe26",
+  "subject_kind": "element",
+
+  "correspondences": {
+
+    "gaia_layers": [
+      {
+        "layer_id": "01-Physical",
+        "weight": 1.0,
+        "role": "embodied will — Iron is the element of biological action and physical force; it carries oxygen in blood, enabling all physical-layer activity",
+        "notes": "Iron is the most abundant element by mass in the Earth's core and in human blood (haemoglobin). Both make it the physical-layer element par excellence."
+      },
+      {
+        "layer_id": "06-Shadow",
+        "weight": 0.6,
+        "role": "shadow forge — the metallurgical process of smelting iron from raw ore is one of history's oldest alchemical metaphors for shadow work",
+        "notes": "Iron must be purified through fire; rust (oxidation) is the shadow face of iron — dissolution without conscious transformation."
+      },
+      {
+        "layer_id": "02-Energy",
+        "weight": 0.75,
+        "role": "vital energy carrier — haemoglobin's iron centre is literally the molecule that transports life-force (oxygen) through the body",
+        "notes": "Anaemia (iron deficiency) manifests as energy depletion; this maps directly to Layer 02 Energy impairment."
+      }
+    ],
+
+    "emotions": [
+      {
+        "primary": "will",
+        "transmutes": "passivity",
+        "activates": "decisive action",
+        "body_location": "blood, muscles, solar plexus",
+        "felt_as": "A hot, driving force in the blood and gut — the felt impulse to act, to forge, to defend. Mars energy in the body."
+      },
+      {
+        "primary": "courage",
+        "transmutes": "fear",
+        "activates": "fortitude",
+        "body_location": "chest, arms, hands",
+        "felt_as": "The capacity to move toward rather than away from threat. Iron-will as a phrase reflects the somatic reality: a hardening and steadying in the core."
+      }
+    ],
+
+    "senses": [
+      { "sense": "taste",  "strength": 0.9, "notes": "The metallic taste of blood is pure iron; the body knows iron through taste before any other sense." },
+      { "sense": "touch",  "strength": 0.8, "notes": "Cold, hard, dense — the tactile signature of iron tools, nails, blades." },
+      { "sense": "sight",  "strength": 0.6, "notes": "Red-orange rust; the blood-red of iron oxide; fire-light on molten iron." }
+    ],
+
+    "zodiac": [
+      {
+        "tradition": "western_tropical",
+        "sign": "Aries",
+        "role": "primary",
+        "ruling_planet": "Mars",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Mars rules Aries; Mars rules Iron in Hermetic/alchemical tradition. Aries = pioneering, initiating, martial force. Universally agreed across Western esoteric lineages."
+      },
+      {
+        "tradition": "western_tropical",
+        "sign": "Scorpio",
+        "role": "co-sign",
+        "ruling_planet": "Mars (traditional) / Pluto (modern)",
+        "dignity": "rulership",
+        "confidence": "high",
+        "notes": "Mars also rules Scorpio in classical astrology. Scorpionic depth, transformation and shadow work echo iron's forge-and-smelt quality."
+      },
+      {
+        "tradition": "vedic_sidereal",
+        "sign": "Mesha (Aries)",
+        "role": "primary",
+        "ruling_planet": "Mangala (Mars)",
+        "confidence": "high",
+        "notes": "Vedic tradition is unambiguous: Mangala (Mars) governs iron and steel. Mesha = Aries equivalent. Cross-tradition agreement with Western is strong."
+      }
+    ],
+
+    "angel_numbers": [
+      {
+        "number": 888,
+        "role": "infinite strength signal — the triple-8 loop of abundance and physical mastery; iron as infinite capacity for renewal through the forge",
+        "gaia_layer_id": "01-Physical",
+        "digits": [8, 8, 8],
+        "digit_sum": 24,
+        "confidence": "medium",
+        "notes": "888 maps to Layer 08 (Manifestation/Abundance) in GAIA but cross-resonates with Layer 01 via Iron's physical abundance in Earth and blood."
+      },
+      {
+        "number": 444,
+        "role": "physical foundation code — Iron is the literal foundation of Earth's core and civilisation's built environment",
+        "gaia_layer_id": "01-Physical",
+        "digits": [4, 4, 4],
+        "digit_sum": 12,
+        "confidence": "medium",
+        "notes": "444 grounds iron into the physical layer; shared angel number with Black Tourmaline, reflecting their overlapping Layer 01 resonance."
+      }
+    ],
+
+    "lunar_phases": [
+      {
+        "phase_id": "first_quarter",
+        "role": "forge phase — the decisive half-lit moon mirrors the commitment to act; work with iron correspondences during first quarter for courage and will-setting",
+        "notes": "First quarter = challenge, decision, taking action. Mars/Iron energy is most aligned here."
+      },
+      {
+        "phase_id": "full_moon",
+        "role": "full expression — iron's full strength; blood rituals, vitality work, physical peak",
+        "special_events": ["super_full_moon", "blood_moon"],
+        "notes": "Blood moons (lunar eclipse with red colour from iron-oxide-scattering light analogy) heighten iron resonance symbolically and in traditional lore."
+      }
+    ],
+
+    "sacred_geometry": [
+      {
+        "pattern": "tetrahedron",
+        "role": "fire form — the tetrahedron is the Platonic solid of Fire; iron's forge process is quintessentially fire-driven",
+        "notes": "Fire ↔ tetrahedron ↔ Mars ↔ Iron is a closed Platonic–elemental–planetary chain."
+      },
+      {
+        "pattern": "cube",
+        "role": "body-centred cubic lattice — iron's actual atomic structure (BCC) IS a cube; geometry and physics converge here uniquely",
+        "notes": "Alpha-iron (room-temperature iron) crystallises in body-centred cubic (BCC) structure. This is a rare case where sacred geometry and empirical crystallography are literally the same thing."
+      }
+    ],
+
+    "archetypes": [
+      {
+        "name": "The Warrior",
+        "system": "GAIA-C32",
+        "role_in_story": "boundary-defender",
+        "behavioral_markers": [
+          "direct, decisive action",
+          "willingness to fight for what is true",
+          "physical courage and endurance",
+          "protection of the vulnerable",
+          "risk of aggression when unintegrated"
+        ],
+        "noospheric_role": "field defender — holds the perimeter of the collective against entropic dissolution",
+        "confidence": "high",
+        "notes": "The universal Mars/Warrior archetype. Iron has been the material of warfare and protection since the Iron Age (c. 1200 BCE). Sourced from Canon C32."
+      },
+      {
+        "name": "The Alchemist",
+        "system": "GAIA-C32",
+        "role_in_story": "transformer",
+        "behavioral_markers": [
+          "transforms raw material into refined form",
+          "endures the heat of the forge without breaking",
+          "catalyses change in others through presence"
+        ],
+        "noospheric_role": "civilisational catalyst — iron-working is the technology that enabled human civilisation to scale",
+        "confidence": "high",
+        "notes": "Smelting iron = the original alchemy: raw ore + fire + human intention = transformed material. The Alchemist archetype is embedded in iron's entire cultural history."
+      }
+    ],
+
+    "metals": [
+      {
+        "metal": "Iron",
+        "planet": "Mars",
+        "role": "MarsIron — the primary planetary metal correspondence; Iron IS the Mars metal in every Western and Vedic alchemical tradition",
+        "confidence": "high",
+        "notes": "This is the direct, self-referential entry: element Fe26 IS the metal Iron IS the Mars metal. Confirmed universally across Hermetic, Arabic, Vedic and Chinese traditions."
+      }
+    ],
+
+    "elements": [
+      { "element": "Fire",  "weight": 1.0, "role": "primary — iron is forged by fire; it holds fire's transformative, initiating, directional quality", "notes": "Fire ↔ Mars ↔ Iron is the foundational triple correspondence of Western alchemy." },
+      { "element": "Earth", "weight": 0.7, "role": "secondary — iron is of the earth (mined, dense, structural), the most abundant heavy element in the Earth's crust and core", "notes": "Dual Fire/Earth nature mirrors iron's dual role as forge-metal (fire) and structural material (earth)." }
+    ],
+
+    "periodic_elements": [
+      {
+        "atomic_number": 26,
+        "symbol": "Fe",
+        "name": "Iron",
+        "role": "subject element — this IS element 26; all correspondences in this record belong to Fe directly",
+        "notes": "From Latin 'ferrum'. Atomic mass 55.845 u. Electron configuration [Ar] 3d6 4s2. Most stable nucleus in the universe (Fe-56 has highest binding energy per nucleon)."
+      }
+    ],
+
+    "grid_resonance": {
+      "lattice_analogue": "cubic",
+      "grid_role": "sensor node",
+      "frequency_band_hz": "7.83",
+      "piezoelectric": false,
+      "topology": "toroidal",
+      "notes": "Alpha-iron (BCC cubic) is ferromagnetic — it is a natural magnetic sensor, not piezoelectric. Earth's iron core generates the geomagnetic field that Schumann Resonances propagate within. Iron's magnetic character makes it a passive sensor node in geomagnetic grid work. The toroidal topology reflects Earth's geomagnetic field structure (toroidal + poloidal)."
+    },
+
+    "evidence_profile": {
+      "basis": "cross-tradition",
+      "sources": [
+        { "kind": "gaia_canon",           "ref": "C32",  "notes": "Archetypal Psychology — Warrior and Alchemist archetypes; Mars/Iron planetary metal." },
+        { "kind": "scientific_literature", "ref": "Greenwood, N.N.; Earnshaw, A. (1997). Chemistry of the Elements (2nd ed.). Butterworth-Heinemann. ISBN 0-08-037941-9.", "notes": "Iron chemistry, BCC crystal structure, ferromagnetism, haemoglobin role." },
+        { "kind": "scientific_literature", "ref": "Lodders, K. (2003). Solar System Abundances and Condensation Temperatures of the Elements. ApJ 591, 1220.", "notes": "Iron as most stable nucleus; cosmic and terrestrial abundance data." },
+        { "kind": "traditional_source",   "ref": "Agrippa, H.C. (1531). Three Books of Occult Philosophy. Book I, Chapter XXIX.", "notes": "Mars rules iron in Western Hermetic tradition. Foundational source for the metal–planet correspondence." },
+        { "kind": "traditional_source",   "ref": "Parashara, M. (c. 200 CE). Brihat Parashara Hora Shastra. Chapter 3.", "notes": "Vedic: Mangala (Mars) governs iron, blood, fire, courage. Cross-tradition confirmation."
+        }
+      ],
+      "falsifiable_by": [
+        "Identification of a major alchemical tradition that assigns iron to a planet other than Mars with strong textual evidence would require revision of the metal and zodiac entries.",
+        "A physiological study showing iron deficiency does not correlate with reduced physical energy or will would weaken the GAIA Layer 01/02 emotion mappings."
+      ],
+      "confidence": "high",
+      "notes": "Iron/Mars correspondence is among the most universally agreed mappings in world alchemy — Western Hermetic, Arabic, Vedic, and Chinese traditions all agree. Physical chemistry claims (BCC structure, ferromagnetism, haemoglobin) are empirically rock-solid. Archetypal and symbolic mappings carry high cross-tradition confidence."
+    },
+
+    "safety_profile": {
+      "clinical_use": "never_clinical",
+      "trauma_flags": [
+        "blood_trauma",
+        "violence_history",
+        "war_trauma"
+      ],
+      "requires_opt_in": true,
+      "usage_notes": "Iron's Warrior archetype and blood/Mars symbolism require opt-in before use with Architects who have trauma histories involving violence, blood, or war. Never use the 'forge' or 'warrior' framing with someone in active crisis. Always position iron correspondences as symbolic and empowering, never as prescriptive or diagnostic. The opt-in flag is set to true because martial/blood imagery is not universally welcome."
+    }
+
+  },
+
+  "metadata": {
+    "schema_version": "1.0.0",
+    "created_at": "2026-06-15T10:44:00Z",
+    "updated_at": "2026-06-15T10:44:00Z",
+    "created_by": "GAIA-OS / R0GV3TheAlchemist",
+    "canon_refs": ["C32"],
+    "notes": "Reference implementation for a periodic-element correspondence record. Iron (Fe, Z=26) is chosen because it has the richest cross-tradition correspondence set of any element, making it the ideal test of schema completeness. Validates against schemas/correspondence-schema.json v1.0.0."
+  }
+}
