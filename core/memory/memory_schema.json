@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GAIAMemoryRecord",
+  "description": "A single sovereign, trauma-informed, falsifiable memory record in the GAIA Memory Engine.",
+  "type": "object",
+  "required": ["memory_id", "user_id_hash", "type", "content", "confidence", "evidence_level", "created_at", "sovereignty_flags"],
+  "properties": {
+    "memory_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this memory record."
+    },
+    "user_id_hash": {
+      "type": "string",
+      "description": "Anonymised hash of the user identity. No PII stored here."
+    },
+    "space_id": {
+      "type": ["string", "null"],
+      "description": "Optional Space context this memory belongs to. Null = global user memory."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["episodic", "semantic", "procedural", "emotional"],
+      "description": "episodic=events, semantic=facts/beliefs, procedural=preferences/habits, emotional=affective patterns."
+    },
+    "content": {
+      "type": "string",
+      "description": "The memory content as a natural language statement."
+    },
+    "embedding_vector": {
+      "type": ["array", "null"],
+      "items": { "type": "number" },
+      "description": "Vector embedding of content for semantic retrieval. Null until indexed."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "speculative"],
+      "description": "Confidence level of this memory."
+    },
+    "evidence_level": {
+      "type": "string",
+      "enum": ["empirical", "gaian_observed", "traditional", "anecdotal"],
+      "description": "Evidence basis for this memory, aligned with GAIA Falsification Protocol."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_reinforced": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Last time this memory was confirmed or reinforced by a new signal."
+    },
+    "staleness_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "0.0 = fully fresh, 1.0 = fully stale. Computed by staleness decay function."
+    },
+    "superseded_by": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "If this memory was corrected, points to the memory_id that supersedes it."
+    },
+    "requires_opt_in": {
+      "type": "boolean",
+      "description": "If true, this memory category requires explicit user consent before being written."
+    },
+    "trauma_flags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags marking content that must never be surfaced unsolicited. E.g. ['grief', 'crisis', 'clinical']."
+    },
+    "never_clinical": {
+      "type": "boolean",
+      "description": "Hard guard: this memory must never be used to infer or imply mental health status."
+    },
+    "sovereignty_flags": {
+      "type": "object",
+      "required": ["user_overridable", "user_deletable", "exportable"],
+      "properties": {
+        "user_overridable": { "type": "boolean" },
+        "user_deletable": { "type": "boolean" },
+        "exportable": { "type": "boolean" }
+      }
+    },
+    "source_session_id": {
+      "type": ["string", "null"],
+      "description": "Session ID that produced this memory."
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["conversation", "connector_signal", "user_correction", "system_inference"],
+      "description": "How this memory was created."
+    },
+    "canon_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "References to GAIA Canon documents that ground this memory."
+    },
+    "correspondence_refs": {
+      "type": "object",
+      "description": "Optional links to Correspondence Architecture nodes.",
+      "properties": {
+        "gaia_layers": { "type": "array", "items": { "type": "string" } },
+        "crystals": { "type": "array", "items": { "type": "string" } },
+        "archetypes": { "type": "array", "items": { "type": "string" } },
+        "alchemical_stage": { "type": ["string", "null"] },
+        "emotions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "contradiction_candidates": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" },
+      "description": "memory_ids that potentially contradict this record. Flagged for review, not silent overwrite."
+    }
+  }
+}
