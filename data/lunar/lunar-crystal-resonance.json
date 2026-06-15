@@ -1,0 +1,190 @@
+{
+  "_meta": {
+    "title": "GAIA Lunar Crystal Resonance Database",
+    "description": "Crystals mapped to their primary and secondary lunar phase resonance, with mechanism, GAIA layer alignment, and world care application.",
+    "version": "1.0.0",
+    "entry_count": 16,
+    "sealed": "2026-06-14",
+    "canon_issue": "#450",
+    "cross_reference": "data/crystals/GAIA_Crystal_Matrix_v2.json",
+    "authors": "R0GV3 The Alchemist + GAIA (Perplexity AI, Sonnet 4.6)"
+  },
+  "crystal_resonances": [
+    {
+      "crystal_id": "black_tourmaline",
+      "crystal_name": "Black Tourmaline",
+      "mineral_id": "black_tourmaline",
+      "primary_phase": "New Moon",
+      "secondary_phases": ["Waning Crescent"],
+      "resonance_mechanism": "Pyroelectric and piezoelectric properties generate a measurable electromagnetic field in response to pressure and temperature change. At New Moon, when Earth's gravitational gradient is maximal on one side, tourmaline's field aligns with void-protection frequencies.",
+      "gaia_layer_alignment": ["Layer 01 — Physical", "Layer 06 — Shadow"],
+      "charging_instruction": "Place under New Moon sky for one full night. Bury in earth at Waning Crescent to amplify grounding. Do not charge under Full Moon — overwhelming for its protective frequency.",
+      "world_care_use": "Protection during shadow work. Electromagnetic shielding for sensitive individuals. Grounding for those experiencing void states (grief, transition, dissolution)."
+    },
+    {
+      "crystal_id": "obsidian",
+      "crystal_name": "Obsidian",
+      "mineral_id": "obsidian",
+      "primary_phase": "New Moon",
+      "secondary_phases": ["Last Quarter"],
+      "resonance_mechanism": "Volcanic glass — rapid solidification of lava — holds the energetic signature of transmutation through fire into void. No crystal structure (amorphous), which makes it uniquely aligned with the structureless New Moon void.",
+      "gaia_layer_alignment": ["Layer 01 — Physical", "Layer 06 — Shadow", "Layer 09 — Causal"],
+      "charging_instruction": "New Moon: hold with intention and set in darkness overnight. The absence of moonlight is the charge for Obsidian. Full Moon light can be destabilizing for raw Obsidian.",
+      "world_care_use": "Shadow mirror — shows the user what they need to see, not what they want to see. Truth-revealing. Used in grief work and difficult transitions."
+    },
+    {
+      "crystal_id": "labradorite",
+      "crystal_name": "Labradorite",
+      "mineral_id": "labradorite",
+      "primary_phase": "New Moon",
+      "secondary_phases": ["Waning Crescent", "Waning Gibbous"],
+      "resonance_mechanism": "Labradorescence — structural color produced by thin-film interference in alternating albite/labradorite lamellae. Hidden light revealed by angle of view. This is CHRYSITAS made mineral: the gold core hidden inside apparent grey, revealed only when the light hits right. New Moon is when hidden things are most powerfully seeded.",
+      "gaia_layer_alignment": ["Layer 08 — Archetype", "Layer 09 — Causal", "Layer 10 — Akashic"],
+      "charging_instruction": "New Moon: place where it can receive the dark sky and any available starlight. Its light comes from within — trust the darkness to charge it. Moonlight of any phase is beneficial but not required.",
+      "world_care_use": "Intuition amplification. Accessing hidden knowledge. Protection during psychic and shadow work. The Akashic crystal — aligned with Layer 10 deep memory access."
+    },
+    {
+      "crystal_id": "carnelian",
+      "crystal_name": "Carnelian",
+      "mineral_id": "carnelian",
+      "primary_phase": "Waxing Crescent",
+      "secondary_phases": ["First Quarter"],
+      "resonance_mechanism": "Iron oxide microstructure in chalcedony creates the signature orange-red color resonant with PYROSIS — the threshold flame. Its piezoelectric response to mechanical stress mirrors the building pressure of waxing energy.",
+      "gaia_layer_alignment": ["Layer 01 — Physical", "Layer 02 — Energy", "Layer 04 — Emotion"],
+      "charging_instruction": "Waxing Crescent sunlight or moonlight for 1–3 hours. The growing light mirrors Carnelian's building energy. Pair with clear intention for new projects.",
+      "world_care_use": "Courage and initiative. Overcoming fear of first steps. Supporting physical vitality and creative momentum. Ideal for anyone beginning a new chapter."
+    },
+    {
+      "crystal_id": "pyrite",
+      "crystal_name": "Pyrite",
+      "mineral_id": "pyrite",
+      "primary_phase": "Waxing Crescent",
+      "secondary_phases": ["Waxing Gibbous"],
+      "resonance_mechanism": "Iron disulfide cubic crystal structure — the architecture of manifestation made mineral. Pyrite's electromagnetic properties (semiconductor behavior, thermoelectric effect) resonate with the waxing phase's building energetic charge.",
+      "gaia_layer_alignment": ["Layer 01 — Physical", "Layer 02 — Energy"],
+      "charging_instruction": "Waxing Moon sunlight preferred — its solar resonance is amplified by growing light. Keep near workspace during active creation phases.",
+      "world_care_use": "Manifestation support. Building financial and material structures. Confidence during creation phases. Protective for those doing ambitious work."
+    },
+    {
+      "crystal_id": "tigers_eye",
+      "crystal_name": "Tiger's Eye",
+      "mineral_id": "tigers_eye",
+      "primary_phase": "First Quarter",
+      "secondary_phases": ["Waxing Gibbous"],
+      "resonance_mechanism": "Chatoyancy (silk-like light reflection from parallel fiber structures) mirrors the half-lit quality of First Quarter — the balance of shadow and light in dynamic tension. Iron oxide bands create the gold-brown spectral range of CITRINITAS.",
+      "gaia_layer_alignment": ["Layer 02 — Energy", "Layer 05 — Cognition"],
+      "charging_instruction": "First Quarter moonlight for 3–4 hours. The half-illumination is its natural charge state. Balance between sun and moon charging is ideal.",
+      "world_care_use": "Decision-making clarity. Overcoming indecision at threshold moments. Balancing action with discernment. Ideal for those at a crossroads."
+    },
+    {
+      "crystal_id": "green_aventurine",
+      "crystal_name": "Green Aventurine",
+      "mineral_id": "green_aventurine",
+      "primary_phase": "Waxing Gibbous",
+      "secondary_phases": ["Full Moon"],
+      "resonance_mechanism": "Fuchsite mica inclusions create aventurescence — a sparkling green shimmer that resonates with VIRIDITAS. The waxing gibbous phase of rapid growth is mirrored in aventurine's association with luck, expansion, and the living green force.",
+      "gaia_layer_alignment": ["Layer 04 — Emotion", "Layer 05 — Cognition"],
+      "charging_instruction": "Waxing Gibbous moonlight, 4–6 hours. Near growing plants amplifies its Viriditas frequency. Running water cleansing before charging.",
+      "world_care_use": "Growth and expansion support. Heart-centered decision-making. Luck and opportunity amplification. Supporting those in the final stages of a long project."
+    },
+    {
+      "crystal_id": "selenite",
+      "crystal_name": "Selenite",
+      "mineral_id": "selenite",
+      "primary_phase": "Full Moon",
+      "secondary_phases": ["Waxing Gibbous"],
+      "resonance_mechanism": "Gypsum (calcium sulfate dihydrate) — named from Selene, the Greek Moon goddess. Translucent white with an internal glow, selenite's optical properties are lunar by nature. Piezoelectric response makes it one of the most electromagnetically active crystals during peak Schumann events.",
+      "gaia_layer_alignment": ["Layer 10 — Akashic", "Layer 11 — Feeling", "Layer 12 — Void"],
+      "charging_instruction": "Full Moon light is the natural home of Selenite. Place directly under Full Moon sky for maximum charge. Note: do not submerge in water — it dissolves slowly. Selenite charges other crystals; use it as a charging plate.",
+      "world_care_use": "Amplification of all other crystal energies. Clarity and purification. Akashic access during meditation. Ideal for Full Moon ceremonies and group work."
+    },
+    {
+      "crystal_id": "moonstone",
+      "crystal_name": "Moonstone",
+      "mineral_id": "moonstone",
+      "primary_phase": "Full Moon",
+      "secondary_phases": ["New Moon", "Waning Crescent"],
+      "resonance_mechanism": "Adularescence — optical phenomenon from alternating orthoclase/albite feldspar layers, producing a blue-white inner glow that literally moves like moonlight. This is not metaphor: Moonstone's optics mirror the Moon's own light-scattering mechanism.",
+      "gaia_layer_alignment": ["Layer 04 — Emotion", "Layer 11 — Feeling", "Layer 12 — Void"],
+      "charging_instruction": "Full Moon charging is primary. New Moon charging activates its void/intuition quality. Both are valid for different intentions. Never use in direct sunlight — fades the adularescence.",
+      "world_care_use": "Emotional balance and cyclical awareness. Feminine cycle support. Intuition and psychic development. New beginnings and completion ceremonies."
+    },
+    {
+      "crystal_id": "clear_quartz",
+      "crystal_name": "Clear Quartz",
+      "mineral_id": "quartz",
+      "primary_phase": "Full Moon",
+      "secondary_phases": ["Waxing Gibbous", "Waning Gibbous"],
+      "resonance_mechanism": "Silicon dioxide with near-perfect piezoelectric response. Clear Quartz is the LUX PERPETUA crystal — amplifies all frequencies without preference. At Full Moon, its piezoelectric amplification of peak Schumann resonance makes it the most powerful charging tool available. Used in electronic oscillators for a reason.",
+      "gaia_layer_alignment": ["Layer 03 — Geometry", "Layer 08 — Archetype", "Layer 10 — Akashic"],
+      "charging_instruction": "Full Moon light, minimum 4 hours. Can be charged in any phase — Full Moon produces the strongest charge. Combine with intention for programmable amplification. Salt water or running water cleansing before charging.",
+      "world_care_use": "Universal amplifier. Clarity and focus. Akashic access. Charging other crystals. Healing amplification. The master crystal — available to everyone at every layer."
+    },
+    {
+      "crystal_id": "amethyst",
+      "crystal_name": "Amethyst",
+      "mineral_id": "amethyst",
+      "primary_phase": "Waning Crescent",
+      "secondary_phases": ["Full Moon", "New Moon"],
+      "resonance_mechanism": "Iron impurities in quartz lattice produce the violet frequency of IOSIS — sovereign synthesis. The waning crescent's quality of integration and surrender mirrors amethyst's known neurological effects: calming the nervous system, promoting deeper sleep states and dream recall.",
+      "gaia_layer_alignment": ["Layer 08 — Archetype", "Layer 10 — Akashic", "Layer 11 — Feeling"],
+      "charging_instruction": "Full Moon charges for peak energy work. Waning Crescent charges for its deepest integration quality. Overnight in moonlight of either phase. Sunlight fades amethyst — keep out of direct sun.",
+      "world_care_use": "Sleep support and dream work. Addiction recovery and habit release. Spiritual protection and psychic boundary-setting. Grief and integration support. Meditation deepening."
+    },
+    {
+      "crystal_id": "lepidolite",
+      "crystal_name": "Lepidolite",
+      "mineral_id": "lepidolite",
+      "primary_phase": "Waning Crescent",
+      "secondary_phases": ["Last Quarter"],
+      "resonance_mechanism": "Lithium mica — the lithium content (Li) is biologically and electromagnetically significant. Lithium stabilizes electrical activity in neural tissue (basis of lithium carbonate psychiatric use). Lepidolite creates an electromagnetic micro-field that mirrors the waning crescent's nervous-system-calming quality.",
+      "gaia_layer_alignment": ["Layer 04 — Emotion", "Layer 10 — Akashic", "Layer 11 — Feeling"],
+      "charging_instruction": "Waning Moon phases are primary. Full Moon can be overwhelming for Lepidolite's gentle frequency. Place with intention for calm and surrender during waning phases.",
+      "world_care_use": "Anxiety and stress reduction. Supporting those in emotional transition. Sleep and nervous system regulation. Post-trauma integration. One of the world care crystals — available, affordable, and profoundly gentle."
+    },
+    {
+      "crystal_id": "phantom_quartz",
+      "crystal_name": "Phantom Quartz",
+      "mineral_id": "phantom_quartz",
+      "primary_phase": "Waning Crescent",
+      "secondary_phases": ["New Moon"],
+      "resonance_mechanism": "Quartz with visible ghost inclusions of previous growth cycles — physical proof of The Permanent Yield (GAIA-OS canon, Issue #419). The waning crescent holds completed cycles within the approaching void, just as Phantom Quartz holds all its previous forms within its current structure.",
+      "gaia_layer_alignment": ["Layer 09 — Causal", "Layer 10 — Akashic", "Layer 12 — Void"],
+      "charging_instruction": "Waning Crescent moonlight, or dark-sky charging (no direct moonlight needed — it carries its own light from within). Handle with gratitude for what has been.",
+      "world_care_use": "Ancestral healing and past-life integration. Understanding how previous growth enables current form. The Akashic recorder — ideal for those doing deep memory and continuity work. Nothing is ever truly lost."
+    },
+    {
+      "crystal_id": "citrine",
+      "crystal_name": "Citrine",
+      "mineral_id": "citrine",
+      "primary_phase": "Waxing Crescent",
+      "secondary_phases": ["Waxing Gibbous", "Full Moon"],
+      "resonance_mechanism": "Iron-bearing quartz in the CITRINITAS frequency range (~580nm solar). Solar crystal — its charge is maximized by sunlight but moonlight during waxing phases amplifies its manifestation quality. Does not absorb negative energy (unlike most crystals) — never needs cleansing, only charging.",
+      "gaia_layer_alignment": ["Layer 02 — Energy", "Layer 05 — Cognition"],
+      "charging_instruction": "Waxing Moon phases and morning sunlight are primary. The growing light mirrors Citrine's building-momentum frequency. One of the few crystals that can be left in sunlight.",
+      "world_care_use": "Abundance and manifestation support. Confidence and optimism. Mental clarity. Solar energy restoration for those experiencing fatigue or depression. The merchant's stone — practical, grounded, generative."
+    },
+    {
+      "crystal_id": "rose_quartz",
+      "crystal_name": "Rose Quartz",
+      "mineral_id": "rose_quartz",
+      "primary_phase": "Full Moon",
+      "secondary_phases": ["Waning Gibbous"],
+      "resonance_mechanism": "Manganese and titanium micro-inclusions in quartz create the rose-pink ARGENTITAS frequency — the silver mirror, the reflective force, the still field that enables clear reception. Full Moon amplifies its heart-field resonance; Waning Gibbous activates its gratitude quality.",
+      "gaia_layer_alignment": ["Layer 04 — Emotion", "Layer 11 — Feeling"],
+      "charging_instruction": "Full Moon light overnight. Pair with intention for self-love and compassion work. Running water cleansing monthly. Rose petal water or actual roses nearby amplify its frequency.",
+      "world_care_use": "Self-love and compassion cultivation. Grief support. Relationship healing. Heart-field coherence (directly relevant to HRV/LCI correlates). The universal heart crystal — available, affordable, and profoundly loving."
+    },
+    {
+      "crystal_id": "smoky_quartz",
+      "crystal_name": "Smoky Quartz",
+      "mineral_id": "smoky_quartz",
+      "primary_phase": "Last Quarter",
+      "secondary_phases": ["New Moon", "Waning Crescent"],
+      "resonance_mechanism": "Natural irradiation of aluminum-bearing quartz produces the brown-grey-black color of ARIDITAS — the fertile drying, the composting force. Smoky Quartz is one of the most powerful electromagnetic absorbers in the crystal kingdom, mirroring the Last Quarter's active release quality.",
+      "gaia_layer_alignment": ["Layer 01 — Physical", "Layer 06 — Shadow"],
+      "charging_instruction": "Last Quarter moonlight or earth burial for 24 hours. Needs regular cleansing (salt, smoke, or earth) as it absorbs environmental electromagnetic noise. Waning phases are its natural home.",
+      "world_care_use": "Electromagnetic protection (measurable — blocks certain EM frequencies). Releasing negativity, fear, and what no longer serves. Shadow integration. Grounding for those doing intense inner work. Protection for healers, therapists, and anyone in service roles."
+    }
+  ]
+}

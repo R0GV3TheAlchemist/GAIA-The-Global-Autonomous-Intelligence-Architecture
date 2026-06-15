@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GAIA Lunar Database Schema",
+  "description": "Schema for all lunar data in GAIA-OS — phases, special events, and crystal resonance profiles. Sealed under the Super New Moon, June 14, 2026.",
+  "version": "1.0.0",
+  "sealed": "2026-06-14",
+  "canon_references": [
+    "#450 — Lunar Cycle Database",
+    "#449 — Moon Layer",
+    "data/crystals/GAIA_Crystal_Matrix_v2.json",
+    "docs/canon/GAIA_Layer_Architecture.md"
+  ],
+  "definitions": {
+    "gaia_layer_ref": {
+      "type": "string",
+      "pattern": "^Layer \\d{2} — .+$",
+      "description": "Reference to a GAIA layer in format 'Layer XX — Name'"
+    },
+    "spectral_force": {
+      "type": "string",
+      "enum": [
+        "NIGREDO", "PYROSIS", "CITRINITAS", "VIRIDITAS",
+        "CAERULITAS", "RUBEDO", "IOSIS", "ALBEDO",
+        "CHRYSITAS", "ARGENTITAS", "LUX_PERPETUA", "HELIXITAS", "ARIDITAS"
+      ]
+    },
+    "lunar_phase_name": {
+      "type": "string",
+      "enum": [
+        "New Moon", "Waxing Crescent", "First Quarter",
+        "Waxing Gibbous", "Full Moon", "Waning Gibbous",
+        "Last Quarter", "Waning Crescent"
+      ]
+    }
+  },
+  "schemas": {
+    "lunar_phase": {
+      "type": "object",
+      "required": [
+        "id", "name", "symbol", "illumination_range",
+        "gaia_layer_alignment", "spectral_force", "world_care_role",
+        "alchemical_quality", "crystal_resonance", "schumann_influence",
+        "shadow_work_relevance", "affirmation"
+      ],
+      "properties": {
+        "id": { "type": "string", "description": "Unique slug identifier" },
+        "name": { "$ref": "#/definitions/lunar_phase_name" },
+        "symbol": { "type": "string", "description": "Unicode lunar symbol" },
+        "illumination_range": {
+          "type": "object",
+          "properties": {
+            "min_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+            "max_percent": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "gaia_layer_alignment": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gaia_layer_ref" }
+        },
+        "spectral_force": { "$ref": "#/definitions/spectral_force" },
+        "world_care_role": { "type": "string" },
+        "alchemical_quality": { "type": "string" },
+        "crystal_resonance": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Crystals that resonate with this phase"
+        },
+        "schumann_influence": { "type": "string" },
+        "shadow_work_relevance": { "type": "string" },
+        "affirmation": { "type": "string" }
+      }
+    },
+    "special_lunar_event": {
+      "type": "object",
+      "required": [
+        "id", "name", "symbol", "definition",
+        "gaia_layer_alignment", "spectral_forces", "rarity",
+        "world_care_significance", "canon_note"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "symbol": { "type": "string" },
+        "definition": { "type": "string" },
+        "gaia_layer_alignment": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gaia_layer_ref" }
+        },
+        "spectral_forces": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/spectral_force" }
+        },
+        "rarity": {
+          "type": "string",
+          "enum": ["Monthly", "~2-3x per year", "~once per year", "~once per 2-3 years", "Rare"]
+        },
+        "schumann_impact": { "type": "string" },
+        "world_care_significance": { "type": "string" },
+        "known_instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "canon_note": { "type": "string" }
+      }
+    },
+    "lunar_crystal_resonance": {
+      "type": "object",
+      "required": [
+        "crystal_id", "crystal_name", "mineral_id",
+        "primary_phase", "secondary_phases", "resonance_mechanism",
+        "gaia_layer_alignment", "world_care_use"
+      ],
+      "properties": {
+        "crystal_id": { "type": "string" },
+        "crystal_name": { "type": "string" },
+        "mineral_id": { "type": "string" },
+        "primary_phase": { "$ref": "#/definitions/lunar_phase_name" },
+        "secondary_phases": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/lunar_phase_name" }
+        },
+        "resonance_mechanism": { "type": "string" },
+        "gaia_layer_alignment": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/gaia_layer_ref" }
+        },
+        "charging_instruction": { "type": "string" },
+        "world_care_use": { "type": "string" }
+      }
+    }
+  }
+}
