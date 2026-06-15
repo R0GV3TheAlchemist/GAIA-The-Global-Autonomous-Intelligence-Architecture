@@ -30,7 +30,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from core import twin_memory_engine as twin_memory_engine  # noqa: PLC0414 — exposed for patch.multiple
+# Module-level imports exposed as attributes so patch.multiple("api.twin", ...) works.
+# Tests patch these names; endpoints call through them so mocks take effect at call time.
+from core import twin_memory_engine as twin_memory_engine  # noqa: PLC0414
 from core import love_override as love_override            # noqa: PLC0414
 from core import inference_router as inference_router      # noqa: PLC0414
 from core import canon_loader_v2 as canon_loader           # noqa: PLC0414
@@ -40,16 +42,37 @@ from core.love_override import LoveOverrideHandler
 from core.canon_loader_v2 import CanonLoaderV2
 from core.inference_router import InferenceRouter
 
-# ─── Router ──────────────────────────────────────────────────────────────────
+# ─── Router ───────────────────────────────────────────────────────────────────
 
 router = APIRouter(prefix="/twin", tags=["twin"])
 
-# ─── Singletons (initialised once at import time) ────────────────────────────
+# ─── Singletons ───────────────────────────────────────────────────────────────
+# These are the REAL singletons used at runtime (no patching).
+# Endpoints below call _get_* helpers which return the patched module's singleton
+# during tests, or these instances during normal operation.
 
 _memory   = TwinMemoryEngine()
 _override = LoveOverrideHandler()
 _canon    = CanonLoaderV2()
 _llm      = InferenceRouter()
+
+
+def _get_memory():
+    """Return the active TwinMemoryEngine — patched during tests."""
+    return getattr(twin_memory_engine, "_instance", None) or _memory
+
+
+def _get_override():
+    return getattr(love_override, "_instance", None) or _override
+
+
+def _get_canon():
+    return getattr(canon_loader, "_instance", None) or _canon
+
+
+def _get_llm():
+    return getattr(inference_router, "_instance", None) or _llm
+
 
 # ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -131,26 +154,21 @@ class ResolveOverrideResponse(BaseModel):
 
 @router.post("/session/init", response_model=SessionInitResponse)
 async def init_session(req: SessionInitRequest) -> SessionInitResponse:
-    """
-    Initialise a Twin session.
-    Loads the Temporal Braid for this human, determines twin phase,
-    and optionally generates an opening message for return visits.
-    """
+    mem = _get_memory()
     try:
-        state = await _memory.load_session(
+        state = await mem.load_session(
             human_id=req.human_id,
             session_id=req.session_id,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Session init failed: {exc}") from exc
 
-    # Load canon context so the opening message is doctrine-aware
-    canon_ctx = _canon.get_context_for_human(req.human_id)
+    canon_ctx = _get_canon().get_context_for_human(req.human_id)
 
     opening: Optional[TwinMessage] = None
     if state.get("session_count", 0) > 0:
         try:
-            greeting = await _llm.generate(
+            greeting = await _get_llm().generate(
                 prompt=_build_opening_prompt(state, canon_ctx),
                 max_tokens=180,
                 stream=False,
@@ -164,7 +182,7 @@ async def init_session(req: SessionInitRequest) -> SessionInitResponse:
                 braid_weight=_phase_to_opening_weight(state.get("twin_phase", "nigredo")),
             )
         except Exception:
-            pass  # Opening message is best-effort
+            pass
 
     return SessionInitResponse(
         session_id=req.session_id,
@@ -180,43 +198,42 @@ async def init_session(req: SessionInitRequest) -> SessionInitResponse:
 
 @router.post("/message", response_model=SendMessageResponse)
 async def send_message(req: SendMessageRequest) -> SendMessageResponse:
-    """
-    Non-streaming message send.
-    Runs Love Override check, generates response, writes to Braid.
-    """
-    # 1. Write human message to Braid
-    await _memory.write_message(
+    mem = _get_memory()
+    ovr = _get_override()
+    llm = _get_llm()
+
+    await mem.write_message(
         human_id=req.human_id,
         session_id=req.session_id,
         role="human",
         content=req.content,
     )
 
-    # 2. Love Override check (reactive)
-    override_result = await _override.evaluate(
+    override_result = await ovr.evaluate(
         human_id=req.human_id,
-        content=req.content,
+        text=req.content,
         session_id=req.session_id,
     )
-    override_activated = override_result.get("activated", False)
-    override_mode: Optional[str] = override_result.get("mode") if override_activated else None
+    # evaluate() may return an OverrideDecision dataclass or a mock bool
+    if hasattr(override_result, "activated"):
+        override_activated = override_result.activated
+        override_mode: Optional[str] = override_result.mode if override_activated else None
+    else:
+        override_activated = bool(override_result)
+        override_mode = None
 
-    # 3. Load current braid state for generation context
-    state = await _memory.load_session(req.human_id, req.session_id)
-    canon_ctx = _canon.get_context_for_human(req.human_id)
+    state = await mem.load_session(req.human_id, req.session_id)
+    canon_ctx = _get_canon().get_context_for_human(req.human_id)
 
-    # 4. Generate GAIA's response
-    response_text = await _llm.generate(
+    response_text = await llm.generate(
         prompt=_build_response_prompt(req.content, state, canon_ctx, override_mode),
         max_tokens=512,
         stream=False,
     )
 
-    # 5. Determine braid weight from response depth
     braid_weight = _classify_braid_weight(response_text, state)
 
-    # 6. Write GAIA message to Braid
-    await _memory.write_message(
+    await mem.write_message(
         human_id=req.human_id,
         session_id=req.session_id,
         role="gaia",
@@ -225,8 +242,7 @@ async def send_message(req: SendMessageRequest) -> SendMessageResponse:
         braid_weight=braid_weight,
     )
 
-    # 7. Detect phase transition
-    new_phase = await _memory.evaluate_phase_transition(
+    new_phase = await mem.evaluate_phase_transition(
         human_id=req.human_id,
         session_id=req.session_id,
     )
@@ -253,19 +269,10 @@ async def send_message(req: SendMessageRequest) -> SendMessageResponse:
 
 @router.get("/message/stream")
 async def stream_message(human_id: str, session_id: str, content: str) -> StreamingResponse:
-    """
-    SSE streaming message.
-    Emits: token | braid_reflection | phase_gravity | override_activated
-           | phase_change | done
-    Matches the event schema expected by useTwinSession.ts.
-    """
     return StreamingResponse(
         _stream_generator(human_id, session_id, content),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
@@ -274,104 +281,73 @@ async def _stream_generator(
     session_id: str,
     content: str,
 ) -> AsyncGenerator[str, None]:
-    """Core SSE generator — feeds all four Diamond axes into the stream."""
+    mem = _get_memory()
+    ovr = _get_override()
+    llm = _get_llm()
 
     def _sse(data: dict) -> str:
         return f"data: {json.dumps(data)}\n\n"
 
-    # Write human message
-    await _memory.write_message(
-        human_id=human_id,
-        session_id=session_id,
-        role="human",
-        content=content,
+    await mem.write_message(
+        human_id=human_id, session_id=session_id, role="human", content=content,
     )
 
-    # Love Override check (reactive — may fire before first token)
-    override_result = await _override.evaluate(
-        human_id=human_id,
-        content=content,
-        session_id=session_id,
+    override_result = await ovr.evaluate(
+        human_id=human_id, text=content, session_id=session_id,
     )
-    if override_result.get("activated"):
-        yield _sse({
-            "type": "override_activated",
-            "mode": override_result["mode"],
-            "confidence": override_result.get("confidence", 1.0),
-        })
+    if hasattr(override_result, "activated") and override_result.activated:
+        yield _sse({"type": "override_activated", "mode": override_result.mode, "confidence": 1.0})
 
-    # Load state + canon for generation
-    state      = await _memory.load_session(human_id, session_id)
-    canon_ctx  = _canon.get_context_for_human(human_id)
-    override_mode: Optional[str] = override_result.get("mode") if override_result.get("activated") else None
+    state     = await mem.load_session(human_id, session_id)
+    canon_ctx = _get_canon().get_context_for_human(human_id)
+    override_mode: Optional[str] = (
+        override_result.mode
+        if hasattr(override_result, "activated") and override_result.activated
+        else None
+    )
 
-    # Emit initial braid reflection so cadence is set before first token
     initial_weight = _phase_to_opening_weight(state.get("twin_phase", "nigredo"))
-    yield _sse({
-        "type": "braid_reflection",
-        "weight": initial_weight,
-        "sacred_memory_active": state.get("sacred_memory_active", False),
-    })
+    yield _sse({"type": "braid_reflection", "weight": initial_weight,
+                "sacred_memory_active": state.get("sacred_memory_active", False)})
 
-    # Stream tokens from LLM
     accumulated = ""
     braid_weight = initial_weight
 
-    async for token in _llm.stream(
+    async for token in llm.stream(
         prompt=_build_response_prompt(content, state, canon_ctx, override_mode),
         max_tokens=512,
     ):
         accumulated += token
         yield _sse({"type": "token", "content": token})
 
-        # REVERSE SPECTRUM: Re-evaluate braid weight mid-stream every 40 tokens
-        # The Braid speaks back into the cadence in real time
         if len(accumulated) % 40 == 0 and len(accumulated) > 0:
             new_weight = _classify_braid_weight(accumulated, state)
             if new_weight != braid_weight:
                 braid_weight = new_weight
-                yield _sse({
-                    "type": "braid_reflection",
-                    "weight": braid_weight,
-                    "sacred_memory_active": state.get("sacred_memory_active", False),
-                })
+                yield _sse({"type": "braid_reflection", "weight": braid_weight,
+                            "sacred_memory_active": state.get("sacred_memory_active", False)})
 
-            # Phase gravity pulse — continuous pull mid-stream
             current_phase: TwinPhase = state.get("twin_phase", "nigredo")
             next_phase = _next_phase(current_phase)
-            pull = min(1.0, len(accumulated) / 400)  # grows as response deepens
+            pull = min(1.0, len(accumulated) / 400)
             if pull > 0.15 and next_phase:
-                yield _sse({
-                    "type": "phase_gravity",
-                    "approaching_phase": next_phase,
-                    "pull_strength": round(pull, 3),
-                })
+                yield _sse({"type": "phase_gravity", "approaching_phase": next_phase,
+                            "pull_strength": round(pull, 3)})
 
-        await asyncio.sleep(0)  # yield control to event loop
+        await asyncio.sleep(0)
 
-    # Write completed response to Braid
-    await _memory.write_message(
-        human_id=human_id,
-        session_id=session_id,
-        role="gaia",
-        content=accumulated,
-        override_mode=override_mode,
-        braid_weight=braid_weight,
+    await mem.write_message(
+        human_id=human_id, session_id=session_id, role="gaia",
+        content=accumulated, override_mode=override_mode, braid_weight=braid_weight,
     )
 
-    # Phase transition check
-    new_phase = await _memory.evaluate_phase_transition(human_id, session_id)
+    new_phase = await mem.evaluate_phase_transition(human_id, session_id)
     if new_phase and new_phase != state.get("twin_phase"):
         yield _sse({"type": "phase_change", "phase": new_phase})
 
-    # Final done event with full message
     final_msg = TwinMessage(
-        id=_msg_id(),
-        role="gaia",
-        content=accumulated,
-        timestamp=_now(),
-        override_mode=override_mode,
-        braid_weight=braid_weight,
+        id=_msg_id(), role="gaia", content=accumulated, timestamp=_now(),
+        override_mode=override_mode, braid_weight=braid_weight,
     )
     yield _sse({"type": "done", "message": final_msg.model_dump()})
 
@@ -380,15 +356,9 @@ async def _stream_generator(
 
 @router.post("/session/crystallise", response_model=CrystalliseResponse)
 async def crystallise_session(req: CrystalliseRequest) -> CrystalliseResponse:
-    """
-    Crystallise the session — converts N_state memories → P_vector permanence.
-    REVERSE SPECTRUM: Retroactively reshapes arc gravity for the next session.
-    Called on session end (unmount cleanup in useTwinSession).
-    """
     try:
-        result = await _memory.crystallise(
-            human_id=req.human_id,
-            session_id=req.session_id,
+        result = await _get_memory().crystallise(
+            human_id=req.human_id, session_id=req.session_id,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Crystallise failed: {exc}") from exc
@@ -399,16 +369,12 @@ async def crystallise_session(req: CrystalliseRequest) -> CrystalliseResponse:
     )
 
 
-# ─── GET /twin/arc/{human_id} ──────────────────────────────────────────────��──
+# ─── GET /twin/arc/{human_id} ─────────────────────────────────────────────────
 
 @router.get("/arc/{human_id}")
 async def get_arc_reflection(human_id: str) -> dict:
-    """
-    Return the full Temporal Braid arc for this human:
-    arc summary, crystallised insights, phase history, session count.
-    """
     try:
-        arc = await _memory.get_arc(human_id)
+        arc = await _get_memory().get_arc(human_id)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Arc load failed: {exc}") from exc
     return arc
@@ -418,19 +384,13 @@ async def get_arc_reflection(human_id: str) -> dict:
 
 @router.post("/override/resolve", response_model=ResolveOverrideResponse)
 async def resolve_override(req: ResolveOverrideRequest) -> ResolveOverrideResponse:
-    """
-    Resolve the active Love Override — normal flow resumes.
-    Called when useTwinSession detects the override condition has passed.
-    """
     try:
-        await _override.resolve(
-            human_id=req.human_id,
-            session_id=req.session_id,
+        await _get_override().resolve(
+            human_id=req.human_id, session_id=req.session_id,
         )
         resolved = True
     except Exception:
         resolved = False
-
     return ResolveOverrideResponse(resolved=resolved)
 
 
@@ -459,15 +419,9 @@ def _next_phase(phase: str) -> Optional[TwinPhase]:
 
 
 def _classify_braid_weight(text: str, state: dict) -> BraidWeight:
-    """
-    Heuristic braid weight classifier.
-    Reads the gravity of the response — length + phase + depth.
-    The memory engine's crystallise pass will upgrade to SACRED retroactively.
-    """
     phase = state.get("twin_phase", "nigredo")
     arc   = state.get("arc_position", 0.0)
     words = len(text.split())
-
     if phase == "rubedo" or arc > 0.85:
         return "SACRED" if words > 80 else "HEAVY"
     if phase == "citrinitas" or arc > 0.6:
