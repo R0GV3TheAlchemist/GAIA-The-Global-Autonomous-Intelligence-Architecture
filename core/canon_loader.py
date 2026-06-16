@@ -267,17 +267,20 @@ class CanonLoader:
             self._loaded = True
             self._status = CanonStatus.GREEN
             return CanonLoadResult(entry_id="", status=CanonStatus.LOADED)
-        self._entries[entry.entry_id] = entry
-        content = getattr(entry, "content", "") or getattr(entry, "text", "") or ""
-        title   = getattr(entry, "title",   getattr(entry, "entry_id", ""))
-        self._documents[entry.entry_id] = {
-            "id":      entry.entry_id,
+
+        # CanonEntry uses `ref_id` as its primary identifier.
+        entry_id = entry.ref_id
+        self._entries[entry_id] = entry
+        content = getattr(entry, "content", "") or getattr(entry, "text", "") or getattr(entry, "body", "") or ""
+        title   = getattr(entry, "title",   entry_id)
+        self._documents[entry_id] = {
+            "id":      entry_id,
             "content": content,
             "title":   title,
             "source":  getattr(entry, "source", ""),
         }
         self._rebuild_index()
-        return CanonLoadResult(entry_id=entry.entry_id, status=CanonStatus.LOADED)
+        return CanonLoadResult(entry_id=entry_id, status=CanonStatus.LOADED)
 
     def _rebuild_index(self) -> None:
         self._index.build(self._documents)
