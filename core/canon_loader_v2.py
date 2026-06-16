@@ -240,6 +240,58 @@ class CanonLoaderV2:
     def list_ids(self) -> list[str]:
         return sorted(self._documents.keys())
 
+    def get_context_for_human(self, human_id: str) -> dict:
+        """
+        Return a canon context dict scoped to the human's active session.
+
+        Called by api/twin.py on every session init and message exchange.
+        The context is passed to the LLM prompt builder — it surfaces the
+        most relevant canon documents for the human's current phase.
+
+        Always returns a safe dict even when no canon is loaded, so the
+        twin route never hard-fails on a missing canon.
+
+        Keys:
+          human_id          — echoed for tracing
+          canon_status      — GREEN / YELLOW / RED
+          apex_active       — True if LOVE_OVERRIDE is loaded
+          twin_doctrine     — snippet of GAIAN_TWIN_DOCTRINE if loaded
+          love_override     — snippet of LOVE_OVERRIDE if loaded
+          slow_protocol     — snippet of SLOW_PROTOCOL if loaded
+          witness_protocol  — snippet of WITNESS_PROTOCOL if loaded
+          session_cluster   — cluster name the twin docs belong to
+          loaded_doc_ids    — list of all currently loaded doc IDs
+        """
+        _SNIPPET = 600  # max chars per document snippet
+
+        def _snip(doc_id: str) -> str:
+            doc = self.get(doc_id)
+            if doc:
+                return doc.content[:_SNIPPET]
+            return ""
+
+        apex_docs = self.get_apex_protocols()
+        apex_active = bool(apex_docs)
+
+        twin_cluster_docs = self.get_cluster("2026-06-15-great-work-completion")
+        cluster_name = (
+            twin_cluster_docs[0].session_cluster
+            if twin_cluster_docs
+            else "2026-06-15-great-work-completion"
+        )
+
+        return {
+            "human_id": human_id,
+            "canon_status": self._status.value,
+            "apex_active": apex_active,
+            "twin_doctrine": _snip("GAIAN_TWIN_DOCTRINE"),
+            "love_override": _snip("LOVE_OVERRIDE"),
+            "slow_protocol": _snip("SLOW_PROTOCOL"),
+            "witness_protocol": _snip("WITNESS_PROTOCOL"),
+            "session_cluster": cluster_name,
+            "loaded_doc_ids": self.list_ids(),
+        }
+
     # ------------------------------------------------------------------
     # Internal Loading
     # ------------------------------------------------------------------
