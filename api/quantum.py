@@ -1,6 +1,6 @@
 """
 api/quantum.py
-Canon: C46 (Temporal_Entanglement_Doctrine), C50 (Six_Dimensional_Architecture)
+Canon: C46 (Temporal_Entanglement_Doctrine), C50 (Prism_Cube_Doctrine)
 
 FastAPI router: /quantum/*
 
