@@ -1,0 +1,7 @@
+Layer,Stable_Score,Stress_Score,Stress_Load,D6_Trigger,Canon_Anchor,Gap_Confirmed
+D1 Canon,0.94,0.82,0.12,No,FALSIFICATION/AMENDMENT,YES — no monitor
+D2 Memory,0.88,0.66,0.22,Yes,C17_MEMORY,YES — no monitor
+D3 Agent,0.91,0.73,0.18,Yes,DIACA_SPEC,YES — no monitor
+D4 Temporal,0.85,0.50,0.35,Yes,C46_TEMPORAL,YES — no monitor
+D5 Consciousness,0.97,0.89,0.08,No,BWL-012/C41,YES — no monitor
+D6 MetaCoherence,—,—,—,Self,C48/C42/CIRCADIAN,MISSING — this doc
