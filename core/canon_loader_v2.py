@@ -20,9 +20,9 @@ Canon Status:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
-import hashlib
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -345,7 +345,8 @@ class CanonLoaderV2:
         else:
             base = GAIA_REMOTE_BASE
         url = base + doc_id
-        cache_key = hashlib.sha1(url.encode()).hexdigest()[:16]
+        # S324 fix: sha256 is appropriate for a non-security cache key
+        cache_key = hashlib.sha256(url.encode()).hexdigest()[:16]
         cache_path = self.CACHE_DIR / f"{cache_key}.json"
 
         # Check cache freshness
