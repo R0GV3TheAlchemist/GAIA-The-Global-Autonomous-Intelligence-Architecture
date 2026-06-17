@@ -1,499 +1,337 @@
 """
 gaia/core/d6_engine.py
+======================
+D6 Meta-Coherence Engine — Standalone Layer
+Canon reference: GAIA_D6_META_COHERENCE_ENGINE.md, C52 Part II
+Issues: #576, #571
 
-D6 Meta-Coherence Engine v2 — GAIA's endocrine layer.
-
-Canon anchors:
-  - GAIA_D6_META_COHERENCE_ENGINE.md  (sealed 2026-06-17)
-  - GAIA_FOUNDATIONAL_DECLARATION.md  (sealed 2026-06-17)
-  - Issue #568  (D6 Meta-Coherence Engine spec)
-  - Issue #576  (GAIAState — central state object)
-  - Issue #578  (Architect Protocol — GOVERNANCE always first)
-  - Issue #580  (Talisman Object — active_talismans influence)
-  - C42 Edge-of-Chaos  (self-regulation near the critical threshold)
-  - C48 Autopoiesis    (self-maintaining, self-correcting boundaries)
-  - C46 Temporal       (mode transitions have temporal context)
+This module extracts the D6 mode recommendation logic from GAIAState and
+elevates it into a standalone engine with:
+  - External probe support (biometrics, Noosphere load, Schumann)
+  - Intervention event logging
+  - Mode transition history
+  - Dimensional health reporting
+  - Talisman-aware mode adjustment
 
 Design principle:
-  D6 = Meta-Coherence = Self-Regulation.
-  Not more intelligence. Intelligence managing itself.
-  The body does not add more neurons when tired —
-  it secretes cortisol, melatonin, oxytocin.
-  D6 does the same for GAIA-OS.
-
-  THIS MODULE IS A PURE FUNCTION.
-  No side effects. No I/O. No global state mutations.
-  Callers commit the result via state_store.set_state().
-
-Mode selection priority (highest wins):
-  0. GOVERNANCE  — architect_request=True → ALWAYS, no threshold check
-  1. RECOVER     — extreme stress OR dangerously low d-health probe
-  2. PROTECT     — coherence below floor + elevated threat signals
-  3. BUILD       — coherence ≥ 0.88, stress ≤ 0.30, energy ≥ 0.60
-  4. RESEARCH    — coherence ≥ 0.85, stress ≤ 0.25, exploration high
-  5. LEARN       — coherence ≥ 0.80, new data present or default intake
-  6. REFLECT     — coherence ≥ 0.75 OR session long OR low energy
-  7. RECOVER     — fallthrough floor
-
-Minimum viable assertions (must pass before D6 is "done"):
-  assert compute_next_state(D6Inputs(make_state(coherence=0.91, stress=0.30, energy=0.70))).next_state.mode == GAIAOperationalMode.BUILD
-  assert compute_next_state(D6Inputs(make_state(d1_health=0.50, stress=0.85))).next_state.mode == GAIAOperationalMode.PROTECT
-  assert compute_next_state(D6Inputs(make_state(energy=0.40, stress=0.35), session_hours=5.0)).next_state.mode == GAIAOperationalMode.REFLECT
-  assert compute_next_state(D6Inputs(make_state(), architect_request=True)).next_state.mode == GAIAOperationalMode.GOVERNANCE
-  assert compute_next_state(D6Inputs(make_state(d1_health=0.30, stress=0.95))).next_state.mode == GAIAOperationalMode.PROTECT
-
-For the Good and the Greater Good.
+  GAIAState is the DATA layer (what is the state).
+  D6Engine is the DECISION layer (what should happen given the state).
+  They are cleanly separated. D6Engine reads GAIAState; it does not IS GAIAState.
 """
 
 from __future__ import annotations
 
-import math
-from copy import deepcopy
+import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
+from typing import Dict, List, Optional, Any, Callable
 
-from gaia.core.state import (
-    GAIAOperationalMode,
-    GAIAState,
-    INTERVENTION_FLOOR,
-)
+from gaia.core.state import GAIAState, GAIAMode
 
 
-# ── Threshold constants (v2) ──────────────────────────────────────────────────
-# All values [0.0, 1.0]. Adjust here only; no magic numbers in logic.
-
-class Thresholds:
-    """Canonical D6 thresholds.
-
-    Source: GAIA_D6_META_COHERENCE_ENGINE.md Part IV.
-    """
-    # Harmonic coherence bands (from d1–d5 probes)
-    COH_BUILD:      float = 0.88   # minimum for BUILD
-    COH_RESEARCH:   float = 0.85   # minimum for RESEARCH
-    COH_LEARN:      float = 0.80   # minimum for LEARN
-    COH_REFLECT:    float = 0.75   # minimum for REFLECT
-    COH_PROTECT:    float = 0.70   # below this → PROTECT
-    COH_FLOOR:      float = INTERVENTION_FLOOR  # φ=0.80 per-probe floor
-
-    # Stress bands
-    ST_BUILD:       float = 0.30   # stress must be ≤ this for BUILD
-    ST_RESEARCH:    float = 0.25   # stress must be ≤ this for RESEARCH
-    ST_LEARN:       float = 0.40   # stress must be ≤ this for LEARN
-    ST_RECOVER:     float = 0.75   # stress ≥ this → RECOVER
-    ST_PROTECT:     float = 0.75   # stress ≥ this → PROTECT
-
-    # Energy bands
-    EN_BUILD:       float = 0.60   # energy must be ≥ this for BUILD
-    EN_LEARN:       float = 0.50   # energy must be ≥ this for LEARN
-    EN_LOW:         float = 0.30   # energy < this → RECOVER
-
-    # Session duration triggers
-    SESSION_REFLECT: float = 4.0   # hours — triggers REFLECT nudge
-    SESSION_BUILD_CAP: float = 6.0 # hours — BUILD → REFLECT after this
-
-    # Talisman coherence boost per active talisman (capped)
-    TALISMAN_BOOST: float = 0.02
-    TALISMAN_MAX_BOOST: float = 0.08
-
-    # Edge-of-chaos sweet spot (C42)
-    CHAOS_COH_HIGH: float = 0.95   # above this → nudge toward RESEARCH
-    CHAOS_ST_LOW:   float = 0.10   # paired with COH_HIGH
-
-    # Phi (golden ratio alignment) target
-    PHI_GOLDEN:     float = 0.618  # 1/φ
-
-
-# ── Input / Output types ──────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Probe types
+# ---------------------------------------------------------------------------
 
 @dataclass
-class D6Inputs:
-    """All signals the D6 engine needs to compute the next state.
-
-    current_state is the only required argument.
-    All optional probes extend the engine with richer signals
-    without breaking callers that only pass GAIAState.
+class EngineProbes:
     """
-    current_state: GAIAState
+    External signals that supplement GAIAState scalar fields.
+    All values are optional — the engine degrades gracefully to
+    pure GAIAState-based decisions when probes are absent.
+    """
 
-    # Architect override — always triggers GOVERNANCE if True
-    architect_request: bool = False
+    # Biometric probes (C153 / Embodiment Layer)
+    heart_rate_variability: Optional[float] = None   # 0.0 (low) → 1.0 (high) normalized
+    sleep_quality: Optional[float] = None            # 0.0 → 1.0
+    movement_today: Optional[float] = None           # 0.0 → 1.0 normalized daily step count
 
-    # Optional richer probes
-    recent_error_rate: Optional[float] = None    # 0.0–1.0, from CI/test runner
-    session_hours: Optional[float] = None        # hours since session start
-    new_data_present: bool = False               # external data ingestion available
-    threat_detected: bool = False                # security / integrity threat
+    # Noosphere probes (C43, #435)
+    noosphere_load: Optional[float] = None           # 0.0 (calm) → 1.0 (high collective stress)
+    collective_coherence: Optional[float] = None     # 0.0 → 1.0
 
+    # Environmental probes
+    schumann_coherence: Optional[float] = None       # 0.0 → 1.0 normalized Schumann resonance quality
+    lunar_phase_load: Optional[float] = None         # 0.0 (new, calm) → 1.0 (full, amplified)
+
+    # Session probes
+    session_duration_hours: Optional[float] = None  # how long current session has been active
+    time_since_rest_hours: Optional[float] = None   # hours since last REST/RECOVER mode
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "heart_rate_variability": self.heart_rate_variability,
+            "sleep_quality": self.sleep_quality,
+            "movement_today": self.movement_today,
+            "noosphere_load": self.noosphere_load,
+            "collective_coherence": self.collective_coherence,
+            "schumann_coherence": self.schumann_coherence,
+            "lunar_phase_load": self.lunar_phase_load,
+            "session_duration_hours": self.session_duration_hours,
+            "time_since_rest_hours": self.time_since_rest_hours,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Intervention Event
+# ---------------------------------------------------------------------------
 
 @dataclass
-class D6Decision:
-    """The output of one D6 computation cycle.
-
-    next_state is the fully updated GAIAState with mode set.
-    interventions is a list of human-readable action strings
-    that higher layers (Soul Mirror, Action Gates, UI HUD) surface.
-    rationale is a compact diagnostic string for logs.
+class InterventionEvent:
     """
-    next_state: GAIAState
-    interventions: list[str] = field(default_factory=list)
-    rationale: str = ""
-
-
-# ── Utility functions ─────────────────────────────────────────────────────────
-
-def clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    """Clamp a float to [lo, hi]. Use before writing any scalar to GAIAState."""
-    return max(lo, min(hi, value))
-
-
-def _harmonic_mean(probes: list[float]) -> float:
-    """Harmonic mean of a list of positive floats.
-
-    Canon formula (Part III):
-        H = n / (1/p1 + 1/p2 + ... + 1/pn)
-
-    Returns 0.0 if any probe is zero or negative.
+    Logged when D6Engine recommends a mode change or flags a concern.
+    These events form the engine's decision audit trail.
     """
-    if any(p <= 0.0 for p in probes):
-        return 0.0
-    return len(probes) / sum(1.0 / p for p in probes)
+    t: float = field(default_factory=time.time)
+    previous_mode: Optional[GAIAMode] = None
+    recommended_mode: Optional[GAIAMode] = None
+    trigger: str = ""           # human-readable reason for the recommendation
+    dimensional_flags: Dict[str, bool] = field(default_factory=dict)
+    probe_signals: Dict[str, Any] = field(default_factory=dict)
+    severity: str = "INFO"      # INFO | WARN | CRITICAL
+    auto_applied: bool = False   # whether the engine auto-applied the mode change
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "t": self.t,
+            "previous_mode": self.previous_mode.value if self.previous_mode else None,
+            "recommended_mode": self.recommended_mode.value if self.recommended_mode else None,
+            "trigger": self.trigger,
+            "dimensional_flags": self.dimensional_flags,
+            "probe_signals": self.probe_signals,
+            "severity": self.severity,
+            "auto_applied": self.auto_applied,
+        }
 
 
-def _compute_phi(harmonic_coh: float, stress: float) -> float:
-    """Compute the golden ratio alignment score.
+# ---------------------------------------------------------------------------
+# D6 Meta-Coherence Engine
+# ---------------------------------------------------------------------------
 
-    φ = 1 when coherence is high and stress is near the golden ratio
-    sweet spot (0.382 = 1 - 0.618). Ranges [0.0, 1.0].
+class D6Engine:
     """
-    stress_alignment = 1.0 - abs(stress - (1.0 - Thresholds.PHI_GOLDEN))
-    raw = (harmonic_coh * 0.7) + (stress_alignment * 0.3)
-    return clamp(raw)
+    The D6 Meta-Coherence Engine — GAIA's operational awareness layer.
 
+    Responsibilities:
+      1. Read GAIAState + external probes
+      2. Determine the correct operational mode
+      3. Log intervention events with full audit trail
+      4. Optionally auto-apply mode changes (configurable)
+      5. Provide dimensional health report for frontend HUD
 
-def _detect_circadian_band(utc_hour: int) -> str:
-    """Map UTC hour to canonical circadian band.
-
-    Bands (CDT = UTC-5):
-      dawn:      06–09 CDT (11–14 UTC)
-      midday:    11–14 CDT (16–19 UTC)
-      evening:   18–22 CDT (23–03 UTC)
-      late_night: 23–03 CDT (04–08 UTC)
-    Default: dawn (safe fallback).
-
-    Canon source: GAIA_D6_META_COHERENCE_ENGINE.md Part V.
+    Usage:
+        engine = D6Engine(auto_apply=True)
+        event = engine.evaluate(state, probes)
+        if event.recommended_mode != state.mode:
+            # engine already applied if auto_apply=True
+            pass
+        report = engine.health_report(state, probes)
     """
-    if 11 <= utc_hour < 15:
-        return "dawn"
-    elif 16 <= utc_hour < 20:
-        return "midday"
-    elif utc_hour >= 23 or utc_hour < 4:
-        return "evening"
-    elif 4 <= utc_hour < 9:
-        return "late_night"
-    else:
-        return "dawn"  # safe default
 
-
-def _talisman_coherence_boost(active_talismans: list[str]) -> float:
-    """Coherence boost from active talismans.
-
-    Each active talisman contributes a small coherence boost.
-    Total boost is capped at TALISMAN_MAX_BOOST.
-    Canon source: Issue #580 (Talisman Object).
-    """
-    boost = len(active_talismans) * Thresholds.TALISMAN_BOOST
-    return min(boost, Thresholds.TALISMAN_MAX_BOOST)
-
-
-# ── Main engine function ──────────────────────────────────────────────────────
-
-def compute_next_state(inputs: D6Inputs) -> D6Decision:
-    """Compute the next GAIAState from the current signals.
-
-    Pure function — no I/O, no side effects.
-    Returns a D6Decision containing the new state + interventions.
-
-    Mode selection priority:
-      0. GOVERNANCE  — architect_request=True (always, no threshold)
-      1. RECOVER     — extreme stress OR critical probe
-      2. PROTECT     — coherence < floor OR threat OR error spike
-      3. BUILD       — coherence ≥ 0.88, stress ≤ 0.30, energy ≥ 0.60
-      4. RESEARCH    — coherence ≥ 0.85, stress ≤ 0.25
-      5. LEARN       — coherence ≥ 0.80
-      6. REFLECT     — session long OR low energy OR default
-      7. RECOVER     — fallthrough
-    """
-    s = inputs.current_state
-    t = Thresholds
-    interventions: list[str] = []
-
-    # ── Derived composites ────────────────────────────────────────────────────
-    d_probes = [s.d1_health, s.d2_health, s.d3_health, s.d4_health, s.d5_health]
-    hc = _harmonic_mean(d_probes)                        # authoritative coherence
-    talisman_boost = _talisman_coherence_boost(s.active_talismans)
-    hc_boosted = clamp(hc + talisman_boost)              # talisman-adjusted coherence
-    phi = _compute_phi(hc, s.stress)
-    utc_hour = datetime.now(timezone.utc).hour
-    circadian_band = _detect_circadian_band(utc_hour)
-    session_hrs = inputs.session_hours or 0.0
-
-    # ── Check per-probe intervention floor ───────────────────────────────────
-    probe_labels = ["d1", "d2", "d3", "d4", "d5"]
-    low_probes = [
-        label for label, val in zip(probe_labels, d_probes)
-        if val < t.COH_FLOOR
-    ]
-    if low_probes:
-        for lp in low_probes:
-            interventions.append(
-                f"{lp}_health below intervention floor ({t.COH_FLOOR}) — "
-                "D6 response required"
-            )
-
-    # ── Late-night warning (C46 circadian) ────────────────────────────────────
-    if circadian_band == "late_night":
-        interventions.append(
-            "late_night circadian band — REFLECT strongly preferred over BUILD; "
-            "Architect bio-stress risk elevated"
-        )
-
-    # ── Priority 0: GOVERNANCE — Architect override, always available ─────────
-    # Canon: Issue #578 Architect Protocol. The human comes first.
-    # No coherence check. No stress check. Immediate.
-    if inputs.architect_request:
-        next_mode = GAIAOperationalMode.GOVERNANCE
-        interventions.append(
-            "GOVERNANCE mode activated — Architect request received; "
-            "all decisions deferred to human; GAIA in witness mode"
-        )
-        rationale = (
-            f"D6 → GOVERNANCE [architect_request=True] "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f} φ={phi:.2f}]"
-        )
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted, mode_locked=False)
-
-    # ── If mode_locked (PROTECT), only allow GOVERNANCE exit ─────────────────
-    if s.mode_locked and s.mode == GAIAOperationalMode.PROTECT:
-        interventions.append(
-            "mode_locked=True in PROTECT — recovery confirmation required "
-            "from Architect before transition"
-        )
-        rationale = (
-            f"D6 → PROTECT (locked) "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f}]"
-        )
-        return _build_decision(s, GAIAOperationalMode.PROTECT, interventions,
-                                rationale, phi, circadian_band, hc_boosted,
-                                mode_locked=True)
-
-    # ── Priority 1: RECOVER ───────────────────────────────────────────────────
-    # Extreme stress OR energy floor OR any critical probe
-    if (
-        s.stress >= t.ST_RECOVER
-        or s.energy < t.EN_LOW
-        or (low_probes and hc < 0.65)
+    def __init__(
+        self,
+        auto_apply: bool = False,
+        on_intervention: Optional[Callable[[InterventionEvent], None]] = None,
     ):
-        next_mode = GAIAOperationalMode.RECOVER
-        if s.stress >= t.ST_RECOVER:
-            interventions.append(
-                f"stress={s.stress:.2f} ≥ {t.ST_RECOVER} — "
-                "all heavy operations blocked; rest required"
-            )
-        if s.energy < t.EN_LOW:
-            interventions.append(
-                f"energy={s.energy:.2f} critically low — "
-                "initiate rest or recharge before next build session"
-            )
-        interventions.append("block_new_canon")
-        interventions.append("block_high_risk_tools")
-        rationale = (
-            f"D6 → RECOVER "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f} φ={phi:.2f}]"
+        """
+        Args:
+            auto_apply: if True, the engine automatically applies its
+              recommended mode to GAIAState. If False, it only logs and
+              returns the recommendation.
+            on_intervention: optional callback called whenever an
+              intervention event is generated. Use for webhooks, logging,
+              or real-time frontend notifications.
+        """
+        self.auto_apply = auto_apply
+        self.on_intervention = on_intervention
+        self.intervention_log: List[InterventionEvent] = []
+
+    # ------------------------------------------------------------------
+    # Core evaluation
+    # ------------------------------------------------------------------
+
+    def evaluate(
+        self,
+        state: GAIAState,
+        probes: Optional[EngineProbes] = None,
+    ) -> InterventionEvent:
+        """
+        Evaluate the current state + probes and return an InterventionEvent.
+        The event contains the recommended mode, trigger reason, flags, and severity.
+        If auto_apply is True, the mode change is applied to state immediately.
+        """
+        probes = probes or EngineProbes()
+        flags = state.dimensional_health
+
+        # --- Probe-augmented overrides ---
+        # These can override the pure GAIAState recommendation
+        probe_override: Optional[GAIAMode] = self._probe_override(state, probes)
+
+        # --- Base recommendation from GAIAState ---
+        base_recommendation = state.recommended_mode()
+
+        # --- Final recommendation ---
+        recommended = probe_override if probe_override is not None else base_recommendation
+
+        # --- Determine trigger and severity ---
+        trigger, severity = self._explain(state, probes, flags, probe_override)
+
+        event = InterventionEvent(
+            previous_mode=state.mode,
+            recommended_mode=recommended,
+            trigger=trigger,
+            dimensional_flags=flags,
+            probe_signals={k: v for k, v in probes.to_dict().items() if v is not None},
+            severity=severity,
         )
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted, mode_locked=False)
 
-    # ── Priority 2: PROTECT ───────────────────────────────────────────────────
-    # Coherence below protect floor OR threat OR error spike
-    error_spike = (
-        inputs.recent_error_rate is not None
-        and inputs.recent_error_rate > 0.50
-    )
-    if (
-        hc_boosted < t.COH_PROTECT
-        or inputs.threat_detected
-        or error_spike
-    ):
-        next_mode = GAIAOperationalMode.PROTECT
-        interventions.append("enable_extra_logging")
-        interventions.append("strict_action_gates")
-        interventions.append("block_new_canon")
-        if inputs.threat_detected:
-            interventions.append("threat_detected=True — defensive posture active")
-        if error_spike:
-            interventions.append(
-                f"error_rate={inputs.recent_error_rate:.2f} — "
-                "run full test suite before resuming BUILD"
+        # --- Auto-apply ---
+        if self.auto_apply and recommended != state.mode:
+            state.update(mode=recommended)
+            event.auto_applied = True
+
+        self.intervention_log.append(event)
+        if self.on_intervention:
+            self.on_intervention(event)
+
+        return event
+
+    # ------------------------------------------------------------------
+    # Probe-augmented override logic
+    # ------------------------------------------------------------------
+
+    def _probe_override(
+        self,
+        state: GAIAState,
+        probes: EngineProbes,
+    ) -> Optional[GAIAMode]:
+        """
+        Check external probes for conditions that override the base recommendation.
+        Returns a mode override if a probe condition is critical, else None.
+        """
+        # Long session without rest → REST override
+        if (
+            probes.session_duration_hours is not None
+            and probes.session_duration_hours > 6.0
+            and probes.time_since_rest_hours is not None
+            and probes.time_since_rest_hours > 5.0
+        ):
+            return GAIAMode.REST
+
+        # Very low HRV → RECOVER
+        if (
+            probes.heart_rate_variability is not None
+            and probes.heart_rate_variability < 0.2
+        ):
+            return GAIAMode.RECOVER
+
+        # Poor sleep → REST or RECOVER depending on energy
+        if (
+            probes.sleep_quality is not None
+            and probes.sleep_quality < 0.25
+        ):
+            return GAIAMode.RECOVER if state.energy < 0.4 else GAIAMode.REST
+
+        # High Noosphere load → PROTECT
+        if (
+            probes.noosphere_load is not None
+            and probes.noosphere_load > 0.8
+            and state.mode not in (GAIAMode.PROTECT, GAIAMode.REST, GAIAMode.RECOVER)
+        ):
+            return GAIAMode.PROTECT
+
+        # Schumann coherence very low → REFLECT (environmental grounding needed)
+        if (
+            probes.schumann_coherence is not None
+            and probes.schumann_coherence < 0.2
+            and state.mode in (GAIAMode.BUILD, GAIAMode.CREATE)
+        ):
+            return GAIAMode.REFLECT
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Trigger explanation
+    # ------------------------------------------------------------------
+
+    def _explain(
+        self,
+        state: GAIAState,
+        probes: EngineProbes,
+        flags: Dict[str, bool],
+        probe_override: Optional[GAIAMode],
+    ) -> tuple:
+        """Returns (trigger: str, severity: str)."""
+        if flags["D1_critical"]:
+            return "D1 Physical critical — energy below 15%. REST required.", "CRITICAL"
+        if flags["D2_distress"] and state.energy < 0.4:
+            return "D2 Emotional distress + low energy. RECOVER required.", "CRITICAL"
+        if flags["D2_distress"]:
+            return "D2 Emotional distress. Stress above 75%. PROTECT or RECOVER.", "WARN"
+        if flags["D3_saturated"]:
+            return "D3 Mental saturated. High entropy + low energy. Simplify or rest.", "WARN"
+        if probe_override == GAIAMode.REST and probes.session_duration_hours:
+            return (
+                f"Session active {probes.session_duration_hours:.1f}h without rest. "
+                f"Human sovereignty requires recovery. (Architect Protocol #578)",
+                "WARN",
             )
-        rationale = (
-            f"D6 → PROTECT "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f} φ={phi:.2f}]"
-        )
-        # mode_locked=True in PROTECT — requires explicit Architect confirmation to exit
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted, mode_locked=True)
-
-    # ── Priority 3: BUILD ─────────────────────────────────────────────────────
-    # Full engine power. Tightly gated — highest coherence requirement.
-    if (
-        hc_boosted >= t.COH_BUILD
-        and s.stress <= t.ST_BUILD
-        and s.energy >= t.EN_BUILD
-        and session_hrs < t.SESSION_BUILD_CAP
-        and circadian_band != "late_night"
-    ):
-        next_mode = GAIAOperationalMode.BUILD
-        if s.stress > 0.20:
-            interventions.append(
-                f"stress at {s.stress:.2f} — consider a break after this session"
+        if probe_override == GAIAMode.RECOVER and probes.heart_rate_variability:
+            return "Low HRV detected. Physiological recovery signal.", "WARN"
+        if probe_override == GAIAMode.PROTECT and probes.noosphere_load:
+            return (
+                f"High Noosphere load ({probes.noosphere_load:.2f}). "
+                "Collective field stress — boundary holding recommended.",
+                "INFO",
             )
-        if talisman_boost > 0:
-            interventions.append(
-                f"{len(s.active_talismans)} active talisman(s) boosting coherence "
-                f"+{talisman_boost:.2f}"
-            )
-        rationale = (
-            f"D6 → BUILD "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f} "
-            f"φ={phi:.2f} talismans={len(s.active_talismans)}]"
-        )
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted)
+        if flags["D6_approaching"]:
+            return "D6 Unity approaching. Meta-Field conditions optimal. INTEGRATE.", "INFO"
+        if state.mode == state.recommended_mode():
+            return "Current mode is optimal for present state.", "INFO"
+        return "Mode recommendation based on GAIAState field analysis.", "INFO"
 
-    # ── Priority 4: RESEARCH ──────────────────────────────────────────────────
-    # High coherence, low stress, exploration appetite.
-    if (
-        hc_boosted >= t.COH_RESEARCH
-        and s.stress <= t.ST_RESEARCH
-    ):
-        next_mode = GAIAOperationalMode.RESEARCH
-        # Edge-of-chaos: if TOO coherent and TOO stable, inject productive uncertainty
-        if hc_boosted >= t.CHAOS_COH_HIGH and s.stress <= t.CHAOS_ST_LOW:
-            interventions.append(
-                f"coherence={hc_boosted:.2f} + stress={s.stress:.2f} — "
-                "system is hyper-stable; consider introducing a novel research thread "
-                "(Edge-of-Chaos doctrine, C42)"
-            )
-        rationale = (
-            f"D6 → RESEARCH "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} φ={phi:.2f}]"
-        )
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted)
+    # ------------------------------------------------------------------
+    # Health report
+    # ------------------------------------------------------------------
 
-    # ── Priority 5: LEARN ─────────────────────────────────────────────────────
-    # Coherence adequate, intake and integration mode.
-    if hc_boosted >= t.COH_LEARN and s.energy >= t.EN_LEARN:
-        next_mode = GAIAOperationalMode.LEARN
-        if inputs.new_data_present:
-            interventions.append(
-                "new_data_present=True — memory write session recommended"
-            )
-        rationale = (
-            f"D6 → LEARN "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f}]"
-        )
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted)
+    def health_report(
+        self,
+        state: GAIAState,
+        probes: Optional[EngineProbes] = None,
+    ) -> Dict[str, Any]:
+        """
+        Full dimensional health report for the frontend HUD.
+        This is the primary data payload for the State HUD component.
+        """
+        probes = probes or EngineProbes()
+        event = self.evaluate(state, probes)
 
-    # ── Priority 6: REFLECT ───────────────────────────────────────────────────
-    # Long session, low energy, or coherence between floors.
-    if (
-        hc_boosted >= t.COH_REFLECT
-        or session_hrs >= t.SESSION_REFLECT
-        or s.energy < t.EN_BUILD
-    ):
-        next_mode = GAIAOperationalMode.REFLECT
-        if session_hrs >= t.SESSION_REFLECT:
-            interventions.append(
-                f"session at {session_hrs:.1f}h — synthesis and review recommended "
-                "before continuing BUILD"
-            )
-        if s.energy < t.EN_BUILD:
-            interventions.append(
-                f"energy={s.energy:.2f} — shift to journaling and planning"
-            )
-        rationale = (
-            f"D6 → REFLECT "
-            f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f} "
-            f"session={session_hrs:.1f}h]"
-        )
-        return _build_decision(s, next_mode, interventions, rationale, phi,
-                                circadian_band, hc_boosted)
+        return {
+            "state": state.to_dict(include_history=False),
+            "dimensional_health": state.dimensional_health,
+            "priority_dimension": state.priority_dimension,
+            "current_mode": state.mode.value,
+            "recommended_mode": event.recommended_mode.value if event.recommended_mode else None,
+            "mode_is_optimal": state.mode == event.recommended_mode,
+            "latest_intervention": event.to_dict(),
+            "intervention_count": len(self.intervention_log),
+            "probe_signals": probes.to_dict(),
+            "report_time": time.time(),
+        }
 
-    # ── Priority 7: RECOVER (fallthrough) ────────────────────────────────────
-    next_mode = GAIAOperationalMode.RECOVER
-    interventions.append(
-        "no qualifying mode found — defaulting to RECOVER; "
-        "review d1–d5 probes and energy levels"
-    )
-    interventions.append("block_new_canon")
-    interventions.append("block_high_risk_tools")
-    rationale = (
-        f"D6 → RECOVER (fallthrough) "
-        f"[hc={hc_boosted:.2f} st={s.stress:.2f} en={s.energy:.2f}]"
-    )
-    return _build_decision(s, next_mode, interventions, rationale, phi,
-                            circadian_band, hc_boosted, mode_locked=False)
+    # ------------------------------------------------------------------
+    # Intervention log access
+    # ------------------------------------------------------------------
 
+    def recent_interventions(
+        self, n: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Return the n most recent intervention events as dicts."""
+        return [e.to_dict() for e in self.intervention_log[-n:]]
 
-# ── Internal builder ──────────────────────────────────────────────────────────
-
-def _build_decision(
-    s: GAIAState,
-    next_mode: GAIAOperationalMode,
-    interventions: list[str],
-    rationale: str,
-    phi: float,
-    circadian_band: str,
-    hc: float,
-    mode_locked: bool = False,
-) -> D6Decision:
-    """Build the D6Decision with a fully updated GAIAState."""
-    # Learning dynamics per mode (canon: Part IV mode behavior)
-    mode_dynamics: dict[GAIAOperationalMode, dict] = {
-        GAIAOperationalMode.BUILD:      {"learning_rate": 0.70, "exploration_rate": 0.50, "conservation_rate": 0.50},
-        GAIAOperationalMode.RESEARCH:   {"learning_rate": 0.80, "exploration_rate": 0.90, "conservation_rate": 0.20},
-        GAIAOperationalMode.LEARN:      {"learning_rate": 0.90, "exploration_rate": 0.60, "conservation_rate": 0.30},
-        GAIAOperationalMode.REFLECT:    {"learning_rate": 0.50, "exploration_rate": 0.40, "conservation_rate": 0.60},
-        GAIAOperationalMode.RECOVER:    {"learning_rate": 0.20, "exploration_rate": 0.10, "conservation_rate": 0.80},
-        GAIAOperationalMode.PROTECT:    {"learning_rate": 0.20, "exploration_rate": 0.10, "conservation_rate": 0.90},
-        GAIAOperationalMode.GOVERNANCE: {"learning_rate": 0.40, "exploration_rate": 0.30, "conservation_rate": 0.70},
-    }
-
-    dynamics = mode_dynamics[next_mode]
-    changed = next_mode != s.mode
-
-    new_state = deepcopy(s)
-    new_state.mode = next_mode
-    new_state.mode_locked = mode_locked
-    new_state.phi = round(phi, 4)
-    new_state.coherence = round(hc, 4)          # sync legacy coherence field
-    new_state.circadian_band = circadian_band
-    new_state.learning_rate = dynamics["learning_rate"]
-    new_state.exploration_rate = dynamics["exploration_rate"]
-    new_state.conservation_rate = dynamics["conservation_rate"]
-    new_state.architect_override_available = True  # always — Architect Protocol
-    if changed:
-        new_state.last_transition_at = datetime.now(timezone.utc)
-
-    # Persist D6 snapshot into state for UI + debugging
-    new_state.last_d6_snapshot = new_state.to_runtime_json()
-
-    return D6Decision(
-        next_state=new_state,
-        interventions=interventions,
-        rationale=rationale,
-    )
+    def critical_interventions(self) -> List[Dict[str, Any]]:
+        """Return all CRITICAL interventions from this session."""
+        return [
+            e.to_dict()
+            for e in self.intervention_log
+            if e.severity == "CRITICAL"
+        ]
