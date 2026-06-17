@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
+from core.memory.pruner import MemoryPruner  # noqa: F401 re-export
+from core.memory.memory_store import MemoryStore, MemoryTier  # noqa: F401 re-export
+
 
 class MemoryKind(Enum):
     MESSAGE    = "message"
@@ -26,7 +29,6 @@ class MemoryKind(Enum):
 
 
 # Tier priority weights for priority_score().
-# Strings used here because PERMANENT/EPHEMERAL are not hierarchy enum members.
 _TIER_PRIORITY: dict[str, float] = {
     "permanent":  0.5,
     "long_term":  0.4,
@@ -112,12 +114,3 @@ class RetrievedMemory:
     @property
     def id(self) -> Optional[int]:
         return self.item.id
-
-
-from core.memory.pruner import MemoryPruner  # noqa: F401 re-export
-
-
-from core.memory.memory_store import MemoryStore  # noqa: F401 re-export
-
-
-from core.memory.memory_store import MemoryTier  # noqa: F401 re-export

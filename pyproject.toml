@@ -15,6 +15,7 @@ dependencies = [
   "python-dotenv>=1.0.0",
   "httpx>=0.27.0",
   "PyJWT>=2.8.0",
+  "python-jose[cryptography]>=3.3.0",
   "numpy>=1.26.0",
   "scipy>=1.13.0",
   "trafilatura>=1.8.0",
@@ -40,22 +41,13 @@ dev = [
   "jsonschema>=4.21.0",   # tests/correspondence/test_crystal_correspondence.py
   "bcrypt>=4.1.0",        # api/auth.py (password hashing) + test_auth tests
 ]
-# Local/research only — do NOT install in CI (requires ~1-2 GB PyTorch)
+# Local/research only - do NOT install in CI (requires ~1-2 GB PyTorch)
 ml = [
   "sentence-transformers>=2.2.0"
 ]
 
 # ---------------------------------------------------------------------------
 # Package discovery
-# ---------------------------------------------------------------------------
-# Two source roots:
-#   "."          → core/, api/, gaia/
-#   "src-python" → shadow_engine/, sovereign_memory/, quantum_chemistry/,
-#                  crystal_resonance/, wireless_power_sim/, …
-#
-# `pip install -e ".[dev]"` registers ALL packages from both roots so that
-# `import crystal_resonance` and `import wireless_power_sim` work without
-# any PYTHONPATH tricks.
 # ---------------------------------------------------------------------------
 [tool.setuptools.packages.find]
 where = [".", "src-python"]
@@ -65,51 +57,19 @@ include = ["core*", "api*", "gaia*", "shadow_engine*", "sovereign_memory*", "qua
 # Pytest
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
-# ── Paths ──────────────────────────────────────────────────────────────────
 pythonpath = [".", "core", "src-python"]
-
-# ── Async ──────────────────────────────────────────────────────────────────
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
-
-# ── Guards ─────────────────────────────────────────────────────────────────
 timeout = 60
-
-# ── Test discovery ─────────────────────────────────────────────────────────
 testpaths = ["tests"]
 
 # ============================================================================
-# RUFF — Linter + Formatter
-# Philosophy: signal over noise. Real bugs loud; style gentle; soul-layer free.
-#
-# FUTURE-PROOF NOTES (learned the hard way):
-#   - ANN101/ANN102: self/cls annotation rules — REMOVED from ruff in 0.2.x.
-#     Dropped from ignore list 2026-06-10 to silence "rule removed" warning.
-#   - UP038: isinstance(x,(A,B)) → A|B — REMOVED from ruff in 0.4.x.
-#     Dropped from ignore list 2026-06-10 to silence "rule removed" warning.
-#   - UP006/007/035/045: typing modernisation — ignore until migration sprint
-#   - F401: unused imports — ignored globally; many are conditional/re-exports
-#   - PL rules added for pylint-equivalent checks (PLR complexity etc.)
-#   - target-version py311 = matches CI runtime (python-version: "3.11")
-#   - preview = false (default) — stable rules only — preview was silently
-#     activating experimental rules on every Ruff release, causing phantom
-#     violations.
-#   - RUF100: unused noqa directives — intentional documentation of suppression
-#     rationale. Removing causes churn; was the root cause of the two-day lint loop.
-#   - 2026-06-10 (round 2): added SIM102/SIM103/SIM110/SIM114/SIM117/SIM300/
-#     SIM905, PLR1711/PLR1714/PLR1730, PLC0207, RUF005/RUF006/RUF007,
-#     C401/C408/C420, UP041, B007/B027, N802/N803/N814/N815,
-#     S112/S310/S608, F541/F811/F841, E702, PLW1508, PLR0402
-#     to suppress all remaining violations without touching source files.
+# RUFF
 # ============================================================================
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-
-# First-party source roots — resolves `from core.xxx import ...` correctly.
 src = [".", "core", "src-python", "gaia"]
-
-# Dirs never linted (generated, vendored, notebooks, migrations)
 extend-exclude = [
   ".venv",
   "venv",
