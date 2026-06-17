@@ -22,7 +22,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# ── Path setup ────────────────────────────────────────────────────────────────
+# ── Path setup ─────────────────────────────────────────────────────────────────────────────
 if getattr(sys, "frozen", False):
     ROOT = sys._MEIPASS  # type: ignore[attr-defined]
 else:
@@ -44,7 +44,7 @@ _START_TIME = time.time()
 _SUBSYSTEM_STATUS: dict[str, bool] = {}  # populated during lifespan
 
 
-# ── Safe import helper ────────────────────────────────────────────────────────
+# ── Safe import helper ──────────────────────────────────────────────────────────────────────
 
 def _try_import(module_path: str, attr: str | None = None):
     """
@@ -68,7 +68,7 @@ def _try_import(module_path: str, attr: str | None = None):
 from api.twin import router as twin_router          # /twin/* — core product
 from api.auth import router as auth_router          # /auth/*
 
-# ── Optional router imports (safe — skipped if module missing) ────────────────
+# ── Optional router imports (safe — skipped if module missing) ─────────────────
 
 _zodiac_router         = _try_import("api.routers.zodiac", "router")
 _llm_router            = _try_import("api.routers.llm", "router")
@@ -85,12 +85,11 @@ _numerology_router     = _try_import("api.routes.numerology", "router")
 _emrys_router          = _try_import("emrys_engine.router", "emrys_router")
 _init_emrys            = _try_import("emrys_engine.router", "init_emrys_engine")
 
-# ── Queue 4 — GAIAState + Talisman routers (optional, same safety pattern) ───
-_gaia_state_router     = _try_import("api.gaia_state", "router")
-_talisman_router       = _try_import("api.talisman", "router")
+# ── Queue 4 — GAIAState + Talisman router (same safe pattern) ───────────────
+_state_router          = _try_import("src.core.state_router", "router")
 
 
-# ── Graceful shutdown ─────────────────────────────────────────────────────────
+# ── Graceful shutdown ──────────────────────────────────────────────────────────────
 
 _shutdown_event = asyncio.Event()
 
@@ -123,7 +122,7 @@ async def _flush_state() -> None:
     log.info("[GAIA] Shutdown complete.")
 
 
-# ── Ollama health probe ───────────────────────────────────────────────────────
+# ── Ollama health probe ──────────────────────────────────────────────────────────────
 
 OLLAMA_BASE        = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL       = os.environ.get("GAIA_MODEL", "llama3")
@@ -154,7 +153,7 @@ async def _check_ollama() -> dict:
         return {"ready": False, "model": None, "error": str(e)}
 
 
-# ── FastAPI lifespan ──────────────────────────────────────────────────────────
+# ── FastAPI lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -231,24 +230,58 @@ async def lifespan(application: FastAPI):
         _SUBSYSTEM_STATUS["zodiac"] = False
         log.warning(f"[GAIA] ZodiacEngine skipped: {e}")
 
-    # GAIAState + Talisman subsystems
+    # ── Queue 4 — GAIAState + Talisman warm-up ─────────────────────────────
     try:
-        from gaia.core.state_store import get_state
-        get_state()  # warm-up: initialises singleton
+        from src.core.state import GAIAStateStore
+        GAIAStateStore.instance()          # warm-up: initialises singleton
         _SUBSYSTEM_STATUS["gaia_state"] = True
-        log.info("[GAIA] ✓ GAIAState ready")
+        log.info("[GAIA] ✨ GAIAState + D6 engine ready")
     except Exception as e:
         _SUBSYSTEM_STATUS["gaia_state"] = False
         log.warning(f"[GAIA] GAIAState init skipped: {e}")
 
     try:
-        from gaia.core.talisman_store import seed_default_talismans
-        seed_default_talismans()
+        from src.core.talisman import TalismanEngine, Talisman, TalismanFieldEffect
+        from src.core.state import GAIAStateStore
+        _engine = TalismanEngine(GAIAStateStore.instance())
+        # Seed a default morning-anchor talisman if registry is empty
+        if not _engine.list_all():
+            _engine.register(Talisman(
+                name="Morning Anchor",
+                intent="Establish coherence and grounded presence at session start.",
+                field_effect=TalismanFieldEffect(
+                    coherence_delta=0.08,
+                    energy_delta=0.05,
+                    stress_delta=-0.05,
+                ),
+                tags=["default", "morning", "anchor"],
+            ))
+            _engine.register(Talisman(
+                name="Build Focus",
+                intent="Channel GAIA’s BUILD mode — clear mind, high energy, low entropy.",
+                field_effect=TalismanFieldEffect(
+                    coherence_delta=0.05,
+                    energy_delta=0.10,
+                    entropy_delta=-0.05,
+                    exploration_rate_delta=0.05,
+                ),
+                tags=["default", "build", "focus"],
+            ))
+            _engine.register(Talisman(
+                name="Protect Boundary",
+                intent="Raise PROTECT mode — reduce stress, conserve energy.",
+                field_effect=TalismanFieldEffect(
+                    stress_delta=-0.10,
+                    conservation_rate_delta=0.08,
+                    entropy_delta=-0.03,
+                ),
+                tags=["default", "protect", "boundary"],
+            ))
         _SUBSYSTEM_STATUS["talismans"] = True
-        log.info("[GAIA] ✓ Talisman store seeded")
+        log.info("[GAIA] ✨ TalismanEngine seeded with 3 default talismans")
     except Exception as e:
         _SUBSYSTEM_STATUS["talismans"] = False
-        log.warning(f"[GAIA] Talisman store skipped: {e}")
+        log.warning(f"[GAIA] TalismanEngine skipped: {e}")
 
     routing_mode = os.environ.get("GAIA_ROUTING_MODE", "local-first")
     log.info(f"[GAIA] LLM routing mode: {routing_mode}")
@@ -259,7 +292,7 @@ async def lifespan(application: FastAPI):
     await _flush_state()
 
 
-# ── App ───────────────────────────────────────────────────────────────────────
+# ── App ───────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="GAIA Backend",
@@ -283,7 +316,7 @@ app.add_middleware(
 )
 
 
-# ── Router registration (always-on) ───────────────────────────────────────────
+# ── Router registration (always-on) ───────────────────────────────────────────────
 
 app.include_router(auth_router)          # /auth/*
 app.include_router(twin_router)          # /twin/* — core product
@@ -317,14 +350,16 @@ _mount(_safety_router,                                                          
 _mount(_numerology_router,     prefix="/api/v1",       tags=["Numerology"],      label="numerology")
 _mount(_emrys_router,          prefix="/api/emrys",    tags=["Emrys"],           label="emrys")
 
-# ── Queue 4 — GAIAState + Talisman (prefix already set on routers) ────────────
-# api.gaia_state  → prefix /gaia/state  (set in router definition)
-# api.talisman    → prefix /gaia/talismans (set in router definition)
-_mount(_gaia_state_router,                             tags=["GAIAState"],       label="gaia_state")
-_mount(_talisman_router,                               tags=["Talismans"],       label="talisman")
+# ── Queue 4 — GAIAState + Talisman (router owns /api/* prefix) ──────────────
+# state_router defines prefix="/api" internally; covers:
+#   GET/PATCH /api/state, POST /api/state/override, GET /api/state/evaluate
+#   GET /api/state/history
+#   GET/POST /api/talismans, GET/PATCH/DELETE /api/talismans/{id}
+#   POST /api/talismans/{id}/activate, POST /api/talismans/{id}/deactivate
+_mount(_state_router,                                  tags=["GAIAState"],       label="gaia_state")
 
 
-# ── Core endpoints ────────────────────────────────────────────────────────────
+# ── Core endpoints ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
@@ -357,19 +392,14 @@ async def health():
     return JSONResponse(status_code=status_code, content=payload)
 
 
-@app.get("/api/state")
-async def get_state():
-    return {
-        "soul_mirror": {"archetype": "seeker", "individuation_stage": 1},
-        "shadow": {"flags": []},
-        "attachment": {"style": "secure"},
-        "coherence": 72,
-        "solfeggio": {"frequency": 528, "chakra": "heart"},
-        "subsystems": _SUBSYSTEM_STATUS,
-    }
+# NOTE: The old stub GET /api/state has been REMOVED.
+# It is now served by state_router (src.core.state_router) which returns
+# a live GAIAState snapshot instead of hardcoded placeholder data.
+# If state_router failed to load, the endpoint will 404 — check
+# _SUBSYSTEM_STATUS["gaia_state"] in /health for the reason.
 
 
-# ── Launch ────────────────────────────────────────────────────────────────────
+# ── Launch ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.environ.get("GAIA_PORT", 8008))

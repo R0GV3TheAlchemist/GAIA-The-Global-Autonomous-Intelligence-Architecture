@@ -22,8 +22,9 @@ import { invoke } from '@tauri-apps/api/core';
 export { StateHUD } from '../components/StateHUD';
 export type { GAIAStateSnapshot, GAIAMode } from '../components/StateHUD';
 
-// ─── Sidecar base URL (dev fallback) ─────────────────────────────────────────
-const SIDECAR_BASE = 'http://localhost:8765';
+// ─── Sidecar base URL ────────────────────────────────────────────────────────
+// Port 8008 matches main.py (GAIA_PORT env var, default 8008)
+const SIDECAR_BASE = 'http://localhost:8008';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -135,7 +136,6 @@ export interface TalismanActivationResult {
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
-
 async function safeInvoke<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   try {
     return await invoke<T>(cmd, args);
@@ -156,10 +156,7 @@ async function directFetch<T>(path: string, opts?: RequestInit): Promise<T> {
 
 // ─── GAIAState commands ───────────────────────────────────────────────────────
 
-/**
- * Fetch the current GAIAState snapshot.
- * This is the endpoint polled by StateHUD.
- */
+/** Fetch the current GAIAState snapshot. Polled by StateHUD. */
 export async function stateGet(): Promise<GAIAStateSnapshot> {
   try {
     return await safeInvoke<GAIAStateSnapshot>('state_get', {});
@@ -168,10 +165,7 @@ export async function stateGet(): Promise<GAIAStateSnapshot> {
   }
 }
 
-/**
- * Update one or more GAIAState fields.
- * D6 engine re-evaluates and applies mode after every update.
- */
+/** Update one or more GAIAState fields. D6 re-evaluates after every write. */
 export async function stateUpdate(
   updates: Partial<Omit<GAIAStateSnapshot,
     'mode' | 'architect_signal' | 'active_talismans' | 'last_updated'
@@ -188,10 +182,7 @@ export async function stateUpdate(
   }
 }
 
-/**
- * Send an Architect override signal.
- * The D6 engine respects this above all automatic logic (Issue #578).
- */
+/** Send an Architect override signal (Issue #578). */
 export async function stateOverride(
   signal: ArchitectSignal,
 ): Promise<GAIAStateSnapshot> {
@@ -205,10 +196,7 @@ export async function stateOverride(
   }
 }
 
-/**
- * Run D6 evaluation without applying the result.
- * Useful for the HUD to show "what D6 would recommend" without committing.
- */
+/** D6 dry-run: what would the engine recommend right now? */
 export async function stateEvaluate(): Promise<D6Intervention> {
   try {
     return await safeInvoke<D6Intervention>('state_evaluate', {});
@@ -217,9 +205,7 @@ export async function stateEvaluate(): Promise<D6Intervention> {
   }
 }
 
-/**
- * Fetch the last N state history snapshots.
- */
+/** Fetch the last N state history snapshots. */
 export async function stateHistory(lastN = 50): Promise<GAIAStateSnapshot[]> {
   try {
     return await safeInvoke<GAIAStateSnapshot[]>('state_history', { last_n: lastN });
@@ -230,9 +216,6 @@ export async function stateHistory(lastN = 50): Promise<GAIAStateSnapshot[]> {
 
 // ─── Talisman commands ────────────────────────────────────────────────────────
 
-/**
- * List all talismans for the current user.
- */
 export async function talismanList(ownerId?: string): Promise<TalismanDoc[]> {
   try {
     return await safeInvoke<TalismanDoc[]>('talisman_list', { owner_id: ownerId ?? null });
@@ -242,9 +225,6 @@ export async function talismanList(ownerId?: string): Promise<TalismanDoc[]> {
   }
 }
 
-/**
- * Get a single talisman by ID.
- */
 export async function talismanGet(id: string): Promise<TalismanDoc> {
   try {
     return await safeInvoke<TalismanDoc>('talisman_get', { id });
@@ -253,9 +233,6 @@ export async function talismanGet(id: string): Promise<TalismanDoc> {
   }
 }
 
-/**
- * Create a new talisman.
- */
 export async function talismanCreate(params: TalismanWriteParams): Promise<TalismanDoc> {
   try {
     return await safeInvoke<TalismanDoc>('talisman_create', { params });
@@ -267,9 +244,6 @@ export async function talismanCreate(params: TalismanWriteParams): Promise<Talis
   }
 }
 
-/**
- * Update an existing talisman.
- */
 export async function talismanUpdate(
   id: string,
   params: Partial<TalismanWriteParams>,
@@ -284,10 +258,7 @@ export async function talismanUpdate(
   }
 }
 
-/**
- * Activate a talisman — applies its field_effect to GAIAState.
- * Returns both the updated talisman and the updated state.
- */
+/** Activate a talisman — applies field_effect to GAIAState. */
 export async function talismanActivate(id: string): Promise<TalismanActivationResult> {
   try {
     return await safeInvoke<TalismanActivationResult>('talisman_activate', { id });
@@ -298,9 +269,7 @@ export async function talismanActivate(id: string): Promise<TalismanActivationRe
   }
 }
 
-/**
- * Deactivate a talisman — reverses its field_effect from GAIAState.
- */
+/** Deactivate a talisman — reverses field_effect from GAIAState. */
 export async function talismanDeactivate(id: string): Promise<TalismanActivationResult> {
   try {
     return await safeInvoke<TalismanActivationResult>('talisman_deactivate', { id });
@@ -311,9 +280,6 @@ export async function talismanDeactivate(id: string): Promise<TalismanActivation
   }
 }
 
-/**
- * Delete a talisman.
- */
 export async function talismanDelete(id: string): Promise<{ deleted: boolean }> {
   try {
     return await safeInvoke<{ deleted: boolean }>('talisman_delete', { id });
@@ -326,29 +292,20 @@ export async function talismanDelete(id: string): Promise<{ deleted: boolean }> 
 
 // ─── GAIAStateClient class (for DI / testing) ─────────────────────────────────
 
-/**
- * Object-oriented client wrapping all state + talisman commands.
- * Useful for React context injection or test stubbing.
- *
- * @example
- * const client = new GAIAStateClient();
- * const state  = await client.get();
- * const { state: s2 } = await client.activateTalisman(talismanId);
- */
 export class GAIAStateClient {
   // ── State ──
-  get(): Promise<GAIAStateSnapshot>               { return stateGet(); }
-  update(u: Parameters<typeof stateUpdate>[0]):    Promise<GAIAStateSnapshot> { return stateUpdate(u); }
-  override(s: ArchitectSignal):                   Promise<GAIAStateSnapshot> { return stateOverride(s); }
-  evaluate():                                      Promise<D6Intervention>    { return stateEvaluate(); }
-  history(n?: number):                            Promise<GAIAStateSnapshot[]> { return stateHistory(n); }
+  get(): Promise<GAIAStateSnapshot>                     { return stateGet(); }
+  update(u: Parameters<typeof stateUpdate>[0]):          Promise<GAIAStateSnapshot>        { return stateUpdate(u); }
+  override(s: ArchitectSignal):                         Promise<GAIAStateSnapshot>        { return stateOverride(s); }
+  evaluate():                                            Promise<D6Intervention>           { return stateEvaluate(); }
+  history(n?: number):                                  Promise<GAIAStateSnapshot[]>      { return stateHistory(n); }
 
   // ── Talismans ──
-  listTalismans(ownerId?: string):               Promise<TalismanDoc[]>             { return talismanList(ownerId); }
-  getTalisman(id: string):                       Promise<TalismanDoc>               { return talismanGet(id); }
-  createTalisman(p: TalismanWriteParams):        Promise<TalismanDoc>               { return talismanCreate(p); }
-  updateTalisman(id: string, p: Partial<TalismanWriteParams>): Promise<TalismanDoc> { return talismanUpdate(id, p); }
-  activateTalisman(id: string):                  Promise<TalismanActivationResult>  { return talismanActivate(id); }
-  deactivateTalisman(id: string):                Promise<TalismanActivationResult>  { return talismanDeactivate(id); }
-  deleteTalisman(id: string):                    Promise<{ deleted: boolean }>      { return talismanDelete(id); }
+  listTalismans(ownerId?: string):                      Promise<TalismanDoc[]>            { return talismanList(ownerId); }
+  getTalisman(id: string):                              Promise<TalismanDoc>              { return talismanGet(id); }
+  createTalisman(p: TalismanWriteParams):               Promise<TalismanDoc>              { return talismanCreate(p); }
+  updateTalisman(id: string, p: Partial<TalismanWriteParams>): Promise<TalismanDoc>       { return talismanUpdate(id, p); }
+  activateTalisman(id: string):                         Promise<TalismanActivationResult> { return talismanActivate(id); }
+  deactivateTalisman(id: string):                       Promise<TalismanActivationResult> { return talismanDeactivate(id); }
+  deleteTalisman(id: string):                           Promise<{ deleted: boolean }>     { return talismanDelete(id); }
 }
