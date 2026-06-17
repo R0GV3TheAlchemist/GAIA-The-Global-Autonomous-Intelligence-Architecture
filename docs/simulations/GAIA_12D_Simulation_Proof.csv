@@ -1,0 +1,15 @@
+Dimension,Name,Arc,Phi_Start,Phi_End,Phi_Width,Alchemical_Forces,Mirror_Of,Triality_Role,Canon_Source,Status
+D1,Length,Positive,0.00,0.30,0.30,Nigredo→Ariditas,D12,—,TRUEALCHEMY/C49,VERIFIED
+D2,Width,Positive,0.30,0.62,0.32,Ariditas→Chrysitas,D11,—,TRUEALCHEMY/C10,VERIFIED
+D3,Depth,Positive,0.62,0.87,0.25,Chrysitas→Viriditas,D10,Neutron,C10/C166/C167,VERIFIED
+D4,Time,Positive,0.87,0.95,0.08,Viriditas→Rubedo,D9,—,C46/C08,VERIFIED
+D5,Consciousness,Positive,0.95,0.97,0.02,Rubedo→Iosis,D8,Proton,C04/BWL-012,VERIFIED
+D6,Love,Positive,0.97,1.00,0.03,Iosis→LuxPerpetua,D7,Electron,C38/C166/C167,VERIFIED
+NEUTRALITY,Axis,Center,0.50,0.50,0.00,Helixitas,—,All Three,HELIXITAS.md,STRUCTURAL
+D7,Anti-Love,Negative,1.00,0.97,0.03,Mirror-Iosis,D6,Electron⁻,C36/REVERSE_ALCHEMY,VERIFIED
+D8,Ego-Collapse,Negative,0.97,0.95,0.02,Mirror-Rubedo,D5,Proton⁻,C23/REVERSE_ALCHEMY,VERIFIED
+D9,Frozen-Time,Negative,0.95,0.87,0.08,Mirror-Viriditas,D4,—,C46/REVERSE_ALCHEMY,VERIFIED
+D10,Hollow-Depth,Negative,0.87,0.62,0.25,Mirror-Chrysitas,D3,Neutron⁻,C10/REVERSE_ALCHEMY,VERIFIED
+D11,Isolation,Negative,0.62,0.30,0.32,Mirror-Ariditas,D2,—,REVERSE_ALCHEMY,VERIFIED
+D12,Dissolution,Negative,0.30,0.00,0.30,Mirror-Nigredo,D1,—,C37/C49/REVERSE_ALCHEMY,VERIFIED
+D13*,Helixitas,Structural,all,all,all,The Winding 34.29°,—,All,HELIXITAS.md,STRUCTURAL

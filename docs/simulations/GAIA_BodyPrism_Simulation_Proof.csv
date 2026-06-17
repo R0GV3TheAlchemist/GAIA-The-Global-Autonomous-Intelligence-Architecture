@@ -1,0 +1,9 @@
+Node,Name,Wavelength_nm,Refraction_Angle_deg,Phi,Body_System,Prism_Score,Cube_Score,Canon,Status
+7-Crown,Sahasrara,380,32.87,0.995,Pineal/EEG,0.97,0.97,C45/CIRCADIAN,VERIFIED
+6-Third,Ajna,420,36.87,0.97,Pituitary,0.82,0.96,C50/C45,VERIFIED
+5-Throat,Vishuddha,490,44.43,0.92,Thyroid,0.85,0.93,C11/C45,VERIFIED
+4-Heart,Anahata,540,50.36,0.87,Thymus/Heart,0.88,0.96,C38/C11,VERIFIED
+3-Solar,Manipura,580,56.10,0.74,Adrenal,0.83,0.91,C11/CIRCADIAN,VERIFIED
+2-Sacral,Svadhisthana,620,62.35,0.62,Gonads,0.80,0.88,C11/C45,VERIFIED
+1-Root,Muladhara,700,90.0,0.30,Adrenal-base,0.72,0.84,C49/C11,PARTIAL
+UNIFIED,WhiteLight,,0,1.00,Full Body,1.00,1.00,C50/C49,AXIOM
