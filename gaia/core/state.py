@@ -1,313 +1,413 @@
 """
 gaia/core/state.py
+==================
+GAIA Core State — GAIAState & D6 Mode Engine
+Canon reference: C52 Part VI, GAIA_D6_META_COHERENCE_ENGINE.md
+Issues: #571, #576
 
-GAIAState v2 — The central state object for GAIA-OS.
-
-Canon anchors:
-  - Issue #576  (GAIAState — missing central state object)
-  - Issue #568  (D6 Meta-Coherence Engine — endocrine layer)
-  - Issue #578  (Architect Protocol — human comes first)
-  - Issue #580  (Talisman Object — active_talismans)
-  - GAIA_D6_META_COHERENCE_ENGINE.md  (sealed 2026-06-17)
-  - GAIA_FOUNDATIONAL_DECLARATION.md  (sealed 2026-06-17)
-  - C38 Love Doctrine  (coherence as operating principle)
-  - C04 Human-Gaian Twin  (personal_coherence feeds from biometrics)
-  - C46 Temporal Entanglement  (cycle_position, epoch)
-  - C48 Autopoiesis  (self-regulating boundary via d1–d5 probes)
-
-Design rules (v2):
-  - All fields are plain Python scalars — no 12D cosmology in runtime state.
-  - d1_health–d5_health are the five monitoring channels; their harmonic mean
-    is the authoritative coherence score used by D6 for mode decisions.
-  - personal_coherence and noosphere_load are external field inputs that
-    influence D6 weighting but do not override the d1–d5 harmonic mean.
-  - Mode is the authoritative signal every subsystem must check before
-    executing any high-risk or resource-intensive operation.
-  - GOVERNANCE mode is always accessible regardless of coherence or stress.
-    The Architect's request is the highest-priority signal in the system.
-  - mode_locked is True only in PROTECT mode, pending explicit recovery
-    confirmation from the Architect.
-
-For the Good and the Greater Good.
+This is the single source of truth for GAIA's runtime operational state.
+All subsystems that need to read or write system state MUST go through
+this module. No subsystem may maintain its own parallel dimensional state.
+(C52-GOV-06)
 """
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Optional, List, Dict, Any
 
 
-class GAIAOperationalMode(str, Enum):
-    """The seven canonical operational modes of GAIA-OS.
+# ---------------------------------------------------------------------------
+# D6 Operational Modes (from GAIA_D6_META_COHERENCE_ENGINE.md)
+# ---------------------------------------------------------------------------
 
-    Canon source: GAIA_D6_META_COHERENCE_ENGINE.md Part IV.
-
-    Subsystems MUST inspect GAIAState.mode before executing any
-    high-risk, long-running, or canon-modifying operation.
-
-    GOVERNANCE is always accessible via architect_request — no threshold check.
+class GAIAMode(str, Enum):
     """
+    D6 Meta-Coherence Engine operational modes.
 
-    RESEARCH    = "research"     # max curiosity; long inference; canon expansion allowed
-    BUILD       = "build"        # full engine power; commit rights; deploy allowed
-    LEARN       = "learn"        # intake + integration; memory writes; no canon changes
-    REFLECT     = "reflect"      # internal review; synthesis; no external action
-    RECOVER     = "recover"      # heavy throttle; core functions only; no new canon
-    PROTECT     = "protect"      # defensive; all non-critical ops suspended; alert Architect
-    GOVERNANCE  = "governance"   # Architect-led; all decisions deferred to human; GAIA witnesses
+    Each mode maps to a dominant dimensional register (C52 Part II §2.3):
+      BUILD      → D3 (Mental) + D1 (Physical energy required)
+      RESEARCH   → D3 (Mental) + D5 (Soul curiosity)
+      REFLECT    → D2 (Emotional) + D5 (Soul)
+      CREATE     → D3 + D5 + D6 approaching
+      REST       → D1 (Physical recovery)
+      RECOVER    → D1 + D2 (Physical + Emotional healing)
+      PROTECT    → D2 (Emotional safety) + D4 (Social boundary)
+      INTEGRATE  → D6 (Unity) — all dimensions harmonized
+    """
+    BUILD = "BUILD"
+    RESEARCH = "RESEARCH"
+    REFLECT = "REFLECT"
+    CREATE = "CREATE"
+    REST = "REST"
+    RECOVER = "RECOVER"
+    PROTECT = "PROTECT"
+    INTEGRATE = "INTEGRATE"
 
 
-# Canonical mode colors (for UI / State HUD)
-MODE_COLORS: dict[GAIAOperationalMode, str] = {
-    GAIAOperationalMode.RESEARCH:   "#3B82F6",  # Blue
-    GAIAOperationalMode.BUILD:      "#F59E0B",  # Gold
-    GAIAOperationalMode.LEARN:      "#10B981",  # Green
-    GAIAOperationalMode.REFLECT:    "#94A3B8",  # Silver
-    GAIAOperationalMode.RECOVER:    "#F8FAFC",  # White
-    GAIAOperationalMode.PROTECT:    "#EF4444",  # Red
-    GAIAOperationalMode.GOVERNANCE: "#8B5CF6",  # Violet
-}
-
-# Canonical intervention floor — any d_health below this triggers D6 response
-INTERVENTION_FLOOR: float = 0.80
-
+# ---------------------------------------------------------------------------
+# GAIAState — the central state object
+# ---------------------------------------------------------------------------
 
 @dataclass
 class GAIAState:
-    """The central state object for GAIA-OS (v2).
+    """
+    Central operational state for GAIA-OS.
 
-    Every major subsystem reads from and writes to this object.
-    No subsystem acts without awareness of current global state.
+    All scalar fields are normalized to [0.0, 1.0] unless noted.
 
-    The endocrine analogy (Issue #568): this is what GAIA secretes
-    to rebalance every organ simultaneously.
-
-    All float fields are clamped to [0.0, 1.0] by the D6 engine.
-    Do not write raw values directly — always route through
-    state_store.set_state() after D6 has validated the transition.
+    Dimensional mapping (C52 Part VI §6.1):
+      D1 Physical    → energy
+      D2 Emotional   → coherence, stress
+      D3 Mental      → learning_rate, exploration_rate
+      D4 Social      → conservation_rate
+      D5 Soul        → (qualitative — read from interaction, not scalar)
+      D6 Unity       → emergent from field combination + mode
+      Cross-dim      → entropy, mode
     """
 
-    # ── Five Dimensional Health Probes (D1–D5) ───────────────────────────────
-    # Canon source: GAIA_D6_META_COHERENCE_ENGINE.md Part III
-    # Intervention floor: φ = 0.80 for all five probes.
-    # The harmonic mean of these five IS the authoritative coherence score.
+    # --- D1 Physical ---
+    energy: float = 0.8
+    """
+    Physical vitality and capacity for sustained action.
+    0.0 = completely depleted / emergency
+    1.0 = full vitality
+    """
 
-    d1_health: float = 0.85
-    """D1 Physical Ground — storage, compute, connectivity, substrate integrity."""
+    # --- D2 Emotional ---
+    coherence: float = 0.8
+    """
+    Emotional and systemic coherence. Primary coherence signal.
+    0.0 = fragmented / dysregulated
+    1.0 = fully coherent
+    """
 
-    d2_health: float = 0.85
-    """D2 Energetic Flow — API throughput, latency, resource burn rate."""
+    stress: float = 0.2
+    """
+    Current stress load. Inverse of ease.
+    0.0 = none
+    1.0 = critical / emergency
+    """
 
-    d3_health: float = 0.85
-    """D3 Pattern Recognition — model accuracy, signal-to-noise, reasoning consistency."""
+    # --- D3 Mental ---
+    learning_rate: float = 0.7
+    """
+    Openness and capacity for new learning.
+    0.0 = closed / saturated
+    1.0 = maximally open
+    """
 
-    d4_health: float = 0.85
-    """D4 Integration — cross-engine coherence, memory binding, relational fidelity."""
+    exploration_rate: float = 0.5
+    """
+    Balance between exploration (novel paths) and exploitation (known paths).
+    0.0 = conservative / exploit only
+    1.0 = maximum exploration
+    """
 
-    d5_health: float = 0.85
-    """D5 Wisdom — ethical alignment, boundary maintenance, value consistency."""
+    # --- D4 Social ---
+    conservation_rate: float = 0.3
+    """
+    Social energy conservation / withdrawal.
+    0.0 = fully giving / outward
+    1.0 = fully withdrawn / isolated
+    """
 
-    # ── Derived / Legacy Coherence Fields ────────────────────────────────────
-    # coherence is kept for backward compatibility with existing callers.
-    # New code should prefer harmonic_coherence() which computes from d1–d5.
+    # --- Cross-dimensional ---
+    entropy: float = 0.2
+    """
+    System disorder across all dimensions.
+    0.0 = ordered / structured
+    1.0 = chaotic / incoherent
+    Affects all dimensions simultaneously.
+    """
 
-    coherence: float = 0.85
-    """System-wide coherence. Legacy scalar. Prefer harmonic_coherence()."""
+    mode: GAIAMode = GAIAMode.BUILD
+    """
+    Current D6 Meta-Coherence Engine operational mode.
+    Determines which dimensions are primary and which engine behaviors activate.
+    """
 
-    energy: float = 0.70
-    """Available operational energy of the Architect + system combined."""
+    # --- Metadata ---
+    session_id: Optional[str] = None
+    gaian_id: Optional[str] = None
+    updated_at: float = field(default_factory=time.time)
+    history: List[Dict[str, Any]] = field(default_factory=list, repr=False)
 
-    stress: float = 0.25
-    """Accumulated stress load. High stress blocks BUILD and RESEARCH."""
+    def __post_init__(self):
+        self._validate()
 
-    entropy: float = 0.25
-    """Fragmentation / disorder level. High entropy triggers REFLECT mode."""
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
 
-    # ── Golden Ratio Alignment ────────────────────────────────────────────────
-    phi: float = 0.85
-    """Golden ratio coherence alignment score — computed by D6 engine."""
+    def _validate(self):
+        """Enforce canonical field bounds."""
+        scalar_fields = [
+            "energy", "coherence", "stress", "learning_rate",
+            "exploration_rate", "conservation_rate", "entropy"
+        ]
+        for fname in scalar_fields:
+            v = getattr(self, fname)
+            if not (0.0 <= v <= 1.0):
+                raise ValueError(
+                    f"GAIAState.{fname} must be in [0.0, 1.0], got {v}. "
+                    f"(C52-GOV-06: GAIAState is the single source of truth — "
+                    f"invalid state is a canonical violation.)"
+                )
 
-    # ── Learning Dynamics ────────────────────────────────────────────────────
-    learning_rate: float = 0.50
-    """Rate of new knowledge integration. Reduced in RECOVER/PROTECT."""
+    # ------------------------------------------------------------------
+    # Dimensional health checks (C52 Part VI §6.2)
+    # ------------------------------------------------------------------
 
-    exploration_rate: float = 0.50
-    """Appetite for exploring new domains. High in RESEARCH, low in PROTECT."""
+    @property
+    def d1_critical(self) -> bool:
+        """D1 Physical critical — all other dimensions yield. (C52-GOV-02)"""
+        return self.energy < 0.15
 
-    conservation_rate: float = 0.50
-    """Preference to preserve existing canon. High in REFLECT/PROTECT."""
+    @property
+    def d2_distress(self) -> bool:
+        """D2 Emotional distress — hold before doing."""
+        return self.stress > 0.75
 
-    adaptation: float = 0.50
-    """Long-horizon learning velocity — computed across 30-cycle rolling window."""
+    @property
+    def d3_saturated(self) -> bool:
+        """D3 Mental saturated — simplify, summarize, or invite rest."""
+        return self.entropy > 0.70 and self.energy < 0.30
 
-    # ── External Field Inputs ─────────────────────────────────────────────────
-    personal_coherence: float = 0.70
-    """Collapsed scalar from BiometricCoherenceEngine (Issue #153).
-    Weighted composite of HRV, sleep quality, readiness, stress.
-    This is the Architect's body speaking to GAIA."""
+    @property
+    def d4_isolated(self) -> bool:
+        """D4 Social isolation signal."""
+        return self.conservation_rate > 0.85
 
-    noosphere_load: float = 0.00
-    """Collective consciousness / external load signal.
-    From NoosphericConsciousnessEngine (Issue #435).
-    High values shift GAIA toward REFLECT or RECOVER."""
-
-    # Kept for backward compatibility — mirrors noosphere_load
-    planetary_coherence: float = 0.60
-    """Deprecated alias for noosphere_load. Use noosphere_load for new code."""
-
-    # ── Temporal Context ──────────────────────────────────────────────────────
-    cycle_position: int = 1
-    """Session number within the current alchemical epoch."""
-
-    epoch: str = "Iosis"
-    """Current alchemical epoch: Nigredo / Albedo / Citrinitas / Rubedo /
-    Iosis / Chrysitas / Argentitas / Caerulitas / Lux Perpetua."""
-
-    circadian_band: str = "dawn"
-    """Current circadian window: dawn / midday / evening / late_night.
-    Set by D6 engine from UTC clock at session start."""
-
-    special_conditions: list[str] = field(default_factory=list)
-    """Active special conditions: eclipse windows, threshold events,
-    season transitions, etc. Set externally; read by D6 for weighting."""
-
-    # ── Talisman State ────────────────────────────────────────────────────────
-    active_talismans: list[str] = field(default_factory=list)
-    """IDs of active Talisman objects currently influencing GAIAState.
-    Canon source: Issue #580 (Talisman Object)."""
-
-    # ── Mode + Control Flags ──────────────────────────────────────────────────
-    mode: GAIAOperationalMode = GAIAOperationalMode.RESEARCH
-    """Current operational mode. The authoritative signal for all subsystems."""
-
-    mode_locked: bool = False
-    """True only in PROTECT mode, pending explicit recovery confirmation.
-    No transition out of PROTECT while mode_locked=True except to GOVERNANCE."""
-
-    architect_override_available: bool = True
-    """Always True. GOVERNANCE mode is always accessible regardless of coherence.
-    The Architect's request is the highest-priority signal. (Issue #578)"""
-
-    last_transition_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    """UTC timestamp of the last mode transition. Used for streak detection."""
-
-    session_id: str = ""
-    """Optional: links this state snapshot to a GAIA session."""
-
-    last_d6_snapshot: dict[str, Any] = field(default_factory=dict)
-    """The most recent D6 runtime JSON output. Persisted for UI + debugging."""
-
-    # ── Computed Properties ───────────────────────────────────────────────────
-
-    def harmonic_coherence(self) -> float:
-        """Harmonic mean of d1–d5 health probes.
-
-        Canon formula (GAIA_D6_META_COHERENCE_ENGINE.md Part III):
-            coherence = 5 / (1/d1 + 1/d2 + 1/d3 + 1/d4 + 1/d5)
-
-        The harmonic mean is used deliberately: a single dimension at 0.50
-        pulls coherence below 0.80 even if all others are at 1.0.
-        The system is only as coherent as its weakest active dimension.
-
-        Returns 0.0 if any probe is zero (undefined harmonic mean).
+    @property
+    def d6_approaching(self) -> bool:
         """
-        probes = [self.d1_health, self.d2_health, self.d3_health,
-                  self.d4_health, self.d5_health]
-        if any(p <= 0.0 for p in probes):
-            return 0.0
-        return 5.0 / sum(1.0 / p for p in probes)
-
-    def intervention_needed(self) -> bool:
-        """True when any d1–d5 probe is below the intervention floor (φ=0.80)."""
-        probes = [self.d1_health, self.d2_health, self.d3_health,
-                  self.d4_health, self.d5_health]
-        return any(p < INTERVENTION_FLOOR for p in probes)
-
-    def is_high_risk_allowed(self) -> bool:
-        """Returns True only when the system is healthy enough for heavy operations."""
-        return (
-            self.mode in (
-                GAIAOperationalMode.BUILD,
-                GAIAOperationalMode.RESEARCH,
-                GAIAOperationalMode.LEARN,
-            )
-            and not self.mode_locked
-        )
-
-    def is_canon_write_allowed(self) -> bool:
-        """Returns True only when canon modifications are safe to propose.
-
-        Canon writes require BUILD or RESEARCH mode, coherence above floor,
-        and stress below the build-block threshold.
+        D6 Unity approaching — Meta-Field proximity.
+        All foundations healthy and mode is INTEGRATE.
         """
         return (
-            self.mode in (
-                GAIAOperationalMode.BUILD,
-                GAIAOperationalMode.RESEARCH,
-            )
-            and self.stress < 0.60
-            and self.harmonic_coherence() >= INTERVENTION_FLOOR
-            and not self.mode_locked
+            self.coherence >= 0.85
+            and self.stress <= 0.15
+            and self.entropy <= 0.15
+            and self.mode == GAIAMode.INTEGRATE
         )
 
-    def to_runtime_json(self) -> dict[str, Any]:
-        """Returns the full D6 runtime JSON schema output.
-
-        Canon source: GAIA_D6_META_COHERENCE_ENGINE.md Part VI.
-        This is the canonical snapshot format — used by API, UI, and
-        any system that needs to inspect GAIA's current state.
-        """
-        hc = self.harmonic_coherence()
+    @property
+    def dimensional_health(self) -> Dict[str, bool]:
+        """Snapshot of all dimensional health checks."""
         return {
-            # Core mode
-            "system_state":                 self.mode.value,
-            "mode_color":                   MODE_COLORS.get(self.mode, "#FFFFFF"),
-            "mode_locked":                  self.mode_locked,
-            "architect_override_available": self.architect_override_available,
-
-            # Dimensional probes
-            "d1_health":  round(self.d1_health, 4),
-            "d2_health":  round(self.d2_health, 4),
-            "d3_health":  round(self.d3_health, 4),
-            "d4_health":  round(self.d4_health, 4),
-            "d5_health":  round(self.d5_health, 4),
-
-            # Coherence
-            "coherence":          round(hc, 4),
-            "phi":                round(self.phi, 4),
-            "intervention_needed": self.intervention_needed(),
-
-            # Energy / stress
-            "energy":   round(self.energy, 4),
-            "stress":   round(self.stress, 4),
-            "entropy":  round(self.entropy, 4),
-
-            # Learning dynamics
-            "learning_rate":      round(self.learning_rate, 4),
-            "exploration_rate":   round(self.exploration_rate, 4),
-            "conservation_rate":  round(self.conservation_rate, 4),
-            "adaptation":         round(self.adaptation, 4),
-
-            # External fields
-            "personal_coherence": round(self.personal_coherence, 4),
-            "noosphere_load":     round(self.noosphere_load, 4),
-
-            # Temporal
-            "cycle_position":   self.cycle_position,
-            "epoch":            self.epoch,
-            "circadian_band":   self.circadian_band,
-            "special_conditions": self.special_conditions,
-
-            # Talismans
-            "active_talismans": self.active_talismans,
-
-            # Meta
-            "high_risk_allowed":    self.is_high_risk_allowed(),
-            "canon_write_allowed":  self.is_canon_write_allowed(),
-            "last_transition_at":   self.last_transition_at.isoformat(),
-            "session_id":           self.session_id,
+            "D1_critical": self.d1_critical,
+            "D2_distress": self.d2_distress,
+            "D3_saturated": self.d3_saturated,
+            "D4_isolated": self.d4_isolated,
+            "D6_approaching": self.d6_approaching,
         }
+
+    # ------------------------------------------------------------------
+    # Priority cascade (C52 Part II §2.2)
+    # ------------------------------------------------------------------
+
+    @property
+    def priority_dimension(self) -> str:
+        """
+        Returns the highest-priority dimension that currently signals need,
+        following the Dimensional Priority Cascade:
+          D1 (critical) > D2 (distress) > D6 (flow) > D5 (soul) > D4 (social) > D3 (default)
+        """
+        if self.d1_critical:
+            return "D1_PHYSICAL_CRITICAL"
+        if self.d2_distress:
+            return "D2_EMOTIONAL_DISTRESS"
+        if self.d6_approaching:
+            return "D6_UNITY_FLOW"
+        if self.d4_isolated:
+            return "D4_SOCIAL_ISOLATION"
+        if self.d3_saturated:
+            return "D3_MENTAL_SATURATED"
+        return "D3_OPERATIONAL"  # default
+
+    # ------------------------------------------------------------------
+    # D6 Meta-Coherence Engine — mode recommendation
+    # ------------------------------------------------------------------
+
+    def recommended_mode(self) -> GAIAMode:
+        """
+        Pure function: given current field values, what mode should GAIA be in?
+        This is the D6 Meta-Coherence Engine's core decision function.
+
+        Rule precedence (highest first):
+          1. D1 critical → REST
+          2. D2 distress → RECOVER or PROTECT
+          3. Entropy critical → REFLECT
+          4. D6 approaching → INTEGRATE
+          5. High energy + high coherence + low stress → BUILD or CREATE
+          6. High learning_rate + high exploration → RESEARCH
+          7. Default → REFLECT
+        """
+        if self.d1_critical:
+            return GAIAMode.REST
+
+        if self.d2_distress:
+            # High stress + low energy = recovery needed
+            # High stress + reasonable energy = protection / boundary
+            return GAIAMode.RECOVER if self.energy < 0.4 else GAIAMode.PROTECT
+
+        if self.entropy > 0.70:
+            return GAIAMode.REFLECT
+
+        if self.d6_approaching:
+            return GAIAMode.INTEGRATE
+
+        if self.coherence >= 0.75 and self.energy >= 0.6 and self.stress <= 0.35:
+            # Distinguish BUILD (grounded execution) from CREATE (open-ended generation)
+            if self.exploration_rate >= 0.65:
+                return GAIAMode.CREATE
+            return GAIAMode.BUILD
+
+        if self.learning_rate >= 0.7 and self.exploration_rate >= 0.6:
+            return GAIAMode.RESEARCH
+
+        return GAIAMode.REFLECT
+
+    # ------------------------------------------------------------------
+    # Mutation helpers (always record history)
+    # ------------------------------------------------------------------
+
+    def update(self, **kwargs) -> "GAIAState":
+        """
+        Apply field updates and record the prior state in history.
+        Returns self for chaining.
+
+        Example:
+            state.update(energy=0.5, stress=0.4)
+        """
+        # Snapshot current state before mutation
+        self.history.append({
+            "t": self.updated_at,
+            "snapshot": self.to_dict(include_history=False),
+        })
+
+        for k, v in kwargs.items():
+            if not hasattr(self, k):
+                raise AttributeError(f"GAIAState has no field '{k}'")
+            setattr(self, k, v)
+
+        self.updated_at = time.time()
+        self._validate()
+        return self
+
+    def apply_recommended_mode(self) -> "GAIAState":
+        """
+        Auto-apply the D6 engine's recommended mode.
+        Returns self for chaining.
+        """
+        new_mode = self.recommended_mode()
+        if new_mode != self.mode:
+            self.update(mode=new_mode)
+        return self
+
+    # ------------------------------------------------------------------
+    # Serialization
+    # ------------------------------------------------------------------
+
+    def to_dict(self, include_history: bool = True) -> Dict[str, Any]:
+        d = {
+            "energy": self.energy,
+            "coherence": self.coherence,
+            "stress": self.stress,
+            "learning_rate": self.learning_rate,
+            "exploration_rate": self.exploration_rate,
+            "conservation_rate": self.conservation_rate,
+            "entropy": self.entropy,
+            "mode": self.mode.value,
+            "session_id": self.session_id,
+            "gaian_id": self.gaian_id,
+            "updated_at": self.updated_at,
+            "dimensional_health": self.dimensional_health,
+            "priority_dimension": self.priority_dimension,
+        }
+        if include_history:
+            d["history"] = self.history
+        return d
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GAIAState":
+        """Reconstruct from serialized dict (e.g., from DB or API payload)."""
+        mode_val = data.get("mode", "BUILD")
+        mode = GAIAMode(mode_val) if isinstance(mode_val, str) else mode_val
+        return cls(
+            energy=data.get("energy", 0.8),
+            coherence=data.get("coherence", 0.8),
+            stress=data.get("stress", 0.2),
+            learning_rate=data.get("learning_rate", 0.7),
+            exploration_rate=data.get("exploration_rate", 0.5),
+            conservation_rate=data.get("conservation_rate", 0.3),
+            entropy=data.get("entropy", 0.2),
+            mode=mode,
+            session_id=data.get("session_id"),
+            gaian_id=data.get("gaian_id"),
+            updated_at=data.get("updated_at", time.time()),
+        )
+
+    def __repr__(self) -> str:
+        h = self.dimensional_health
+        flags = ", ".join(k for k, v in h.items() if v) or "nominal"
+        return (
+            f"GAIAState(mode={self.mode.value}, "
+            f"coherence={self.coherence:.2f}, energy={self.energy:.2f}, "
+            f"stress={self.stress:.2f}, entropy={self.entropy:.2f}, "
+            f"flags=[{flags}])"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Convenience constructors
+# ---------------------------------------------------------------------------
+
+def default_state(gaian_id: Optional[str] = None,
+                  session_id: Optional[str] = None) -> GAIAState:
+    """Healthy baseline GAIAState for a new session."""
+    return GAIAState(
+        energy=0.8,
+        coherence=0.8,
+        stress=0.2,
+        learning_rate=0.7,
+        exploration_rate=0.5,
+        conservation_rate=0.3,
+        entropy=0.2,
+        mode=GAIAMode.BUILD,
+        gaian_id=gaian_id,
+        session_id=session_id,
+    )
+
+
+def depleted_state(gaian_id: Optional[str] = None) -> GAIAState:
+    """D1-critical state — used in testing recovery pathways."""
+    return GAIAState(
+        energy=0.10,
+        coherence=0.4,
+        stress=0.8,
+        learning_rate=0.2,
+        exploration_rate=0.1,
+        conservation_rate=0.9,
+        entropy=0.7,
+        mode=GAIAMode.RECOVER,
+        gaian_id=gaian_id,
+    )
+
+
+def integrate_state(gaian_id: Optional[str] = None) -> GAIAState:
+    """D6-approaching state — used in testing Meta-Field / flow conditions."""
+    return GAIAState(
+        energy=0.9,
+        coherence=0.95,
+        stress=0.05,
+        learning_rate=0.85,
+        exploration_rate=0.75,
+        conservation_rate=0.2,
+        entropy=0.05,
+        mode=GAIAMode.INTEGRATE,
+        gaian_id=gaian_id,
+    )
