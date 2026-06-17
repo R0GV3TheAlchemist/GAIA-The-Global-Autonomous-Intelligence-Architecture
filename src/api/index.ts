@@ -5,8 +5,10 @@
  *
  * Usage:
  *   import { memoryRecall, TauriMemoryClient, stageEvaluate } from '../api';
- *   import { MeshStatusWidget, useMeshStatus } from '../api';
+ *   import { stateGet, stateOverride, GAIAStateClient, StateHUD } from '../api';
+ *   import { talismanActivate, TalismanDoc } from '../api';
  */
 
-export * from './memory'
-export * from '../mesh'
+export * from './memory';
+export * from './state';
+export * from '../mesh';
