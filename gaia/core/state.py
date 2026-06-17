@@ -47,6 +47,10 @@ class GAIAMode(str, Enum):
     INTEGRATE = "INTEGRATE"
 
 
+# Backward-compat alias: tests and state_store import GAIAOperationalMode
+GAIAOperationalMode = GAIAMode
+
+
 # ---------------------------------------------------------------------------
 # GAIAState — the central state object
 # ---------------------------------------------------------------------------
@@ -250,8 +254,6 @@ class GAIAState:
             return GAIAMode.REST
 
         if self.d2_distress:
-            # High stress + low energy = recovery needed
-            # High stress + reasonable energy = protection / boundary
             return GAIAMode.RECOVER if self.energy < 0.4 else GAIAMode.PROTECT
 
         if self.entropy > 0.70:
@@ -261,7 +263,6 @@ class GAIAState:
             return GAIAMode.INTEGRATE
 
         if self.coherence >= 0.75 and self.energy >= 0.6 and self.stress <= 0.35:
-            # Distinguish BUILD (grounded execution) from CREATE (open-ended generation)
             if self.exploration_rate >= 0.65:
                 return GAIAMode.CREATE
             return GAIAMode.BUILD
@@ -279,11 +280,7 @@ class GAIAState:
         """
         Apply field updates and record the prior state in history.
         Returns self for chaining.
-
-        Example:
-            state.update(energy=0.5, stress=0.4)
         """
-        # Snapshot current state before mutation
         self.history.append({
             "t": self.updated_at,
             "snapshot": self.to_dict(include_history=False),
@@ -299,10 +296,7 @@ class GAIAState:
         return self
 
     def apply_recommended_mode(self) -> "GAIAState":
-        """
-        Auto-apply the D6 engine's recommended mode.
-        Returns self for chaining.
-        """
+        """Auto-apply the D6 engine's recommended mode. Returns self for chaining."""
         new_mode = self.recommended_mode()
         if new_mode != self.mode:
             self.update(mode=new_mode)

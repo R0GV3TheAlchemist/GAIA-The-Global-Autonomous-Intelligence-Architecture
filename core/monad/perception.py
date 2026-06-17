@@ -1,6 +1,8 @@
 # core/monad/perception.py
 # E701 fix: all inline `if x: return y` expanded to multi-line form.
-# All other logic in this file is unchanged.
+# Addition: PerceptionMonad alias for MonadPerception
+# (MonadPerception was renamed to PerceptionMonad during the monad refactor;
+#  both names are now valid import targets.)
 
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ class MonadPerception:
     Maps integrated information (phi) to Monad force names.
 
     Force names follow the alchemical-chromatic ladder defined in
-    C47 (Philosopher’s Stone Doctrine) and C50 (Prism Cube Doctrine).
+    C47 (Philosopher's Stone Doctrine) and C50 (Prism Cube Doctrine).
     """
 
     FORCE_LADDER = [
@@ -72,3 +74,7 @@ class MonadPerception:
         if phi < 0.97:
             return "ARGENTITAS"
         return "LUX_PERPETUA"
+
+
+# Backward-compat alias: tests and core/monad/__init__.py import PerceptionMonad
+PerceptionMonad = MonadPerception
