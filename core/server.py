@@ -1,5 +1,5 @@
 """
-GAIA API Server — FastAPI bootstrap v2.5.0
+GAIA API Server — FastAPI bootstrap v2.6.0
 
 Split from the monolith in Sprint C47+. All endpoints live in
 core/routers/. Shared process state lives in core/server_state.py.
@@ -15,8 +15,15 @@ v2.5.0 additions (June 14, 2026):
   - Both set_dependencies() calls wired in server_lifecycle.py
   - Canon ref C43 (epistemic integrity) added for LCI
 
+v2.6.0 additions (June 17, 2026):
+  - gaia_state_router  mounted at /gaia-state  🔮  GAIAState REST + WebSocket
+  - Exposes /gaia-state/ws for real-time Tauri HUD stream
+  - Uses gaia.api.register_routers() — prefix kept as /gaia-state to avoid
+    collision with any future system /state namespace.
+  - Canon refs: C52 (Six-Dimensional Architecture), GAIA_D6_META_COHERENCE_ENGINE
+
 Canon Refs: C01, C04, C12, C15, C17, C20, C21, C27, C30, C42, C43, C44, C47, C48,
-            C128 (Spiritus Pneuma Canon), C43 (LCI epistemic integrity)
+            C52, C128 (Spiritus Pneuma Canon), GAIA_D6_META_COHERENCE_ENGINE
 """
 
 import os
@@ -54,6 +61,9 @@ from core.routers import (
 )
 from core.server_lifecycle import register_lifecycle
 from core.server_state import SERVER_VERSION, canon
+
+# 🔮 GAIAState + D6 Engine router (gaia/ package)
+from gaia.api import register_routers as _register_gaia_routers
 
 logger = get_logger(__name__)
 
@@ -101,6 +111,11 @@ app.include_router(room_router)
 app.include_router(goals_router,  prefix="/goals",  tags=["Goals"])   # ★ C128
 app.include_router(lci_router)                                         # ❤️ GET+POST /lci/*
 app.include_router(status_router)                                      # 📊 GET /status/*
+
+# 🔮 GAIAState REST + WebSocket — MUST come after error boundary and middleware
+# Registers: /gaia-state, /gaia-state/mode, /gaia-state/health,
+#            /gaia-state/interventions, /gaia-state/talisman/*, /gaia-state/ws
+_register_gaia_routers(app)  # internally does: app.include_router(state_router, prefix="/gaia-state")
 
 # — Startup / shutdown lifecycle —
 register_lifecycle(app)
