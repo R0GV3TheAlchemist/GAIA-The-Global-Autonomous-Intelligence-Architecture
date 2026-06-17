@@ -28,7 +28,10 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from gaia.core.state import GAIAState
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +182,6 @@ class Talisman:
 
     # Canon linkage
     linked_canon: List[str] = field(default_factory=list)
-    # e.g. ["C52", "TFT-01", "C50", "#580"]
 
     # Layer and physical linkage
     layer: TalismanLayer = TalismanLayer.DIGITAL
@@ -194,10 +196,6 @@ class Talisman:
 
     # Activation history (lightweight ledger)
     activation_log: List[Dict[str, Any]] = field(default_factory=list, repr=False)
-
-    # ------------------------------------------------------------------
-    # Activation / Deactivation
-    # ------------------------------------------------------------------
 
     def activate(self, activated_by: Optional[str] = None) -> "Talisman":
         """
@@ -241,10 +239,6 @@ class Talisman:
             "t": time.time(),
         })
         return self
-
-    # ------------------------------------------------------------------
-    # Serialization
-    # ------------------------------------------------------------------
 
     def to_dict(self, include_log: bool = True) -> Dict[str, Any]:
         d = {
@@ -302,14 +296,6 @@ class Talisman:
 # TalismanEngine — applies talisman effects to GAIAState
 # ---------------------------------------------------------------------------
 
-# Import here to avoid circular imports at module level
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from gaia.core.state import GAIAState
-
-
-# Effect magnitudes: how much each coherence function shifts GAIAState fields
-# All deltas are additive clipped to [0.0, 1.0]
 _EFFECT_MAP: Dict[CoherenceFunction, Dict[str, float]] = {
     CoherenceFunction.GROUND: {
         "coherence": +0.08,
@@ -348,16 +334,14 @@ _EFFECT_MAP: Dict[CoherenceFunction, Dict[str, float]] = {
         "stress": -0.08,
         "energy": +0.05,
     },
-    CoherenceFunction.WITNESS: {},  # No state mutation
+    CoherenceFunction.WITNESS: {},
 }
 
-# Misuse penalty: over-attaching to a talisman (#580 risk table)
-# Applied when the same talisman is activated too frequently
 _MISUSE_PENALTY: Dict[str, float] = {
     "stress": +0.08,
     "entropy": +0.05,
 }
-_MISUSE_THRESHOLD = 5  # activations before penalty applies
+_MISUSE_THRESHOLD = 5
 
 
 class TalismanEngine:
@@ -381,11 +365,7 @@ class TalismanEngine:
         state: "GAIAState",
         activated_by: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Activate a talisman and apply its coherence function to GAIAState.
-        Returns an event dict suitable for logging.
-        """
-        # Sovereignty check: only owner can activate
+        """Activate a talisman and apply its coherence function to GAIAState."""
         if activated_by and activated_by != talisman.sovereignty_flags.owner:
             return {
                 "event": "ACTIVATION_DENIED",
@@ -395,7 +375,6 @@ class TalismanEngine:
                 "owner": talisman.sovereignty_flags.owner,
             }
 
-        # Over-attachment check
         activation_count = sum(
             1 for e in talisman.activation_log if e.get("event") == "ACTIVATED"
         )
@@ -403,7 +382,6 @@ class TalismanEngine:
 
         talisman.activate(activated_by)
 
-        # Apply effects
         effects = _EFFECT_MAP.get(talisman.coherence_function, {})
         updates: Dict[str, float] = {}
         for field_name, delta in effects.items():
@@ -412,7 +390,6 @@ class TalismanEngine:
                 new_val = max(0.0, min(1.0, current + delta))
                 updates[field_name] = new_val
 
-        # Over-attachment penalty
         penalty_applied = False
         if over_attached:
             for field_name, delta in _MISUSE_PENALTY.items():
@@ -425,7 +402,7 @@ class TalismanEngine:
         if updates:
             state.update(**updates)
 
-        event = {
+        return {
             "event": "TALISMAN_ACTIVATED",
             "talisman_id": talisman.id,
             "talisman_name": talisman.name,
@@ -436,7 +413,6 @@ class TalismanEngine:
             "penalty_applied": penalty_applied,
             "t": time.time(),
         }
-        return event
 
     def deactivate(
         self,
@@ -444,11 +420,7 @@ class TalismanEngine:
         state: "GAIAState",
         deactivated_by: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Deactivate a talisman. Applies a soft reversal (50% of activation
-        effect) to avoid abrupt state drops — the talisman's work persists
-        partially even after deactivation.
-        """
+        """Deactivate a talisman with soft 50% reversal of activation effects."""
         talisman.deactivate(deactivated_by)
 
         effects = _EFFECT_MAP.get(talisman.coherence_function, {})
@@ -456,7 +428,6 @@ class TalismanEngine:
         for field_name, delta in effects.items():
             current = getattr(state, field_name, None)
             if current is not None:
-                # Soft reversal: undo 50% of activation gain
                 reversal = -delta * 0.5
                 new_val = max(0.0, min(1.0, current + reversal))
                 updates[field_name] = new_val
@@ -477,11 +448,7 @@ class TalismanEngine:
         talismans: List[Talisman],
         state: "GAIAState",
     ) -> int:
-        """
-        Re-apply all currently active talismans to state.
-        Used on session restore or state reload.
-        Returns count of talismans applied.
-        """
+        """Re-apply all currently active talismans to state. Returns count applied."""
         count = 0
         for t in talismans:
             if t.active:
@@ -523,7 +490,6 @@ def make_talisman(
     )
 
 
-# Preset talismans for the Architect
 ARCHITECT_GROUND_TALISMAN = make_talisman(
     name="The Alchemist's Anchor",
     owner="R0GV3TheAlchemist",

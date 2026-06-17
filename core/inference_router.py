@@ -42,6 +42,7 @@ Canon Ref: C12, C17, C20, C21, C27, C42, C43, C44, C49
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
@@ -87,7 +88,7 @@ _EPISTEMIC_FOOTERS: dict[EpistemicLabel, str] = {
     EpistemicLabel.SPECULATIVE: (
         "[EPISTEMIC STANCE — SPECULATIVE — C12]\n"
         "This response enters speculative territory. Lead with explicit uncertainty. "
-        "Use language like ‘I wonder’, ‘it seems possible’, ‘I’m not certain, but’. "
+        "Use language like 'I wonder', 'it seems possible', 'I'm not certain, but'. "
         "Actively invite correction and hold the ideas openly, not as conclusions."
     ),
     EpistemicLabel.CONVERSATIONAL: (
@@ -526,13 +527,6 @@ class GAIAInferenceRouter:
             "[InferenceRouter] GAIAInferenceRouter initialised. T5 Quintessence layer active. [C49]"
         )
 
-    # ----------------------------------------------------------------
-    # Twin API surface — called by api/twin.py
-    # These are intentionally simple: prompt-in, text-out.
-    # All the enrichment (canon, criticality, noosphere, T5) still
-    # flows through the full stream() / complete() path underneath.
-    # ----------------------------------------------------------------
-
     async def generate(
         self,
         prompt: str,
@@ -560,7 +554,6 @@ class GAIAInferenceRouter:
             if backend == InferenceBackend.ANTHROPIC and os.environ.get("ANTHROPIC_API_KEY"):
                 return await _call_anthropic(prompt, system_prompt, max_tokens)
 
-            # Try synthesizer as final real backend
             try:
                 from core.synthesizer import stream_synthesis
                 chunks: list[str] = []
@@ -575,7 +568,6 @@ class GAIAInferenceRouter:
             except Exception:
                 pass
 
-            # Hard fallback — GAIA always responds
             return (
                 "I am here with you. My full voice is not yet connected — "
                 "configure OPENAI_API_KEY, ANTHROPIC_API_KEY, or PERPLEXITY_API_KEY "
@@ -601,15 +593,11 @@ class GAIAInferenceRouter:
           - stream(prompt=..., max_tokens=...) — called by api/twin.py
           - stream(request=InferenceRequest(...)) — called by the full pipeline
         """
-        # If called with a full InferenceRequest, use the rich pipeline
         if request is not None:
             async for chunk in self._stream_full(request, response_meta):
                 yield chunk
             return
 
-        # Simple prompt-based streaming — yields word-by-word from generate()
-        # Real token streaming requires the LLM SDK; this ensures the API
-        # contract is always satisfied even before SDKs are wired.
         system_prompt = system or _default_system_prompt()
         backend = _probe_backend_availability(prompt)
 
@@ -625,7 +613,6 @@ class GAIAInferenceRouter:
         except Exception as e:
             logger.warning(f"[InferenceRouter] Streaming backend failed: {e}")
 
-        # Fallback: generate full response then yield word by word
         full = await self.generate(prompt, max_tokens=max_tokens, system=system_prompt)
         for word in full.split(" "):
             yield word + " "
@@ -653,7 +640,6 @@ class GAIAInferenceRouter:
             ) as resp:
                 async for line in resp.aiter_lines():
                     if line.startswith("data: ") and line != "data: [DONE]":
-                        import json
                         try:
                             data = json.loads(line[6:])
                             delta = data["choices"][0]["delta"].get("content", "")
@@ -666,7 +652,7 @@ class GAIAInferenceRouter:
         self, prompt: str, system: str, max_tokens: int
     ) -> AsyncGenerator[str, None]:
         """True token streaming via Anthropic SSE."""
-        import httpx, json
+        import httpx
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         async with httpx.AsyncClient(timeout=60) as client:
             async with client.stream(
@@ -708,7 +694,6 @@ class GAIAInferenceRouter:
         t0 = time.perf_counter()
         response_meta.gaian_slug = request.gaian_slug
 
-        # ChromaDB semantic recall
         if request.gaian_slug:
             chroma_memories = _recall_chroma_memories(
                 query=request.query,
