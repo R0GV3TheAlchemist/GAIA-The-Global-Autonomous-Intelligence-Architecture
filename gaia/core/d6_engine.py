@@ -57,6 +57,7 @@ class EngineProbes:
     # Biometric probes (C153 / Embodiment Layer)
     heart_rate_variability: Optional[float] = None
     sleep_quality: Optional[float] = None
+    sleep_quality_score: Optional[float] = None
     movement_today: Optional[float] = None
 
     # Noosphere probes (C43, #435)
@@ -71,10 +72,15 @@ class EngineProbes:
     session_duration_hours: Optional[float] = None
     time_since_rest_hours: Optional[float] = None
 
+    def resolved_sleep_quality(self) -> Optional[float]:
+        """Prefer the newer sleep_quality_score field when present."""
+        return self.sleep_quality_score if self.sleep_quality_score is not None else self.sleep_quality
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "heart_rate_variability": self.heart_rate_variability,
             "sleep_quality": self.sleep_quality,
+            "sleep_quality_score": self.sleep_quality_score,
             "movement_today": self.movement_today,
             "noosphere_load": self.noosphere_load,
             "collective_coherence": self.collective_coherence,
@@ -331,7 +337,8 @@ class D6Engine:
             return GAIAMode.REST
         if probes.heart_rate_variability is not None and probes.heart_rate_variability < 0.2:
             return GAIAMode.RECOVER
-        if probes.sleep_quality is not None and probes.sleep_quality < 0.25:
+        sleep_quality = probes.resolved_sleep_quality()
+        if sleep_quality is not None and sleep_quality < 0.25:
             return GAIAMode.RECOVER if state.energy < 0.4 else GAIAMode.REST
         if (
             probes.noosphere_load is not None
