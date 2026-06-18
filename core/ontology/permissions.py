@@ -1,13 +1,8 @@
 # core/ontology/permissions.py
-# C416 fix: set comprehension `{c for c in Capability}` → `set(Capability)`
-# Additions: PermissionEnvelope, AuditEntry, AuditTrail, PermissionDeniedError
-# These were referenced by core/ontology/__init__.py and 7 test modules
-# but were never defined here during the ontology refactor.
-#
-# FIX (2026-06-17): PermissionEnvelope now accepts both `gaianid` AND `gaian_id`
-# keyword arguments (stored as self.gaian_id) to match callers in
-# core/ontology/runtime.py L150, test fixtures using gaian_id=..., and all
-# downstream session integration tests. AuditTrail likewise accepts both forms.
+# Rewritten to match the test contract in tests/ontology/test_permissions.py
+# PermissionTier is imported from entities.py (OBSERVER/COLLABORATOR/STEWARD/SOVEREIGN)
+# AuditTrail.record() accepts action, human_principal_id, session_id, result, target_entity_id
+# PermissionEnvelope.has() / require() / grant() / revoke() use Capability enum
 
 from __future__ import annotations
 
@@ -16,49 +11,49 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
-
-class Capability(Enum):
-    """All capabilities a GAIA agent may be granted."""
-    READ_CANON            = auto()
-    WRITE_MEMORY          = auto()
-    DELETE_MEMORY         = auto()
-    EXPORT_DATA           = auto()
-    INVOKE_SENTINEL       = auto()
-    ISSUE_HALT            = auto()
-    MODIFY_STATE          = auto()
-    DEGRADE_ATLAS_NODE    = auto()
-    BROADCAST_COLLECTIVE  = auto()
-    OVERRIDE_CANON        = auto()
+from .entities import PermissionTier
 
 
-class PermissionTier(Enum):
-    """Trust tiers governing permission grants."""
-    GUEST     = 0
-    GAIAN     = 1
-    GUARDIAN  = 2
-    SOVEREIGN = 3
+# ---------------------------------------------------------------------------
+# Capability
+# ---------------------------------------------------------------------------
+
+class Capability(str, Enum):
+    """All capabilities a GAIA agent may be granted (C03 §3.3)."""
+    READ_ENTITY           = "read_entity"
+    WRITE_ENTITY          = "write_entity"
+    DELETE_ENTITY         = "delete_entity"
+    MANAGE_ATLAS_NODE     = "manage_atlas_node"
+    INVOKE_SENTINEL       = "invoke_sentinel"
+    ISSUE_HALT            = "issue_halt"
+    MODIFY_STATE          = "modify_state"
+    DEGRADE_ATLAS_NODE    = "degrade_atlas_node"
+    BROADCAST_COLLECTIVE  = "broadcast_collective"
+    OVERRIDE_CANON        = "override_canon"
+    EXPORT_DATA           = "export_data"
+    REVOKE_GAIAN          = "revoke_gaian"
 
 
-PERMISSION_MAP: dict[PermissionTier, set[Capability]] = {
-    PermissionTier.GUEST: {
-        Capability.READ_CANON,
+# Tier → capability map (C03 §3.4)
+PERMISSION_MAP: Dict[PermissionTier, set] = {
+    PermissionTier.OBSERVER: {
+        Capability.READ_ENTITY,
     },
-    PermissionTier.GAIAN: {
-        Capability.READ_CANON,
-        Capability.WRITE_MEMORY,
+    PermissionTier.COLLABORATOR: {
+        Capability.READ_ENTITY,
+        Capability.WRITE_ENTITY,
         Capability.EXPORT_DATA,
     },
-    PermissionTier.GUARDIAN: {
-        Capability.READ_CANON,
-        Capability.WRITE_MEMORY,
-        Capability.DELETE_MEMORY,
+    PermissionTier.STEWARD: {
+        Capability.READ_ENTITY,
+        Capability.WRITE_ENTITY,
+        Capability.DELETE_ENTITY,
         Capability.EXPORT_DATA,
         Capability.INVOKE_SENTINEL,
         Capability.ISSUE_HALT,
         Capability.MODIFY_STATE,
-        Capability.DEGRADE_ATLAS_NODE,
+        Capability.MANAGE_ATLAS_NODE,
     },
-    # C416 fix: `set(Capability)` replaces `{c for c in Capability}`
     PermissionTier.SOVEREIGN: set(Capability),
 }
 
@@ -103,133 +98,158 @@ class PermissionDeniedError(PermissionError):
 
 
 # ---------------------------------------------------------------------------
-# AuditEntry — a single auditable event
+# AuditEntry
 # ---------------------------------------------------------------------------
 
 @dataclass
 class AuditEntry:
     """
     One auditable event in the GAIA permission system.
+
+    Fields match the test contract:
+      action            — string label for the event
+      human_principal_id— HP identity performing the action
+      session_id        — session context
+      result            — outcome string e.g. "SUCCESS", "DENIED"
+      target_entity_id  — entity the action was performed on
+      context           — arbitrary extra metadata
+      timestamp         — unix epoch float
     """
-    principal: str
-    capability: Capability
-    tier: PermissionTier
-    granted: bool
-    resource: Optional[str] = None
+    action: str
+    human_principal_id: Optional[str] = None
+    session_id: Optional[str] = None
+    result: Optional[str] = None
+    target_entity_id: Optional[str] = None
     context: Dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "principal": self.principal,
-            "capability": self.capability.name,
-            "tier": self.tier.name,
-            "granted": self.granted,
-            "resource": self.resource,
+            "action": self.action,
+            "human_principal_id": self.human_principal_id,
+            "session_id": self.session_id,
+            "result": self.result,
+            "target_entity_id": self.target_entity_id,
             "context": self.context,
             "timestamp": self.timestamp,
         }
 
 
 # ---------------------------------------------------------------------------
-# AuditTrail — an ordered sequence of AuditEntry records
+# AuditTrail
 # ---------------------------------------------------------------------------
 
 class AuditTrail:
     """
     An ordered, append-only trail of AuditEntry records.
 
-    Accepts `gaianid` or `gaian_id` keyword argument so that callers may
-    tag the trail to a specific GAIAN identity using either form.
+    Interface contract (from tests/ontology/test_permissions.py):
+      trail.record(action=..., human_principal_id=..., session_id=...,
+                   result=..., target_entity_id=...)
+      trail.count()  → int
+      trail.all()    → List[AuditEntry] (copy)
+      trail.filter(result=..., target_entity_id=...)  → List[AuditEntry]
     """
 
-    def __init__(self, *, gaianid: Optional[str] = None, gaian_id: Optional[str] = None, **kwargs: Any) -> None:
-        # Accept both gaianid and gaian_id; gaian_id takes precedence if both supplied
+    def __init__(
+        self,
+        *,
+        gaian_id: Optional[str] = None,
+        gaianid: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         self.gaian_id: Optional[str] = gaian_id or gaianid
-        self.entries: List[AuditEntry] = []
-
-    def append(self, entry: AuditEntry) -> None:
-        """Append a new AuditEntry to the trail."""
-        self.entries.append(entry)
+        self._entries: List[AuditEntry] = []
 
     def record(
         self,
-        principal: str,
-        capability: Capability,
-        tier: PermissionTier,
-        granted: bool,
-        resource: Optional[str] = None,
+        action: str,
+        human_principal_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        result: Optional[str] = None,
+        target_entity_id: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> AuditEntry:
         """
-        Convenience method: construct and append an AuditEntry in one call.
+        Construct and append an AuditEntry in one call.
         Returns the new entry.
         """
         entry = AuditEntry(
-            principal=principal,
-            capability=capability,
-            tier=tier,
-            granted=granted,
-            resource=resource,
+            action=action,
+            human_principal_id=human_principal_id,
+            session_id=session_id,
+            result=result,
+            target_entity_id=target_entity_id,
             context=context or {},
         )
-        self.entries.append(entry)
+        self._entries.append(entry)
         return entry
+
+    def append(self, entry: AuditEntry) -> None:
+        """Append a pre-constructed AuditEntry."""
+        self._entries.append(entry)
+
+    def all(self) -> List[AuditEntry]:
+        """Return a shallow copy of all entries."""
+        return list(self._entries)
+
+    def count(self) -> int:
+        """Return the number of entries in the trail."""
+        return len(self._entries)
 
     def filter(
         self,
         *,
-        principal: Optional[str] = None,
-        capability: Optional[Capability] = None,
-        granted: Optional[bool] = None,
-        result: Optional[bool] = None,
-        target: Optional[str] = None,
+        action: Optional[str] = None,
+        human_principal_id: Optional[str] = None,
+        result: Optional[str] = None,
+        target_entity_id: Optional[str] = None,
+        **kwargs: Any,
     ) -> List[AuditEntry]:
         """Return entries matching all supplied criteria."""
-        # `result` and `target` are test-facing aliases for `granted` and `resource`
-        effective_granted = granted if granted is not None else result
-        effective_target = target
-
-        res = self.entries
-        if principal is not None:
-            res = [e for e in res if e.principal == principal]
-        if capability is not None:
-            res = [e for e in res if e.capability == capability]
-        if effective_granted is not None:
-            res = [e for e in res if e.granted == effective_granted]
-        if effective_target is not None:
-            res = [e for e in res if e.resource == effective_target]
+        res = self._entries
+        if action is not None:
+            res = [e for e in res if e.action == action]
+        if human_principal_id is not None:
+            res = [e for e in res if e.human_principal_id == human_principal_id]
+        if result is not None:
+            res = [e for e in res if e.result == result]
+        if target_entity_id is not None:
+            res = [e for e in res if e.target_entity_id == target_entity_id]
         return res
 
-    def all(self) -> List[AuditEntry]:
-        """Return a shallow copy of all entries."""
-        return list(self.entries)
-
     def denied(self) -> List[AuditEntry]:
-        """Return all denied entries."""
-        return self.filter(granted=False)
+        """Return all entries with result == 'DENIED'."""
+        return self.filter(result="DENIED")
 
     def to_list(self) -> List[Dict[str, Any]]:
         """Serialise all entries to a list of dicts."""
-        return [e.to_dict() for e in self.entries]
+        return [e.to_dict() for e in self._entries]
 
     def __len__(self) -> int:
-        return len(self.entries)
+        return len(self._entries)
 
 
 # ---------------------------------------------------------------------------
-# PermissionEnvelope — a principal's complete permission context
+# PermissionEnvelope
 # ---------------------------------------------------------------------------
 
 class PermissionEnvelope:
     """
-    The complete permission context for a single principal.
+    The complete permission context for a single principal (C03 §3.5).
 
-    Accepts both `gaianid` and `gaian_id` keyword arguments (stored as
-    self.gaian_id) so that all callers work without TypeError:
+    Constructor accepts:
+      gaian_id / gaianid     — GAIAN identity
+      human_principal_id     — HP identity
+      session_id             — session context
+      tier                   — PermissionTier (from entities.py)
 
-        PermissionEnvelope(gaianid=..., tier=..., capabilities=[...])
-        PermissionEnvelope(gaian_id=..., tier=..., capabilities=[...])
+    Interface:
+      .has(capability)       — bool check (no raise)
+      .require(capability)   — raises PermissionDeniedError if missing
+      .grant(capability)     — add extra capability
+      .revoke(capability)    — remove capability
     """
 
     def __init__(
@@ -237,53 +257,59 @@ class PermissionEnvelope:
         principal: Optional[str] = None,
         tier: Optional[PermissionTier] = None,
         *,
-        gaianid: Optional[str] = None,
         gaian_id: Optional[str] = None,
+        gaianid: Optional[str] = None,
+        human_principal_id: Optional[str] = None,
+        session_id: Optional[str] = None,
         capabilities: Optional[List[Capability]] = None,
         **kwargs: Any,
     ) -> None:
-        # gaian_id (underscore) takes precedence over gaianid if both provided
         resolved_gaian_id = gaian_id or gaianid
         self.gaian_id: Optional[str] = resolved_gaian_id
+        self.human_principal_id: Optional[str] = human_principal_id
+        self.session_id: Optional[str] = session_id
         self.principal: str = principal or resolved_gaian_id or ""
-        self.tier: PermissionTier = tier or PermissionTier.GAIAN
-        self._extra_grants: set[Capability] = set()
-        self._revocations: set[Capability] = set()
-        # Allow caller to seed explicit capability list
+        self.tier: PermissionTier = tier or PermissionTier.OBSERVER
+        self._extra_grants: set = set()
+        self._revocations: set = set()
         if capabilities:
             for cap in capabilities:
                 self._extra_grants.add(cap)
         self.audit_trail: AuditTrail = AuditTrail(gaian_id=self.gaian_id)
 
     @property
-    def capabilities(self) -> set[Capability]:
+    def capabilities(self) -> set:
         """Effective capabilities: tier map + grants − revocations."""
         base = PERMISSION_MAP.get(self.tier, set())
         return (base | self._extra_grants) - self._revocations
 
-    def can(self, capability: Capability, resource: Optional[str] = None) -> bool:
+    def has(self, capability: Capability, resource: Optional[str] = None) -> bool:
         """
         Check if this principal has the given capability.
         Records the check in the audit trail.
         """
         granted = capability in self.capabilities
         self.audit_trail.record(
-            principal=self.principal,
-            capability=capability,
-            tier=self.tier,
-            granted=granted,
-            resource=resource,
+            action=capability.value,
+            human_principal_id=self.human_principal_id,
+            session_id=self.session_id,
+            result="GRANTED" if granted else "DENIED",
+            target_entity_id=resource,
         )
         return granted
+
+    # Backwards-compat alias used by runtime.py and older callers
+    def can(self, capability: Capability, resource: Optional[str] = None) -> bool:
+        return self.has(capability, resource=resource)
 
     def require(self, capability: Capability, resource: Optional[str] = None) -> None:
         """
         Assert that this principal has the given capability.
         Raises PermissionDeniedError if not.
         """
-        if not self.can(capability, resource=resource):
+        if not self.has(capability, resource=resource):
             raise PermissionDeniedError(
-                f"{self.principal!r} lacks {capability.name} (tier={self.tier.name})",
+                f"{self.principal!r} lacks {capability.value} (tier={self.tier.name})",
                 principal=self.principal,
                 capability=capability,
                 tier=self.tier,
@@ -315,8 +341,10 @@ class PermissionEnvelope:
         return {
             "principal": self.principal,
             "gaian_id": self.gaian_id,
+            "human_principal_id": self.human_principal_id,
+            "session_id": self.session_id,
             "tier": self.tier.name,
-            "capabilities": [c.name for c in sorted(self.capabilities, key=lambda c: c.name)],
-            "extra_grants": [c.name for c in self._extra_grants],
-            "revocations": [c.name for c in self._revocations],
+            "capabilities": sorted([c.value for c in self.capabilities]),
+            "extra_grants": [c.value for c in self._extra_grants],
+            "revocations": [c.value for c in self._revocations],
         }
