@@ -5,7 +5,7 @@ SQLite-backed semantic memory store for GAIA-OS.
 
 Canon Reference: C01 (Gaian Sovereignty), C17 (Memory Sovereignty), C-SENTINEL Article 4
 Issue:          #213
-Version:        3.0.0
+Version:        3.1.0
 
 Contract (tests/test_memory_store.py):
   MemoryTier   — EPHEMERAL, SHORT_TERM, EPISODIC, SEMANTIC, LONG_TERM, PERMANENT
@@ -228,6 +228,11 @@ class MemoryStore:
     Accepts an optional embedder for future vector search;
     falls back to text LIKE search when not available or when
     sqlite-vec is not installed.
+
+    Constructor aliases (all resolve to the same db path):
+      db_path   — canonical keyword  (MemoryStore(db_path="..."))
+      dbpath    — no-underscore alias (MemoryStore(dbpath="..."))  ← test fixture
+      store_path — legacy alias       (MemoryStore(store_path="..."))
     """
 
     def __init__(
@@ -235,10 +240,19 @@ class MemoryStore:
         db_path: Any = _default_store_path,
         embedder: Optional[Any] = None,
         *,
+        dbpath: Optional[str] = None,
         store_path: Optional[str] = None,
     ) -> None:
-        # Support legacy store_path kwarg
-        resolved = db_path if db_path != _default_store_path else (store_path or db_path)
+        # Priority: explicit db_path positional > dbpath alias > store_path legacy > default
+        if db_path != _default_store_path:
+            resolved = db_path
+        elif dbpath is not None:
+            resolved = dbpath
+        elif store_path is not None:
+            resolved = store_path
+        else:
+            resolved = _default_store_path
+
         self._db_path = str(resolved)
         self._embedder = embedder
         self._vec_enabled = False
