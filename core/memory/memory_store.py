@@ -5,10 +5,10 @@ SQLite-backed semantic memory store for GAIA-OS.
 
 Canon Reference: C01 (Gaian Sovereignty), C17 (Memory Sovereignty), C-SENTINEL Article 4
 Issue:          #213
-Version:        2.0.0
+Version:        3.0.0
 
 Contract (tests/test_memory_store.py):
-  MemoryTier   — EPHEMERAL, SHORT_TERM, LONG_TERM, PERMANENT, SEMANTIC
+  MemoryTier   — EPHEMERAL, SHORT_TERM, EPISODIC, SEMANTIC, LONG_TERM, PERMANENT
   MemoryStore  — SQLite file-backed, WAL mode
     .remember_sync(user_id, text, kind, tier, role, importance,
                    topic_tag, metadata, ttl_seconds)  -> int (row id)
@@ -22,6 +22,14 @@ Contract (tests/test_memory_store.py):
     .stats(user_id=None)       -> dict
     .close()                   -> None
     ._conn                     — exposed for tests to inspect schema
+
+Contract (tests/memory/test_memory_console.py):
+  MemoryCategory   — PREFERENCE, SESSION_GOAL, FACTUAL, EMOTIONAL, PROCEDURAL, IDENTITY
+  MemoryEntry      — dataclass: key, value, category, tier, provenance, tags, id,
+                     created_at, updated_at, last_used_at, last_used_context, archived
+  MemoryProvenance — dataclass: source, confidence (0–1 validated), origin_context
+  ProvenanceSource — GAIAN_EXPLICIT, GAIAN_INFERRED, SYSTEM, IMPORTED
+  SessionState     — dataclass: session_id, gaian_id; .promote_to_durable(entry) -> MemoryEntry
 """
 
 from __future__ import annotations
@@ -30,11 +38,12 @@ import asyncio
 import json
 import sqlite3
 import time
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional
-
-# Items module imports MemoryStore from here — keep MemoryItem
-# import lazy to avoid circular at load time.
 
 
 # ---------------------------------------------------------------------------
@@ -45,27 +54,144 @@ _default_store_path = "./data/memory_store.db"
 
 
 # ---------------------------------------------------------------------------
-# MemoryTier
+# MemoryTier — flat SQLite store tiers
+# Note: hierarchy.py has its own 5-member MemoryTier for the tiered architecture.
+# This one is used by MemoryStore (SQLite) and MemoryConsole.
 # ---------------------------------------------------------------------------
-
-from enum import Enum
-
 
 class MemoryTier(str, Enum):
     """
-    Tier classification for the flat SQLite memory store.
+    Tier classification for the flat SQLite memory store and console.
     Higher-value tiers are more persistent.
     """
     EPHEMERAL  = "ephemeral"    # Volatile — session scratch
+    SESSION    = "session"      # Current session only
     SHORT_TERM = "short_term"   # A few days
     EPISODIC   = "episodic"     # Recent weeks
     SEMANTIC   = "semantic"     # Derived long-term knowledge
     LONG_TERM  = "long_term"    # Indefinite
     PERMANENT  = "permanent"    # Never pruned
+    DURABLE    = "durable"      # Human-principal-confirmed, long-lived
+    ARCHIVED   = "archived"     # Soft-archived, excluded from default browse
 
 
 # ---------------------------------------------------------------------------
-# MemoryStore — SQLite-backed
+# MemoryCategory — semantic grouping for MemoryEntry
+# ---------------------------------------------------------------------------
+
+class MemoryCategory(str, Enum):
+    """Semantic category for a MemoryEntry in the console layer."""
+    PREFERENCE   = "preference"
+    SESSION_GOAL = "session_goal"
+    FACTUAL      = "factual"
+    EMOTIONAL    = "emotional"
+    PROCEDURAL   = "procedural"
+    IDENTITY     = "identity"
+    CONTEXT      = "context"
+    SYSTEM       = "system"
+
+
+# ---------------------------------------------------------------------------
+# ProvenanceSource — origin of a memory entry
+# ---------------------------------------------------------------------------
+
+class ProvenanceSource(str, Enum):
+    """Who or what created / inferred this memory entry."""
+    GAIAN_EXPLICIT = "gaian_explicit"   # User told GAIA directly
+    GAIAN_INFERRED = "gaian_inferred"   # GAIA inferred from conversation
+    SYSTEM         = "system"           # System-generated
+    IMPORTED       = "imported"         # Imported from external source
+
+
+# ---------------------------------------------------------------------------
+# MemoryProvenance — confidence-validated provenance record
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MemoryProvenance:
+    """
+    Provenance record for a MemoryEntry.
+
+    confidence must be in [0.0, 1.0]; raises ValueError otherwise.
+    """
+    source: ProvenanceSource
+    confidence: float = 1.0
+    origin_context: Optional[str] = None
+    recorded_at: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    def __post_init__(self) -> None:
+        if not (0.0 <= self.confidence <= 1.0):
+            raise ValueError(
+                f"MemoryProvenance.confidence must be in [0.0, 1.0], "
+                f"got {self.confidence!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# MemoryEntry — the console-layer memory unit
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MemoryEntry:
+    """
+    A single named memory entry visible in the Gaian Memory Console.
+
+    key      — human-readable identifier (e.g. "preferred_name")
+    value    — the stored value (string)
+    category — semantic grouping (MemoryCategory)
+    tier     — persistence tier (MemoryTier)
+    provenance — who/how the entry was created and with what confidence
+    tags     — free-form list of string tags for filtering
+    id       — auto-generated UUID if not provided
+    """
+    key:        str
+    value:      str
+    category:   MemoryCategory
+    tier:       MemoryTier
+    provenance: MemoryProvenance
+
+    tags:               List[str]          = field(default_factory=list)
+    id:                 str                = field(default_factory=lambda: str(uuid.uuid4()))
+    created_at:         datetime           = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+    updated_at:         Optional[datetime] = None
+    last_used_at:       Optional[datetime] = None
+    last_used_context:  Optional[str]      = None
+    archived:           bool               = False
+
+
+# ---------------------------------------------------------------------------
+# SessionState — tracks a single active session
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SessionState:
+    """
+    Lightweight session state record managed by the MemoryConsole.
+
+    session_id      — unique session identifier
+    gaian_id        — which Gaian instance owns this session
+    """
+    session_id: str
+    gaian_id:   str
+    started_at: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    def promote_to_durable(self, entry: MemoryEntry) -> MemoryEntry:
+        """
+        Return a copy of *entry* promoted to DURABLE tier.
+        Does not mutate the original.
+        """
+        import dataclasses
+        return dataclasses.replace(entry, tier=MemoryTier.DURABLE)
+
+
+# ---------------------------------------------------------------------------
+# MemoryStore — SQLite-backed flat store
 # ---------------------------------------------------------------------------
 
 _CREATE_TABLE = """
@@ -155,7 +281,6 @@ class MemoryStore:
         Store a memory synchronously.
         Returns the rowid (integer > 0).
         """
-        # Resolve enum values to strings
         kind_val  = kind.value  if hasattr(kind,  "value") else str(kind  or "message")
         tier_val  = tier.value  if hasattr(tier,  "value") else str(tier  or "long_term")
         meta_json = json.dumps(metadata or {})
@@ -277,26 +402,25 @@ class MemoryStore:
                 importance  = float(imp),
                 topic_tag   = tag,
                 metadata    = meta,
-                created_at  = int(cat),
+                created_at  = cat,
                 ttl_seconds = ttl,
-                deleted     = bool(deleted),
             )
             results.append(item)
         return results
 
     # ------------------------------------------------------------------
-    # Delete
+    # Delete path
     # ------------------------------------------------------------------
 
     def forget(self, item_id: int) -> None:
-        """Soft-delete a single item by id."""
+        """Soft-delete a single memory item by rowid."""
         self._conn.execute(
             "UPDATE memory_items SET deleted = 1 WHERE id = ?", (item_id,)
         )
         self._conn.commit()
 
     def forget_user(self, user_id: str) -> int:
-        """Soft-delete all (non-deleted) items for a user. Returns count."""
+        """Soft-delete all memories for a user. Returns row count."""
         cur = self._conn.execute(
             "UPDATE memory_items SET deleted = 1 WHERE user_id = ? AND deleted = 0",
             (user_id,),
@@ -305,17 +429,19 @@ class MemoryStore:
         return cur.rowcount
 
     def hard_delete_soft_deleted(self) -> int:
-        """Permanently remove all rows marked deleted=1. Returns count erased."""
-        cur = self._conn.execute("DELETE FROM memory_items WHERE deleted = 1")
+        """Permanently erase all soft-deleted rows. Returns row count."""
+        cur = self._conn.execute(
+            "DELETE FROM memory_items WHERE deleted = 1"
+        )
         self._conn.commit()
         return cur.rowcount
 
     # ------------------------------------------------------------------
-    # Count / stats
+    # Stats
     # ------------------------------------------------------------------
 
     def count(self, *, user_id: Optional[str] = None) -> int:
-        """Return number of non-deleted items (optionally per user)."""
+        """Return count of non-deleted memories, optionally scoped to user."""
         if user_id:
             return self._conn.execute(
                 "SELECT COUNT(*) FROM memory_items WHERE user_id = ? AND deleted = 0",
