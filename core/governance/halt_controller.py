@@ -17,7 +17,6 @@ Design goals (from issue #250):
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
 import json
@@ -52,6 +51,11 @@ class HaltStatus(str, Enum):
     STOPPED = "STOPPED"
 
 
+def _hmac_sign(secret: bytes, payload: bytes) -> str:
+    """Compute an HMAC-SHA256 hex digest. Compatible with Python 3.4+."""
+    return hmac.new(secret, payload, hashlib.sha256).hexdigest()
+
+
 @dataclass
 class HaltRecord:
     """Immutable, HMAC-signed audit record for a single halt event."""
@@ -65,23 +69,22 @@ class HaltRecord:
     completion_time: Optional[float]
     signature: str = field(default="", repr=False)
 
+    def _payload(self) -> bytes:
+        return json.dumps(
+            {
+                "event_id": self.event_id,
+                "timestamp": self.timestamp,
+                "mode": self.mode,
+                "triggered_by": self.triggered_by,
+            },
+            sort_keys=True,
+        ).encode()
+
     def sign(self, secret: bytes) -> None:
-        payload = json.dumps({
-            "event_id": self.event_id,
-            "timestamp": self.timestamp,
-            "mode": self.mode,
-            "triggered_by": self.triggered_by,
-        }, sort_keys=True).encode()
-        self.signature = hmac.new(secret, payload, hashlib.sha256).hexdigest()
+        self.signature = _hmac_sign(secret, self._payload())
 
     def verify(self, secret: bytes) -> bool:
-        payload = json.dumps({
-            "event_id": self.event_id,
-            "timestamp": self.timestamp,
-            "mode": self.mode,
-            "triggered_by": self.triggered_by,
-        }, sort_keys=True).encode()
-        expected = hmac.new(secret, payload, hashlib.sha256).hexdigest()
+        expected = _hmac_sign(secret, self._payload())
         return hmac.compare_digest(self.signature, expected)
 
 
@@ -268,6 +271,10 @@ class HaltController:
             HaltRecord with SLA result attached.
         """
         logger.info("HaltController: %s requested by %s", mode, triggered_by)
+
+        if mode == HaltMode.PAUSE:
+            return self.pause(triggered_by)
+
         record = self._create_record(mode, triggered_by)
 
         with self._sessions_lock:
@@ -284,7 +291,6 @@ class HaltController:
                     )
         elif mode == HaltMode.SOFT_STOP:
             self._status = HaltStatus.SOFT_STOPPING
-            # Signal sessions to stop after their current iteration
             for handle in sessions:
                 try:
                     handle.cancel_fn()
@@ -293,8 +299,6 @@ class HaltController:
                         "Error soft-stopping session %s: %s", handle.session_id, exc
                     )
             self._status = HaltStatus.STOPPED
-        else:
-            return self.pause(triggered_by)
 
         self._finalize_record(record)
         self._deadmans_active.clear()  # Stop the dead-man's watch thread
