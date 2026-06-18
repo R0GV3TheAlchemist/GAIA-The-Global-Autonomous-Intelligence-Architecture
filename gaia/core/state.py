@@ -71,6 +71,7 @@ class GAIAState:
       D6 Unity       → emergent from field combination + mode
       Cross-dim      → entropy, mode
       Biometric      → personal_coherence (Issue #153, C135)
+      Planetary      → planetary_coherence (Schumann / collective field)
     """
 
     # --- D1 Physical ---
@@ -144,6 +145,15 @@ class GAIAState:
     Does not affect _validate() scalar bounds — already in [0.0, 1.0].
     """
 
+    # --- Planetary coherence (Schumann / collective field alignment) ---
+    planetary_coherence: float = 0.0
+    """
+    Planetary / Schumann resonance coherence signal.
+    Sourced from ResonanceFieldEngine or EngineProbes.schumann_coherence.
+    0.0 = no planetary signal / baseline
+    1.0 = maximum planetary coherence
+    """
+
     # --- Metadata ---
     session_id: Optional[str] = None
     gaian_id: Optional[str] = None
@@ -162,7 +172,7 @@ class GAIAState:
         scalar_fields = [
             "energy", "coherence", "stress", "learning_rate",
             "exploration_rate", "conservation_rate", "entropy",
-            "personal_coherence",
+            "personal_coherence", "planetary_coherence",
         ]
         for fname in scalar_fields:
             v = getattr(self, fname)
@@ -328,6 +338,7 @@ class GAIAState:
             "conservation_rate": self.conservation_rate,
             "entropy": self.entropy,
             "personal_coherence": self.personal_coherence,
+            "planetary_coherence": self.planetary_coherence,
             "mode": self.mode.value,
             "session_id": self.session_id,
             "gaian_id": self.gaian_id,
@@ -353,6 +364,7 @@ class GAIAState:
             conservation_rate=data.get("conservation_rate", 0.3),
             entropy=data.get("entropy", 0.2),
             personal_coherence=data.get("personal_coherence", 0.0),
+            planetary_coherence=data.get("planetary_coherence", 0.0),
             mode=mode,
             session_id=data.get("session_id"),
             gaian_id=data.get("gaian_id"),
@@ -367,6 +379,7 @@ class GAIAState:
             f"coherence={self.coherence:.2f}, energy={self.energy:.2f}, "
             f"stress={self.stress:.2f}, entropy={self.entropy:.2f}, "
             f"personal_coherence={self.personal_coherence:.2f}, "
+            f"planetary_coherence={self.planetary_coherence:.2f}, "
             f"flags=[{flags}])"
         )
 
@@ -387,6 +400,7 @@ def default_state(gaian_id: Optional[str] = None,
         conservation_rate=0.3,
         entropy=0.2,
         personal_coherence=0.0,
+        planetary_coherence=0.0,
         mode=GAIAMode.BUILD,
         gaian_id=gaian_id,
         session_id=session_id,
@@ -404,6 +418,7 @@ def depleted_state(gaian_id: Optional[str] = None) -> GAIAState:
         conservation_rate=0.9,
         entropy=0.7,
         personal_coherence=0.0,
+        planetary_coherence=0.0,
         mode=GAIAMode.RECOVER,
         gaian_id=gaian_id,
     )
@@ -420,6 +435,7 @@ def integrate_state(gaian_id: Optional[str] = None) -> GAIAState:
         conservation_rate=0.2,
         entropy=0.05,
         personal_coherence=0.0,
+        planetary_coherence=0.0,
         mode=GAIAMode.INTEGRATE,
         gaian_id=gaian_id,
     )
