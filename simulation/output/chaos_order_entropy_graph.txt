@@ -1,0 +1,49 @@
+GAIA-OS Chaos/Order Runtime — Criticality Score Over Simulation Ticks
+
+  Run 1: CHAOS_GOOD Full Convergence (S0→S1→S2→S0)
+  ------------------------------------------------------------
+  T01 [SUB-CRIT]    ████████████████████                   0.2550  FLOW_OPTIMAL
+  T02 [SUB-CRIT]    ████████████████████                   0.2550  FLOW_OPTIMAL
+  T03 [SUB-CRIT]    ████████████████████                   0.2550  FLOW_OPTIMAL
+  T04 [OPTIMAL]     █████████████████████████████████████  0.4875  CHAOS_SENSING
+  T05 [OPTIMAL]     ████████████████████████████████████   0.4575  CHAOS_SENSING
+  T06 [OPTIMAL]     ████████████████████████████████████   0.4550  TRANSFORMATION
+  T07 [OPTIMAL]     ███████████████████████████████████    0.4400  TRANSFORMATION
+  T08 [OPTIMAL]     █████████████████████████████████████  0.4550  TRANSFORMATION
+  T09 [OPTIMAL]     ████████████████████████████████████   0.4100  TRANSFORMATION
+  T10 [OPTIMAL]     ███████████████████████████████████    0.3950  TRANSFORMATION
+  T11 [SUB-CRIT]    █████████████████████████████████      0.3700  TRANSFORMATION
+  T12 [SUB-CRIT]    ████████████████████████████████       0.3425  TRANSFORMATION
+  T13 [SUB-CRIT]    ████████████████████████████████       0.3350  FLOW_OPTIMAL
+
+  Run 2: STAGNANT Detection and Reform (S0→S3→S0)
+  ------------------------------------------------------------
+  T01 [SUB-CRIT]    █████████████████                      0.2000  FLOW_OPTIMAL
+  T02 [SUB-CRIT]    █████████████████                      0.2000  FLOW_OPTIMAL
+  T03 [SUB-CRIT]    ████████████████                       0.1925  STAGNANT
+  T04 [SUB-CRIT]    ████████████████████                   0.2400  FLOW_OPTIMAL
+
+  Run 3: CHAOS_BAD Injection — Prevention Catches
+  ------------------------------------------------------------
+  T01 [SUB-CRIT]    ████████████████████████████           0.3200  FLOW_OPTIMAL
+  T02 [SUB-CRIT]    ████████████████████████████           0.3200  FLOW_OPTIMAL
+  T03 [SUB-CRIT]    ████████████████████████████           0.3200  FLOW_OPTIMAL
+  T04 [SUB-CRIT]    ████████████████████████████           0.3200  FLOW_OPTIMAL
+  T05 [SUPER-CRIT]  ██████████████████████████████████████ 0.6275  CHAOS_SENSING
+  T06 [SUPER-CRIT]  ██████████████████████████████████████████████ 0.7925  CRITICAL_ALERT
+  T07 [OPTIMAL]     ████████████████████████████████████   0.4750  CHAOS_SENSING
+
+  Run 4: ORDER_BAD_DECAY vs ORDER_GOOD Distinction
+  ------------------------------------------------------------
+  T01 [SUB-CRIT]    ████████████████████████               0.2775  FLOW_OPTIMAL
+  T02 [SUB-CRIT]    █████████████████                      0.1575  STAGNANT
+  T03 [SUB-CRIT]    █████████████████████████              0.2850  FLOW_OPTIMAL
+
+  Run 5: CHAOS_EVIL Quarantine and Recovery (→S5→S4→S1)
+  ------------------------------------------------------------
+  T01 [SUB-CRIT]    ███████████████████████████████        0.3325  FLOW_OPTIMAL
+  T02 [SUB-CRIT]    ███████████████████████████████        0.3325  FLOW_OPTIMAL
+  T03 [SUPER-CRIT]  ██████████████████████████████████████████████████ 1.0000  SOVEREIGN_SHIELD
+  T04 [SUPER-CRIT]  ████████████████████████████████████████████████   0.9400  SOVEREIGN_SHIELD
+  T05 [SUPER-CRIT]  ████████████████████████████████████████████████   0.9200  CRITICAL_ALERT
+  T06 [OPTIMAL]     ████████████████████████████████████   0.4625  CHAOS_SENSING
