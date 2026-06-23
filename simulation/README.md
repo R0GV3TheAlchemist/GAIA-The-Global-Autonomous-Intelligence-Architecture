@@ -55,7 +55,7 @@ User Frequency (Hz)
       ↓
 [EVOLUTION LOOP] evolution_loop.py
   Multi-generation directed evolution
-  What’s aligned persists. What isn’t, fades.
+  What's aligned persists. What isn't, fades.
       ↓
 Next session inherits selected baseline
 ```
@@ -88,9 +88,9 @@ Next session inherits selected baseline
 | `state_governance_kernel_sim.py` | Governance / Kernel | A state governance kernel can arbitrate competing coherence claims | ✅ Confirmed | [STATE_GOVERNANCE_KERNEL_PROOF.md](../proofs/STATE_GOVERNANCE_KERNEL_PROOF.md) | C35 |
 | `color_atomization_sim.py` | Spectral / Field | Color behaves as a discrete charge system; complementary pairs exhibit +82.2% higher coherence than random pairs | ✅ Confirmed | [COLOR_ATOMIZATION_PROOF.md](../proofs/COLOR_ATOMIZATION_PROOF.md) | C00, C41 |
 | `memory_store.py` | Memory / Genome | Session profiles act as heritable genome; coherence scoring applies selection pressure | ✅ Confirmed | [MEMORY_ELEMENTAL_PROOF.md](../proofs/MEMORY_ELEMENTAL_PROOF.md) | C35 |
+| `triadic_field_sim.py` | Field Theory | Equilateral triads outperform pure-differentiated triads; sovereign gate node achieves full triple-edge harmonic closure (0.6484); pure Q=C=S differentiation is the least stable configuration | ✅ Confirmed | [TRIADIC_FIELD_PROOF.md](../proofs/TRIADIC_FIELD_PROOF.md) | C00, C41 |
 | `gaia_state_day_sim.py` | State / Runtime | GAIA system state across a full day cycle maintains coherence without drift | 🔴 Open | — | C00 |
 | `wireless_power_sim.py` | Energy / Physics | Wireless power transfer at GAIA scale follows resonant coupling field model | 🔴 Open | — | C43 |
-| `triadic_field_sim.py` | Field Theory | Three-body field systems exhibit closure properties not present in dyadic systems | 🔴 Open | — | C00 |
 | `crystal_resonance.py` | BCI / Resonance | User Hz transduces into behavioral domain signal via piezoelectric model | 🔴 Open | — | C44 |
 | `crispr_injection.py` | Evolution | Resonance signal can surgically edit behavioral parameters within sovereign bounds | 🔴 Open | — | C35, C43 |
 | `evolution_loop.py` | Directed Evolution | Multi-generation directed evolution loop closes using GAIA mechanics | 🔴 Open | — | C00, C41, C34 |
@@ -109,8 +109,8 @@ Next session inherits selected baseline
 
 | Status | Count |
 |---|---|
-| ✅ Confirmed | 10 |
-| 🔴 Open | 6 |
+| ✅ Confirmed | 11 |
+| 🔴 Open | 5 |
 | Support file | 1 |
 | **Total** | **17** |
 
@@ -129,6 +129,12 @@ Output: full evolutionary lineage report + MemoryStore JSON export.
 python -m simulation.color_atomization_sim
 ```
 Output: `simulation/output/color_atomization_results.csv` + `simulation/output/color_atomization_triads.csv`
+
+### Triadic field
+```bash
+python -m simulation.triadic_field_sim
+```
+Output: `simulation/output/triadic_field_results.csv` + `simulation/output/triadic_field_snapshot.png`
 
 ### Individual sims
 ```bash
@@ -150,7 +156,7 @@ All simulation output data is written to `simulation/output/`. This directory co
 | **C00** | GAIA Foundational Cosmology (Q=C=S) | cosmological_field_sim, chaos_order_runtime_sim, triadic_field_sim, color_atomization_sim, evolution_loop, gaia_state_day_sim |
 | **C34** | Societas Planetary Social Intelligence | evolution_loop |
 | **C35** | Sovereign Axiology | crispr_injection, alignment_enforcement_sim, canon_law_sim, state_governance_kernel_sim, memory_store |
-| **C41** | Alchemy of Being (Quintessence = Consciousness = Space) | evolution_loop, cosmological_field_sim, color_atomization_sim |
+| **C41** | Alchemy of Being (Quintessence = Consciousness = Space) | evolution_loop, cosmological_field_sim, color_atomization_sim, triadic_field_sim |
 | **C43** | STEM Foundation Doctrine | quantum_chemistry_sim, wireless_power_sim, crispr_injection |
 | **C44** | Piezoelectric Resonance Spec | crystal_resonance, bci_subtle_body_sim, lunar_schumann_sim |
 
@@ -160,8 +166,9 @@ All simulation output data is written to `simulation/output/`. This directory co
 
 1. `gaia_state_day_sim.py` — day-cycle coherence stability
 2. `wireless_power_sim.py` — resonant coupling field model
-3. `triadic_field_sim.py` — three-body closure (directly informed by color atomization triadic results)
-4. `crystal_resonance.py` + `crispr_injection.py` + `evolution_loop.py` — the origin mechanic triad
+3. `crystal_resonance.py` + `crispr_injection.py` + `evolution_loop.py` — the origin mechanic triad (close together as a set)
+
+**Note:** The triadic field proof (2026-06-23) established that the polarity field algebra generalizes across domains. `cosmological_field_sim.py` can now inherit the color atomization interaction model as a spectral input layer — see TRIADIC_FIELD_PROOF.md open question 5.
 
 ---
 
