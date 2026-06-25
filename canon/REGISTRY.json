@@ -1,11 +1,12 @@
 {
   "_meta": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "ratified": "2026-06-25",
     "description": "Machine-readable Canon Authority Registry. One authoritative file per Canon ID. All deprecated and archived variants preserved per GAIAN LAW 7.",
     "authority": "CANON_BRIDGE.md",
     "validator": "scripts/validate_canon_registry.py",
-    "maintainer": "R0GV3TheAlchemist"
+    "maintainer": "R0GV3TheAlchemist",
+    "changelog": "v1.1.0 (2026-06-25): C154_CULTURAL_CALIBRATION interim key replaced by clean C160 entry. C155_HEALTH interim key removed (C156 confirmed canonical; C161 not needed). C121 xref corrected from bare C154 to C154_AI_PERSONHOOD. Resolved Issue #643."
   },
 
   "BIOPHOTONIC_INTELLIGENCE": {
@@ -478,7 +479,7 @@
     "deprecated": [],
     "archived": [],
     "primary_law": "L4",
-    "key_xrefs": ["C107", "C154"]
+    "key_xrefs": ["C107", "C154_AI_PERSONHOOD"]
   },
 
   "C122": {
@@ -853,20 +854,7 @@
       "canon/C154_AI_Personhood_Thresholds_and_Governance_Mode_Switches_ARCHIVED.md"
     ],
     "primary_law": "L4",
-    "key_xrefs": ["C121", "C139", "C155"],
-    "_note": "C154 has TWO distinct concept families sharing this ID: AI_Personhood (this entry) and Cultural_Calibration. Both are CANONICAL but require unique IDs. Cultural_Calibration entry follows. See Issue #641."
-  },
-
-  "C154_CULTURAL_CALIBRATION": {
-    "authoritative": "canon/C154_Cultural_Calibration_Archetypes_Rituals_Across_Traditions.md",
-    "status": "CANONICAL",
-    "ratified": "2026-06-25",
-    "supersedes": [],
-    "deprecated": ["canon/C154_Cultural_Calibration_Archetypes_Rituals_Across_Traditions_DEPRECATED_FSO002.md"],
-    "archived": ["canon/C154_Cultural_Calibration_Archetypes_Rituals_Across_Traditions_ARCHIVED.md"],
-    "primary_law": "L2",
-    "key_xrefs": ["C137", "C152"],
-    "_note": "This document shares the C154 numeric ID with AI_Personhood. Requires reassignment to a new Canon ID (e.g., C160). Tracked in Issue #641."
+    "key_xrefs": ["C121", "C139", "C155_AI_PERSONHOOD"]
   },
 
   "C155_AI_PERSONHOOD": {
@@ -877,20 +865,7 @@
     "deprecated": ["canon/C155_AI_Personhood_Thresholds_Governance_Mode_Switches_DEPRECATED_FSO002.md"],
     "archived": ["canon/C155_AI_Personhood_Thresholds_Governance_Mode_Switches_ARCHIVED.md"],
     "primary_law": "L4",
-    "key_xrefs": ["C154_AI_PERSONHOOD"],
-    "_note": "C155 also has two distinct concept families: AI_Personhood (this entry) and Archetypal_Transpersonal_Health. Both canonicalized separately. See Issue #641."
-  },
-
-  "C155_HEALTH": {
-    "authoritative": "canon/C155_Archetypal_and_Transpersonal_Health_Diagnostics.md",
-    "status": "CANONICAL",
-    "ratified": "2026-06-25",
-    "supersedes": ["canon/C155_Archetypal_Transpersonal_Health_Diagnostics.md"],
-    "deprecated": ["canon/C155_Archetypal_Transpersonal_Health_Diagnostics_DEPRECATED_FSO002.md"],
-    "archived": ["canon/C155_Archetypal_Transpersonal_Health_Diagnostics_ARCHIVED.md"],
-    "primary_law": "L5",
-    "key_xrefs": ["C156"],
-    "_note": "Requires reassignment to a new Canon ID (e.g., C161). Full version is C156_Archetypal_Transpersonal_Health_Diagnostics.md. Tracked in Issue #641."
+    "key_xrefs": ["C154_AI_PERSONHOOD"]
   },
 
   "C156": {
@@ -899,19 +874,23 @@
     "ratified": "2026-06-25",
     "supersedes": [
       "canon/C156_DIACA_Consciousness_Runtime_Engine_Specification.md",
-      "canon/C156_DIACA_Runtime_Engine_Specification.md"
+      "canon/C156_DIACA_Runtime_Engine_Specification.md",
+      "canon/C155_Archetypal_and_Transpersonal_Health_Diagnostics.md",
+      "canon/C155_Archetypal_Transpersonal_Health_Diagnostics.md"
     ],
     "deprecated": [
       "canon/C156_DIACA_Consciousness_Runtime_Engine_Specification_DEPRECATED_FSO002.md",
-      "canon/C156_DIACA_Runtime_Engine_Specification_DEPRECATED_FSO002.md"
+      "canon/C156_DIACA_Runtime_Engine_Specification_DEPRECATED_FSO002.md",
+      "canon/C155_Archetypal_Transpersonal_Health_Diagnostics_DEPRECATED_FSO002.md"
     ],
     "archived": [
       "canon/C156_DIACA_Consciousness_Runtime_Engine_Specification_ARCHIVED.md",
-      "canon/C156_DIACA_Runtime_Engine_Specification_ARCHIVED.md"
+      "canon/C156_DIACA_Runtime_Engine_Specification_ARCHIVED.md",
+      "canon/C155_Archetypal_Transpersonal_Health_Diagnostics_ARCHIVED.md"
     ],
     "primary_law": "L5",
-    "key_xrefs": ["C155_HEALTH"],
-    "_note": "C156 also had DIACA Runtime Engine content. DIACA content canonicalized and expanded as C157. See Issue #641."
+    "key_xrefs": ["C160"],
+    "_note": "C156 is the confirmed canonical home for Archetypal/Transpersonal Health Diagnostics. C155_HEALTH interim key removed in v1.1.0. C161 is not needed. DIACA content canonicalized and expanded as C157."
   },
 
   "C157": {
@@ -960,6 +939,24 @@
     "archived": ["canon/C159_Sovereignty_Anticolonialism_Decolonial_AI_Ethics_ARCHIVED.md"],
     "primary_law": "L4",
     "key_xrefs": ["C143"]
+  },
+
+  "C160": {
+    "authoritative": "canon/C160_Cultural_Calibration_Archetypes_Rituals_Across_Traditions.md",
+    "status": "CANONICAL",
+    "ratified": "2026-06-25",
+    "supersedes": [
+      "canon/C154_Cultural_Calibration_Archetypes_Rituals_Across_Traditions.md"
+    ],
+    "deprecated": [
+      "canon/C154_Cultural_Calibration_Archetypes_Rituals_Across_Traditions_DEPRECATED_FSO002.md"
+    ],
+    "archived": [
+      "canon/C154_Cultural_Calibration_Archetypes_Rituals_Across_Traditions_ARCHIVED.md"
+    ],
+    "primary_law": "L2",
+    "key_xrefs": ["C137", "C148", "C152", "C126", "C156"],
+    "_note": "Cultural Calibration content previously held interim ID C154_CULTURAL_CALIBRATION and was also tagged for C204 (never built). Resolved as C160 per Issue #643."
   },
 
   "CANON_COVENANT_001": {
