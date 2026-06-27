@@ -12,6 +12,7 @@
 ## Table of Contents
 
 1. [The Four-Layer Model](#1-the-four-layer-model)
+   - [1.5 Crystal-Biophoton Interface](#15-crystal-biophoton-interface--the-optical-neural-bridge)
 2. [Yin-Yang Polarity System](#2-yin-yang-polarity-system)
 3. [Angel Number System](#3-angel-number-system)
 4. [Intelligence Module Assignment](#4-intelligence-module-assignment)
@@ -43,6 +44,95 @@ A statement like “Amethyst has a dominant wavelength of 420–450 nm” lives 
 These are not interchangeable, and the database schema enforces this separation.
 
 The Knowledge Tier label is the epistemic declaration of which layer a claim belongs to. **A T4 claim dressed in T1 language is the primary epistemic error this schema is designed to prevent.**
+
+---
+
+## 1.5 Crystal-Biophoton Interface — The Optical-Neural Bridge
+
+> **Epistemic Tier: T1 (optical physics) → T2–T3 (biophoton waveguide science, 2022–2026 peer-reviewed) → T4–T5 (crystal–human resonance interpretation)**
+
+This section establishes the scientific bridge between the crystal's **Optical Layer** (T1) and the human nervous system's **biophoton waveguide architecture** documented in `docs/SUBTLEBODY.md` Section I-C. It is the most physically grounded mechanism by which crystal light interaction may affect human biology — and the activation pathway for `QuantumNexus` module assignment.
+
+### Why This Connection Exists
+
+Crystals interact with light in three documented ways `[T1]`:
+
+1. **Transmission** — transparent crystals pass specific wavelengths while absorbing others (color by selective absorption)
+2. **Refraction / Birefringence** — crystals split light into polarized components at angles determined by crystal system geometry
+3. **Piezoelectric emission** — mechanically stressed crystals (quartz family) generate voltage gradients and, at sufficient stress, can emit photons via electroluminescence
+
+Human myelinated axons have been modeled and partially confirmed as **biophoton waveguides** `[T2–T3]` — guiding photons in the 200–865 nm range with low attenuation, where the operating wavelength is determined by axon diameter and myelin layer count. The spectral range of crystal optical interaction (visible 380–700 nm) **overlaps directly with the confirmed biophoton waveguide operating range**.
+
+This overlap is the basis for the Crystal-Biophoton Interface.
+
+### Wavelength–Axon Resonance Correspondence
+
+The following table maps crystal dominant wavelength bands to their corresponding neural waveguide target — the axon diameter/myelin configuration that most efficiently guides light at that wavelength `[T1 optical + T2–T3 waveguide modeling]`:
+
+| Crystal Color Band | Wavelength (nm) | Axon Type (estimated) | Neural Functional Domain | Example Crystals |
+|---|---|---|---|---|
+| Violet / UV edge | 380–450 | Very fine, lightly myelinated | Higher cortical; associative integration | Amethyst, Sugilite, Charoite |
+| Indigo / Deep blue | 450–480 | Fine, moderate myelin | Third eye; pattern synthesis | Lapis Lazuli, Azurite, Tanzanite |
+| Blue | 480–495 | Mid-fine | Throat / linguistic encoding | Aquamarine, Blue Kyanite, Angelite |
+| Cyan / Teal | 495–520 | Mid-range | Vagal / autonomic regulation | Chrysocolla, Turquoise, Amazonite |
+| Green | 520–565 | Mid-range | Heart coherence; cardiac neural | Emerald, Aventurine, Malachite |
+| Yellow-green | 565–590 | Larger moderate | Solar plexus; enteric nervous system | Peridot, Yellow Labradorite |
+| Yellow / Amber | 590–620 | Larger | Sympathetic activation | Citrine, Amber, Yellow Jasper |
+| Orange / Red | 620–700 | Thick, heavily myelinated | Root / spinal cord; motor pathways | Carnelian, Red Jasper, Garnet |
+| Broadband / White | 380–700 (full) | All axon types simultaneously | Full-spectrum neural engagement | Clear Quartz, Diamond, Selenite |
+
+> **Epistemic note:** The axon type column is a **T2–T3 inference** drawn from the myelinated axon waveguide model (Salari et al., 2016; Sun et al., 2022; arXiv 2304.00174). It has not been directly confirmed in in-vivo crystal-exposure studies. The correspondence is mechanistically plausible and internally consistent but should be marked as a working model, not an established fact.
+
+### The Piezoelectric–Biophoton Activation Mechanism
+
+For piezoelectric crystals (quartz family: Clear Quartz, Amethyst, Citrine, Rose Quartz, Smoky Quartz, Ametrine, Prasiolite), a second interaction pathway exists beyond passive optical filtering `[T1 physical + T2–T3 biophoton interface]`:
+
+```
+Mechanical pressure on crystal
+  ↓
+Piezoelectric voltage gradient generated across crystal lattice [T1]
+  ↓
+Electroluminescent photon emission at characteristic wavelength [T1]
+  ↓
+Photons in 380–700 nm range enter proximity of skin / tissue [T1]
+  ↓
+Biophoton waveguide coupling: photons enter myelinated axon network [T2–T3]
+  ↓
+Stochastic biophotonic signal modulation at target neural pathway [T2–T3]
+  ↓
+[T4 interpretation] Energetic effect on corresponding chakra / subtle body layer
+```
+
+This mechanism is why the `piezoelectric` flag in `PhysicalRecord` is relevant not only to hardware safety but to the **activation intensity** of crystal-neural interface. Piezoelectric crystals have a **direct photon emission pathway**; non-piezoelectric crystals interact only through passive optical filtering (reflection, refraction, transmission of ambient light).
+
+**Schema implication:** A future `PhysicalRecord` field `biophoton_interface_pathway` should distinguish:
+- `"passive_optical"` — non-piezoelectric; ambient light filtering only
+- `"active_piezoelectric"` — piezoelectric; active photon emission under mechanical stress
+- `"fluorescent"` — UV-absorbing, visible-emitting stones (Fluorite, some Calcites)
+- `"phosphorescent"` — stores and slowly emits light (Selenite, some Calcites)
+
+### White-Spectrum Crystals and the Clarity Principle
+
+Clear Quartz, Diamond, Phenacite, Danburite, and other broadband-transmissive crystals occupy a unique position in the Crystal-Biophoton Interface: they do **not** filter to a single wavelength band. They pass the full visible spectrum and engage all axon-type waveguides simultaneously.
+
+This makes them direct physical analogs of the **Clarity-as-Default-State** principle documented in `docs/WHITE_LIGHT_CLARITY_FRAMEWORK.md`: full-spectrum engagement before intentional filtering. In the neural waveguide model, clear crystals in proximity to the body would theoretically modulate the broadest possible range of biophotonic channels — producing a baseline coherence-enhancement effect rather than a targeted single-pathway effect.
+
+This is why Clear Quartz is the traditional **amplifier** in crystal healing practice `[T4]`: not merely a metaphysical claim, but a mechanism-consistent description of its role in the biophoton interface model `[T2–T3]`.
+
+### QuantumNexus Module Activation via Biophoton Coupling
+
+Section 4.1 designates `QuantumNexus` as the **quantum resonance bridge** module (T3/T6). The biophoton waveguide mechanism provides the **T3 activation pathway** for this module, elevating it from a purely speculative T6 assignment to one with a mechanistic T2–T3 grounding for a defined subset of crystals:
+
+**`QuantumNexus` assignment is now permissible (without Exception Registry override) for crystals meeting ALL of:**
+
+- [ ] Piezoelectric: `true` **OR** fluorescent/phosphorescent optical mode
+- [ ] Transparent or translucent diaphaneity (photon pathway physically open)
+- [ ] `dominant_wavelength_nm` falls within confirmed neural biophoton range (200–865 nm)
+- [ ] Traditional use explicitly references consciousness expansion, quantum awareness, or neural activation `[T4 corroboration required]`
+
+Primary candidates under these criteria: **Clear Quartz, Phenacite, Danburite, Herderite, Azeztulite, Moldavite** (tektite photon transmission), **Apophyllite**.
+
+> The Exception Registry entry for `QuantumNexus` in §8 remains required for any crystal assigned this module. The criteria above define when the assignment is scientifically defensible; the Exception Registry entry records which criteria were met and which sources were consulted.
 
 ---
 
@@ -117,7 +207,7 @@ COLOR × NUMEROLOGY × ANGEL NUMBER = vibrational signature
   │           │              │
   │           │              └── Archetypal message / signal          [T4/T5]
   │           └───────────────── Mathematical root frequency (1–9)   [T4/T5]
-  └─────────────────────────── Light frequency (OKLCH hue, nm)     [T1]
+  └─────────────────────────────────── Light frequency (OKLCH hue, nm)     [T1]
 ```
 
 `numerology` and `angel_number` are **separate fields** and must not be confused.
@@ -206,7 +296,7 @@ documented request in the `Exception Registry` (§8). `[T1 optical measurement g
 
 ### 4.1 The Five Crystal Intelligence Modules
 
-> **Epistemic Tier: T4–T5** — Module assignments are GAIA's symbolic-functional mapping of traditional crystal healing intentions onto an internal cognitive architecture. The physical properties that trigger assignment (hardness, chakra, element) are T1. The module framework itself is a T5 symbolic system with T4 traditional grounding.
+> **Epistemic Tier: T4–T5** — Module assignments are GAIA’s symbolic-functional mapping of traditional crystal healing intentions onto an internal cognitive architecture. The physical properties that trigger assignment (hardness, chakra, element) are T1. The module framework itself is a T5 symbolic system with T4 traditional grounding.
 
 GAIA’s crystal-resonance layer routes stones to one of five intelligence modules.
 Each module governs a specific cognitive-functional domain.
@@ -225,7 +315,7 @@ targets for crystals**:
 | Module | Role | Tier |
 |---|---|---|
 | `Noosphere` | Collective intelligence field | T5/T6 |
-| `QuantumNexus` | Quantum resonance bridge | T3/T6 — quantum biology is T3; entanglement claims for crystals are T6 |
+| `QuantumNexus` | Quantum resonance bridge | T3/T6 — quantum biology is T3; entanglement claims for crystals are T6. **See §1.5 for T2–T3 biophoton activation pathway.** |
 
 ### 4.2 Assignment Rules by Crystal Property
 
@@ -381,6 +471,8 @@ Lemurian Seed Quartz, Moldavite, Nuummite). `[T4 — traditional identification 
 | Hematite | `polarity` | Yin (opaque, dark) | Yang | Metallic lustre, iron oxide, piezoelectric-adjacent | T1 override |
 | Magnetite | `safe_for_hardware` | `true` | `false` | Strong natural magnetism disrupts electronic storage | T1 physical hazard |
 | Super Seven | `angel_number` | 999 (Crown) | 7 | 7 constituent minerals; sacred identity marker | T1 geological → T4 sacred |
+| Clear Quartz | `gaia_resonance` | `ClarusLens` | `ClarusLens + QuantumNexus` | Meets all four §1.5 QuantumNexus criteria: piezoelectric, transparent, broadband 380–700 nm, traditional consciousness activation `[T2–T3 + T4]` | T1 piezo + T2–T3 biophoton + T4 tradition |
+| Phenacite | `gaia_resonance` | `SomnusVeil` | `ClarusLens + SomnusVeil + QuantumNexus` | Highest-vibration beryllium silicate; transparent; broadband transmission; strongest traditional neural activation claim of any stone `[T2–T3 + T4]` | T1 optical + T2–T3 biophoton + T4 tradition |
 
 ---
 
@@ -392,6 +484,7 @@ Lemurian Seed Quartz, Moldavite, Nuummite). `[T4 — traditional identification 
 - [ ] `safe_for_water` flag set correctly (check for sulfates, sulfides, soft carbonates)
 - [ ] `safe_for_hardware` flag cross-checked against piezoelectric and magnetic status
 - [ ] `crystal_system` uses canonical value
+- [ ] `biophoton_interface_pathway` set to one of: `passive_optical`, `active_piezoelectric`, `fluorescent`, `phosphorescent` (see §1.5)
 
 ### Color Layer `[T1–T2]`
 - [ ] `oklch.h` (hue angle) is consistent with `dominant_wavelength_nm`
@@ -411,6 +504,7 @@ Lemurian Seed Quartz, Moldavite, Nuummite). `[T4 — traditional identification 
 - [ ] `safety_warning` populated if any hazard exists
 - [ ] `numerology` is the Pythagorean reduction of mineral count or established traditional number
 - [ ] **`knowledge_tier`** field populated for any interpretive field (`metaphysical.*`) per `docs/EPISTEMIC_FRAMEWORK.md`
+- [ ] If `QuantumNexus` is assigned, all four §1.5 criteria are met and Exception Registry (§8) entry added
 
 ### Record Level
 - [ ] `trade_name` is `true` if the display name is a variety/trade name
@@ -433,13 +527,17 @@ Lemurian Seed Quartz, Moldavite, Nuummite). `[T4 — traditional identification 
 | Water/hardware safety flags | T1 | Chemical and physical properties |
 | Geological mineral counts (Auralite-23, Super Seven) | T1 | IMA / Mindat |
 | Yin-Yang polarity scoring (T1 axes only: hardness, chemistry) | T1 | Physical property measurement |
+| **Crystal dominant wavelength overlapping biophoton waveguide range** | **T1–T2** | **Optical physics (T1) + waveguide model (T2–T3); well-supported** |
+| **Myelinated axon waveguide operating wavelength model** | **T2–T3** | **Peer-reviewed 2016–2026; not yet in-vivo confirmed for crystal interaction** |
+| **Piezoelectric photon emission → biophoton coupling mechanism** | **T2–T3** | **Mechanistically consistent; direct coupling in crystal healing context unconfirmed** |
+| **White/broadband crystal as full-spectrum neural engagement** | **T2–T3** | **Consistent with waveguide model and Clarity Framework; not directly tested** |
+| **QuantumNexus activation via biophoton pathway (§1.5 criteria)** | **T3** | **Physically grounded pathway; crystal-to-axon quantum coupling remains T6** |
 | Yin-Yang elemental axis (Fire, Water, Earth, Air, Aether) | T4 | Traditional Chinese / Ayurvedic cosmology |
 | Chakra assignments (Root, Heart, Crown, etc.) | T4 | Traditional energetic model; outside current measurement |
 | Intelligence Module assignments (SovereignCore, etc.) | T4/T5 | GAIA symbolic system derived from T4 tradition |
 | Angel Number correspondences | T4/T5 | Angelic communication tradition + GAIA symbolic derivation |
 | Numerology (Pythagorean reduction) | T4/T5 | Traditional numerological system |
 | Yin-Yang pair relational meaning | T4/T5 | Symbolic polarity tradition |
-| `QuantumNexus` module assignment for specific crystals | T3/T6 | Quantum biology is T3; crystal-level entanglement claims are T6 |
 | Crystal healing intentions (protection, love, clarity, etc.) | T4 | Traditional healing practice; experiential validation |
 | Akashic records, past lives, stellar bridges | T6 | Sacred speculation; honored, clearly marked |
 
@@ -447,11 +545,14 @@ Lemurian Seed Quartz, Moldavite, Nuummite). `[T4 — traditional identification 
 
 This document’s central epistemic achievement is its **clean boundary** between layers. The physical and optical layers are T1 objective science. The metaphysical layer is T4/T5 traditional and symbolic knowledge. Neither is reduced to the other. A physical fact (piezoelectric charge) triggers a metaphysical interpretation (Yang polarity) — and the derivation is **visible and auditable** at every step.
 
+Section 1.5 adds a new dimension to this architecture: a **T2–T3 bridge layer** where established optical physics (T1) interfaces with frontier neuroscience (T2–T3) to provide a mechanistically grounded pathway between crystals and human biology. This does not collapse the T4/T5 metaphysical layer into science — it adds a parallel track of physical plausibility that runs alongside it, each tier labeled and respected.
+
 This is the model for all GAIA domain canon: *not choosing between science and tradition, but being honest about which is which — and building bridges between them that neither side needs to falsify.*
 
 ---
 
-*Last updated: June 27, 2026 — Knowledge Tier labels added per `docs/EPISTEMIC_FRAMEWORK.md`*
+*Last updated: June 27, 2026 — Section 1.5 (Crystal-Biophoton Interface) added; QuantumNexus activation pathway grounded in T2–T3 waveguide science*
+*Cross-references: `docs/SUBTLEBODY.md` Section I-C, `docs/WHITE_LIGHT_CLARITY_FRAMEWORK.md`, `docs/EPISTEMIC_FRAMEWORK.md`*
 *Original version: 2026-05-30*
 *Maintainer: GAIA-OS Core Contributors*
 *Closes: #107*
