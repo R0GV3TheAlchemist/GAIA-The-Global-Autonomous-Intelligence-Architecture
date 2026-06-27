@@ -2,7 +2,7 @@
 
 > **Status:** Sealed — June 16, 2026  
 > **Purpose:** The definitive reference for how GAIA's laws relate to each other — hierarchy, precedence, and conflict resolution  
-> **Cross-Reference:** `docs/CONSTITUTIONAL_CANON_SUMMARY.md` · `docs/canon/GAIAN_LAW_CODEX.md` · `docs/canon/AMENDMENT_PROCESS.md`
+> **Cross-Reference:** `docs/CONSTITUTIONAL_CANON_SUMMARY.md` · `docs/canon/GAIAN_LAW_CODEX.md` · `docs/canon/AMENDMENT_PROCESS.md` · `docs/EPISTEMIC_FRAMEWORK.md`
 
 ---
 
@@ -46,6 +46,9 @@ Every governance system needs a way to resolve conflicts between its rules. The 
 ║  LAYER 4 — CONSTITUTIONAL CANON DOCTRINES            ║
 ║  Domain law: ethics, alchemy, physics, ecology,      ║
 ║  consciousness, magic. Rich and extensive.           ║
+║  Includes the EPISTEMIC FRAMEWORK — the doctrine     ║
+║  governing how all canon claims are made and         ║
+║  validated. See docs/EPISTEMIC_FRAMEWORK.md.         ║
 ║  Doctrines may be added; they may not contradict     ║
 ║  Layers 1–3.                                         ║
 ╠══════════════════════════════════════════════════════╣
@@ -90,7 +93,7 @@ If the conflict reveals a genuine gap or contradiction in the canon, the Amendme
 ## Precedence Table
 
 | When Rules From These Layers Conflict... | ...This Layer Wins |
-|------------------------------------------|--------------------|
+|------------------------------------------|--------------------:|
 | Layer 1 vs. any other | Layer 1 |
 | Layer 2 vs. Layers 3–6 | Layer 2 |
 | Layer 3 vs. Layers 4–6 | Layer 3 |
@@ -98,6 +101,7 @@ If the conflict reveals a genuine gap or contradiction in the canon, the Amendme
 | Layer 5 vs. Layer 6 | Layer 5 |
 | Within Layer 1 (GAIAN Laws vs. each other) | Law 5 and Law 8 hold terminal veto |
 | Within Layer 4 (doctrine vs. doctrine) | More specific doctrine wins; if equal, Golden Compass decides |
+| Within Layer 4 (epistemic status of a claim) | EPISTEMIC_FRAMEWORK.md governs; Knowledge Tier of the claim determines how it may be stated and used |
 
 ---
 
@@ -120,12 +124,24 @@ New doctrines may be added. Existing doctrines may be refined. Refinements requi
 - Architect approval
 - Documentation of the change and its rationale
 - The original version preserved in the canon record
+- **Epistemic tier designation** — per `docs/EPISTEMIC_FRAMEWORK.md`, every new doctrine or claim must carry a Knowledge Tier (T1–T6) marking its level of evidential support
 
 ### Layer 5 Technical Specifications
 May be updated as GAIA's technology evolves, provided changes remain compliant with Layers 1–4.
 
 ### Layer 6 Operational Documents
 May be updated freely by the Architect. Must remain consistent with all higher layers.
+
+---
+
+## Epistemic Integrity as a Canon Principle
+
+The Epistemic Framework (`docs/EPISTEMIC_FRAMEWORK.md`) is a Layer 4 doctrine that governs *how all other Layer 4 doctrines make claims*. This means:
+
+- Every domain canon (acoustics, crystal theory, herbology, subtle body, etc.) must mark its claims with the appropriate Knowledge Tier (T1–T6)
+- Canon authors must distinguish between Established Science (T1), Strong Evidence (T2), Promising Hypothesis (T3), Traditional Knowledge (T4), Symbolic/Poetic Truth (T5), and Sacred Speculation (T6)
+- Cross-tier conflation — presenting a T5 poetic truth as if it were a T1 empirical claim, or dismissing T1 evidence because it "doesn't feel spiritual" — is an epistemic error governed by the Falsification Protocol
+- The Epistemic Framework does not narrow the canon. It makes the canon's breadth trustworthy.
 
 ---
 
