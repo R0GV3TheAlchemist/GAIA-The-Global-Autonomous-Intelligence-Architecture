@@ -12,16 +12,20 @@
  *   pollMs           — live-refresh interval (default: none)
  *   onArchetypeClick — called with archetype name on bar click (e.g. open detail drawer)
  *
+ * When onArchetypeClick is omitted the panel manages its own ArchetypeDrawer
+ *   internally so it works standalone with zero wiring in the parent.
+ *
  * Canon: Shadow Engine — 7-Archetype Integration Layer
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useShadow } from '../../hooks/useShadow';
 import {
   type ShadowArchetypeName,
   ALL_SHADOW_ARCHETYPES,
   ACTIVATION_THRESHOLD,
 } from '../../shared/shadowTypes';
+import { ArchetypeDrawer } from './ArchetypeDrawer';
 import './shadow-panel.css';
 
 // ── Archetype metadata ─────────────────────────────────────────────────────
@@ -37,13 +41,13 @@ const ARCHETYPE_GLYPHS: Record<ShadowArchetypeName, string> = {
 };
 
 const ARCHETYPE_HUES: Record<ShadowArchetypeName, string> = {
-  Orphan:    '#7c9ef5',   // soft indigo
-  Warrior:   '#f55c5c',   // vermillion
-  Wanderer:  '#f5c842',   // amber
-  Caregiver: '#5cf592',   // viridian
-  Seeker:    '#42e8d5',   // teal
-  Destroyer: '#e07b39',   // terra
-  Creator:   '#b28aff',   // amethyst
+  Orphan:    '#7c9ef5',
+  Warrior:   '#f55c5c',
+  Wanderer:  '#f5c842',
+  Caregiver: '#5cf592',
+  Seeker:    '#42e8d5',
+  Destroyer: '#e07b39',
+  Creator:   '#b28aff',
 };
 
 const INTENSITY_LABELS: Record<string, string> = {
@@ -65,10 +69,10 @@ const STAGE_DESCRIPTIONS: Record<string, string> = {
 // ── Sub-components ───────────────────────────────────────────────────────
 
 interface ArchetypeBarProps {
-  name:      ShadowArchetypeName;
-  score:     number;
+  name:       ShadowArchetypeName;
+  score:      number;
   isDominant: boolean;
-  onClick?:  (name: ShadowArchetypeName) => void;
+  onClick?:   (name: ShadowArchetypeName) => void;
 }
 
 function ArchetypeBar({ name, score, isDominant, onClick }: ArchetypeBarProps) {
@@ -80,7 +84,7 @@ function ArchetypeBar({ name, score, isDominant, onClick }: ArchetypeBarProps) {
     <li
       className={`shadow-panel__archetype-row${
         isDominant ? ' shadow-panel__archetype-row--dominant' : ''
-      }`}
+      }${onClick ? ' shadow-panel__archetype-row--clickable' : ''}`}
       style={{ '--sp-hue': color } as React.CSSProperties}
       onClick={() => onClick?.(name)}
       role={onClick ? 'button' : undefined}
@@ -91,7 +95,7 @@ function ArchetypeBar({ name, score, isDominant, onClick }: ArchetypeBarProps) {
           onClick(name);
         }
       }}
-      aria-label={`${name}: ${pct}%${isDominant ? ' — dominant archetype' : ''}`}
+      aria-label={`${name}: ${pct}%${isDominant ? ' — dominant archetype' : ''}${onClick ? '. Press to view details.' : ''}`}
     >
       <span className="shadow-panel__archetype-glyph" aria-hidden>{glyph}</span>
       <span className="shadow-panel__archetype-name">{name}</span>
@@ -105,6 +109,9 @@ function ArchetypeBar({ name, score, isDominant, onClick }: ArchetypeBarProps) {
         )}
       </div>
       <span className="shadow-panel__archetype-score">{pct}%</span>
+      {onClick && (
+        <span className="shadow-panel__archetype-chevron" aria-hidden>›</span>
+      )}
     </li>
   );
 }
@@ -154,37 +161,55 @@ export function ShadowPanel({
 }: ShadowPanelProps) {
   const shadow = useShadow(principalId, { pollMs });
 
+  // Internal drawer state — used when no onArchetypeClick prop is provided.
+  // When onArchetypeClick IS provided, the parent owns the drawer.
+  const [internalSelected, setInternalSelected] = useState<ShadowArchetypeName | null>(null);
+  const isExternallyControlled = Boolean(onArchetypeClick);
+
+  const handleBarClick = useCallback(
+    (name: ShadowArchetypeName) => {
+      if (isExternallyControlled) {
+        onArchetypeClick!(name);
+      } else {
+        setInternalSelected(name);
+      }
+    },
+    [isExternallyControlled, onArchetypeClick],
+  );
+
   // ── Loading ────────────────────────────────────────────────────────
 
   if (shadow.loading && !shadow.record) return <SkeletonLoader />;
 
-  // ── Empty state (no evaluation yet) ──────────────────────────────────
+  // ── Empty state ───────────────────────────────────────────────────
 
   if (!shadow.record && !shadow.error) {
     return (
-      <div className="shadow-panel shadow-panel--empty">
-        <div className="shadow-panel__empty-glyph" aria-hidden>◯</div>
-        <h3 className="shadow-panel__empty-title">Shadow not yet mapped</h3>
-        <p className="shadow-panel__empty-body">
-          Run an evaluation to reveal the archetype pattern underlying your current state.
-        </p>
-        <button
-          className="shadow-panel__evaluate-btn"
-          onClick={() => shadow.evaluate()}
-          disabled={shadow.loading}
-        >
-          {shadow.loading ? 'Evaluating…' : 'Begin Shadow Evaluation'}
-        </button>
-      </div>
+      <>
+        <div className="shadow-panel shadow-panel--empty">
+          <div className="shadow-panel__empty-glyph" aria-hidden>◯</div>
+          <h3 className="shadow-panel__empty-title">Shadow not yet mapped</h3>
+          <p className="shadow-panel__empty-body">
+            Run an evaluation to reveal the archetype pattern underlying your current state.
+          </p>
+          <button
+            className="shadow-panel__evaluate-btn"
+            onClick={() => shadow.evaluate()}
+            disabled={shadow.loading}
+          >
+            {shadow.loading ? 'Evaluating…' : 'Begin Shadow Evaluation'}
+          </button>
+        </div>
+        {!isExternallyControlled && (
+          <ArchetypeDrawer
+            archetype={internalSelected}
+            record={shadow.record ?? null}
+            onClose={() => setInternalSelected(null)}
+          />
+        )}
+      </>
     );
   }
-
-  // ── Error state ─────────────────────────────────────────────────────────
-
-  const handleBarClick = useCallback(
-    (name: ShadowArchetypeName) => onArchetypeClick?.(name),
-    [onArchetypeClick],
-  );
 
   const {
     record,
@@ -201,170 +226,179 @@ export function ShadowPanel({
   const dominantColor = dominantArchetype ? ARCHETYPE_HUES[dominantArchetype] : 'var(--color-text-faint)';
 
   return (
-    <section
-      className="shadow-panel"
-      data-level={intensityLevel}
-      data-activated={isActivated ? 'true' : 'false'}
-      style={{ '--sp-dominant': dominantColor } as React.CSSProperties}
-      aria-label="Shadow Archetype Panel"
-    >
+    <>
+      <section
+        className="shadow-panel"
+        data-level={intensityLevel}
+        data-activated={isActivated ? 'true' : 'false'}
+        style={{ '--sp-dominant': dominantColor } as React.CSSProperties}
+        aria-label="Shadow Archetype Panel"
+      >
 
-      {/* ── Error banner ── */}
-      {error && (
-        <div className="shadow-panel__error-banner" role="alert">
-          <span>⚠ {error}</span>
-          <button
-            className="shadow-panel__error-dismiss"
-            onClick={shadow.clearError}
-            aria-label="Dismiss error"
-          >
-            ×
-          </button>
-        </div>
-      )}
+        {/* ── Error banner ── */}
+        {error && (
+          <div className="shadow-panel__error-banner" role="alert">
+            <span>⚠ {error}</span>
+            <button
+              className="shadow-panel__error-dismiss"
+              onClick={shadow.clearError}
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
-      {/* ── Header ── */}
-      <header className="shadow-panel__header">
-        <div className="shadow-panel__identity">
-          <span
-            className="shadow-panel__dominant-glyph"
-            style={{ color: dominantColor }}
-            aria-hidden
-          >
-            {dominantArchetype ? ARCHETYPE_GLYPHS[dominantArchetype] : '◯'}
-          </span>
-          <div className="shadow-panel__title-group">
-            <h3 className="shadow-panel__title">
-              {dominantArchetype ?? 'No Dominant Archetype'}
-            </h3>
-            <span className="shadow-panel__subtitle" aria-label="Principal ID">
-              {principalId}
+        {/* ── Header ── */}
+        <header className="shadow-panel__header">
+          <div className="shadow-panel__identity">
+            <span
+              className="shadow-panel__dominant-glyph"
+              style={{ color: dominantColor }}
+              aria-hidden
+            >
+              {dominantArchetype ? ARCHETYPE_GLYPHS[dominantArchetype] : '◯'}
             </span>
+            <div className="shadow-panel__title-group">
+              <h3 className="shadow-panel__title">
+                {dominantArchetype ?? 'No Dominant Archetype'}
+              </h3>
+              <span className="shadow-panel__subtitle" aria-label="Principal ID">
+                {principalId}
+              </span>
+            </div>
+          </div>
+
+          <div className="shadow-panel__badges">
+            <span
+              className={`shadow-panel__intensity-badge shadow-panel__intensity-badge--${intensityLevel}`}
+              title={`Shadow intensity: ${intensityPct}%`}
+            >
+              {INTENSITY_LABELS[intensityLevel]}
+            </span>
+            {isActivated && (
+              <span className="shadow-panel__activated-badge" title="Activation threshold exceeded">
+                ▲ Active
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* ── Intensity track ── */}
+        <div className="shadow-panel__intensity-track-row">
+          <span className="shadow-panel__track-label">Intensity</span>
+          <div
+            className="shadow-panel__intensity-track"
+            role="progressbar"
+            aria-label="Shadow intensity"
+            aria-valuenow={intensityPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="shadow-panel__intensity-fill"
+              style={{ '--sp-pct': `${intensityPct}%` } as React.CSSProperties}
+            />
+            <span
+              className="shadow-panel__threshold-marker"
+              style={{ left: `${ACTIVATION_THRESHOLD * 100}%` }}
+              title="Activation threshold (35%)"
+              aria-hidden
+            />
+          </div>
+          <span className="shadow-panel__track-value">{intensityPct}%</span>
+        </div>
+
+        {/* ── Archetype score bars ── */}
+        <ul className="shadow-panel__archetype-list" aria-label="Archetype scores">
+          {ALL_SHADOW_ARCHETYPES.map((name) => (
+            <ArchetypeBar
+              key={name}
+              name={name}
+              score={scores?.[name] ?? 0}
+              isDominant={name === dominantArchetype}
+              onClick={handleBarClick}
+            />
+          ))}
+        </ul>
+
+        {/* ── Integration progress ── */}
+        <div className="shadow-panel__integration">
+          <div className="shadow-panel__integration-header">
+            <span className="shadow-panel__track-label">Integration</span>
+            <span className="shadow-panel__integration-stage">
+              {STAGE_DESCRIPTIONS[integrationStage]}
+            </span>
+            <span className="shadow-panel__track-value">{integrationPct}%</span>
+          </div>
+          <div
+            className="shadow-panel__integration-track"
+            role="progressbar"
+            aria-label="Integration progress"
+            aria-valuenow={integrationPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="shadow-panel__integration-fill"
+              style={{ '--sp-pct': `${integrationPct}%` } as React.CSSProperties}
+            />
+            {[20, 45, 70, 90].map((pct) => (
+              <span
+                key={pct}
+                className="shadow-panel__milestone-marker"
+                style={{ left: `${pct}%` }}
+                aria-hidden
+              />
+            ))}
           </div>
         </div>
 
-        <div className="shadow-panel__badges">
-          <span
-            className={`shadow-panel__intensity-badge shadow-panel__intensity-badge--${intensityLevel}`}
-            title={`Shadow intensity: ${intensityPct}%`}
+        {/* ── Metadata row ── */}
+        {record && (
+          <div className="shadow-panel__meta">
+            <span className="shadow-panel__meta-item">
+              {record.days_active} day{record.days_active !== 1 ? 's' : ''} active
+            </span>
+            {record.recorded_at && (
+              <span className="shadow-panel__meta-item shadow-panel__meta-item--right">
+                Updated {new Date(record.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* ── Actions ── */}
+        <div className="shadow-panel__actions">
+          <button
+            className="shadow-panel__reflect-btn"
+            onClick={() => shadow.reflect()}
+            disabled={shadow.loading || !record}
+            title="Record a reflection session (+5% integration)"
           >
-            {INTENSITY_LABELS[intensityLevel]}
-          </span>
-          {isActivated && (
-            <span className="shadow-panel__activated-badge" title="Activation threshold exceeded">
-              ▲ Active
-            </span>
-          )}
+            {shadow.loading ? '⋯' : '◎  Reflect'}
+          </button>
+          <button
+            className="shadow-panel__evaluate-btn shadow-panel__evaluate-btn--secondary"
+            onClick={() => shadow.evaluate()}
+            disabled={shadow.loading}
+            title="Re-run full archetype evaluation"
+          >
+            {shadow.loading ? '⋯' : '⟳  Evaluate'}
+          </button>
         </div>
-      </header>
 
-      {/* ── Intensity track ── */}
-      <div className="shadow-panel__intensity-track-row">
-        <span className="shadow-panel__track-label">Intensity</span>
-        <div
-          className="shadow-panel__intensity-track"
-          role="progressbar"
-          aria-label="Shadow intensity"
-          aria-valuenow={intensityPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className="shadow-panel__intensity-fill"
-            style={{ '--sp-pct': `${intensityPct}%` } as React.CSSProperties}
-          />
-          {/* Activation threshold marker at 35% */}
-          <span
-            className="shadow-panel__threshold-marker"
-            style={{ left: `${ACTIVATION_THRESHOLD * 100}%` }}
-            title="Activation threshold (35%)"
-            aria-hidden
-          />
-        </div>
-        <span className="shadow-panel__track-value">{intensityPct}%</span>
-      </div>
+      </section>
 
-      {/* ── Archetype score bars ── */}
-      <ul className="shadow-panel__archetype-list" aria-label="Archetype scores">
-        {ALL_SHADOW_ARCHETYPES.map((name) => (
-          <ArchetypeBar
-            key={name}
-            name={name}
-            score={scores?.[name] ?? 0}
-            isDominant={name === dominantArchetype}
-            onClick={onArchetypeClick ? handleBarClick : undefined}
-          />
-        ))}
-      </ul>
-
-      {/* ── Integration progress ── */}
-      <div className="shadow-panel__integration">
-        <div className="shadow-panel__integration-header">
-          <span className="shadow-panel__track-label">Integration</span>
-          <span className="shadow-panel__integration-stage">
-            {STAGE_DESCRIPTIONS[integrationStage]}
-          </span>
-          <span className="shadow-panel__track-value">{integrationPct}%</span>
-        </div>
-        <div
-          className="shadow-panel__integration-track"
-          role="progressbar"
-          aria-label="Integration progress"
-          aria-valuenow={integrationPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className="shadow-panel__integration-fill"
-            style={{ '--sp-pct': `${integrationPct}%` } as React.CSSProperties}
-          />
-          {/* Stage milestones */}
-          {[20, 45, 70, 90].map((pct) => (
-            <span
-              key={pct}
-              className="shadow-panel__milestone-marker"
-              style={{ left: `${pct}%` }}
-              aria-hidden
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* ── Metadata row ── */}
-      {record && (
-        <div className="shadow-panel__meta">
-          <span className="shadow-panel__meta-item">
-            {record.days_active} day{record.days_active !== 1 ? 's' : ''} active
-          </span>
-          {record.recorded_at && (
-            <span className="shadow-panel__meta-item shadow-panel__meta-item--right">
-              Updated {new Date(record.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
+      {/* Internal drawer — only rendered when parent has not taken control */}
+      {!isExternallyControlled && (
+        <ArchetypeDrawer
+          archetype={internalSelected}
+          record={record ?? null}
+          onClose={() => setInternalSelected(null)}
+        />
       )}
-
-      {/* ── Actions ── */}
-      <div className="shadow-panel__actions">
-        <button
-          className="shadow-panel__reflect-btn"
-          onClick={() => shadow.reflect()}
-          disabled={shadow.loading || !record}
-          title="Record a reflection session (+5% integration)"
-        >
-          {shadow.loading ? '⋯' : '◎  Reflect'}
-        </button>
-        <button
-          className="shadow-panel__evaluate-btn shadow-panel__evaluate-btn--secondary"
-          onClick={() => shadow.evaluate()}
-          disabled={shadow.loading}
-          title="Re-run full archetype evaluation"
-        >
-          {shadow.loading ? '⋯' : '⟳  Evaluate'}
-        </button>
-      </div>
-
-    </section>
+    </>
   );
 }
 

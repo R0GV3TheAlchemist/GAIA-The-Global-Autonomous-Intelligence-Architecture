@@ -1,0 +1,417 @@
+/**
+ * src/components/ShadowPanel/archetype-drawer.css
+ * GAIA-OS — Archetype Detail Drawer styles
+ *
+ * Shares the shadow-panel.css CSS custom property vocabulary:
+ *   --sp-hue       the archetype accent colour (hex)
+ *   --sp-dominant  same value on the dialog root
+ *   --sp-pct       bar fill width
+ *
+ * The drawer renders as a native <dialog> positioned to the right.
+ * It slides in from the right edge on open and slides out on close.
+ */
+
+/* ── Backdrop ─────────────────────────────────────────────────────────── */
+
+.ad::backdrop {
+  background: oklch(0.08 0 0 / 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: ad-backdrop-in 220ms ease forwards;
+}
+
+@keyframes ad-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Dialog root ─────────────────────────────────────────────────────── */
+
+.ad {
+  /* Override browser dialog defaults */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  /* Panel slides in from right — the panel itself is the animated element */
+}
+
+.ad:not([open]) {
+  display: none;
+}
+
+/* ── Panel ───────────────────────────────────────────────────────────── */
+
+.ad__panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 100vw);
+  background: var(--color-surface, #1c1b19);
+  border-left: 1px solid oklch(from var(--color-text, #cdccca) l c h / 0.08);
+  box-shadow: -12px 0 40px oklch(0 0 0 / 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ad-slide-in 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ad-slide-in {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad__panel {
+    animation: none;
+  }
+  .ad::backdrop {
+    animation: none;
+  }
+}
+
+/* ── Close button ────────────────────────────────────────────────────── */
+
+.ad__close {
+  position: absolute;
+  top: var(--space-4, 1rem);
+  right: var(--space-4, 1rem);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted, #797876);
+  border-radius: var(--radius-md, 0.5rem);
+  transition: background 180ms ease, color 180ms ease;
+  z-index: 10;
+}
+
+.ad__close:hover {
+  background: oklch(from var(--color-text, #cdccca) l c h / 0.08);
+  color: var(--color-text, #cdccca);
+}
+
+.ad__close:focus-visible {
+  outline: 2px solid var(--sp-hue, var(--color-primary, #4f98a3));
+  outline-offset: 2px;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+
+.ad__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-6, 1.5rem) var(--space-6, 1.5rem) var(--space-4, 1rem);
+  border-bottom: 1px solid oklch(from var(--color-text, #cdccca) l c h / 0.07);
+  flex-shrink: 0;
+}
+
+.ad__glyph {
+  font-size: 2.25rem;
+  line-height: 1;
+  width: 2.75rem;
+  text-align: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px oklch(from var(--sp-hue, #4f98a3) l c h / 0.45));
+}
+
+.ad__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  min-width: 0;
+}
+
+.ad__title {
+  font-family: var(--font-display, sans-serif);
+  font-size: var(--text-xl, clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem));
+  font-weight: 600;
+  color: var(--color-text, #cdccca);
+  line-height: 1.1;
+}
+
+.ad__badges {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+/* ── Intensity badge (reuse shadow-panel palette) ─────────────────────── */
+
+.ad__intensity-badge {
+  font-size: var(--text-xs, clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem));
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2em 0.6em;
+  border-radius: var(--radius-full, 9999px);
+  border: 1px solid transparent;
+}
+
+.ad__intensity-badge--dormant   { color: var(--color-text-faint);   border-color: oklch(from var(--color-text-faint, #5a5957) l c h / 0.35); }
+.ad__intensity-badge--stirring  { color: var(--color-gold, #e8af34); border-color: oklch(from var(--color-gold, #e8af34) l c h / 0.35); }
+.ad__intensity-badge--active    { color: var(--color-orange, #fdab43); border-color: oklch(from var(--color-orange, #fdab43) l c h / 0.35); }
+.ad__intensity-badge--dominant  { color: var(--color-error, #d163a7); border-color: oklch(from var(--color-error, #d163a7) l c h / 0.35); }
+.ad__intensity-badge--consuming { color: var(--color-notification, #dd6974); border-color: oklch(from var(--color-notification, #dd6974) l c h / 0.35); }
+
+.ad__activated-badge {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2em 0.6em;
+  border-radius: var(--radius-full, 9999px);
+  background: oklch(from var(--sp-hue, #4f98a3) l c h / 0.18);
+  color: var(--sp-hue, #4f98a3);
+  border: 1px solid oklch(from var(--sp-hue, #4f98a3) l c h / 0.35);
+}
+
+/* ── Score bar ───────────────────────────────────────────────────────── */
+
+.ad__score-row {
+  display: grid;
+  grid-template-columns: 5rem 1fr 2.5rem;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
+  flex-shrink: 0;
+}
+
+.ad__score-label {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #797876);
+}
+
+.ad__score-track {
+  position: relative;
+  height: 8px;
+  background: oklch(from var(--color-text, #cdccca) l c h / 0.08);
+  border-radius: var(--radius-full, 9999px);
+  overflow: visible;
+}
+
+.ad__score-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sp-pct, 0%);
+  background: var(--sp-hue, var(--color-primary, #4f98a3));
+  border-radius: var(--radius-full, 9999px);
+  box-shadow: 0 0 8px oklch(from var(--sp-hue, #4f98a3) l c h / 0.5);
+  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ad__score-threshold {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: oklch(from var(--color-text, #cdccca) l c h / 0.3);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.ad__score-value {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--color-text, #cdccca);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Scrollable content ──────────────────────────────────────────────── */
+
+.ad__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2, 0.5rem) var(--space-6, 1.5rem) var(--space-8, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 1.5rem);
+  scrollbar-width: thin;
+  scrollbar-color: oklch(from var(--color-text, #cdccca) l c h / 0.12) transparent;
+}
+
+.ad__content::-webkit-scrollbar { width: 4px; }
+.ad__content::-webkit-scrollbar-track { background: transparent; }
+.ad__content::-webkit-scrollbar-thumb {
+  background: oklch(from var(--color-text, #cdccca) l c h / 0.15);
+  border-radius: 2px;
+}
+
+/* ── Section ─────────────────────────────────────────────────────────── */
+
+.ad__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.ad__section-title {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sp-hue, var(--color-primary, #4f98a3));
+}
+
+.ad__section-body {
+  color: var(--color-text-muted, #797876);
+  font-size: var(--text-base, 1rem);
+  line-height: 1.65;
+}
+
+.ad__section-body p {
+  max-width: 62ch;
+}
+
+/* ── Blockquote ──────────────────────────────────────────────────────── */
+
+.ad__blockquote {
+  margin: 0;
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-left: 3px solid var(--sp-hue, var(--color-primary, #4f98a3));
+  background: oklch(from var(--sp-hue, #4f98a3) l c h / 0.06);
+  border-radius: 0 var(--radius-sm, 0.375rem) var(--radius-sm, 0.375rem) 0;
+  color: var(--color-text, #cdccca);
+  font-style: italic;
+  font-size: var(--text-base, 1rem);
+  line-height: 1.6;
+}
+
+/* ── Practice highlight ──────────────────────────────────────────────── */
+
+.ad__practice {
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  background: oklch(from var(--sp-hue, #4f98a3) l c h / 0.08);
+  border-radius: var(--radius-md, 0.5rem);
+  border: 1px solid oklch(from var(--sp-hue, #4f98a3) l c h / 0.18);
+  color: var(--color-text, #cdccca);
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+/* ── Activation note ─────────────────────────────────────────────────── */
+
+.ad__activation-note {
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  background: oklch(from var(--color-warning, #bb653b) l c h / 0.08);
+  border-radius: var(--radius-md, 0.5rem);
+  border: 1px solid oklch(from var(--color-warning, #bb653b) l c h / 0.2);
+  color: var(--color-text, #cdccca);
+  font-size: var(--text-sm, 0.875rem);
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+/* ── Comparison bars ─────────────────────────────────────────────────── */
+
+.ad__comparison {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.ad__comparison-row {
+  display: grid;
+  grid-template-columns: 1.4rem 5.5rem 1fr 2.25rem;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border-radius: var(--radius-sm, 0.375rem);
+  transition: background 160ms ease;
+}
+
+.ad__comparison-row--selected {
+  background: oklch(from var(--sp-hue, #4f98a3) l c h / 0.1);
+}
+
+.ad__comparison-glyph {
+  font-size: 0.9rem;
+  color: var(--sp-hue, var(--color-text-muted));
+  text-align: center;
+}
+
+.ad__comparison-name {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-muted, #797876);
+  white-space: nowrap;
+}
+
+.ad__comparison-row--selected .ad__comparison-name {
+  color: var(--color-text, #cdccca);
+  font-weight: 500;
+}
+
+.ad__comparison-track {
+  position: relative;
+  height: 5px;
+  background: oklch(from var(--color-text, #cdccca) l c h / 0.08);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+}
+
+.ad__comparison-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--sp-pct, 0%);
+  background: var(--sp-hue, var(--color-primary, #4f98a3));
+  border-radius: var(--radius-full, 9999px);
+  transition: width 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ad__comparison-score {
+  font-size: var(--text-xs, 0.75rem);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted, #797876);
+  text-align: right;
+}
+
+.ad__comparison-row--selected .ad__comparison-score {
+  color: var(--color-text, #cdccca);
+  font-weight: 600;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 520px) {
+  .ad__panel {
+    width: 100vw;
+  }
+
+  .ad__header {
+    padding: var(--space-5, 1.25rem) var(--space-4, 1rem) var(--space-3, 0.75rem);
+  }
+
+  .ad__content {
+    padding: var(--space-2, 0.5rem) var(--space-4, 1rem) var(--space-8, 2rem);
+  }
+
+  .ad__score-row {
+    padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  }
+
+  .ad__comparison-row {
+    grid-template-columns: 1.2rem 4.5rem 1fr 2rem;
+  }
+}
