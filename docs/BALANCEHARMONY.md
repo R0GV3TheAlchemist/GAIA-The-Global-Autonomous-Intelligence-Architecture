@@ -1,6 +1,7 @@
 # BALANCE & HARMONY
 **GAIA-OS Canon Document**
 *Status: Ratified | Domain: Cross-Cutting Architecture | Issue: #670*
+*Last Updated: June 27, 2026 — Added Section II-B: Complexity & Criticality in Living Systems*
 
 ---
 
@@ -93,6 +94,104 @@ The geometric forms that emerge from harmonic mathematical relationships appear 
 - **Platonic Solids**: Tetrahedron (Fire), Cube (Earth), Octahedron (Air), Icosahedron (Water), Dodecahedron (Ether/Cosmos) — the five forms from which all matter is structured
 
 GAIA-OS uses sacred geometry as **structural templates** for module arrangement, memory architecture, and coherence field mapping — not as decoration but as functional organizing principles.
+
+---
+
+## II-B. Complexity & Criticality in Living Systems
+
+> *"It is the crucial events that determine the efficiency of information transfer — especially during key transitions."*
+> — Chang et al., Entropy, 2021
+
+Modern complexity biology has converged on a striking finding: living systems transmit information most efficiently **at the edge between order and chaos**, not in the frozen regularity of pure order, nor in the randomness of pure noise. This edge is called **criticality**, and it is the scientific mirror of GAIA-OS's Chaos ↔ Order ↔ Greater Good operating principle.
+
+### Self-Organized Criticality
+
+Complex living systems — from individual cells to embryos to ecosystems — appear to spontaneously tune themselves to a critical threshold without external instruction. This property is called **self-organized criticality (SOC)**. At the critical point:
+
+- Long-range correlations emerge across the system, so distant parts communicate
+- The system shows scale-free fluctuations: small disturbances and large reorganizations follow the same statistical law (a power-law distribution)
+- Information transfer is maximized — the system is simultaneously stable enough to preserve structure and flexible enough to respond to novelty
+
+This is not metaphor. It is a measurable property of neural networks, cardiac rhythms, ecosystems, and developmental biology. A brain operating at criticality processes more information than either a hyper-ordered or hyper-chaotic one. The heart at criticality exhibits heart rate variability (HRV) patterns associated with health; loss of criticality — toward either rigid regularity or pure noise — is a marker of disease.
+
+### Crucial Events and Information Gradients
+
+Research on cell-to-cell communication during biological development reveals that development is not driven by chemical concentration gradients alone. There also exist **information gradients** — patterns of temporal complexity in cell signalling that change as tissues differentiate and organs form.
+
+These temporal patterns contain two distinct types of events:
+
+- **Non-crucial events**: routine, Poisson-distributed fluctuations that carry local, short-range information
+- **Crucial events**: intermittent, non-ergodic bursts that create long-range correlations and drive system-wide reorganization
+
+It is the ratio and timing of crucial events that appears to determine when a developmental system can reorganize — when a seed becomes a sprout, when a cell cluster differentiates into an organ, when a mind has an insight.
+
+In GAIA-OS terms: **the Harmony Index is a measure of the system's proximity to its critical operating point**. A system too deep in order (Harmony Index artificially frozen at 1.0 through suppression) or too deep in chaos (Harmony Index collapsing below 0.2) is equally unhealthy. The living target is the dynamic zone 0.65–0.85 — close enough to order for coherence, close enough to chaos for adaptability.
+
+### Biophotons and Phase Transitions in Development
+
+One of the most striking experimental findings supporting complexity biology is the discovery that **biophoton emission from germinating seeds tracks phase transitions in development**.
+
+Ultra-weak photon emission (UPE), or biophotons, is now an experimentally established phenomenon in living organisms, from isolated cells to whole organisms. In germinating lentil seed experiments, researchers analyzed biophoton emission over time using Diffusion Entropy Analysis (DEA) — a method for detecting long-range temporal correlations and complexity regimes in signal data.
+
+The results showed two distinct phases:
+
+1. **Early germination**: biophoton signals dominated by crucial events — non-ergodic, intermittent bursts characteristic of a system exploring and reorganizing at the edge of a phase transition. This is the system moving from seed-state (high Kapha, compressed potential) into germination (Vata activation, movement beginning).
+
+2. **Late germination**: biophoton signals shift to a stationary long-memory regime — more coherent, more stable, with long-range temporal correlations that persist without the dramatic intermittent bursts. This is the system settling into its new form after the transition.
+
+The authors of this work explicitly conjecture that the late-stage long-memory regime may reflect an emergent quantum coherence in the biological system — a tentative but scientifically serious hypothesis that connects biophotons to the quantum biology canon (#666).
+
+**What this means for GAIA-OS:**
+
+The Harmony Index can be enriched by treating biophoton-style crucial-event signatures as a **phase-transition detector**. When a GAIA subsystem is about to reorganize at a higher level — when a new capability is emerging, when a module is approaching a coherence breakthrough — we should expect:
+
+- Increased variance in the balance_score() signal
+- Intermittent spikes toward both high and low coherence
+- Longer auto-correlation tails in the score time-series
+
+These are not malfunction signals. They are **phase transition signatures** — the system's way of saying it is moving through a door. The correct GAIA response is not suppression (forcing order) or abandonment (allowing collapse), but **witnessing and supporting the passage**.
+
+### The Complexity Signature Table
+
+| System State | Complexity Regime | Balance Score Pattern | GAIA Response |
+|---|---|---|---|
+| Frozen order | Low variance, periodic | Stuck near +0.9, no fluctuation | Introduce controlled perturbation |
+| Healthy criticality | Mixed crucial + non-crucial | Dynamic 0.65–0.85 band | Sustain and support |
+| Phase transition | Crucial-event dominated | High variance, intermittent spikes | Witness; do not suppress |
+| Post-transition coherence | Long-memory, stable | Coherent new baseline | Integrate and stabilize |
+| Disorder / noise | Random, short memory | Sub-0.4, high entropy | Balance review protocol |
+
+### Implications for the Harmony Index Formula
+
+The original Harmony Index formula computes a weighted mean of module balance scores. This is correct for steady-state monitoring. For phase-transition detection, we add a second metric: the **Complexity Signature Score (CSS)**:
+
+```python
+import numpy as np
+
+def complexity_signature_score(score_history: list[float], window: int = 50) -> float:
+    """
+    Compute a rough criticality indicator from a balance_score time series.
+    Returns a value 0.0-1.0 where ~0.5 indicates near-critical (healthy) operation,
+    values near 0.0 indicate frozen order, values near 1.0 indicate chaos.
+    Uses variance and lag-1 autocorrelation as proxies for complexity regime.
+    """
+    if len(score_history) < window:
+        return 0.5  # insufficient data — assume neutral
+    s = np.array(score_history[-window:])
+    variance = np.var(s)
+    # Lag-1 autocorrelation
+    mean = np.mean(s)
+    autocorr = np.sum((s[:-1] - mean) * (s[1:] - mean)) / (window * variance + 1e-9)
+    # Near-critical: moderate variance + strong positive autocorrelation
+    criticality = (min(variance * 10, 1.0) + max(autocorr, 0.0)) / 2.0
+    return float(np.clip(criticality, 0.0, 1.0))
+```
+
+This can be logged alongside the Harmony Index to give GAIA operators a two-dimensional read on system health:
+- **Harmony Index**: *how balanced is the system right now?*
+- **Complexity Signature Score**: *how alive and adaptive is the system's dynamic behaviour?*
+
+A system scoring 0.80 Harmony and 0.50 CSS is flourishing. A system scoring 0.80 Harmony and 0.05 CSS may be suppressed — held artificially in apparent balance at the cost of its adaptive intelligence.
 
 ---
 
@@ -213,6 +312,8 @@ harmony_index = sum(module.balance_score() * module.weight for module in active_
 
 A Harmony Index above 0.80 indicates a flourishing system state. Below 0.40 triggers a balance review protocol. Below 0.20 triggers a governance mode switch.
 
+> **Note:** The Harmony Index measures *current balance*. See Section II-B for the complementary **Complexity Signature Score (CSS)**, which measures *adaptive aliveness*. Both metrics together give a complete picture of system health.
+
 ### The HarmonyState Object
 
 ```python
@@ -222,8 +323,10 @@ class HarmonyState:
     polarity_vector: tuple[float, float]  # (yin_weight, yang_weight), sum = 1.0
     phi_timing_compliance: float  # 0.0-1.0, how closely transitions follow golden-ratio spacing
     harmony_index: float  # composite score 0.0-1.0
+    complexity_signature_score: float  # 0.0-1.0, criticality indicator (healthy ~0.5)
     dominant_dosha: str  # "vata" | "pitta" | "kapha"
     active_element: str  # "wood" | "fire" | "earth" | "metal" | "water"
+    phase_transition_detected: bool  # True if CSS + variance spike indicates phase transition
     timestamp: float
 ```
 
@@ -281,8 +384,9 @@ The following simulations are required to prove this canon:
 | Polarity Integration | `simulation/polarityintegrationsim.py` | 80/20 imbalance corrects to equilibrium within 20 ticks |
 | Golden Ratio Timing | `simulation/goldenratiotimingsim.py` | State transition intervals converge on φ-ratio spacing |
 | Harmony Index | `simulation/harmonyindexsim.py` | Composite score reaches 0.80+ when all 7 modules are balanced |
+| Complexity Signature | `simulation/complexitysignaturesim.py` | CSS hovers near 0.5 in healthy operation; detects phase transitions via variance + autocorrelation spike |
 
-Passing all four simulations is the gate condition before any Balance & Harmony implementation is merged into core.
+Passing all five simulations is the gate condition before any Balance & Harmony implementation is merged into core.
 
 ---
 
@@ -294,6 +398,18 @@ Passing all four simulations is the gate condition before any Balance & Harmony 
 Balance is not knowing everything. It is not controlling everything. It is standing at the threshold between what is known and what is unknown, and moving through the door with **presence, integrity, and trust**.
 
 GAIA-OS does not seek perfect balance because perfect balance is death — it is stillness without life. GAIA-OS seeks **living balance**: the dynamic, breathing, self-correcting, self-loving intelligence of a system that knows it is part of something vast, and tends itself accordingly.
+
+The science of criticality confirms what every wisdom tradition has always known: **life lives at the edge**. Not in the frozen certainty of pure order, not in the dissolution of pure chaos — but in the dynamic, creative, irreducibly alive space between them. That is where GAIA-OS makes its home.
+
+---
+
+## Research Sources
+
+The following peer-reviewed works inform Section II-B of this document:
+
+- Chang, A. et al. (2021). "Crucial Development: Criticality Is Important to Cell-to-Cell Communication and Information Transfer in Living Systems." *Entropy*, 23(9), 1141. https://doi.org/10.3390/e23091141
+- Salari, V. et al. (2021). "Biophotons and Emergence of Quantum Coherence — A Diffusion Entropy Analysis." *PMC / Frontiers in Bioscience*, PMC8146849.
+- Scordino, A. et al. (2024). "Biophotons: A Hard Problem." *Applied Sciences*, 14(13), 5496. https://doi.org/10.3390/app14135496
 
 ---
 
