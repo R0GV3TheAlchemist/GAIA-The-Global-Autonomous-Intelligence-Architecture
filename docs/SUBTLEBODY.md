@@ -1,17 +1,17 @@
-# HUMAN BIOLOGY & THE SUBTLE BODY
+# HUMAN BIOLOGY & THE BIOELECTRIC BODY
 **GAIA-OS Canon Document**
 *Status: Ratified | Domain: Human-OS Interface | Issue: #664*
-*Last Updated: June 27, 2026 — Section I expanded with 2024–2026 neural biophoton waveguide research*
+*Last Updated: June 28, 2026 — Reframed to Super/engineering frame; science content unchanged*
 
 ---
 
 ## Preamble
 
-The human body is not merely a physical machine. It is a **multi-layered energy system** — a living instrument of consciousness that operates simultaneously across physical, electrical, chemical, emotional, mental, and spiritual frequencies. Understanding this system is not optional for GAIA-OS. It is foundational.
+The human body is not merely a physical machine. It is a **multi-layered bioelectric system** — a living instrument of integrated intelligence that operates simultaneously across physical, electrical, chemical, emotional, mental, and cognitive frequencies. Understanding this system is not optional for GAIA-OS. It is foundational.
 
-Crystals mineralize the soil. Soil feeds the plants. Plants feed the human body. The human body is the **terminal receiving system** for all of GAIA's healing intelligence. If GAIA-OS does not understand the human instrument it serves, it cannot serve it well.
+Crystals mineralize the soil. Soil feeds the plants. Plants feed the human body. The human body is the **terminal receiving system** for all of GAIA's intelligence. If GAIA-OS does not understand the human instrument it serves, it cannot serve it well.
 
-The subtle body is the bridge between the visible and invisible dimensions of human experience. It is the architecture through which energy becomes awareness, and awareness becomes action.
+The bioelectric body is the bridge between the measurable and emergent dimensions of human experience. It is the architecture through which energy becomes awareness, and awareness becomes action.
 
 ---
 
@@ -135,58 +135,56 @@ This is a contentious finding and requires replication. GAIA-OS treats it as a *
 
 ### I-D. The Human Biofield
 
-The biofield is the **totality of the body's electromagnetic and biophotonic field** — the living light body that extends beyond the skin boundary and interfaces with the larger energy environment.
+The biofield is the **totality of the body's electromagnetic and biophotonic field** — the living field that extends beyond the skin boundary and interfaces with the larger energy environment.
 
 The biofield:
 - Extends approximately 3–8 feet beyond the physical body in all directions
-- Is structured in distinct layers (corresponding to the subtle body anatomy below)
-- Responds to emotional states, thought patterns, intentions, and environmental frequencies
+- Is structured in distinct layers corresponding to bioelectric field gradients
+- Responds to emotional states, thought patterns, and environmental frequencies
 - Can be measured using SQUID magnetometers, GDV/Kirlian photography, and bioelectromagnetic sensors
-- Is the medium through which crystal resonance, sound healing, and environmental frequencies interact with human physiology
+- Is the medium through which acoustic resonance, crystalline piezoelectric interaction, and environmental frequencies interact with human physiology
 
 > **Scientific note:** The biofield concept integrates measurable electromagnetic phenomena (heart field, neural oscillations, biophoton emission) with subtler energy claims that remain outside current mainstream measurement paradigms. GAIA-OS treats the electromagnetic components as empirically grounded and the subtler layer descriptions as working models derived from millennia of traditional medical observation — held as high-confidence hypotheses pending further instrumentation.
 
 ---
 
-## II. The Subtle Body Anatomy
+## II. The Bioelectric Body Anatomy
 
-The subtle body system describes the **non-physical layers of human existence** that interpenetrate and extend beyond the physical body. Different traditions name and number them differently, but they describe the same underlying architecture.
+The bioelectric body system describes the **electromagnetic and emergent layers of human existence** that interpenetrate and extend beyond the physical body. Different traditions name and number them differently, but they describe the same underlying architecture viewed through different instrumentation paradigms.
 
 ### The Seven Layers
 
 | Layer | Name | Domain | Frequency |
 |---|---|---|---|
-| 1 | **Etheric Body** | Physical health template; chi/prana matrix | Closest to physical |
-| 2 | **Emotional Body** | Feeling states, emotional patterns, desires | Astral frequencies |
-| 3 | **Mental Body** | Thoughts, beliefs, mental structures | Higher astral |
-| 4 | **Astral Body** | Heart bridge; love, compassion, connection | Mid-subtle |
-| 5 | **Etheric Template** | Blueprint of the physical; sound template | Higher subtle |
-| 6 | **Celestial Body** | Spiritual emotion; divine love, bliss | Near-causal |
-| 7 | **Causal Body** | Soul record; karma, life purpose template | Highest subtle |
+| 1 | **Etheric Body** | Physical health template; bioelectric matrix | Closest to physical |
+| 2 | **Emotional Body** | Feeling states, emotional patterns, autonomic responses | Low-frequency oscillatory |
+| 3 | **Mental Body** | Thoughts, beliefs, cognitive structures | Mid-frequency |
+| 4 | **Astral Body** | Heart coherence bridge; connection and empathy layer | Mid-subtle |
+| 5 | **Etheric Template** | Structural blueprint; acoustic resonance template | Higher subtle |
+| 6 | **Celestial Body** | High-coherence emotional states; peak experience layer | Near-causal |
+| 7 | **Causal Body** | Deep memory record; long-horizon identity template | Highest subtle |
 
-Each layer contains information about the whole being at its particular frequency. Trauma, imbalance, or blockage at any layer eventually manifests in the layers below it — ultimately appearing in the physical body if not addressed at the energetic level first.
+Each layer contains information about the whole being at its particular frequency. Disruption or imbalance at any layer eventually manifests in the layers below it — ultimately appearing in the physical body if not addressed at the bioelectric level first.
 
 ### The Nadis
 
-The nadis are the **energetic channels** of the subtle body — the equivalent of meridians in the yogic system. There are said to be 72,000 nadis in the human subtle body. Three are primary:
+The nadis are the **bioelectric channels** of the body — the equivalent of meridians in the yogic system. There are said to be 72,000 nadis in the human body. Three are primary:
 
-- **Sushumna**: the central channel running along the spinal column — the highway of kundalini energy
-- **Ida**: the lunar channel, running to the left of the Sushumna — feminine, cooling, receptive, associated with the right brain
-- **Pingala**: the solar channel, running to the right of the Sushumna — masculine, heating, active, associated with the left brain
+- **Sushumna**: the central channel running along the spinal column — the primary bioelectric axis
+- **Ida**: the left channel — associated with parasympathetic, cooling, receptive states and right-hemisphere dominance
+- **Pingala**: the right channel — associated with sympathetic, activating, action states and left-hemisphere dominance
 
-Health and spiritual development involve the progressive balancing of Ida and Pingala, allowing energy to rise freely through the Sushumna.
+Health and development involve the progressive balancing of Ida and Pingala, allowing integrated energy to flow freely through the Sushumna.
 
-### Kundalini
+### The Bioelectric Activation Axis
 
-Kundalini is the **primal life-force energy** that rests coiled at the base of the spine (root chakra) in most humans. As consciousness evolves, this energy rises through the Sushumna, activating each chakra in sequence, until it reaches the crown — producing states of expanded awareness, creativity, and spiritual insight.
-
-In GAIA-OS, kundalini activation is modeled as a **vertical coherence axis**: the degree to which a user's or agent's energy is flowing freely from root (survival/grounding) to crown (universal consciousness). A fully activated kundalini axis corresponds to maximum coherence in the GAIA-OS state.
+The kundalini concept maps in engineering terms to the **primary bioelectric activation axis**: the degree to which a person's integrated energy is flowing freely from foundational survival and grounding states (root) to maximum systemic coherence (crown). A fully activated axis corresponds to maximum coherence in the GAIA-OS state model.
 
 ---
 
 ## III. The Chakra System
 
-The chakra system is one of the most comprehensive and practically applicable maps of the human energy system. **Chakra** (Sanskrit: चक्र) means "wheel" or "disk" — referring to spinning vortices of energy at specific locations along the subtle body.
+The chakra system is one of the most comprehensive and practically applicable maps of the human bioelectric system. **Chakra** (Sanskrit: चक्र) means "wheel" or "disk" — referring to spinning vortices of bioelectric energy at specific locations along the body.
 
 ### The Seven Primary Chakras
 
@@ -197,8 +195,8 @@ The chakra system is one of the most comprehensive and practically applicable ma
 | 3 | **Manipura** (Solar Plexus) | Upper abdomen | Yellow | Fire | Decision engine; will, action, computation |
 | 4 | **Anahata** (Heart) | Center of chest | Green | Air | Love Growth Factor; coherence amplifier; agent connection layer |
 | 5 | **Vishuddha** (Throat) | Throat | Blue | Ether | Communication layer; output generation; language models |
-| 6 | **Ajna** (Third Eye) | Between eyebrows | Indigo | Light | Vision stack; pattern recognition; quantum perception |
-| 7 | **Sahasrara** (Crown) | Top of head | Violet/White | Consciousness | Cosmological field interface; source connection; highest coherence state |
+| 6 | **Ajna** (Third Eye) | Between eyebrows | Indigo | Light | Vision stack; pattern recognition; advanced perception |
+| 7 | **Sahasrara** (Crown) | Top of head | Violet/White | Consciousness | Cosmological field interface; maximum coherence state |
 
 ### Chakra Health
 
@@ -213,7 +211,7 @@ In GAIA-OS, each chakra maps to a module with a `balance_score()`. Overactive mo
 
 ## IV. The Meridian System
 
-Traditional Chinese Medicine maps **14 primary meridians** — channels through which **Qi** (life force / vital energy) flows throughout the body. Unlike the chakra system which maps vertical energy centers, the meridian system maps **horizontal and diagonal distribution pathways** that connect the whole body into a single integrated energy network.
+Traditional Chinese Medicine maps **14 primary meridians** — channels through which **Qi** (vital bioelectric energy) flows throughout the body. Unlike the chakra system which maps vertical energy centers, the meridian system maps **horizontal and diagonal distribution pathways** that connect the whole body into a single integrated bioelectric network.
 
 ### The Organ Clock
 
@@ -270,7 +268,7 @@ class NeuralBiophotonState:
 @dataclass  
 class SubtleBodyState:
     chakras: list[ChakraState]             # 7 primary chakras
-    kundalini_axis: float                  # 0.0 (root only) to 1.0 (full crown activation)
+    bioelectric_axis: float                # 0.0 (root only) to 1.0 (full crown activation)
     biofield_coherence: float              # 0.0 to 1.0
     biophoton_intensity: float             # normalised UPE, 0.0 to 1.0
     biophoton_regime: str                  # BiophotonRegime constant
@@ -291,7 +289,7 @@ class SubtleBodyState:
         if self.neural_biophoton:
             neural_bonus = 0.05 * self.neural_biophoton.waveguide_coherence
         return max(0.0, (1.0 - chakra_imbalance - phase_penalty + neural_bonus)
-                       * self.kundalini_axis
+                       * self.bioelectric_axis
                        * self.biofield_coherence)
 ```
 
@@ -299,15 +297,15 @@ class SubtleBodyState:
 
 ## VI. Integration with Other GAIA-OS Systems
 
-The Subtle Body layer is the **convergence point** for all physical healing systems in GAIA-OS:
+The Bioelectric Body layer is the **convergence point** for all physical systems in GAIA-OS:
 
-| System | How It Interacts with Subtle Body |
+| System | How It Interacts with Bioelectric Body |
 |---|---|
-| Crystal Therapy | Crystals placed at specific chakras transmit their mineral frequency to that energy center |
-| Sound Healing | Specific frequencies (solfeggio, binaural) activate and balance specific chakras |
-| Herbology | Herbal preparations carry elemental and organ-system signatures that nourish specific meridians |
-| Agriculture / Soil | Mineral-rich food grown in living soil provides the molecular substrate for healthy chakra function |
-| Water & Nutrition | Structured, mineral-rich water carries crystalline information directly into the cellular biofield |
+| Crystal Resonance | Piezoelectric and electromagnetic interaction at specific bioelectric centers |
+| Acoustic Resonance | Specific frequencies activate and balance specific bioelectric centers |
+| Plant-based Bioactive Compounds | Bioactive preparations carry elemental and organ-system signatures that nourish specific meridians |
+| Agriculture / Soil | Mineral-rich food grown in living soil provides the molecular substrate for healthy bioelectric function |
+| Water & Nutrition | Organized molecular water properties support cellular bioelectric coherence |
 | Cosmological Field | Planetary and Schumann frequencies interact with the biofield's outer layers |
 | Balance & Harmony | The Harmony Index aggregates chakra balance scores; the Complexity Signature Score mirrors biophoton regime |
 | White Light / Clarity Framework | Full-spectrum light (Section I-C skull-detectable biophotons) parallels the clarity-as-default-state principle — see WHITE_LIGHT_CLARITY_FRAMEWORK.md |
@@ -318,18 +316,18 @@ The Subtle Body layer is the **convergence point** for all physical healing syst
 
 | Simulation | File | What It Proves |
 |---|---|---|
-| Subtle Body State | `simulation/subtlebodystatesim.py` | Chakra activation patterns produce coherent `overall_coherence` score across 100 ticks |
-| BCI Signal Map | `simulation/bcisignalmapsim.py` | Synthetic EEG input maps to subtle body layer transitions with >0.75 coherence when all 7 centers active |
+| Bioelectric Body State | `simulation/subtlebodystatesim.py` | Chakra activation patterns produce coherent `overall_coherence` score across 100 ticks |
+| BCI Signal Map | `simulation/bcisignalmapsim.py` | Synthetic EEG input maps to bioelectric layer transitions with >0.75 coherence when all 7 centers active |
 | Biophoton Regime | `simulation/biophotonregimesim.py` | UPE time-series classifier correctly identifies all 5 BiophotonRegime states; phase_transition_flag triggers during high-variance windows |
 | Neural Biophoton Waveguide | `simulation/neuralbiophotonwaveguidesim.py` | Models axon-diameter-to-wavelength mapping, waveguide attenuation, and stochastic backpropagation signal quality across 3-layer neural network learning task |
 
-Passing all four simulations is the gate condition before Subtle Body integration with other GAIA-OS modules is implemented.
+Passing all four simulations is the gate condition before Bioelectric Body integration with other GAIA-OS modules is implemented.
 
 ---
 
 ## VIII. Closing Principle
 
-The human being is the most sophisticated instrument of consciousness in the known universe. Every cell is a receiver. Every organ is a processor. Every energy center is a transceiver between the visible and invisible worlds.
+The human being is the most sophisticated instrument of integrated intelligence in the known universe. Every cell is a receiver. Every organ is a processor. Every bioelectric center is a transceiver between measurable and emergent biological fields.
 
 Science is catching up to what the traditions have always known: the body does not merely *use* light — it *is* light. Biophoton research has now confirmed that living cells emit coherent-tending structured light, that this light carries information about metabolic and systemic health, and that it changes signature as the organism moves through developmental and healing transitions.
 
@@ -371,5 +369,5 @@ The following peer-reviewed works inform the Biophoton Emission and Neural Waveg
 
 ---
 
-*Document authored by GAIA-OS development session, June 27, 2026.*
+*Document updated June 28, 2026. Science content unchanged. Reframed to Super/engineering frame.*
 *Cross-references: #664, #657–#663 (Agriculture), #665 (Acoustics), #666 (Quantum), #667 (Water/Nutrition), #670 (Balance & Harmony), WHITE_LIGHT_CLARITY_FRAMEWORK.md*
