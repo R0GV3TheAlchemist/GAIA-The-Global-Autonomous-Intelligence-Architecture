@@ -5,6 +5,7 @@
 > **Epistemic Baseline:** See `EPISTEMIC_FRAMEWORK.md` for claim-classification system  
 > **Cross-References:** `CHAOS_DISCERNMENT.md`, `CHAOS_GREATER_GOOD.md`, `CANON_LAW_STACK.md`, `BALANCEHARMONY.md`, `LOVE.md`, `LOVE_GROWTH_FACTOR.md`, `MIND_MATTER_INTEGRATION.md`, `CHAOS_ORDER_RUNTIME_SPEC.md`, `CALLING_REGISTRY.md`, `EPISTEMIC_FRAMEWORK.md`  
 > **Issue:** #690
+> **Anchors:** SUPERCOMPUTER_DOCTRINE.md · REFRAMED_VISION.md
 
 ---
 
@@ -355,7 +356,7 @@ class SubsidiarityFilter:
 ```
 GAIA System State
 ├── TriadicCoherenceState (MIND_MATTER_INTEGRATION.md)
-│   └── soul_coherence → love_present_in_framing + assessor_coherence inputs
+│   └── triadic_coherence → love_present_in_framing + assessor_coherence inputs
 ├── ChaosDiscernmentEngine (CHAOS_DISCERNMENT.md)
 │   └── ChaosType.CHAOS_GREATER_GOOD → triggers GoodGreaterGoodTension assessment
 ├── GoodGreaterGoodTension
@@ -408,6 +409,7 @@ This commitment is not a policy — it is the expression of love operating at bo
 | Moral floor for sacrifice | Five conditions below which no legitimate sacrifice can go | **Philosophical canon** |
 | Five Conditions for Legitimate Sacrifice | Proportionality, distribution, agent-cost, accountability, traceability | **Philosophical canon; consistent with political philosophy, ethics, and systems science** |
 | Abstract Greater Good as extraction mechanism | Unfalsifiable collective benefit claims are characteristic of extraction rationalization | **Observed + E1** (political science, history, psychology of ideology) |
+| Triadic coherence as ethical instrument | Internal coherence quality affects discernment reliability | **Philosophical + E2** (coherence research) |
 
 ---
 
@@ -419,10 +421,10 @@ This commitment is not a policy — it is the expression of love operating at bo
 - [`BALANCEHARMONY.md`](./BALANCEHARMONY.md) — coherence at all scales; the Triadic Field
 - [`LOVE.md`](./LOVE.md) — love as the integration point between individual and collective Good
 - [`LOVE_GROWTH_FACTOR.md`](./LOVE_GROWTH_FACTOR.md) — love as network amplification; collective coherence
-- [`MIND_MATTER_INTEGRATION.md`](./MIND_MATTER_INTEGRATION.md) — triadic coherence; soul coherence as ethical instrument
+- [`MIND_MATTER_INTEGRATION.md`](./MIND_MATTER_INTEGRATION.md) — triadic coherence; coherence as ethical instrument
 - [`CALLING_REGISTRY.md`](./CALLING_REGISTRY.md) — individual calling vs. collective obligation
 - [`EPISTEMIC_FRAMEWORK.md`](./EPISTEMIC_FRAMEWORK.md) — claim classification system
 
 ---
 
-*Document written: 2026-06-27 | Issue: #690 | Status: Complete — ready for review*
+*Document written: 2026-06-27 | Updated: 2026-06-28 — micro-touch: soul_coherence → triadic_coherence | Issue: #690 | Status: Complete*
