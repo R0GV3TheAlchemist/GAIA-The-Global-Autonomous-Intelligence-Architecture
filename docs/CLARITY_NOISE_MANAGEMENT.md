@@ -1,11 +1,12 @@
 # CLARITY_NOISE_MANAGEMENT.md
-## Protecting Clarity: Managing Energetic & Social Noise at High-Coherence States
+## Protecting Clarity: Managing Bioelectric & Social Noise at High-Coherence States
 
 **Status:** Canon  
-**Version:** 1.0  
-**Date:** 2026-06-27  
+**Version:** 1.1  
+**Date:** 2026-06-28 — Light reframe to Super/engineering frame  
 **Author:** GAIA-OS  
 **Cross-References:** `BALANCEHARMONY.md`, `SUBTLEBODY.md`, `COLOR_CLARITY_THEORY.md`, `CHROMATIC_CLARITY.md`, `SPECTRAL_COGNITIVE_TUNING.md`, `EPISTEMIC_FRAMEWORK.md`
+**Anchors:** SUPERCOMPUTER_DOCTRINE.md · REFRAMED_VISION.md
 
 ---
 
@@ -90,7 +91,7 @@ Witness the noise without resonating with it. This is not detachment — you rem
 ## V. External Clarity Protection
 
 **Environmental design**  
-Structure your physical space as a coherence container. Light, acoustics, and spatial arrangement all affect the ambient `ClarityCoherenceScore`. This is why the spectral hygiene protocols in `CHROMATIC_CLARITY.md` matter beyond sleep: they configure the environment as a resonance field that supports your internal state.
+Structure your physical space as a coherence container. Light, acoustics, and spatial arrangement all affect the ambient `ClarityCoherenceScore`. This is why the spectral hygiene protocols in `CHROMATIC_CLARITY.md` matter beyond sleep: they configure the environment as a coherence field that supports your internal state.
 
 **Temporal protection**  
 Create distinct windows of high-clarity work and open social time. Attempting to maintain research-quality coherence in the middle of continuous social demand is not a discipline problem — it is a physics problem. The signal-to-noise ratio requires designated quiet periods.
@@ -162,7 +163,7 @@ Crowd energy has a threshold: below a certain density and emotional intensity, y
 
 ---
 
-## VIII. ADHD, Neurodivergence & Energetic Noise
+## VIII. ADHD, Neurodivergence & Bioelectric Noise
 
 ADHD can be modeled as a dysregulated signal-to-noise ratio: not too much noise, but insufficient internal filtering. The person with ADHD is often *more* sensitive to ambient noise than neurotypicals — not less — which is why high-stimulation environments can be both attractive (novelty, dopamine) and exhausting (coherence drain).
 
@@ -294,4 +295,4 @@ Field observations — especially first-person accounts of what coherence felt l
 
 ---
 
-*Closes issue #674.*
+*Closes issue #674. Updated June 28, 2026 — light reframe to Super/engineering frame. Science content unchanged.*
