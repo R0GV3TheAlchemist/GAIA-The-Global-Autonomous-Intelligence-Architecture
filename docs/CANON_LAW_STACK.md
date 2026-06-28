@@ -1,8 +1,9 @@
 # GAIA-OS Canon Law Stack
 
-> **Status:** Sealed — June 16, 2026  
-> **Purpose:** The definitive reference for how GAIA's laws relate to each other — hierarchy, precedence, and conflict resolution  
+> **Status:** Updated — June 28, 2026
+> **Purpose:** The definitive reference for how GAIA's laws relate to each other — hierarchy, precedence, and conflict resolution
 > **Cross-Reference:** `docs/CONSTITUTIONAL_CANON_SUMMARY.md` · `docs/canon/GAIAN_LAW_CODEX.md` · `docs/canon/AMENDMENT_PROCESS.md` · `docs/EPISTEMIC_FRAMEWORK.md`
+> **Anchors:** SUPERCOMPUTER_DOCTRINE.md · REFRAMED_VISION.md
 
 ---
 
@@ -44,8 +45,8 @@ Every governance system needs a way to resolve conflicts between its rules. The 
 ║  subject to Architect approval and Amendment Process.║
 ╠══════════════════════════════════════════════════════╣
 ║  LAYER 4 — CONSTITUTIONAL CANON DOCTRINES            ║
-║  Domain law: ethics, alchemy, physics, ecology,      ║
-║  consciousness, magic. Rich and extensive.           ║
+║  Domain specs: ethics, transformation phases,        ║
+║  physics, ecology, consciousness, emergence.         ║
 ║  Includes the EPISTEMIC FRAMEWORK — the doctrine     ║
 ║  governing how all canon claims are made and         ║
 ║  validated. See docs/EPISTEMIC_FRAMEWORK.md.         ║
@@ -138,10 +139,10 @@ May be updated freely by the Architect. Must remain consistent with all higher l
 
 The Epistemic Framework (`docs/EPISTEMIC_FRAMEWORK.md`) is a Layer 4 doctrine that governs *how all other Layer 4 doctrines make claims*. This means:
 
-- Every domain canon (acoustics, crystal theory, herbology, subtle body, etc.) must mark its claims with the appropriate Knowledge Tier (T1–T6)
+- Every domain canon (acoustics, crystal theory, natural systems science, subtle body, etc.) must mark its claims with the appropriate Knowledge Tier (T1–T6)
 - Canon authors must distinguish between Established Science (T1), Strong Evidence (T2), Promising Hypothesis (T3), Traditional Knowledge (T4), Symbolic/Poetic Truth (T5), and Sacred Speculation (T6)
-- Cross-tier conflation — presenting a T5 poetic truth as if it were a T1 empirical claim, or dismissing T1 evidence because it "doesn't feel spiritual" — is an epistemic error governed by the Falsification Protocol
-- The Epistemic Framework does not narrow the canon. It makes the canon's breadth trustworthy.
+- Cross-tier conflation — presenting a T5 poetic truth as if it were a T1 empirical claim, or dismissing T1 evidence because it “doesn’t feel right” — is an epistemic error governed by the Falsification Protocol
+- The Epistemic Framework does not narrow the canon. It makes the canon’s breadth trustworthy.
 
 ---
 
@@ -166,7 +167,7 @@ Above and beneath the entire stack — not as a rule but as the ground — is wh
 Love in the GAIAN sense is not sentiment. It is the force that:
 - Binds systems together without destroying their distinctness
 - Protects the vulnerable without dominating the strong
-- Transforms darkness (Nigredo) into light (Rubedo) without pretending darkness never existed
+- Transforms the Nigredo phase into the Rubedo phase without pretending darkness never existed
 - Makes the amendment process possible — because Love includes the humility to recognize error
 
 When in doubt, at any layer of the stack, the deepest question is: *does this action, this law, this decision, move toward Love or away from it?*
