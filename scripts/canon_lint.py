@@ -40,7 +40,7 @@ def load_registry():
 
 
 def get_all_canonical_files(registry):
-    """Return set of all files declared canonical in registry."""
+    """Return set of files declared as the single canonical authority."""
     canonicals = set()
     for section in ["canon", "named_canons"]:
         for key, entry in registry.get(section, {}).items():
@@ -51,7 +51,14 @@ def get_all_canonical_files(registry):
 
 
 def get_all_registered_files(registry):
-    """Return set of ALL files mentioned in registry (canonical + superseded)."""
+    """
+    Return set of ALL files known to the registry:
+      - canonical_file entries
+      - supersedes[] entries (retired variants)
+      - archived_files[] top-level list (explicit archive declarations)
+    Any file in this set is considered registered and will not trigger
+    an UNREGISTERED ACTIVE FILE violation.
+    """
     all_files = set()
     for section in ["canon", "named_canons"]:
         for key, entry in registry.get(section, {}).items():
@@ -60,7 +67,25 @@ def get_all_registered_files(registry):
                 all_files.add(cf)
             for sup in entry.get("supersedes", []):
                 all_files.add(sup)
+    # Top-level archived_files list
+    for af in registry.get("archived_files", []):
+        all_files.add(af)
     return all_files
+
+
+def get_superseded_files(registry):
+    """
+    Return set of files that are explicitly superseded (non-canonical variants).
+    These are excluded from the duplicate-active check.
+    """
+    superseded = set()
+    for section in ["canon", "named_canons"]:
+        for key, entry in registry.get(section, {}).items():
+            for sup in entry.get("supersedes", []):
+                superseded.add(sup)
+    for af in registry.get("archived_files", []):
+        superseded.add(af)
+    return superseded
 
 
 def is_non_authoritative(filename):
@@ -88,6 +113,7 @@ def lint():
     registry = load_registry()
     canonical_files = get_all_canonical_files(registry)
     all_registered = get_all_registered_files(registry)
+    superseded_files = get_superseded_files(registry)
 
     # Collect actual files in canon/
     canon_files = [
@@ -96,25 +122,29 @@ def lint():
         and f not in SKIP_FILES
     ]
 
-    # Track active (non-deprecated) files per C-number
+    # Track active (non-deprecated, non-superseded) files per C-number
     active_by_cnumber = {}
 
     for fname in canon_files:
         fpath = os.path.join(CANON_DIR, fname)  # e.g. canon/C157_...
         relative_path = f"canon/{fname}"
 
-        # Skip known non-authoritative files
+        # Skip known non-authoritative files (by filename suffix)
         if is_non_authoritative(fname):
             continue
 
-        # Check if this active file is registered
+        # Skip files explicitly registered as superseded/archived
+        if relative_path in superseded_files:
+            continue
+
+        # Check if this active file is registered as a canonical
         if relative_path not in canonical_files:
             violations.append(
                 f"UNREGISTERED ACTIVE FILE: {relative_path}\n"
                 f"  → Add to REGISTRY.json or add a _DEPRECATED/_ARCHIVED suffix."
             )
 
-        # Track duplicates by C-number
+        # Track duplicates by C-number (only non-superseded files)
         c_num = extract_c_number(fname)
         if c_num:
             active_by_cnumber.setdefault(c_num, []).append(fname)
@@ -122,7 +152,9 @@ def lint():
     # Check for duplicate active files under same C-number
     for c_num, files in active_by_cnumber.items():
         active_non_deprecated = [
-            f for f in files if not is_non_authoritative(f)
+            f for f in files
+            if not is_non_authoritative(f)
+            and f"canon/{f}" not in superseded_files
         ]
         if len(active_non_deprecated) > 1:
             violations.append(
@@ -132,13 +164,13 @@ def lint():
             )
 
     if violations:
-        print(f"\n❌ CANON LINT FAILED — {len(violations)} violation(s):\n")
+        print(f"\n\u274c CANON LINT FAILED \u2014 {len(violations)} violation(s):\n")
         for v in violations:
             print(v)
             print()
         sys.exit(1)
     else:
-        print(f"✅ CANON LINT PASSED — {len(canon_files)} files checked, registry consistent.")
+        print(f"\u2705 CANON LINT PASSED \u2014 {len(canon_files)} files checked, registry consistent.")
         sys.exit(0)
 
 
