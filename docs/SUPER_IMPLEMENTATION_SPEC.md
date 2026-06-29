@@ -13,7 +13,7 @@
 Real-time superior reasoning, exhaustive simulation of options, personalized optimization (e.g., life/work scheduling as constrained optimization problems). The operator functions at amplified capacity through transparent tools — not replacement. GAIA augments the human. The human remains sovereign.
 
 ### Stability & Trust
-Deterministic modes, extensive testing (`tests/` + `proofs/`), redundancy, and rollback at every state transition. No hallucination-prone magic — grounded in data and algorithms. Every output is traceable, explainable, and reversible.
+Deterministic modes, extensive testing (`tests/` + `proofs/`), redundancy, and rollback at every state transition. No hallucination-prone unexplained behavior — grounded in data and algorithms. Every output is traceable, explainable, and reversible.
 
 ### Performance Edge
 Hybrid quantum-classical architecture solves classes of problems (logistics, discovery, complex modeling) orders of magnitude faster than classical-only on suitable workloads. Edge deployment keeps latency low and data private. Performance is measured, benchmarked, and documented — not assumed.
@@ -79,7 +79,7 @@ GAIA-OS is performing correctly when:
 Super is not a claim about the operator being beyond human.  
 Super is a precise engineering term: **superior performance through structured, measurable, reproducible capability.**
 
-The operator is not magic. The operator is trained, experienced, and equipped with tools that extend natural capability into ranges not achievable without augmentation. That is the definition of a supercomputer — and of a superhuman system.
+The operator is not performing unexplained operations. The operator is trained, experienced, and equipped with tools that extend natural capability into ranges not achievable without augmentation. That is the definition of a supercomputer — and of a superhuman system.
 
 ---
 
