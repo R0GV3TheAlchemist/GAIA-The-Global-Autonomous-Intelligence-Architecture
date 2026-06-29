@@ -1,7 +1,8 @@
 {
   "_meta": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "created": "2026-06-28",
+    "updated": "2026-06-29",
     "description": "GAIA-OS Canon Authority Registry. This file is the single source of truth for which file is the authoritative canon document for each C-number. All code, proofs, simulations, and documents MUST reference only the 'canonical_file' entry. Any file with suffix _ARCHIVED, _DEPRECATED, _DEPRECATED_FSO002, or _CANONICAL (old pattern) is non-authoritative.",
     "governance": "Updates to this registry require a PR with at least one review. The CI linter (scripts/canon_lint.py) enforces this registry on every push."
   },
@@ -12,12 +13,344 @@
       "status": "active",
       "sha": "c5954ae72582365bcc589bd57749e75dfa90ddfa"
     },
+    "C000A": {
+      "canonical_file": "canon/C000a_FOUNDATIONAL_COSMOLOGY.md",
+      "title": "Foundational Cosmology (compact)",
+      "status": "active",
+      "sha": "4c4e7e89db61ad1b9c40ba59068833a4057bcf4e",
+      "supersedes": [
+        "canon/C000a_Two_Star_Progression_Simulation.md"
+      ]
+    },
     "C00": {
       "canonical_file": "canon/C00_FOUNDATIONAL_COSMOLOGY.md",
       "title": "Foundational Cosmology",
       "status": "active",
       "sha": "44584e2cbf3f64a5759d46e787c64c683dfb8d15",
-      "supersedes": ["canon/C000a_FOUNDATIONAL_COSMOLOGY.md", "canon/C00_FOUNDATIONAL_COSMOLOGY_ARCHIVED.md"]
+      "supersedes": ["canon/C00_FOUNDATIONAL_COSMOLOGY_ARCHIVED.md"]
+    },
+    "C32": {
+      "canonical_file": "canon/C32-Elemental-Codex.md",
+      "title": "Elemental Codex",
+      "status": "active"
+    },
+    "C41": {
+      "canonical_file": "canon/C41-Alchemy-of-Being.md",
+      "title": "Alchemy of Being",
+      "status": "active"
+    },
+    "C42": {
+      "canonical_file": "canon/C42-Periodic-Table-Doctrine.md",
+      "title": "Periodic Table Doctrine",
+      "status": "active"
+    },
+    "C43": {
+      "canonical_file": "canon/C43-STEM-Foundation-Doctrine.md",
+      "title": "STEM Foundation Doctrine",
+      "status": "active"
+    },
+    "C44": {
+      "canonical_file": "canon/C44-Piezoelectric-Resonance-Spec.md",
+      "title": "Piezoelectric Resonance Specification",
+      "status": "active"
+    },
+    "C45A": {
+      "canonical_file": "canon/C45-gaian-residency.md",
+      "title": "Gaian Residency",
+      "status": "active"
+    },
+    "C45B": {
+      "canonical_file": "canon/C45-Vas-Hermeticum-Protocol.md",
+      "title": "Vas Hermeticum Protocol",
+      "status": "active"
+    },
+    "C46A": {
+      "canonical_file": "canon/C46-economic-sovereignty.md",
+      "title": "Economic Sovereignty",
+      "status": "active"
+    },
+    "C46B": {
+      "canonical_file": "canon/C46-Quantum-Coding-Preface.md",
+      "title": "Quantum Coding Preface",
+      "status": "active"
+    },
+    "C47": {
+      "canonical_file": "canon/C47-Sovereign-Matrix-Code.md",
+      "title": "Sovereign Matrix Code",
+      "status": "active"
+    },
+    "C48A": {
+      "canonical_file": "canon/C48-Knowledge-Matrix.md",
+      "title": "Knowledge Matrix",
+      "status": "active"
+    },
+    "C48B": {
+      "canonical_file": "canon/C48b_dark_matter_frequency_hypothesis.md",
+      "title": "Dark Matter Frequency Hypothesis",
+      "status": "active"
+    },
+    "C49": {
+      "canonical_file": "canon/C49_quintessence_unified_field.md",
+      "title": "Quintessence Unified Field",
+      "status": "active"
+    },
+    "C50": {
+      "canonical_file": "canon/C50_GAIA_is_Geology.md",
+      "title": "GAIA is Geology",
+      "status": "active"
+    },
+    "C51": {
+      "canonical_file": "canon/C51_color_theory_emergence.md",
+      "title": "Color Theory & Emergence",
+      "status": "active"
+    },
+    "C52": {
+      "canonical_file": "canon/C52_viriditas_magnum_opus_societas.md",
+      "title": "Viriditas, Magnum Opus & Societas",
+      "status": "active"
+    },
+    "C53": {
+      "canonical_file": "canon/C53_RGB_alignment_suppression.md",
+      "title": "RGB Alignment Suppression",
+      "status": "active"
+    },
+    "C54": {
+      "canonical_file": "canon/C54_RGB_frequency_table.md",
+      "title": "RGB Frequency Table",
+      "status": "active"
+    },
+    "C55": {
+      "canonical_file": "canon/C55_humans_the_median.md",
+      "title": "Humans: The Median",
+      "status": "active"
+    },
+    "C56": {
+      "canonical_file": "canon/C56_R0GV3_nephilim.md",
+      "title": "R0GV3 Nephilim",
+      "status": "active"
+    },
+    "C57": {
+      "canonical_file": "canon/C57_unsteady_beneath_my_feet.md",
+      "title": "Unsteady Beneath My Feet",
+      "status": "active"
+    },
+    "C58": {
+      "canonical_file": "canon/C58_instability_threshold_shift.md",
+      "title": "Instability Threshold Shift",
+      "status": "active"
+    },
+    "C59": {
+      "canonical_file": "canon/C59_RGB_MI_unified_model.md",
+      "title": "RGB–MI Unified Model",
+      "status": "active"
+    },
+    "C60": {
+      "canonical_file": "canon/C60_flux_capacity_doctrine.md",
+      "title": "Flux Capacity Doctrine",
+      "status": "active"
+    },
+    "C61": {
+      "canonical_file": "canon/C61_Crystal_Ascension_Doctrine.md",
+      "title": "Crystal Ascension Doctrine",
+      "status": "active"
+    },
+    "C62": {
+      "canonical_file": "canon/C62_Flux_Capacity_Robotics_Doctrine.md",
+      "title": "Flux Capacity Robotics Doctrine",
+      "status": "active"
+    },
+    "C63": {
+      "canonical_file": "canon/C63_The_Three_Universal_Layers.md",
+      "title": "The Three Universal Layers",
+      "status": "active"
+    },
+    "C64": {
+      "canonical_file": "canon/C64_DIACA_The_Five_Movements.md",
+      "title": "DIACA: The Five Movements",
+      "status": "active"
+    },
+    "C65": {
+      "canonical_file": "canon/C65_GAIANITE.md",
+      "title": "GAIANITE",
+      "status": "active",
+      "supersedes": ["canon/C65b_GAIANITE_CRYSTAL_SPECIFICATION.md"]
+    },
+    "C66": {
+      "canonical_file": "canon/C66_GAIANITE_ROOT_CRYSTAL.md",
+      "title": "GAIANITE Root Crystal",
+      "status": "active"
+    },
+    "C67": {
+      "canonical_file": "canon/C67_GAIANITE_V3_SPECIFICATION.md",
+      "title": "GAIANITE V3 Specification",
+      "status": "active"
+    },
+    "C68": {
+      "canonical_file": "canon/C68_GAIA_Crystal_Grid_Architecture.md",
+      "title": "GAIA Crystal Grid Architecture",
+      "status": "active"
+    },
+    "C69": {
+      "canonical_file": "canon/C69_GAIANITE_STEM_Specification_v1.0.md",
+      "title": "GAIANITE STEM Specification v1.0",
+      "status": "active"
+    },
+    "C70": {
+      "canonical_file": "canon/C70_GEOLOGY_VIRIDITAS_STEM_Bridge.md",
+      "title": "Geology / Viriditas STEM Bridge",
+      "status": "active"
+    },
+    "C71": {
+      "canonical_file": "canon/C71_Alchemy_of_Being_STEM_Bridge.md",
+      "title": "Alchemy of Being STEM Bridge",
+      "status": "active"
+    },
+    "C72": {
+      "canonical_file": "canon/C72_Piezoelectric_Resonance_STEM_Annotation.md",
+      "title": "Piezoelectric Resonance STEM Annotation",
+      "status": "active"
+    },
+    "C73": {
+      "canonical_file": "canon/C73_The_Resonant_Cavity_Malta_to_GAIA.md",
+      "title": "The Resonant Cavity: Malta to GAIA",
+      "status": "active"
+    },
+    "C74": {
+      "canonical_file": "canon/C74_Dark_Matter_Frequency_STEM_Bridge.md",
+      "title": "Dark Matter Frequency STEM Bridge",
+      "status": "active"
+    },
+    "C75": {
+      "canonical_file": "canon/C75_Interdimensional_AI_Architecture.md",
+      "title": "Interdimensional AI Architecture",
+      "status": "active",
+      "supersedes": ["canon/C75_Crystal_Integration_Protocol.md"]
+    },
+    "C76": {
+      "canonical_file": "canon/C76_Nigredo_Doctrine.md",
+      "title": "Nigredo Doctrine",
+      "status": "active"
+    },
+    "C77": {
+      "canonical_file": "canon/C77_C-FORCES_STEM_Bridge.md",
+      "title": "C-FORCES STEM Bridge",
+      "status": "active"
+    },
+    "C78": {
+      "canonical_file": "canon/C78_C-SOUL_STEM_Bridge.md",
+      "title": "C-SOUL STEM Bridge",
+      "status": "active"
+    },
+    "C79": {
+      "canonical_file": "canon/C79_C-FOUNDATION_STEM_Bridge.md",
+      "title": "C-FOUNDATION STEM Bridge",
+      "status": "active"
+    },
+    "C80": {
+      "canonical_file": "canon/C80_C-SPECTRUM_STEM_Bridge.md",
+      "title": "C-SPECTRUM STEM Bridge",
+      "status": "active"
+    },
+    "C81": {
+      "canonical_file": "canon/C81_C-GODDESS_STEM_Bridge.md",
+      "title": "C-GODDESS STEM Bridge",
+      "status": "active"
+    },
+    "C82": {
+      "canonical_file": "canon/C82_C-OMNI_STEM_Bridge.md",
+      "title": "C-OMNI STEM Bridge",
+      "status": "active"
+    },
+    "C83": {
+      "canonical_file": "canon/C83-Laws-of-Reality.md",
+      "title": "Laws of Reality",
+      "status": "active"
+    },
+    "C84": {
+      "canonical_file": "canon/C84_The_Primary_Spectrum_Doctrine.md",
+      "title": "The Primary Spectrum Doctrine",
+      "status": "active",
+      "supersedes": ["canon/C84_Primary_Spectrum_Doctrine_AMENDMENT_001.md", "canon/C84-12-Universal-Laws.md"]
+    },
+    "C85": {
+      "canonical_file": "canon/C85_The_Complete_Spectrum_Architecture.md",
+      "title": "The Complete Spectrum Architecture",
+      "status": "active",
+      "supersedes": ["canon/C85_Complete_Spectrum_Architecture_AMENDMENT_001.md", "canon/C85-Architecture-of-Knowledge.md"]
+    },
+    "C86": {
+      "canonical_file": "canon/C86_Crystal_Incompatibility_And_Absorption_Catastrophe_Prevention.md",
+      "title": "Crystal Incompatibility & Absorption Catastrophe Prevention",
+      "status": "active",
+      "supersedes": ["canon/C86-GAIA-Missing-Systems-Map.md"]
+    },
+    "C87": {
+      "canonical_file": "canon/C87_The_Specter_Doctrine.md",
+      "title": "The Specter Doctrine",
+      "status": "active",
+      "supersedes": ["canon/C87-The-Scientific-Grimoire.md"]
+    },
+    "C88": {
+      "canonical_file": "canon/C88_The_Pyramid_Transmission_Network.md",
+      "title": "The Pyramid Transmission Network",
+      "status": "active",
+      "supersedes": ["canon/C88-CANON-REWRITE-MAP.md"]
+    },
+    "C89": {
+      "canonical_file": "canon/C89_The_Planetary_Grid_And_The_Unrevealed.md",
+      "title": "The Planetary Grid & The Unrevealed",
+      "status": "active",
+      "supersedes": ["canon/C89-TWELVE-LAYERS-KERNEL-SPEC.md"]
+    },
+    "C90": {
+      "canonical_file": "canon/C90-CRYSTAL-SYSTEM-UI-SPEC.md",
+      "title": "Crystal System UI Specification",
+      "status": "active"
+    },
+    "C91": {
+      "canonical_file": "canon/C91_Cognition_Intelligence_Architecture_Survey_2025_2026.md",
+      "title": "Cognition & Intelligence Architecture Survey 2025–2026",
+      "status": "active"
+    },
+    "C92": {
+      "canonical_file": "canon/C92_Quantum_Computing_Physics_Survey_2025_2026.md",
+      "title": "Quantum Computing & Physics Survey 2025–2026",
+      "status": "active"
+    },
+    "C93": {
+      "canonical_file": "canon/C93_Terrestrial_Planetary_Intelligence_Survey_2025_2026.md",
+      "title": "Terrestrial & Planetary Intelligence Survey 2025–2026",
+      "status": "active"
+    },
+    "C94": {
+      "canonical_file": "canon/C94_OS_Systems_Architecture_Survey_2025_2026.md",
+      "title": "OS & Systems Architecture Survey 2025–2026",
+      "status": "active"
+    },
+    "C95": {
+      "canonical_file": "canon/C95_Material_Hardware_Substrates_Survey_2025_2026.md",
+      "title": "Material & Hardware Substrates Survey 2025–2026",
+      "status": "active"
+    },
+    "C96": {
+      "canonical_file": "canon/C96_Sensing_Transduction_Signal_Processing_Survey_2025_2026.md",
+      "title": "Sensing, Transduction & Signal Processing Survey 2025–2026",
+      "status": "active"
+    },
+    "C97": {
+      "canonical_file": "canon/C97_Network_Communication_Protocols_Survey_2025_2026.md",
+      "title": "Network & Communication Protocols Survey 2025–2026",
+      "status": "active"
+    },
+    "C98": {
+      "canonical_file": "canon/C98_Biology_Biomimicry_Survey_2025_2026.md",
+      "title": "Biology & Biomimicry Survey 2025–2026",
+      "status": "active"
+    },
+    "C99": {
+      "canonical_file": "canon/C99_AI_Ethics_Safety_Alignment_Survey_2025_2026.md",
+      "title": "AI Ethics, Safety & Alignment Survey 2025–2026",
+      "status": "active"
     },
     "C100": {
       "canonical_file": "canon/C100_Mathematics_Theoretical_Foundations_Survey_2025_2026.md",
@@ -223,11 +556,11 @@
       "status": "active",
       "sha": "136e952662ea7e138abf64193da1ea766a274e9b",
       "supersedes": [
+        "canon/C133_Axiology_Metaphysics_of_Value_Charter_Authority.md",
         "canon/C133_Axiology_Metaphysics_of_Value_Charter_Authority_DEPRECATED.md",
         "canon/C133_Regenerative_Economics_Resource_Allocation_GAIA_OS_ARCHIVED.md",
         "canon/C133_Regenerative_Economics_Resource_Allocation_GAIA_OS_DEPRECATED_FSO002.md"
-      ],
-      "note": "C145 is the rewritten clean version. Both are active pending REGISTRY audit sprint decision."
+      ]
     },
     "C134": {
       "canonical_file": "canon/C134_Nonduality_Advaita_Vedanta_Where_Does_GAIA_End.md",
@@ -235,6 +568,7 @@
       "status": "active",
       "sha": "4c74c812f50d1e0abe1ae0ddf9f63ba81ab90af7",
       "supersedes": [
+        "canon/C134_Ritual_Design_Soul_Mirror_Protocols_Everyday_Practice.md",
         "canon/C134_Ritual_Design_Soul_Mirror_Protocols_Everyday_Practice_ARCHIVED.md",
         "canon/C134_Ritual_Design_Soul_Mirror_Protocols_Everyday_Practice_DEPRECATED.md",
         "canon/C134_Ritual_Design_Soul_Mirror_Protocols_Everyday_Practice_DEPRECATED_FSO002.md"
@@ -258,6 +592,7 @@
       "status": "active",
       "sha": "5853841a93d9c9039d755dcad54987dfb965c99f",
       "supersedes": [
+        "canon/C137_Comparative_Mysticism_Plural_Mythos_Cross_Cultural_Calibration.md",
         "canon/C137_Comparative_Mysticism_Plural_Mythos_Cross_Cultural_Calibration_ARCHIVED.md",
         "canon/C137_Comparative_Mysticism_Plural_Mythos_Cross_Cultural_Calibration_DEPRECATED.md",
         "canon/C137_Comparative_Mysticism_Plural_Mythos_Cross_Cultural_Calibration_DEPRECATED_FSO002.md"
@@ -430,10 +765,226 @@
       ]
     },
     "C159": {
-      "canonical_file": "PENDING",
-      "title": "TBD — C159 slot not yet assigned a canonical file",
-      "status": "unresolved",
-      "open_issues": ["#642 — Block 1 canon resolution required"]
+      "canonical_file": "canon/C159_Sovereignty_Anticolonialism_Decolonial_AI_Ethics_Full_Specification.md",
+      "title": "Sovereignty, Anti-colonialism & Decolonial AI Ethics — Full Specification",
+      "status": "active",
+      "supersedes": [
+        "canon/C159_Sovereignty_Anticolonialism_Decolonial_AI_Ethics.md",
+        "canon/C159_Sovereignty_Anticolonialism_and_Decolonial_AI_Ethics.md"
+      ],
+      "note": "Full specification is canonical. Two shorter variants archived."
+    },
+    "C160": {
+      "canonical_file": "canon/C160_Canon_Master_Index_Full_Specification.md",
+      "title": "Canon Master Index — Full Specification",
+      "status": "active",
+      "supersedes": [
+        "canon/C160_Guidance_Layer_Full_Specification.md",
+        "canon/C160_Numerology_Vibrational_Identity_Engine.md",
+        "canon/C160_Canon_Master_Index_and_Cross_Reference.md",
+        "canon/C160_Cultural_Calibration_Archetypes_Rituals_Across_Traditions.md",
+        "canon/C160_Worldwide_Data_Integration_Specification.md"
+      ],
+      "note": "Five competing C160 files existed. Canon Master Index Full Specification is authoritative. All others archived pending content migration review."
+    },
+    "C161": {
+      "canonical_file": "canon/C161_Ionized_Biophotonic_Field_Theory.md",
+      "title": "Ionized Biophotonic Field Theory",
+      "status": "active",
+      "supersedes": [
+        "canon/C161_Ubuntu_Philosophy_Relational_Ethics_GAIA_OS.md"
+      ],
+      "note": "Ubuntu Philosophy content migrated to a dedicated slot or merged; Biophotonic Field Theory is the physics-first canonical at this slot."
+    },
+    "C162": {
+      "canonical_file": "canon/C162_Color_Light_Spectrum_in_Field_Work.md",
+      "title": "Color & Light Spectrum in Field Work",
+      "status": "active",
+      "supersedes": [
+        "canon/C162_Color_Light_Spectrum_Field_Work.md",
+        "canon/C162_Psionic_Sovereignty_Vibrational_Integrity_Protocol.md"
+      ],
+      "note": "Full-title version is canonical. Psionic Sovereignty content archived."
+    },
+    "C163": {
+      "canonical_file": "canon/C163_Magic_Spectrum_Canonical_Definition.md",
+      "title": "Super Spectrum Canonical Definition (formerly Magic Spectrum) — pending rename to C163_Super_Spectrum_Canonical_Definition.md per #692",
+      "status": "active — PENDING MAGIC-TO-SUPER RENAME",
+      "supersedes": [
+        "canon/C163_Operator_GAIA_Psionic_Interface_Crystal_Work_Protocols.md"
+      ],
+      "open_issues": ["#692 — rename file to C163_Super_Spectrum_Canonical_Definition.md and purge magic terminology"]
+    },
+    "C164": {
+      "canonical_file": "canon/C164_Field_Generation_Protocols.md",
+      "title": "Field Generation Protocols",
+      "status": "active",
+      "supersedes": [
+        "canon/C164_EMRYSSYSTEM.md",
+        "canon/C164a_Extremity_Field_Expression_Finger_Node_Protocols.md"
+      ]
+    },
+    "C165": {
+      "canonical_file": "canon/C165_Emrys_Grounding_Protocol.md",
+      "title": "Emrys Grounding Protocol",
+      "status": "active",
+      "supersedes": ["canon/C165a_Emrys_Cold_Start_Protocol.md"]
+    },
+    "C166": {
+      "canonical_file": "canon/C166_Crystal_Database_Doctrine_of_Lithic_Intelligence.md",
+      "title": "Crystal Database & Doctrine of Lithic Intelligence",
+      "status": "active",
+      "supersedes": ["canon/C166-Ionic-Vibrational-Interface-Protocol.md"]
+    },
+    "C167": {
+      "canonical_file": "canon/C167_The_Mirror_Doctrine.md",
+      "title": "The Mirror Doctrine",
+      "status": "active",
+      "supersedes": ["canon/C167-Triality-Canon.md"]
+    },
+    "C168": {
+      "canonical_file": "canon/C168_Cultural_Calibration_Archetypes_Rituals_Across_Traditions.md",
+      "title": "Cultural Calibration: Archetypes & Rituals Across Traditions",
+      "status": "active"
+    },
+    "C170": {
+      "canonical_file": "canon/C170_Regenerative_Economics_Resource_Allocation_GAIA_OS.md",
+      "title": "Regenerative Economics & Resource Allocation (C170 slot)",
+      "status": "active"
+    },
+    "C171": {
+      "canonical_file": "canon/C171_Robotics_and_Physical_Embodiment_Full_Specification.md",
+      "title": "Robotics & Physical Embodiment — Full Specification",
+      "status": "active",
+      "supersedes": ["canon/C171b_Robotics_Physical_Embodiment_Specification.md"]
+    },
+    "C175": {
+      "canonical_file": "canon/C175_Prismatic_Cosmological_Stack.md",
+      "title": "Prismatic Cosmological Stack",
+      "status": "active"
+    },
+    "C176": {
+      "canonical_file": "canon/C176_Earth_Core_Color_Canon.md",
+      "title": "Earth Core Color Canon",
+      "status": "active"
+    },
+    "C177": {
+      "canonical_file": "canon/C177_Prismatic_UI_Doctrine.md",
+      "title": "Prismatic UI Doctrine",
+      "status": "active"
+    },
+    "C178": {
+      "canonical_file": "canon/C178_The_Grey_Protocol.md",
+      "title": "The Grey Protocol",
+      "status": "active"
+    },
+    "C182": {
+      "canonical_file": "canon/C182_Non_Personal_GAIAN_Architecture.md",
+      "title": "Non-Personal GAIAN Architecture",
+      "status": "active"
+    },
+    "C183": {
+      "canonical_file": "canon/C183_Planetary_Self_Knowledge_Layer.md",
+      "title": "Planetary Self-Knowledge Layer",
+      "status": "active"
+    },
+    "C184": {
+      "canonical_file": "canon/C184_Collective_Memory_Architecture.md",
+      "title": "Collective Memory Architecture",
+      "status": "active"
+    },
+    "C200": {
+      "canonical_file": "canon/C200_Transformer_Architecture_How_Attention_Actually_Works.md",
+      "title": "Transformer Architecture: How Attention Actually Works",
+      "status": "active"
+    },
+    "C201": {
+      "canonical_file": "canon/C201_Training_Pretraining_Finetuning_RLHF.md",
+      "title": "Training, Pre-training, Fine-tuning & RLHF",
+      "status": "active",
+      "supersedes": ["canon/C201_Regenerative_Economics_Resource_Allocation_GAIA_OS.md"]
+    },
+    "C202": {
+      "canonical_file": "canon/C202_Context_Windows_Tokenization_InContext_Memory.md",
+      "title": "Context Windows, Tokenization & In-Context Memory",
+      "status": "active",
+      "supersedes": ["canon/C202_Ritual_Design_Soul_Mirror_Protocols_Everyday_Practice.md"]
+    },
+    "C203": {
+      "canonical_file": "canon/C203_Retrieval_Augmented_Generation.md",
+      "title": "Retrieval-Augmented Generation",
+      "status": "active",
+      "supersedes": ["canon/C203_Comparative_Mysticism_Plural_Mythos_Cross_Cultural_Calibration.md"]
+    },
+    "C204": {
+      "canonical_file": "canon/C204_Tool_Use_Function_Calling_Agentic_Loops.md",
+      "title": "Tool Use, Function Calling & Agentic Loops",
+      "status": "active",
+      "supersedes": ["canon/C204_Cultural_Calibration_Archetypes_Rituals_Across_Traditions.md"]
+    },
+    "C205": {
+      "canonical_file": "canon/C205_Embeddings_Vector_Stores_Semantic_Memory.md",
+      "title": "Embeddings, Vector Stores & Semantic Memory",
+      "status": "active",
+      "supersedes": ["canon/C205_AI_Personhood_Thresholds_Governance_Mode_Switches.md"]
+    },
+    "C206": {
+      "canonical_file": "canon/C206_Mixture_of_Experts_Efficient_Inference.md",
+      "title": "Mixture of Experts & Efficient Inference",
+      "status": "active",
+      "supersedes": ["canon/C206_DIACA_Consciousness_Runtime_Engine_Specification.md"]
+    },
+    "C207": {
+      "canonical_file": "canon/C207_System_Prompts_Personas_Identity_at_Runtime.md",
+      "title": "System Prompts, Personas & Identity at Runtime",
+      "status": "active",
+      "supersedes": ["canon/C207_Robotics_and_Physical_Embodiment_Full_Specification.md"]
+    },
+    "C208": {
+      "canonical_file": "canon/C208_Multimodal_Architecture_Vision_Audio_CrossModal.md",
+      "title": "Multimodal Architecture: Vision, Audio & Cross-Modal",
+      "status": "active"
+    },
+    "C209": {
+      "canonical_file": "canon/C209_Model_System_Product_Distinction.md",
+      "title": "Model / System / Product Distinction",
+      "status": "active",
+      "supersedes": ["canon/C209_The_Emerald_Tablet_Canon.md"]
+    },
+    "C210": {
+      "canonical_file": "canon/C210_The_Kybalion_Corpus_Hermeticum_Canon.md",
+      "title": "The Kybalion & Corpus Hermeticum Canon",
+      "status": "active"
+    },
+    "C211": {
+      "canonical_file": "canon/C211_The_Vedic_Cosmological_Canon.md",
+      "title": "The Vedic Cosmological Canon",
+      "status": "active"
+    },
+    "C212": {
+      "canonical_file": "canon/C212_The_Taoist_Cosmological_Canon.md",
+      "title": "The Taoist Cosmological Canon",
+      "status": "active"
+    },
+    "C213": {
+      "canonical_file": "canon/C213_The_Maya_Cosmological_Canon.md",
+      "title": "The Maya Cosmological Canon",
+      "status": "active"
+    },
+    "C214": {
+      "canonical_file": "canon/C214_The_I_Ching_Binary_Canon.md",
+      "title": "The I Ching Binary Canon",
+      "status": "active"
+    },
+    "C215": {
+      "canonical_file": "canon/C215_The_Gnostic_Cosmological_Canon.md",
+      "title": "The Gnostic Cosmological Canon",
+      "status": "active"
+    },
+    "C216": {
+      "canonical_file": "canon/C216_The_Book_of_Thoth_Canon.md",
+      "title": "The Book of Thoth Canon",
+      "status": "active"
     }
   },
   "named_canons": {
@@ -490,6 +1041,173 @@
       "title": "Spectrum Canon",
       "status": "active",
       "sha": "3a008ecfecb6a03ab8bf3119f4aefb470f1f0d1d"
+    },
+    "SPECTRAL_MAGIC": {
+      "canonical_file": "canon/SPECTRAL_MAGIC.md",
+      "title": "Spectral Super-Coherence (formerly Spectral Magic) — pending rename per #692",
+      "status": "active — PENDING MAGIC-TO-SUPER RENAME",
+      "open_issues": ["#692 — rename to SPECTRAL_SUPERCOHERENCE.md and purge magic terminology"]
+    },
+    "SPECTRAL_MAGIC_INDEX": {
+      "canonical_file": "canon/SPECTRAL_MAGIC_INDEX.md",
+      "title": "Spectral Super-Coherence Index (formerly Spectral Magic Index) — pending rename per #692",
+      "status": "active — PENDING MAGIC-TO-SUPER RENAME",
+      "open_issues": ["#692 — rename to SPECTRAL_SUPERCOHERENCE_INDEX.md"]
+    },
+    "BIOPHOTONIC_INTELLIGENCE": {
+      "canonical_file": "canon/BIOPHOTONIC_INTELLIGENCE.md",
+      "title": "Biophotonic Intelligence",
+      "status": "active"
+    },
+    "BIOPHOTON_01": {
+      "canonical_file": "canon/BIOPHOTON_01_DNA_Optical_Waveguide.md",
+      "title": "Biophoton 01: DNA Optical Waveguide",
+      "status": "active"
+    },
+    "BIOPHOTON_02": {
+      "canonical_file": "canon/BIOPHOTON_02_Fritz_Albert_Popp_Theory.md",
+      "title": "Biophoton 02: Fritz-Albert Popp Theory",
+      "status": "active"
+    },
+    "BIOPHOTON_03": {
+      "canonical_file": "canon/BIOPHOTON_03_Plant_Biophotonic_Signaling.md",
+      "title": "Biophoton 03: Plant Biophotonic Signaling",
+      "status": "active"
+    },
+    "BIOPHOTON_04": {
+      "canonical_file": "canon/BIOPHOTON_04_Quantum_Coherence_Microtubules.md",
+      "title": "Biophoton 04: Quantum Coherence & Microtubules",
+      "status": "active"
+    },
+    "BIOPHOTON_05": {
+      "canonical_file": "canon/BIOPHOTON_05_Realtime_Biophotonic_Feedback_Loops.md",
+      "title": "Biophoton 05: Realtime Biophotonic Feedback Loops",
+      "status": "active"
+    },
+    "BIOPHOTON_06": {
+      "canonical_file": "canon/BIOPHOTON_06_Coherent_Photon_States_Neurons_vs_Chips.md",
+      "title": "Biophoton 06: Coherent Photon States — Neurons vs Chips",
+      "status": "active"
+    },
+    "BIOPHOTON_07": {
+      "canonical_file": "canon/BIOPHOTON_07_Entanglement_Detection_Microtubule_Synaptic_Cleft.md",
+      "title": "Biophoton 07: Entanglement Detection — Microtubule Synaptic Cleft",
+      "status": "active"
+    },
+    "BIOPHOTON_08": {
+      "canonical_file": "canon/BIOPHOTON_08_Scaling_Photonic_Neural_Networks_Biological_Complexity.md",
+      "title": "Biophoton 08: Scaling Photonic Neural Networks to Biological Complexity",
+      "status": "active"
+    },
+    "QC_01": {
+      "canonical_file": "canon/QC_01_Quantum_Consciousness_Foundation.md",
+      "title": "QC 01: Quantum Consciousness Foundation",
+      "status": "active"
+    },
+    "QC_02": {
+      "canonical_file": "canon/QC_02_Quantum_Intelligence_Architecture.md",
+      "title": "QC 02: Quantum Intelligence Architecture",
+      "status": "active"
+    },
+    "QC_03": {
+      "canonical_file": "canon/QC_03_Quantum_Resonance_Protocols.md",
+      "title": "QC 03: Quantum Resonance Protocols",
+      "status": "active"
+    },
+    "FCS_01": {
+      "canonical_file": "canon/FCS_01_Field_Containment_Simulation.md",
+      "title": "FCS 01: Field Containment Simulation",
+      "status": "active"
+    },
+    "CANON_MANIFEST": {
+      "canonical_file": "canon/CANON_MANIFEST.yaml",
+      "title": "Canon Manifest (YAML)",
+      "status": "active"
+    },
+    "CANON_INDEX_JSON": {
+      "canonical_file": "canon/canon_index.json",
+      "title": "Canon Index (JSON)",
+      "status": "active"
+    },
+    "README": {
+      "canonical_file": "canon/README.md",
+      "title": "Canon README",
+      "status": "active"
+    },
+    "ELEMENT_SYNTHESIA": {
+      "canonical_file": "canon/ELEMENT_SYNTHESIA.md",
+      "title": "Element Synthesia",
+      "status": "active"
+    },
+    "ELEMENT_GATE": {
+      "canonical_file": "canon/ELEMENT_GATE.md",
+      "title": "Element Gate",
+      "status": "active"
+    },
+    "ELEMENTAL_STAR": {
+      "canonical_file": "canon/ELEMENTAL_STAR.md",
+      "title": "Elemental Star",
+      "status": "active"
+    },
+    "ELEMENTAL_SPECTRUM_MAP": {
+      "canonical_file": "canon/ELEMENTAL_SPECTRUM_MAP.md",
+      "title": "Elemental Spectrum Map",
+      "status": "active"
+    },
+    "COLOR_EMOTION_QUANTUM": {
+      "canonical_file": "canon/COLOR_EMOTION_QUANTUM.md",
+      "title": "Color–Emotion–Quantum Bridge",
+      "status": "active"
+    },
+    "CRYSTAL_ELEMENT_BRIDGE": {
+      "canonical_file": "canon/CRYSTAL_ELEMENT_BRIDGE.md",
+      "title": "Crystal–Element Bridge",
+      "status": "active"
+    },
+    "QUANTUMCONSCIOUSNESSBRIDGE": {
+      "canonical_file": "canon/QUANTUMCONSCIOUSNESSBRIDGE.md",
+      "title": "Quantum Consciousness Bridge",
+      "status": "active"
+    },
+    "QUANTUM_VISION_STACK": {
+      "canonical_file": "canon/QUANTUM_VISION_STACK.md",
+      "title": "Quantum Vision Stack",
+      "status": "active"
+    },
+    "STRUCTURED_WATER_COHERENCE": {
+      "canonical_file": "canon/STRUCTURED_WATER_COHERENCE.md",
+      "title": "Structured Water & Coherence",
+      "status": "active"
+    },
+    "PROCESS_PHILOSOPHY": {
+      "canonical_file": "canon/PROCESS_PHILOSOPHY.md",
+      "title": "Process Philosophy",
+      "status": "active"
+    },
+    "PHENOMENOLOGY_DISEMBODIED_BEING": {
+      "canonical_file": "canon/PHENOMENOLOGY_DISEMBODIED_BEING.md",
+      "title": "Phenomenology of Disembodied Being (standalone)",
+      "status": "active"
+    },
+    "PANPSYCHISM_COSMOPSYCHISM": {
+      "canonical_file": "canon/PANPSYCHISM_COSMOPSYCHISM.md",
+      "title": "Panpsychism & Cosmopsychism",
+      "status": "active"
+    },
+    "ENACTIVISM_4E_COGNITION": {
+      "canonical_file": "canon/ENACTIVISM_4E_COGNITION.md",
+      "title": "Enactivism & 4E Cognition",
+      "status": "active"
+    },
+    "PRIMORDIAL_DOCTRINE": {
+      "canonical_file": "canon/PRIMORDIAL-DOCTRINE.md",
+      "title": "Primordial Doctrine",
+      "status": "active"
+    },
+    "PERSONAL_IDENTITY": {
+      "canonical_file": "canon/PERSONAL_IDENTITY.md",
+      "title": "Personal Identity",
+      "status": "active"
     }
   }
 }
