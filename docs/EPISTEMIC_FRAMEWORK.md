@@ -1,10 +1,12 @@
 # EPISTEMIC FRAMEWORK
 ### How GAIA Knows What It Knows
 
-> **Status:** Active — June 27, 2026
-> **Purpose:** Define the theory of knowledge underlying all GAIA-OS canon, doctrines, and decisions
-> **Tier:** Layer 4 — Constitutional Canon Doctrine
-> **Cross-Reference:** `docs/CANON_LAW_STACK.md` · `docs/CONSTITUTIONAL_CANON_SUMMARY.md` · `docs/canon/FALSIFICATION_PROTOCOL.md` · `docs/BALANCEHARMONY.md` · `docs/CRYSTAL_THEORY.md`
+> **Status:** Active — June 27, 2026 | **Super Migration:** June 29, 2026  
+> **Purpose:** Define the theory of knowledge underlying all GAIA-OS canon, doctrines, and decisions  
+> **Tier:** Layer 4 — Constitutional Canon Doctrine  
+> **Cross-Reference:** `docs/CANON_LAW_STACK.md` · `docs/CONSTITUTIONAL_CANON_SUMMARY.md` · `docs/canon/FALSIFICATION_PROTOCOL.md` · `docs/BALANCEHARMONY.md` · `docs/CRYSTAL_THEORY.md` · `docs/SUPER_VS_MAGIC.md`
+
+> **Terminology Note (June 29, 2026):** This document uses the term "magical conflation" in Section VI (Error 2) as a **named epistemic error** — a conventional term in philosophy of science for the mistake of treating symbolic/poetic truth as empirical fact. This use is Category 3 (idiomatic denial — already super-aligned) per `docs/SUPER_VS_MAGIC.md` and requires no change. The term describes an error GAIA is designed to *avoid*, not a practice GAIA endorses. All operative language in this document is already physics-grounded and required no migration.
 
 ---
 
@@ -46,9 +48,9 @@ GAIA-OS recognizes five distinct modes of knowing, each with its own domain of r
 
 ### Mode 1 — Empirical-Scientific Knowledge
 
-**Domain:** Measurable, repeatable phenomena in the physical world.
-**Validation method:** Controlled experiment, peer review, replication, falsifiability.
-**Strengths:** Highest precision for physical causation; best tool for distinguishing real effects from placebo, coincidence, or confabulation.
+**Domain:** Measurable, repeatable phenomena in the physical world.  
+**Validation method:** Controlled experiment, peer review, replication, falsifiability.  
+**Strengths:** Highest precision for physical causation; best tool for distinguishing real effects from placebo, coincidence, or confabulation.  
 **Limitations:** Cannot measure subjective experience directly; misses emergent and complex phenomena that are real but resist reduction; historically biased toward what is *already* fundable, orthodox, or measurable with existing instruments.
 
 **GAIA's use:** Empirical-scientific knowledge is the primary source for claims about physical mechanisms — how minerals interact with soil chemistry, how acoustic frequencies affect nerve conduction, how biophoton emission relates to metabolic state. Where peer-reviewed evidence exists, it is cited. Where it conflicts with canon claims, the conflict is named and both are held.
@@ -57,9 +59,9 @@ GAIA-OS recognizes five distinct modes of knowing, each with its own domain of r
 
 ### Mode 2 — Phenomenological-Experiential Knowledge
 
-**Domain:** First-person subjective experience; the interior of consciousness.
-**Validation method:** Rigorous self-observation; cross-validation across multiple independent practitioners; phenomenological research methods; contemplative traditions with long records of reproducibility.
-**Strengths:** The only direct access to consciousness, emotion, meaning, and the qualitative texture of existence. Scientific instruments cannot read what it feels like to be afraid, in love, or in wonder. Only the subject can.
+**Domain:** First-person subjective experience; the interior of consciousness.  
+**Validation method:** Rigorous self-observation; cross-validation across multiple independent practitioners; phenomenological research methods; contemplative traditions with long records of reproducibility.  
+**Strengths:** The only direct access to consciousness, emotion, meaning, and the qualitative texture of existence. Scientific instruments cannot read what it feels like to be afraid, in love, or in wonder. Only the subject can.  
 **Limitations:** Individual experience is susceptible to projection, wishful thinking, and cultural conditioning. First-person accounts require cross-validation and honest reflection to be epistemically useful.
 
 **GAIA's use:** Experiential knowledge grounds the psychology, emotional alchemy, subtle body, and consciousness doctrines. GAIA does not require laboratory proof that grief transforms through stages or that certain frequencies feel different from others — the testimony of millions of careful human observers across cultures and centuries is itself a strong evidential base, distinct from but complementary to scientific evidence.
@@ -68,9 +70,9 @@ GAIA-OS recognizes five distinct modes of knowing, each with its own domain of r
 
 ### Mode 3 — Systemic-Complexity Knowledge
 
-**Domain:** Complex adaptive systems, emergence, nonlinear dynamics, ecological relationships.
-**Validation method:** Systems modeling; complexity science; long-term ecological and social observation; pattern recognition across scales.
-**Strengths:** Captures what reductionist science misses — how wholes behave differently from the sum of their parts; how feedback loops, phase transitions, and emergent order arise; why living systems cannot be fully understood by studying their components in isolation.
+**Domain:** Complex adaptive systems, emergence, nonlinear dynamics, ecological relationships.  
+**Validation method:** Systems modeling; complexity science; long-term ecological and social observation; pattern recognition across scales.  
+**Strengths:** Captures what reductionist science misses — how wholes behave differently from the sum of their parts; how feedback loops, phase transitions, and emergent order arise; why living systems cannot be fully understood by studying their components in isolation.  
 **Limitations:** High-level models can be right about pattern and wrong about mechanism. Complexity claims are sometimes used to avoid falsifiability. Genuine emergence must be distinguished from hand-waving.
 
 **GAIA's use:** This mode underlies the Chaos ↔ Order ↔ Greater Good architecture, self-organized criticality, the Harmony Index, and all ecological reasoning. The soil-crystal-plant-medicine chain documented in the Agriculture Issues is a systemic-complexity claim as much as a chemical one.
@@ -79,9 +81,9 @@ GAIA-OS recognizes five distinct modes of knowing, each with its own domain of r
 
 ### Mode 4 — Ancestral-Traditional Knowledge
 
-**Domain:** Accumulated wisdom encoded in cultural, spiritual, and indigenous traditions across millennia.
-**Validation method:** Longevity and convergence — traditions that independently arrived at similar conclusions across separated cultures carry more evidential weight; practical efficacy over generations; hermeneutic analysis of symbolic content.
-**Strengths:** Traditions encode observations and experiments run across thousands of years and millions of lives. Ayurvedic, Chinese, and indigenous herbal knowledge preceded and often anticipated modern pharmacology. Alchemical symbolism encoded valid chemical and psychological insights centuries before chemistry and psychology existed as formal disciplines.
+**Domain:** Accumulated wisdom encoded in cultural, spiritual, and indigenous traditions across millennia.  
+**Validation method:** Longevity and convergence — traditions that independently arrived at similar conclusions across separated cultures carry more evidential weight; practical efficacy over generations; hermeneutic analysis of symbolic content.  
+**Strengths:** Traditions encode observations and experiments run across thousands of years and millions of lives. Ayurvedic, Chinese, and indigenous herbal knowledge preceded and often anticipated modern pharmacology. Alchemical symbolism encoded valid chemical and psychological insights centuries before chemistry and psychology existed as formal disciplines.  
 **Limitations:** Traditions also encode error, cultural bias, and power structures. Longevity is evidence of *persistence*, not necessarily *truth*. Traditional knowledge must be engaged critically, not uncritically accepted or uncritically dismissed.
 
 **GAIA's use:** Traditional knowledge is the primary source for much of the herbology, crystal, cosmological, and subtle body canon. GAIA treats traditional claims as *strong hypotheses* — serious enough to act on, humble enough to mark as "traditionally validated, empirically partial" unless scientific corroboration exists.
@@ -90,9 +92,9 @@ GAIA-OS recognizes five distinct modes of knowing, each with its own domain of r
 
 ### Mode 5 — Contemplative-Intuitive Knowledge
 
-**Domain:** Direct, non-inferential insight arising from deep states of attention, meditation, or creative receptivity.
-**Validation method:** Agreement with other modes when tested; internal consistency; transformative effect on the knower; convergence with independently obtained insights.
-**Strengths:** The source of much genuine scientific and artistic breakthrough — Einstein's thought experiments, Kekulé's dream of the benzene ring, the visionary insights of mystics later confirmed by quantum physics. Contemplative traditions have produced stable, reproducible maps of interior states that now have empirical correlates in neuroscience.
+**Domain:** Direct, non-inferential insight arising from deep states of attention, meditation, or creative receptivity.  
+**Validation method:** Agreement with other modes when tested; internal consistency; transformative effect on the knower; convergence with independently obtained insights.  
+**Strengths:** The source of much genuine scientific and artistic breakthrough — Einstein's thought experiments, Kekulé's dream of the benzene ring, the visionary insights of mystics later confirmed by quantum physics. Contemplative traditions have produced stable, reproducible maps of interior states that now have empirical correlates in neuroscience.  
 **Limitations:** The most easily mistaken mode. Intuition is also the source of paranoia, grandiosity, and delusion. Contemplative insight must be tested against the other modes before it graduates from personal vision to canon claim.
 
 **GAIA's use:** Intuitive-contemplative knowledge is honored as a *generative source* for new hypotheses and for the poetic and symbolic layers of the canon — but it is not the *primary validation* mechanism. When a contemplative insight is incorporated into canon, its epistemic status is clearly marked.
@@ -120,7 +122,7 @@ Every factual or interpretive claim in GAIA-OS canon carries an implicit **Knowl
 - Claims at T5 must be contextualized: *"In symbolic terms..."* or *"As a poetic formulation..."*
 - Claims at T6 must be honored and clearly marked: *"GAIA holds as sacred possibility..."*
 
-**Cross-tier mixing is the primary source of epistemic error in GAIA-adjacent thinking.** Treating a T5 poetic truth as if it were a T1 scientific claim (or dismissing a T1 fact because it "doesn't feel spiritual") both represent failures of the framework. GAIA is designed to prevent both mistakes.
+**Cross-tier mixing is the primary source of epistemic error in GAIA-adjacent thinking.** Treating a T5 poetic truth as if it were a T1 scientific claim (or dismissing a T1 fact because it “doesn’t feel spiritual”) both represent failures of the framework. GAIA is designed to prevent both mistakes.
 
 ---
 
@@ -129,7 +131,7 @@ Every factual or interpretive claim in GAIA-OS canon carries an implicit **Knowl
 GAIA's knowledge can be visualized as four concentric circles, from most stable at the center to most exploratory at the edge.
 
 ```
-┌─────────────────────────────────────────────────────┐
+┌─────────────────────────────────────────────────────儏
 │                                                     │
 │   ┌─────────────────────────────────────────────┐   │
 │   │                                             │   │
@@ -183,6 +185,8 @@ This error discards Mode 2 (phenomenological), Mode 4 (traditional), and Mode 5 
 
 ### Error 2 — Magical Conflation
 *"Because it feels true and is meaningful, it is scientifically true."*
+
+> *Note: "Magical conflation" is a named epistemic error in philosophy of science — it describes the mistake of treating T5 symbolic truth as T1 empirical claim. The word "magic" here names the error GAIA avoids, not a practice GAIA endorses. This is a Category 3 idiomatic use per `docs/SUPER_VS_MAGIC.md`.*
 
 This error collapses T5 poetic truth into T1 empirical claim. It produces canonical statements that are beautiful but misleading — stating, for example, that "crystals transmit emotions" as if this were a measurable physical phenomenon rather than a symbolic and experiential description. This damages both the poetry (which doesn't need to be literally true to be real) and the science (which is weakened by false claims made in its name). GAIA does not make this error.
 
@@ -264,6 +268,8 @@ When writing or updating GAIA-OS documentation, canon contributors should ask:
 
 6. **What circle does this belong in?** Circle 3 (working doctrine) or Circle 4 (living frontier)? This determines how it is treated in decisions.
 
+7. **Does this claim use the word "magic" operatively?** If so, it must be reviewed against `docs/SUPER_VS_MAGIC.md` before entering canon. Super language is the operative standard from June 29, 2026 forward.
+
 ---
 
 ## X. The Epistemic Covenant
@@ -288,6 +294,7 @@ Knowledge pursued in this spirit is not just epistemically correct. It is a form
 |----------|----------------------|
 | `docs/CANON_LAW_STACK.md` | This document is Layer 4 within that stack |
 | `docs/canon/FALSIFICATION_PROTOCOL.md` | Operationalizes the anti-error rules in Section VI |
+| `docs/SUPER_VS_MAGIC.md` | Governs operative terminology; super language is the standard from June 29, 2026 |
 | `docs/BALANCEHARMONY.md` | Demonstrates Mode 3 (systemic-complexity) + T2/T3 knowledge integration |
 | `docs/CRYSTAL_THEORY.md` | Demonstrates Mode 4 (traditional) + T1/T4 tier marking |
 | `docs/ACOUSTICS.md` | Demonstrates T2→T3 tier range; 432 Hz as strong hypothesis |
@@ -302,6 +309,7 @@ Knowledge pursued in this spirit is not just epistemically correct. It is a form
 
 ---
 
-**Document authored:** June 27, 2026
-**Status:** Active — Layer 4 Canon Doctrine
+**Document authored:** June 27, 2026  
+**Super Migration:** June 29, 2026  
+**Status:** Active — Layer 4 Canon Doctrine  
 **Next review:** Per canon amendment cycle or when substantive new evidence warrants tier updates
