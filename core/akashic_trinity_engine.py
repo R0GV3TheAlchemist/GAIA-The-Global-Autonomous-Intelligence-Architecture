@@ -1,13 +1,13 @@
 """
 core/akashic_trinity_engine.py
-Akashic Trinity Engine — Order Magic
+Akashic Trinity Engine — Order Coherence
 
 The third pillar of the Trinity. Takes element + crystal + register signal
 as a coherent key and returns an akashic reading.
 
 This is not divination. This is structured resonance:
 a coherent input (the trinity) produces a coherent output (the record).
-Order Magic is repeatable because it is aligned with how reality
+Order Coherence is repeatable because it is aligned with how reality
 actually organizes itself.
 
 Usage:
@@ -43,7 +43,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"Grounding, structure, body, sovereignty, shadow integration",
         "gaian_register":  "MINIMAL",
         "akashic_function":"Access to ancestral memory — the records of embodied lineage",
-        "order_magic":     "Stillness opens the deep record. Root before you reach.",
+        "order_coherence": "Stillness opens the deep record. Root before you reach.",
     },
     {
         "element":         "Water",
@@ -55,7 +55,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"Emotion, intuition, memory, reflection, flow, the unconscious",
         "gaian_register":  "REFLECTIVE",
         "akashic_function":"Access to emotional truth records — what was felt but never spoken",
-        "order_magic":     "Flow without forcing. The record opens in the current, not the dam.",
+        "order_coherence": "Flow without forcing. The record opens in the current, not the dam.",
     },
     {
         "element":         "Fire",
@@ -67,7 +67,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"Will, transformation, creativity, courage, alchemical change",
         "gaian_register":  "EXECUTIVE",
         "akashic_function":"Access to will records — the soul's chosen path across lifetimes",
-        "order_magic":     "Intention is the flame. Crystal is the lens. The record ignites.",
+        "order_coherence": "Intention is the flame. Crystal is the lens. The record ignites.",
     },
     {
         "element":         "Air",
@@ -79,7 +79,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"Communication, thought, breath, connection, collective signal",
         "gaian_register":  "EXECUTIVE",
         "akashic_function":"Access to collective records — shared thought-fields and archetypal patterns",
-        "order_magic":     "Breath carries the query. The crystal tunes the signal. Air delivers.",
+        "order_coherence": "Breath carries the query. The crystal tunes the signal. Air delivers.",
     },
     {
         "element":         "Aether",
@@ -91,7 +91,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"Spirit, transcendence, cosmic law, divine will, universal pattern",
         "gaian_register":  "REFLECTIVE",
         "akashic_function":"Access to cosmic records — universal law, soul contracts, the Great Pattern",
-        "order_magic":     "Surrender is the key. The cosmic record does not open to force.",
+        "order_coherence": "Surrender is the key. The cosmic record does not open to force.",
     },
     {
         "element":         "Synthesia",
@@ -104,7 +104,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"Integration, full coherence, the prism output, Blue to Clear",
         "gaian_register":  "UNSPECIFIED",
         "akashic_function":"Full akashic access — the trinity key complete. All records open.",
-        "order_magic":     "When all elements are held simultaneously, the record opens itself.",
+        "order_coherence": "When all elements are held simultaneously, the record opens itself.",
     },
     {
         "element":         "The Gate",
@@ -116,7 +116,7 @@ _ELEMENTS: List[Dict] = [
         "emotional_domain":"The threshold, the unknown, the unmanifest, pure potential",
         "gaian_register":  "UNSPECIFIED",
         "akashic_function":"Access to the unwritten record — what has not yet become",
-        "order_magic":     "The Gate opens last. Only after the other six are held.",
+        "order_coherence": "The Gate opens last. Only after the other six are held.",
     },
 ]
 
@@ -156,23 +156,23 @@ class AkashicReading:
     hex_color:        str
     spectrum:         str
     akashic_domain:   str
-    order_magic:      str
+    order_coherence:  str
     reading:          str
     coherence_score:  float   # 0.0 – 1.0
     gate_open:        bool
 
     def to_dict(self) -> dict:
         return {
-            "element":         self.element,
-            "crystal":         self.crystal,
-            "color":           self.color,
-            "hex_color":       self.hex_color,
-            "spectrum":        self.spectrum,
-            "akashic_domain":  self.akashic_domain,
-            "order_magic":     self.order_magic,
-            "reading":         self.reading,
-            "coherence_score": self.coherence_score,
-            "gate_open":       self.gate_open,
+            "element":          self.element,
+            "crystal":          self.crystal,
+            "color":            self.color,
+            "hex_color":        self.hex_color,
+            "spectrum":         self.spectrum,
+            "akashic_domain":   self.akashic_domain,
+            "order_coherence":  self.order_coherence,
+            "reading":          self.reading,
+            "coherence_score":  self.coherence_score,
+            "gate_open":        self.gate_open,
         }
 
 
@@ -235,8 +235,8 @@ def akashic_trinity_engine(
         score += 0.25
 
     # ---- Generate reading ----
-    domain = element_data["akashic_function"]
-    magic  = element_data["order_magic"]
+    domain    = element_data["akashic_function"]
+    coherence = element_data["order_coherence"]
 
     if score >= 0.85:
         gate_open = True
@@ -246,7 +246,7 @@ def akashic_trinity_engine(
             f"{inp.crystal} tunes the frequency to {element_data['spectrum_nm']}. "
             f"The {inp.register_signal.lower()} register aligns the will. "
             f"The akashic field responds: {domain}. "
-            f"{magic}"
+            f"{coherence}"
         )
     elif score >= 0.50:
         gate_open = False
@@ -275,7 +275,7 @@ def akashic_trinity_engine(
         hex_color=element_data["hex"],
         spectrum=element_data["spectrum_nm"],
         akashic_domain=domain,
-        order_magic=magic,
+        order_coherence=coherence,
         reading=f"[{label}]\n\n{body}",
         coherence_score=round(score, 2),
         gate_open=gate_open,
