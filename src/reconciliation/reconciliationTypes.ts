@@ -497,7 +497,7 @@ export interface ReconciliationReport {
 
 /**
  * Runtime configuration surface — values sourced from arfp.yaml.
- * All thresholds are here so no magic numbers appear in engine logic.
+ * All thresholds are here so no unexplained constants appear in engine logic.
  */
 export interface ARFPConfig {
   // Fragment detection
