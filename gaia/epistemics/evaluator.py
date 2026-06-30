@@ -1,181 +1,165 @@
 """
-GAIA Epistemic Evaluator
-The truth engine at the heart of GAIA.
+GAIA Epistemic Evaluator — Ontology-Aware (v0.2)
+Now evaluates claims against the structured ontology,
+not just text similarity.
 
-This is what makes GAIA structurally different from every other AI system:
-- It does not assume inputs are true
-- It evaluates every claim against existing knowledge
-- It computes confidence, detects contradictions, assigns epistemic status
-- It updates the world model with evidence-weighted truth
+Upgrade path:
+  v0.1: keyword overlap
+  v0.2: entity-level + keyword overlap  ← THIS VERSION
+  v0.3: semantic NLI-based contradiction detection
+  v0.4: Bayesian confidence propagation
 """
 
-from typing import List, Dict, Any, Optional
-from .claim import Claim, VALID_STATUSES
+from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
-
-# Confidence thresholds — aligned with EPISTEMIC_FRAMEWORK.md
-CONFIDENCE_THRESHOLDS = {
-    "verified": 0.85,
-    "supported": 0.65,
-    "speculative-grounded": 0.45,
-    "speculative": 0.25,
-    "disputed": 0.0,       # Any claim with active contradictions
-    "unknown": 0.0,        # Not yet evaluated
-}
+if TYPE_CHECKING:
+    from ..ontology.registry import OntologyRegistry
+    from ..ontology.claim import Claim
 
 # Scoring weights
-SUPPORT_WEIGHT = 0.08      # Each supporting claim adds this much confidence
-CONTRADICTION_WEIGHT = 0.12  # Each contradicting claim removes this much
-SOURCE_WEIGHT = 0.3        # Source reliability contributes this fraction
+SUPPORT_BOOST    = 0.08
+CONTRA_PENALTY   = 0.12
+SOURCE_BONUS     = 0.05
+ENTITY_MATCH_BOOST = 0.06  # NEW in v0.2: entity-level match bonus
+
+# Status thresholds
+THRESHOLDS = {
+    "verified":             0.85,
+    "supported":            0.65,
+    "speculative-grounded": 0.45,
+    "speculative":          0.25,
+}
 
 
 class EpistemicEvaluator:
     """
-    The EpistemicEvaluator processes incoming Claims against the
-    existing knowledge base and produces an evidence-weighted
-    assessment: confidence score + epistemic status.
-
-    This is GAIA's truth engine.
+    Ontology-aware epistemic evaluator.
+    Evaluates claims against both the text knowledge base
+    and the structured entity graph in the ontology.
     """
 
     def evaluate(
         self,
-        claim: Claim,
-        knowledge_base: Dict[str, Claim]
+        claim,
+        ontology: "OntologyRegistry",
+        knowledge_base: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Full epistemic evaluation of a claim.
-
-        Returns:
-            dict with keys: claim, confidence, status, contradictions,
-                            supporting_claims, evaluation_notes
+        Full epistemic evaluation of a claim against the ontology.
         """
-        # 1. Find related claims in the knowledge base
-        related = self._find_related_claims(claim, knowledge_base)
+        kb = knowledge_base or {}
 
-        # 2. Separate supporting from contradicting
-        supporting = [c for c in related if self._is_supporting(claim, c)]
-        contradictions = self._detect_contradictions(claim, related)
+        # 1. Text-based related claims
+        text_related = self._find_text_related(claim, kb)
 
-        # 3. Compute confidence score
+        # 2. Entity-based related claims (NEW in v0.2)
+        entity_related = self._find_entity_related(claim, ontology)
+
+        # Merge, deduplicate
+        all_related_ids = {c.id for c in entity_related}
+        merged_related = list(entity_related)
+        for c in text_related:
+            if c.id not in all_related_ids:
+                merged_related.append(c)
+                all_related_ids.add(c.id)
+
+        # 3. Detect contradictions
+        contradictions = self._detect_contradictions(claim, merged_related)
+
+        # 4. Supporting claims
+        supporting = [
+            c for c in merged_related
+            if c.status in ("supported", "verified", "speculative-grounded")
+        ]
+
+        # 5. Compute confidence
         confidence = self._compute_confidence(
-            claim, supporting, contradictions
+            claim, supporting, contradictions, entity_related
         )
 
-        # 4. Assign epistemic status
+        # 6. Assign status
         status = self._assign_status(confidence, contradictions)
 
-        # 5. Build provenance chain entry
-        provenance_entry = (
-            f"Evaluated at {__import__('datetime').datetime.utcnow().isoformat()} — "
-            f"supporting={len(supporting)}, contradictions={len(contradictions)}, "
-            f"confidence={confidence:.3f}, status={status}"
-        )
-
         return {
-            "claim": claim,
-            "confidence": confidence,
-            "status": status,
-            "contradictions": contradictions,
-            "supporting_claims": supporting,
-            "evaluation_notes": provenance_entry
+            "claim":           claim,
+            "confidence":      confidence,
+            "status":          status,
+            "contradictions":  contradictions,
+            "supporting":      supporting,
+            "related_entities": claim.entities,
+            "evaluation_method": "ontology-aware-v0.2",
         }
 
-    def _find_related_claims(
+    # ——— internal ———
+
+    def _find_text_related(
         self,
-        claim: Claim,
-        knowledge_base: Dict[str, Claim]
-    ) -> List[Claim]:
-        """
-        Find claims in the knowledge base that share entity references
-        or overlap semantically with the incoming claim.
-        v0.1: entity_ref overlap. v0.2+: semantic similarity via embeddings.
-        """
+        claim,
+        knowledge_base: Dict[str, Any]
+    ) -> List:
+        """Find related claims via keyword overlap (v0.1 method, retained)."""
+        words = set(claim.statement.lower().split())
         related = []
-        claim_entities = set(claim.entity_refs)
         for existing in knowledge_base.values():
-            if existing.id == claim.id:
+            if hasattr(existing, 'id') and existing.id == claim.id:
                 continue
-            existing_entities = set(existing.entity_refs)
-            if claim_entities & existing_entities:  # shared entity reference
-                related.append(existing)
+            if hasattr(existing, 'statement'):
+                entry_words = set(existing.statement.lower().split())
+                if len(words & entry_words) >= 3:
+                    related.append(existing)
         return related
 
-    def _is_supporting(self, claim: Claim, other: Claim) -> bool:
-        """A claim supports another if same entities + compatible status."""
-        return (
-            set(claim.entity_refs) & set(other.entity_refs)
-            and other.status in ("supported", "verified", "speculative-grounded")
-        )
-
-    def _detect_contradictions(
+    def _find_entity_related(
         self,
-        claim: Claim,
-        related: List[Claim]
-    ) -> List[Claim]:
+        claim,
+        ontology: "OntologyRegistry"
+    ) -> List:
         """
-        Detect contradictions: claims about the same entities
-        with conflicting status or high semantic opposition.
-        v0.1: status conflict detection.
-        v0.2+: semantic contradiction via NLI model.
+        Find claims in the ontology that share entity references.
+        This is the v0.2 upgrade: structured entity-level matching.
         """
+        if not claim.entities:
+            return []
+        related = []
+        seen = set()
+        for entity_id in claim.entities:
+            for existing_claim in ontology.get_claims_for_entity(entity_id):
+                if existing_claim.id != claim.id and existing_claim.id not in seen:
+                    related.append(existing_claim)
+                    seen.add(existing_claim.id)
+        return related
+
+    def _detect_contradictions(self, claim, related: List) -> List:
+        positive = {"supported", "verified"}
+        negative = {"disputed", "contradicted"}
         contradictions = []
         for r in related:
-            if self._is_contradiction(claim, r):
+            a_pos = claim.status in positive
+            b_neg = r.status in negative
+            a_neg = claim.status in negative
+            b_pos = r.status in positive
+            if (a_pos and b_neg) or (a_neg and b_pos):
                 contradictions.append(r)
         return contradictions
 
-    def _is_contradiction(self, a: Claim, b: Claim) -> bool:
-        """Two claims contradict if they concern the same entities
-        and one is disputed/contradicted while the other is supported/verified."""
-        a_positive = a.status in ("supported", "verified")
-        b_positive = b.status in ("supported", "verified")
-        a_negative = a.status in ("disputed", "contradicted")
-        b_negative = b.status in ("disputed", "contradicted")
-        same_entities = bool(set(a.entity_refs) & set(b.entity_refs))
-        return same_entities and (
-            (a_positive and b_negative) or
-            (a_negative and b_positive)
-        )
-
     def _compute_confidence(
         self,
-        claim: Claim,
-        supporting: List[Claim],
-        contradictions: List[Claim]
+        claim,
+        supporting: List,
+        contradictions: List,
+        entity_related: List
     ) -> float:
-        """
-        Confidence computation:
-        base = source_confidence * SOURCE_WEIGHT
-        + supporting evidence bonus
-        - contradiction penalty
-        Clamped to [0.0, 1.0]
-        """
-        base = claim.source_confidence * SOURCE_WEIGHT
-
-        # Start from midpoint if no source confidence signal
-        if base == 0:
-            base = 0.3
-
-        base += len(supporting) * SUPPORT_WEIGHT
-        base -= len(contradictions) * CONTRADICTION_WEIGHT
-
+        base = 0.30
+        base += len(getattr(claim, 'sources', [])) * SOURCE_BONUS
+        base += len(supporting) * SUPPORT_BOOST
+        base -= len(contradictions) * CONTRA_PENALTY
+        base += len(entity_related) * ENTITY_MATCH_BOOST  # v0.2 entity bonus
         return round(max(0.0, min(1.0, base)), 4)
 
-    def _assign_status(
-        self,
-        confidence: float,
-        contradictions: List[Claim]
-    ) -> str:
-        """Assign epistemic status based on confidence score and contradictions."""
+    def _assign_status(self, confidence: float, contradictions: List) -> str:
         if contradictions:
             return "disputed"
-        if confidence >= CONFIDENCE_THRESHOLDS["verified"]:
-            return "verified"
-        if confidence >= CONFIDENCE_THRESHOLDS["supported"]:
-            return "supported"
-        if confidence >= CONFIDENCE_THRESHOLDS["speculative-grounded"]:
-            return "speculative-grounded"
-        if confidence >= CONFIDENCE_THRESHOLDS["speculative"]:
-            return "speculative"
-        return "unknown"
+        for status, threshold in THRESHOLDS.items():
+            if confidence >= threshold:
+                return status
+        return "speculative"

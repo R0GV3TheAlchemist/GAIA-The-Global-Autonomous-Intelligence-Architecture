@@ -1,78 +1,52 @@
 """
-GAIA Entity Model
-The atomic unit of the GAIA ontology.
-Every thing that exists in GAIA's world model is an Entity.
+GAIA Ontology — Entity
+The atomic typed object in GAIA's model of reality.
+Every thing that exists is an Entity with a type, name, and attributes.
 """
 
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import uuid
-from datetime import datetime
+
+# Canonical entity types in the GAIA ontology
+ENTITY_TYPES = {
+    "PERSON",      # Human beings, agents with sovereignty
+    "OBJECT",      # Physical or digital artifacts
+    "CONCEPT",     # Abstract ideas, frameworks, principles
+    "SYSTEM",      # Operational systems (AI, biological, social)
+    "EVENT",       # Occurrences in time
+    "PROCESS",     # Ongoing state-changing activities
+    "DOMAIN",      # Fields of knowledge
+    "MEASUREMENT", # Quantitative observations
+}
 
 
-@dataclass
-class Entity:
-    """
-    An entity is any object, system, agent, concept, or phenomenon
-    that GAIA tracks in its world model.
-
-    Examples:
-        - A human being (type: "Person")
-        - A canon document (type: "KnowledgeNode")
-        - A biophotonic coherence measurement (type: "Measurement")
-        - A causal relationship claim (type: "CausalClaim")
-        - A GAIA agent (type: "Agent")
-    """
-    id: str
-    type: str
+class Entity(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str                          # Must be in ENTITY_TYPES
     name: str
-    attributes: Dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
-    provenance: Optional[str] = None  # source of this entity's entry into the world model
+    attributes: Dict[str, Any] = {}
+    description: Optional[str] = None
     epistemic_status: str = "unknown"  # unknown | verified | speculative | disputed
+    domain: Optional[str] = None
 
-    @staticmethod
-    def create(
-        type: str,
-        name: str,
-        attributes: Optional[Dict[str, Any]] = None,
-        provenance: Optional[str] = None,
-        epistemic_status: str = "unknown"
-    ) -> "Entity":
-        """
-        Factory method — creates a new entity with a UUID and UTC timestamps.
-        All entities enter the world model through this method.
-        """
-        now = datetime.utcnow()
-        return Entity(
-            id=str(uuid.uuid4()),
-            type=type,
-            name=name,
-            attributes=attributes or {},
-            created_at=now,
-            updated_at=now,
-            provenance=provenance,
-            epistemic_status=epistemic_status
-        )
+    def model_post_init(self, __context: Any) -> None:
+        if self.type not in ENTITY_TYPES:
+            raise ValueError(
+                f"Invalid entity type '{self.type}'. "
+                f"Valid types: {sorted(ENTITY_TYPES)}"
+            )
 
-    def update_attributes(self, new_attributes: Dict[str, Any]) -> None:
-        """Update entity attributes and refresh the updated_at timestamp."""
-        self.attributes.update(new_attributes)
-        self.updated_at = datetime.utcnow()
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialise entity to dictionary for storage or transport."""
+    def to_node_attrs(self) -> Dict[str, Any]:
+        """Serialise for graph node storage."""
         return {
             "id": self.id,
             "type": self.type,
             "name": self.name,
-            "attributes": self.attributes,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-            "provenance": self.provenance,
-            "epistemic_status": self.epistemic_status
+            "epistemic_status": self.epistemic_status,
+            "domain": self.domain,
+            **self.attributes
         }
 
     def __repr__(self) -> str:
-        return f"Entity(id={self.id[:8]}..., type={self.type}, name={self.name}, status={self.epistemic_status})"
+        return f"Entity(type={self.type}, name='{self.name}', status={self.epistemic_status})"

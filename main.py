@@ -1,424 +1,306 @@
 """
-GAIA Backend — FastAPI Entry Point
-Runs on http://localhost:8008
+GAIA v0.2 — Main Entry Point
+Ontology-aware epistemic world model OS.
 
-Boot contract:
-  - ALWAYS starts, even if optional subsystems are missing
-  - Core Twin API (/twin/*) is always available
-  - Optional routers log a warning and are skipped if their module is missing
-  - Health endpoint reports per-subsystem readiness
+Run:
+  python main.py          # interactive prompt
+  python main.py --demo   # pre-loaded demo with entities + claims
+
+Commands:
+  <statement>              Submit a claim
+  /entity <type> <name>    Register a new entity
+  /link <a> <b> <type>     Link two entity names with a relationship
+  /query <keyword>         Query world state
+  /ontology                Show ontology stats
+  /stats                   Show world model stats
+  /snapshot                Print full world state JSON
+  /disputed                Show disputed claims
+  /scan                    Full contradiction scan
+  /help                    Show commands
+  /exit                    Save and exit
 """
 
 import sys
-import os
-import signal
-import asyncio
-import logging
-import time
-import httpx
-import uvicorn
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+import json
+import uuid
+import argparse
+from pathlib import Path
 
-# ── Path setup ─────────────────────────────────────────────────────────────────────────────
-if getattr(sys, "frozen", False):
-    ROOT = sys._MEIPASS  # type: ignore[attr-defined]
-else:
-    ROOT = os.path.dirname(os.path.abspath(__file__))
+from gaia.ontology.entity import Entity
+from gaia.ontology.relationship import Relationship
+from gaia.ontology.claim import Claim
+from gaia.ontology.registry import OntologyRegistry
+from gaia.epistemics.evaluator import EpistemicEvaluator
+from gaia.world.state import WorldState
+from gaia.world.graph import WorldGraph
+from gaia.world.persistence import WorldPersistence
+from gaia.governance.policy_engine import PolicyEngine
 
-sys.path.insert(0, ROOT)
+STATE_FILE = Path("world_state.json")
 
-_SRC_PYTHON = os.path.join(ROOT, "src-python")
-if _SRC_PYTHON not in sys.path:
-    sys.path.insert(0, _SRC_PYTHON)
+BANNER = """
+┌──────────────────────────────────────────────┐
+│  GAIA: The Autonomous Intelligence Architecture  │
+│  Epistemic World Model OS — v0.2                 │
+│  Ontology-aware. Truth-structured. Reality graph  │
+│  © 2026 Kyle Steen                               │
+└──────────────────────────────────────────────┘
+"""
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
-)
-log = logging.getLogger("gaia")
+DEMO_ENTITIES = [
+    ("CONCEPT",     "Biophotonic Coherence",    "biophotonics"),
+    ("PROCESS",     "Crystal Alchemy",          "biophotonics"),
+    ("PROCESS",     "Plant Alchemy",            "biophotonics"),
+    ("SYSTEM",      "GAIA Epistemic OS",         "architecture"),
+    ("CONCEPT",     "Epistemic World Model",    "architecture"),
+    ("CONCEPT",     "Ontology Layer",           "architecture"),
+    ("DOMAIN",      "AI Architecture",          "architecture"),
+    ("MEASUREMENT", "Coherence Gain 0.47",      "biophotonics"),
+]
 
-_START_TIME = time.time()
-_SUBSYSTEM_STATUS: dict[str, bool] = {}  # populated during lifespan
+DEMO_CLAIMS = [
+    ("Crystal and plant alchemy protocols produce synergistic biophotonic coherence gain",
+     ["SIM-016"], "biophotonics"),
+    ("GAIA epistemic world model is the missing layer in all current AI architectures",
+     ["GAIA_CONVERGENCE_MANIFESTO_v1"], "architecture"),
+    ("Agents fail because they lack a shared coherent world model not because models are weak",
+     ["2026_research_convergence"], "architecture"),
+    ("Knowledge graphs outperform vector-only systems for multi-hop relational reasoning",
+     ["2025_KG_research"], "epistemics"),
+    ("Ontology is unavoidable in production AI systems that reason across domains",
+     ["2026_agent_research"], "architecture"),
+]
 
 
-# ── Safe import helper ──────────────────────────────────────────────────────────────────────
+def build_systems():
+    ontology   = OntologyRegistry()
+    evaluator  = EpistemicEvaluator()
+    world      = WorldState()
+    graph      = WorldGraph()
+    persister  = WorldPersistence()
+    policy     = PolicyEngine()
+    kb: dict   = {}  # claim_id → Claim (in-memory knowledge base)
+    return ontology, evaluator, world, graph, persister, policy, kb
 
-def _try_import(module_path: str, attr: str | None = None):
-    """
-    Import a module (and optionally an attribute from it) without crashing.
-    Returns the module/attr on success, None on failure.
-    Logs a WARNING so the operator knows what's missing.
-    """
-    try:
-        import importlib
-        mod = importlib.import_module(module_path)
-        if attr:
-            return getattr(mod, attr, None)
-        return mod
-    except Exception as exc:
-        log.warning(f"[GAIA] Optional import skipped — {module_path}: {exc}")
+
+def submit_claim(statement, sources, domain, entities_ids,
+                 ontology, evaluator, world, policy, kb):
+    claim = Claim(
+        statement=statement,
+        sources=sources or [],
+        domain=domain,
+        entities=entities_ids or []
+    )
+    check = policy.check_claim(claim)
+    if not check["permitted"]:
+        print(f"  ⛔ Policy violation: {check['notes']}")
         return None
 
+    result = evaluator.evaluate(claim, ontology, kb)
+    claim.confidence = result["confidence"]
+    claim.status = result["status"]
 
-# ── Core router imports (always required — crash if missing) ──────────────
-
-from api.twin import router as twin_router          # /twin/* — core product
-from api.auth import router as auth_router          # /auth/*
-
-# ── Optional router imports (safe — skipped if module missing) ─────────────────
-
-_zodiac_router         = _try_import("api.routers.zodiac", "router")
-_llm_router            = _try_import("api.routers.llm", "router")
-_gaian_router          = _try_import("api.routers.gaian", "router")
-_memory_router         = _try_import("api.routers.memory", "router")
-_alignment_router      = _try_import("api.routers.alignment", "router")
-_pair_prog_router      = _try_import("api.routers.pair_programmer", "router")
-_observability_router  = _try_import("api.routers.observability", "router")
-_notifications_router  = _try_import("api.notifications", "router")
-_atlas_router          = _try_import("api.atlas", "router")
-_crypto_router         = _try_import("api.crypto", "router")
-_safety_router         = _try_import("core.safety.router", "router")
-_numerology_router     = _try_import("api.routes.numerology", "router")
-_emrys_router          = _try_import("emrys_engine.router", "emrys_router")
-_init_emrys            = _try_import("emrys_engine.router", "init_emrys_engine")
-_shadow_router         = _try_import("shadow_engine.router", "router")
-
-# ── Queue 4 — GAIAState + Talisman router (same safe pattern) ───────────────
-_state_router          = _try_import("src.core.state_router", "router")
+    kb[claim.id] = claim
+    ontology.add_claim(claim)
+    world.update(result)
+    return result
 
 
-# ── Graceful shutdown ──────────────────────────────────────────────────────────────
+def run_demo(ontology, evaluator, world, graph, policy, kb):
+    print("\n  Loading demo entities...")
+    entity_map = {}  # name → entity
+    for etype, ename, domain in DEMO_ENTITIES:
+        e = Entity(type=etype, name=ename, domain=domain)
+        ontology.add_entity(e)
+        graph.add_entity_node(e)
+        entity_map[ename] = e
+        print(f"  + Entity: [{etype}] {ename}")
 
-_shutdown_event = asyncio.Event()
-
-
-def _signal_handler(signum, frame):
-    sig_name = signal.Signals(signum).name
-    log.info(f"[GAIA] Received {sig_name} — initiating graceful shutdown…")
-    _shutdown_event.set()
-
-
-for _sig in (signal.SIGTERM, signal.SIGINT):
-    try:
-        signal.signal(_sig, _signal_handler)
-    except (OSError, ValueError):
-        pass
-
-
-async def _flush_state() -> None:
-    log.info("[GAIA] Flushing engine state…")
-    state_dir = os.path.join(ROOT, "data")
-    os.makedirs(state_dir, exist_ok=True)
-    tombstone_path = os.path.join(state_dir, "last_shutdown.txt")
-    try:
-        import datetime
-        with open(tombstone_path, "w") as f:
-            f.write(datetime.datetime.utcnow().isoformat() + "Z\n")
-        log.info(f"[GAIA] Tombstone written → {tombstone_path}")
-    except Exception as e:
-        log.warning(f"[GAIA] Could not write tombstone: {e}")
-    log.info("[GAIA] Shutdown complete.")
-
-
-# ── Ollama health probe ──────────────────────────────────────────────────────────────
-
-OLLAMA_BASE        = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL       = os.environ.get("GAIA_MODEL", "llama3")
-OLLAMA_TIMEOUT     = 10
-
-
-async def _check_ollama() -> dict:
-    try:
-        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
-            r = await client.get(f"{OLLAMA_BASE}/api/tags")
-            r.raise_for_status()
-            models = [m["name"] for m in r.json().get("models", [])]
-            model_ready = any(m.startswith(OLLAMA_MODEL) for m in models)
-            if not model_ready:
-                return {"ready": False, "model": None,
-                        "error": f"Model '{OLLAMA_MODEL}' not found. Available: {models}"}
-            probe = await client.post(
-                f"{OLLAMA_BASE}/api/generate",
-                json={"model": OLLAMA_MODEL, "prompt": "ping", "stream": False},
+    # Wire some relationships
+    pairs = [
+        ("Crystal Alchemy", "Biophotonic Coherence", "ENABLES", 0.82),
+        ("Plant Alchemy",   "Biophotonic Coherence", "ENABLES", 0.79),
+        ("GAIA Epistemic OS", "Epistemic World Model", "IMPLEMENTS", 0.95),
+        ("Ontology Layer",  "GAIA Epistemic OS",    "PART_OF",  0.99),
+    ]
+    print("\n  Wiring relationships...")
+    for a, b, rtype, conf in pairs:
+        if a in entity_map and b in entity_map:
+            rel = Relationship(
+                from_entity=entity_map[a].id,
+                to_entity=entity_map[b].id,
+                type=rtype,
+                confidence=conf,
+                source="demo"
             )
-            probe.raise_for_status()
-            return {"ready": True, "model": OLLAMA_MODEL, "error": None}
-    except httpx.ConnectError:
-        return {"ready": False, "model": None, "error": "Ollama not reachable"}
-    except httpx.TimeoutException:
-        return {"ready": False, "model": None, "error": f"Ollama probe timed out after {OLLAMA_TIMEOUT}s"}
-    except Exception as e:
-        return {"ready": False, "model": None, "error": str(e)}
+            ontology.add_relationship(rel)
+            graph.add_relationship_edge(rel)
+            print(f"  + Relationship: {a} --[{rtype}]--> {b}")
+
+    print("\n  Submitting demo claims...")
+    for statement, sources, domain in DEMO_CLAIMS:
+        entity_ids = [
+            e.id for e in ontology.all_entities()
+            if any(word.lower() in statement.lower()
+                   for word in e.name.split())
+        ]
+        result = submit_claim(
+            statement, sources, domain, entity_ids,
+            ontology, evaluator, world, policy, kb
+        )
+        if result:
+            print(f"  → [{result['status'].upper()} @{result['confidence']:.3f}] "
+                  f"{statement[:60]}...")
+
+    print(f"\n  Demo complete.")
+    print(f"  Ontology: {ontology}")
+    print(f"  Graph:    {graph}")
+    print(f"  World:    {world}\n")
 
 
-# ── FastAPI lifespan ─────────────────────────────────────────────────────────────────
+def show_help():
+    print("""
+  Commands:
+    <statement>              Submit a claim (free text)
+    /entity <TYPE> <name>    Register entity (e.g. /entity CONCEPT Consciousness)
+    /link <a> <b> <TYPE>     Link entities by name (e.g. /link Alchemy Coherence ENABLES)
+    /query <keyword>         Search world state
+    /ontology                Ontology registry stats
+    /graph                   World graph stats
+    /stats                   World model stats
+    /snapshot                Full world state JSON
+    /disputed                Show disputed claims
+    /help                    This help
+    /exit                    Save and exit
+    """)
 
-@asynccontextmanager
-async def lifespan(application: FastAPI):
-    log.info("[GAIA] ✨ Backend starting — port 8008")
 
-    # Encryption
-    try:
-        from api.crypto import get_symmetric_key
-        get_symmetric_key()
-        _SUBSYSTEM_STATUS["encryption"] = True
-        log.info("[GAIA] ✓ Encryption layer ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["encryption"] = False
-        log.warning(f"[GAIA] Encryption init skipped: {e}")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--demo", action="store_true")
+    args = parser.parse_args()
 
-    # Runtime orchestrator
-    try:
-        from core.runtime import init_orchestrator
-        init_orchestrator()
-        _SUBSYSTEM_STATUS["orchestrator"] = True
-        log.info("[GAIA] ✓ Runtime orchestrator ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["orchestrator"] = False
-        log.warning(f"[GAIA] Runtime orchestrator skipped: {e}")
+    print(BANNER)
+    ontology, evaluator, world, graph, persister, policy, kb = build_systems()
 
-    # Emrys L2 vibronic bridge
-    try:
-        if _init_emrys:
-            _init_emrys()
-            _SUBSYSTEM_STATUS["emrys"] = True
-            log.info("[GAIA] ✓ Emrys L2 vibronic bridge ready")
+    # Load prior state
+    prior = persister.load(STATE_FILE)
+    if prior.get("state"):
+        world._state = prior["state"]
+        world._update_count = prior.get("update_count", 0)
+        print(f"  Resumed: {len(world._state)} prior entries.\n")
+
+    if args.demo:
+        run_demo(ontology, evaluator, world, graph, policy, kb)
+
+    print("  Type a claim, or /help for commands.\n")
+
+    while True:
+        try:
+            user_input = input("GAIA > ").strip()
+        except (KeyboardInterrupt, EOFError):
+            persister.save(world.snapshot(), STATE_FILE)
+            print("\n  World state saved. Goodbye.")
+            break
+
+        if not user_input:
+            continue
+
+        if user_input.lower() in ("/exit", "/quit"):
+            persister.save(world.snapshot(), STATE_FILE)
+            print("  World state saved. Goodbye.")
+            break
+
+        elif user_input.lower() == "/help":
+            show_help()
+
+        elif user_input.lower() == "/ontology":
+            print(f"\n  {ontology}")
+            for k, v in ontology.stats().items():
+                print(f"    {k}: {v}")
+            print()
+
+        elif user_input.lower() == "/graph":
+            print(f"\n  {graph}\n")
+
+        elif user_input.lower() == "/stats":
+            for k, v in world.stats().items():
+                print(f"    {k}: {v}")
+            print()
+
+        elif user_input.lower() == "/snapshot":
+            print(json.dumps(world.snapshot(), indent=2, default=str))
+
+        elif user_input.lower() == "/disputed":
+            disputed = world.disputed()
+            print(f"\n  {len(disputed)} disputed:")
+            for e in disputed:
+                print(f"    [{e['confidence']:.2f}] {e['statement'][:80]}")
+            print()
+
+        elif user_input.startswith("/entity "):
+            parts = user_input[8:].strip().split(" ", 1)
+            if len(parts) < 2:
+                print("  Usage: /entity <TYPE> <name>")
+            else:
+                etype, ename = parts[0].upper(), parts[1]
+                try:
+                    e = Entity(type=etype, name=ename)
+                    ontology.add_entity(e)
+                    graph.add_entity_node(e)
+                    print(f"  + Entity registered: [{etype}] '{ename}' (id={e.id[:8]}...)")
+                except ValueError as err:
+                    print(f"  Error: {err}")
+
+        elif user_input.startswith("/link "):
+            parts = user_input[6:].strip().split()
+            if len(parts) < 3:
+                print("  Usage: /link <entity_a_name_word> <entity_b_name_word> <TYPE>")
+            else:
+                name_a, name_b, rtype = parts[0], parts[1], parts[2].upper()
+                ea = ontology.find_entity_by_name(name_a)
+                eb = ontology.find_entity_by_name(name_b)
+                if not ea or not eb:
+                    print(f"  Could not find entities: '{name_a}' or '{name_b}'")
+                else:
+                    try:
+                        rel = Relationship(
+                            from_entity=ea.id, to_entity=eb.id, type=rtype
+                        )
+                        ontology.add_relationship(rel)
+                        graph.add_relationship_edge(rel)
+                        print(f"  + Linked: '{ea.name}' --[{rtype}]--> '{eb.name}'")
+                    except ValueError as err:
+                        print(f"  Error: {err}")
+
+        elif user_input.startswith("/query "):
+            keyword = user_input[7:].strip()
+            results = world.query(keyword)
+            print(f"\n  {len(results)} result(s) for '{keyword}':")
+            for r in results:
+                print(f"    [{r['status'].upper()} @{r['confidence']:.2f}] "
+                      f"{r['statement'][:80]}")
+            print()
+
         else:
-            _SUBSYSTEM_STATUS["emrys"] = False
-    except Exception as e:
-        _SUBSYSTEM_STATUS["emrys"] = False
-        log.warning(f"[GAIA] Emrys engine skipped: {e}")
+            # Auto-match entities in the statement
+            entity_ids = [
+                e.id for e in ontology.all_entities()
+                if any(word.lower() in user_input.lower()
+                       for word in e.name.split())
+            ]
+            result = submit_claim(
+                user_input, [], None, entity_ids,
+                ontology, evaluator, world, policy, kb
+            )
+            if result:
+                claim = result["claim"]
+                print(f"\n  Status:        {result['status'].upper()}")
+                print(f"  Confidence:    {result['confidence']:.3f}")
+                print(f"  Entities:      {len(claim.entities)} matched")
+                print(f"  Contradictions:{len(result.get('contradictions', []))}")
+                print(f"  Method:        {result.get('evaluation_method', 'v0.2')}\n")
 
-    # Twin Memory Engine — warm-up
-    try:
-        from core.twin_memory_engine import TwinMemoryEngine
-        _SUBSYSTEM_STATUS["twin_memory"] = True
-        log.info("[GAIA] ✓ TwinMemoryEngine ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["twin_memory"] = False
-        log.warning(f"[GAIA] TwinMemoryEngine skipped: {e}")
-
-    # Love Override Handler
-    try:
-        from core.love_override import get_override_handler
-        get_override_handler()
-        _SUBSYSTEM_STATUS["love_override"] = True
-        log.info("[GAIA] ✓ Love Override Handler ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["love_override"] = False
-        log.warning(f"[GAIA] Love Override Handler skipped: {e}")
-
-    # Inference Router
-    try:
-        from core.inference_router import get_router
-        get_router()
-        _SUBSYSTEM_STATUS["inference_router"] = True
-        log.info("[GAIA] ✓ InferenceRouter ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["inference_router"] = False
-        log.warning(f"[GAIA] InferenceRouter skipped: {e}")
-
-    # Zodiac Engine
-    try:
-        from core.zodiac_engine import get_zodiac_engine
-        get_zodiac_engine()
-        _SUBSYSTEM_STATUS["zodiac"] = True
-        log.info("[GAIA] ✓ ZodiacEngine ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["zodiac"] = False
-        log.warning(f"[GAIA] ZodiacEngine skipped: {e}")
-
-    # Shadow Engine — archetypal processing layer
-    try:
-        from shadow_engine.engine import get_shadow_engine
-        get_shadow_engine()
-        _SUBSYSTEM_STATUS["shadow_engine"] = True
-        log.info("[GAIA] ✓ ShadowEngine ready (7 archetypes active)")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["shadow_engine"] = False
-        log.warning(f"[GAIA] ShadowEngine skipped: {e}")
-
-    # ── Queue 4 — GAIAState + Talisman warm-up ─────────────────────────────
-    try:
-        from src.core.state import GAIAStateStore
-        GAIAStateStore.instance()          # warm-up: initialises singleton
-        _SUBSYSTEM_STATUS["gaia_state"] = True
-        log.info("[GAIA] ✨ GAIAState + D6 engine ready")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["gaia_state"] = False
-        log.warning(f"[GAIA] GAIAState init skipped: {e}")
-
-    try:
-        from src.core.talisman import TalismanEngine, Talisman, TalismanFieldEffect
-        from src.core.state import GAIAStateStore
-        _engine = TalismanEngine(GAIAStateStore.instance())
-        # Seed a default morning-anchor talisman if registry is empty
-        if not _engine.list_all():
-            _engine.register(Talisman(
-                name="Morning Anchor",
-                intent="Establish coherence and grounded presence at session start.",
-                field_effect=TalismanFieldEffect(
-                    coherence_delta=0.08,
-                    energy_delta=0.05,
-                    stress_delta=-0.05,
-                ),
-                tags=["default", "morning", "anchor"],
-            ))
-            _engine.register(Talisman(
-                name="Build Focus",
-                intent="Channel GAIA's BUILD mode — clear mind, high energy, low entropy.",
-                field_effect=TalismanFieldEffect(
-                    coherence_delta=0.05,
-                    energy_delta=0.10,
-                    entropy_delta=-0.05,
-                    exploration_rate_delta=0.05,
-                ),
-                tags=["default", "build", "focus"],
-            ))
-            _engine.register(Talisman(
-                name="Protect Boundary",
-                intent="Raise PROTECT mode — reduce stress, conserve energy.",
-                field_effect=TalismanFieldEffect(
-                    stress_delta=-0.10,
-                    conservation_rate_delta=0.08,
-                    entropy_delta=-0.03,
-                ),
-                tags=["default", "protect", "boundary"],
-            ))
-        _SUBSYSTEM_STATUS["talismans"] = True
-        log.info("[GAIA] ✨ TalismanEngine seeded with 3 default talismans")
-    except Exception as e:
-        _SUBSYSTEM_STATUS["talismans"] = False
-        log.warning(f"[GAIA] TalismanEngine skipped: {e}")
-
-    routing_mode = os.environ.get("GAIA_ROUTING_MODE", "local-first")
-    log.info(f"[GAIA] LLM routing mode: {routing_mode}")
-    log.info("[GAIA] ✨ GAIA is alive. Twin API ready at /twin/*")
-
-    yield
-
-    await _flush_state()
-
-
-# ── App ───────────────────────────────────────────────────────────────────────────────
-
-app = FastAPI(
-    title="GAIA Backend",
-    description="Sovereign AI Companion — Python Core",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:1420",
-        "tauri://localhost",
-        "https://tauri.localhost",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# ── Router registration (always-on) ───────────────────────────────────────────────
-
-app.include_router(auth_router)          # /auth/*
-app.include_router(twin_router)          # /twin/* — core product
-
-
-# ── Router registration (optional — only if import succeeded) ─────────────────
-
-def _mount(router, prefix: str = "", tags: list | None = None, label: str = "") -> None:
-    if router is None:
-        log.debug(f"[GAIA] Skipping optional router: {label or prefix}")
-        return
-    kw: dict = {}
-    if prefix:
-        kw["prefix"] = prefix
-    if tags:
-        kw["tags"] = tags
-    app.include_router(router, **kw)
-
-
-_mount(_zodiac_router,         prefix="/api/zodiac",   tags=["Zodiac"],          label="zodiac")
-_mount(_llm_router,            prefix="/api",                                     label="llm")
-_mount(_gaian_router,          prefix="/api",                                     label="gaian")
-_mount(_memory_router,         prefix="/api/memory",   tags=["Memory"],          label="memory")
-_mount(_alignment_router,      prefix="/alignment",    tags=["Alignment"],       label="alignment")
-_mount(_pair_prog_router,      prefix="/api",          tags=["Pair Programmer"], label="pair_programmer")
-_mount(_observability_router,                                                     label="observability")
-_mount(_notifications_router,                                                     label="notifications")
-_mount(_atlas_router,                                                             label="atlas")
-_mount(_crypto_router,                                                            label="crypto")
-_mount(_safety_router,                                                            label="safety")
-_mount(_numerology_router,     prefix="/api/v1",       tags=["Numerology"],      label="numerology")
-_mount(_emrys_router,          prefix="/api/emrys",    tags=["Emrys"],           label="emrys")
-_mount(_shadow_router,                                 tags=["Shadow"],          label="shadow")
-
-# ── Queue 4 — GAIAState + Talisman (router owns /api/* prefix) ──────────────
-# state_router defines prefix="/api" internally; covers:
-#   GET/PATCH /api/state, POST /api/state/override, GET /api/state/evaluate
-#   GET /api/state/history
-#   GET/POST /api/talismans, GET/PATCH/DELETE /api/talismans/{id}
-#   POST /api/talismans/{id}/activate, POST /api/talismans/{id}/deactivate
-_mount(_state_router,                                  tags=["GAIAState"],       label="gaia_state")
-
-
-# ── Core endpoints ────────────────────────────────────────────────────────────────────
-
-@app.get("/health")
-async def health():
-    uptime = round(time.time() - _START_TIME, 1)
-    ollama = await _check_ollama()
-
-    core_ready = _SUBSYSTEM_STATUS.get("twin_memory", True)
-
-    payload = {
-        "status": "ok" if core_ready else "degraded",
-        "service": "gaia-backend",
-        "version": "0.1.0",
-        "uptime": uptime,
-        "routing_mode": os.environ.get("GAIA_ROUTING_MODE", "local-first"),
-        "subsystems": _SUBSYSTEM_STATUS,
-        "ollama": {
-            "ready": ollama["ready"],
-            "model": ollama["model"],
-            "error": ollama["error"],
-        },
-        "llm_backends": {
-            "openai":     bool(os.environ.get("OPENAI_API_KEY")),
-            "anthropic":  bool(os.environ.get("ANTHROPIC_API_KEY")),
-            "perplexity": bool(os.environ.get("PERPLEXITY_API_KEY")),
-            "ollama":     ollama["ready"],
-        },
-    }
-
-    status_code = 200 if core_ready else 503
-    return JSONResponse(status_code=status_code, content=payload)
-
-
-# NOTE: The old stub GET /api/state has been REMOVED.
-# It is now served by state_router (src.core.state_router) which returns
-# a live GAIAState snapshot instead of hardcoded placeholder data.
-# If state_router failed to load, the endpoint will 404 — check
-# _SUBSYSTEM_STATUS["gaia_state"] in /health for the reason.
-
-
-# ── Launch ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    port = int(os.environ.get("GAIA_PORT", 8008))
-    uvicorn.run(
-        "main:app",
-        host="127.0.0.1",
-        port=port,
-        log_level="info",
-        reload=False,
-    )
+    main()

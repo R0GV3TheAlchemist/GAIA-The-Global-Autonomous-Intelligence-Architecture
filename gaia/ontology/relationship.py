@@ -1,98 +1,58 @@
 """
-GAIA Relationship Model
-Typed, confidence-weighted connections between entities in the world model.
+GAIA Ontology — Relationship
+Typed, confidence-weighted directed edges between entities.
+Every connection in GAIA is explicit, typed, and evidence-linked.
 """
 
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 import uuid
-from datetime import datetime
-
 
 # Canonical relationship types in the GAIA ontology
 RELATIONSHIP_TYPES = {
     # Causal
-    "CAUSES",
-    "ENABLES",
-    "INHIBITS",
-    "CORRELATES_WITH",
-
-    # Hierarchical
-    "IS_A",
-    "PART_OF",
-    "CONTAINS",
-    "EXTENDS",
-
+    "CAUSES", "ENABLES", "INHIBITS", "CORRELATES_WITH",
+    # Structural
+    "PART_OF", "CONTAINS", "EXTENDS", "IS_A",
     # Epistemic
-    "SUPPORTS",
-    "CONTRADICTS",
-    "REFINES",
-    "SUPERSEDES",
-
+    "SUPPORTS", "CONTRADICTS", "REFINES", "SUPERSEDES",
     # Temporal
-    "PRECEDES",
-    "FOLLOWS",
-    "CO_OCCURS_WITH",
-
+    "PRECEDES", "FOLLOWS", "CO_OCCURS_WITH",
     # Operational
-    "GOVERNS",
-    "IMPLEMENTS",
-    "QUERIES",
-    "UPDATES",
+    "GOVERNS", "IMPLEMENTS", "QUERIES", "UPDATES",
+    # General
+    "RELATED_TO",
 }
 
 
-@dataclass
-class Relationship:
-    """
-    A typed, confidence-weighted directed edge between two entities.
-    Every relationship in GAIA is explicit, typed, and evidence-linked.
-    """
-    id: str
-    from_entity_id: str
-    to_entity_id: str
-    type: str                       # Must be in RELATIONSHIP_TYPES
-    confidence: float               # 0.0 – 1.0
-    source: Optional[str] = None   # provenance of this relationship
-    attributes: Dict[str, Any] = None
-    created_at: datetime = None
+class Relationship(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    from_entity: str          # Entity ID
+    to_entity: str            # Entity ID
+    type: str                 # Must be in RELATIONSHIP_TYPES
+    confidence: float = 0.5
+    source: Optional[str] = None
+    attributes: Dict[str, Any] = {}
 
-    @staticmethod
-    def create(
-        from_entity_id: str,
-        to_entity_id: str,
-        rel_type: str,
-        confidence: float = 0.5,
-        source: Optional[str] = None,
-        attributes: Optional[Dict[str, Any]] = None
-    ) -> "Relationship":
-        if rel_type not in RELATIONSHIP_TYPES:
-            raise ValueError(f"Unknown relationship type: {rel_type}. "
-                             f"Valid types: {RELATIONSHIP_TYPES}")
-        return Relationship(
-            id=str(uuid.uuid4()),
-            from_entity_id=from_entity_id,
-            to_entity_id=to_entity_id,
-            type=rel_type,
-            confidence=confidence,
-            source=source,
-            attributes=attributes or {},
-            created_at=datetime.utcnow()
-        )
+    def model_post_init(self, __context: Any) -> None:
+        if self.type not in RELATIONSHIP_TYPES:
+            raise ValueError(
+                f"Invalid relationship type '{self.type}'. "
+                f"Valid types: {sorted(RELATIONSHIP_TYPES)}"
+            )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_edge_attrs(self) -> Dict[str, Any]:
+        """Serialise for graph edge storage."""
         return {
             "id": self.id,
-            "from": self.from_entity_id,
-            "to": self.to_entity_id,
             "type": self.type,
             "confidence": self.confidence,
             "source": self.source,
-            "attributes": self.attributes,
-            "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
     def __repr__(self) -> str:
-        return (f"Relationship({self.from_entity_id[:8]}... "
-                f"--[{self.type} @{self.confidence:.2f}]--> "
-                f"{self.to_entity_id[:8]}...)")
+        return (
+            f"Relationship({self.from_entity[:8]}... "
+            f"--[{self.type} @{self.confidence:.2f}]--> "
+            f"{self.to_entity[:8]}...)"
+        )
