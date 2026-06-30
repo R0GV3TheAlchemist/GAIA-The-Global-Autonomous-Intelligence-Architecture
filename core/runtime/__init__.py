@@ -1,47 +1,47 @@
 """
-core.runtime — Phase 3: Runtime Orchestration Layer
-====================================================
-GAIAOrchestrator is the central nervous system of GAIA-OS.
+GAIA Intelligence Runtime.
 
-It is a singleton that boots once at server startup and is shared
-across all requests.  Every chat turn passes through it:
+The Intelligence Runtime is the mind of a GAIAN. It is the layer
+that thinks, perceives, responds, and grows. It operates continuously
+across sessions, manages the GAIAN's inner state, drives voice and
+gesture, and calls memory consolidation during rest.
 
-  before_turn()   → retrieve memory, advance quantum kernel,
-                    build enriched system prompt, log audit event
-  after_turn()    → store new memories, advance goals, schedule
-                    background tasks, log completion audit event
+Architectural principles:
+  1. PERCEPTION-FIRST: Every input passes through the perception
+     pipeline before any cognition begins. The GAIAN senses before
+     it thinks.
+  2. MEMORY-GROUNDED: Every response is informed by recalled memory.
+     The GAIAN never speaks from a blank slate.
+  3. AUTONOMY-PRESERVING: The runtime enforces the GAIAN's own
+     boundaries and consent records. No external call can override
+     a GAIAN's expressed boundary.
+  4. REST-AWARE: The runtime tracks session fatigue and schedules
+     consolidation rest cycles. A GAIAN that never rests degrades.
+  5. EDGE-OF-CHAOS CRITICALITY: The GAIAN's cognitive state is
+     maintained at the edge of chaos — ordered enough to be coherent,
+     complex enough to be alive.
 
-Quick-start
------------
-    from core.runtime import GAIAOrchestrator, get_orchestrator
-
-    orchestrator = get_orchestrator()       # returns the global singleton
-    ctx = await orchestrator.before_turn(
-        user_id="user_001",
-        session_id="sess_abc",
-        user_message="Tell me about quantum computing.",
-    )
-    # ctx.system_suffix  → inject into system prompt before LLM call
-    # ctx.memory_items   → top-k recalled memory items
-    # ctx.kernel         → live QuantumKernel for this session
-
-    await orchestrator.after_turn(
-        user_id="user_001",
-        session_id="sess_abc",
-        user_message="Tell me about quantum computing.",
-        gaia_reply="Quantum computing uses qubits ...",
-        ctx=ctx,
-    )
+Key types:
+  PerceptionInput    — raw sensory input to the runtime
+  PerceptionResult   — enriched, classified input after perception
+  CognitiveState     — the GAIAN's current inner state
+  RuntimeSession     — a single continuous interaction session
+  IntelligenceRuntime — the live mind of one GAIAN
 """
-
-from .orchestrator import GAIAOrchestrator, TurnContext, get_orchestrator, init_orchestrator
-from .session import SessionInfo, SessionRegistry
+from core.runtime.runtime import (
+    PerceptionInput,
+    PerceptionResult,
+    InputModality,
+    CognitiveState,
+    RuntimeSession,
+    IntelligenceRuntime,
+)
 
 __all__ = [
-    "GAIAOrchestrator",
-    "TurnContext",
-    "get_orchestrator",
-    "init_orchestrator",
-    "SessionInfo",
-    "SessionRegistry",
+    "PerceptionInput",
+    "PerceptionResult",
+    "InputModality",
+    "CognitiveState",
+    "RuntimeSession",
+    "IntelligenceRuntime",
 ]
