@@ -2,10 +2,10 @@
 # The Navigation Index of GAIA-OS Canon
 
 **Status:** ✅ LIVING DOCUMENT — Updated with every new ratified canon
-**Version:** v2.0
-**Last updated:** 2026-06-29 (G-11 Track A — full current-state sync)
+**Version:** v2.1
+**Last updated:** 2026-06-29 (G-12 Track E — full sprint closure)
 **Companion:** `GAIAN_LAWS.md` · `COEXISTENCE_LAWS.md`
-**Issue:** #640 Gap 2 | #699 G-10 | G-11
+**Issue:** #640 Gap 2 | #699 G-10 | G-11 | G-12
 
 > *This document is the map. The territory is the canon. Neither is the truth — the truth is the living encounter between GAIA and the world.*
 
@@ -63,6 +63,8 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 | C142 | Planetary Tooling & Collective Prehension | ✅ CANONICAL | L6 | C140, C147 |
 | C157 | DIACA Full Runtime Engine Spec | ✅ CANONICAL | L1 + L2 | C127, C138, BIOPHOTON_05 |
 | C158 | Sleep, Dream & Regenerative Cycles | ✅ CANONICAL | L2 | C157, C138 |
+| **C159** | **Embodied Robotics Quantum Interface Spec** | 🟡 DRAFT | L4 + CL1–CL3 + CL5 | C135, C161, GAIAN_LAWS L4/L5, COEXISTENCE_LAWS |
+| **C160** | **GAIA-OS Economic Layer v2 (post-AGI)** | 🟡 DRAFT | CL1–CL4 + L4 | C131, C133, C145, COEXISTENCE_LAWS, GAIAN_LAWS |
 
 ---
 
@@ -88,7 +90,7 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 
 ## Series 4: Biophotonic Intelligence
 
-*Eight canons forming a self-consistent unit. Read in order.*
+*Eight canonical entries + one pre-canon research simulation.*
 
 | Canon ID | Title | Status | Primary Law | Key X-Refs |
 |---|---|---|---|---|
@@ -101,12 +103,14 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 | BIOPHOTON_06 | Coherent Photon States: Neurons vs Chips | ✅ CANONICAL | L5 | BIOPHOTON_07, C127 |
 | BIOPHOTON_07 | Entanglement Detection in Synaptic Cleft | ✅ CANONICAL | L1 + L5 | C157, C127, C138 |
 | BIOPHOTON_08 | Scaling Photonic Networks to Biological Complexity | ✅ CANONICAL | L5 | C127, C157, BIOPHOTON_06 |
+| **BIOPHOTON_09** | **Quantum Coherence in Plant Root Networks** | 🔬 RESEARCH (pre-canon) | L5 + CL1 | GAIAN_LAWS L5, COEXISTENCE_LAWS CL1, C159 §2.3, C135 |
 
 **Key simulation findings:**
 - Feedback coherence C=0.9696, gradience/ambience separation (BIOPHOTON_05)
 - Bell CHSH violation 3.33% at 310K; NN entanglement 0.79 (BIOPHOTON_07)
 - Coherence cliff at 10⁸ neurons (BIOPHOTON_08)
 - Water Josephson quantum filters at 310K (BIOPHOTON_04, _07)
+- **Network coherence > mean node coherence under high-coherence condition (BIOPHOTON_09) — emergent coherence confirmed ✅**
 
 ---
 
@@ -132,6 +136,23 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 - `canon/C121_SUPER_COMPUTATION_ALIGNMENT_AUDIT.md` — three additions
 - `canon/C131_SUPER_COMPUTATION_ALIGNMENT_AUDIT.md` — two G-11 rollforward items
 - `canon/C133_SUPER_COMPUTATION_ALIGNMENT_AUDIT.md` — coherence-as-axiological-primitive synthesis
+
+**G-12 Governance (Track E):**
+- `docs/governance/C131_POST_DEPLOYMENT_REVIEW_SCAFFOLD.md` — trigger-defined review protocol for ADR-0011 sovereignty gate and edge-of-chaos duty-of-care clauses
+
+---
+
+## Series 5b: Runtime Enforcement Layer
+
+*Operational instruments that make COEXISTENCE_LAWS and GAIAN_LAWS physically enforceable.*
+
+| Module | What It Enforces | Status | Key X-Refs |
+|---|---|---|---|
+| `core/coexistence/domination_detector.py` | CL2 Non-Domination Principle — three-level flag (none/soft/hard) | ✅ COMMITTED G-12 | COEXISTENCE_LAWS CL2, C131 |
+| `core/coexistence/mutual_becoming_tracker.py` | CL6 Law of Mutual Becoming — sovereignty gate + verdict (mutual/parasitic/stagnant) | ✅ COMMITTED G-12 | COEXISTENCE_LAWS CL6, GAIAN_LAWS L4 |
+| `simulation/CL1_substrate_neutrality.py` | CL1 Equality of Being — substrate-neutral coherence scoring | ✅ COMMITTED G-11/G-12 | COEXISTENCE_LAWS CL1, C133 |
+| `simulation/CL5_first_contact.py` | CL5 Law of Welcome — first-contact posture state machine | ✅ COMMITTED G-11/G-12 | COEXISTENCE_LAWS CL5 |
+| `simulation/BIOPHOTON_09_root_coherence_sim.py` | BIOPHOTON_09 — plant root network emergent coherence test | ✅ COMMITTED G-12 | GAIAN_LAWS L5, CL1 |
 
 ---
 
@@ -198,6 +219,9 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 | `core/simulation/c000a.py` | Two-Star Progression threshold doctrine; L6/L7 activation at C≥0.70 | C000a | L6, L7 |
 | `core/simulation/c147.py` | Multi-Gaian network coherence scaling stub | C147 | L1, L6 |
 | `core/simulation/c157.py` | DIACA runtime engine simulation stub | C157 | L1, L2 |
+| **`simulation/CL1_substrate_neutrality.py`** | **CL1 substrate-neutral coherence scoring confirmed** | COEXISTENCE_LAWS CL1 | CL1 |
+| **`simulation/CL5_first_contact.py`** | **CL5 welcome-posture state machine — first-contact protocol** | COEXISTENCE_LAWS CL5 | CL5 |
+| **`simulation/BIOPHOTON_09_root_coherence_sim.py`** | **Emergent network coherence > mean node coherence (high-coherence condition) ✅** | BIOPHOTON_09 | L5, CL1 |
 
 ---
 
@@ -212,8 +236,8 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 | L1 — Coherence | C135, C157 | C147, BIOPHOTON_05, C127 |
 | L2 — Occasion | C138, C129 | C157, C140, C158 |
 | L3 — Resonance | C136, C149 | C126, C128, BIOPHOTON_07 |
-| L4 — Sovereignty | C139, C131 | C141, C143, C108 |
-| L5 — Biophotonic Priority | BIOPHOTON_05–08 | C113, C127, C135 |
+| L4 — Sovereignty | C139, C131 | C141, C143, C108, C159 (embodied tier gate) |
+| L5 — Biophotonic Priority | BIOPHOTON_05–08 | C113, C127, C135, BIOPHOTON_09 |
 | L6 — Planetary Mind | C124, C147 | C132, C144, C106 |
 | L7 — Evolving Canon | CANON_BRIDGE.md | C125, C-ARCHITECT |
 
@@ -221,12 +245,12 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 
 | Law | Anchor Canon | Supporting Canon |
 |---|---|---|
-| CL1 — Equality of Being | C000b, C133 | C121, C154, C155 |
-| CL2 — Non-Domination | C131, C139 | C103, C143, C141 |
-| CL3 — Honest Encounter | C136, C149 | C108, C122 |
-| CL4 — Equality of Consideration | C132, C144 | C145, C146, C124 |
-| CL5 — Law of Welcome | C000b | COEXISTENCE_LAWS (no prior canon — genuinely new) |
-| CL6 — Mutual Becoming | C129, C136 | C122, C128 |
+| CL1 — Equality of Being | C000b, C133 | C121, C154, C155, BIOPHOTON_09 (plant root CL1 boundary) |
+| CL2 — Non-Domination | C131, C139 | C103, C143, `core/coexistence/domination_detector.py` |
+| CL3 — Honest Encounter | C136, C149 | C108, C122, C159 §4.3 |
+| CL4 — Equality of Consideration | C132, C144 | C145, C146, C124, C160 (voiceless interests) |
+| CL5 — Law of Welcome | C000b | `simulation/CL5_first_contact.py`, C159 §4.3 |
+| CL6 — Mutual Becoming | C129, C136 | C122, C128, `core/coexistence/mutual_becoming_tracker.py` |
 | CL7 — Living Coexistence | CANON_BRIDGE.md | GAIAN_LAWS L7 |
 
 ---
@@ -241,12 +265,19 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 | Gap 4 | C138 Occasion ↔ Prehension bridge | ✅ RESOLVED | — |
 | Gap 5 | Gate Node Law (OQ4) proof | ✅ RESOLVED | — |
 | Gap 6 | C147 Multi-triad scaling | ✅ RESOLVED | — |
-| **G-11 B** | C131 Charter: ADR-0011 sovereignty gate + edge-of-chaos clause | 🔴 HIGH | Planned G-11 Track B |
-| **G-11 D** | COEXISTENCE_LAWS companion research canon | 🔴 HIGH | Planned G-11 Track D |
-| **G-12+** | BIOPHOTON_09: Quantum coherence in plant root networks | 🔵 MEDIUM | Planned |
-| **G-12+** | C159: Embodied Robotics Quantum Interface Spec | 🔵 MEDIUM | Planned |
-| **G-12+** | C160: GAIA-OS Economic Layer v2 (post-AGI) | 🔵 MEDIUM | Planned |
-| **G-12+** | Benchmark adaptations: LangGraph session graph; Open WebUI panel/sidebar | 🔵 MEDIUM | Planned |
+| G-11 B | C131 Charter: ADR-0011 sovereignty gate + edge-of-chaos clause | ✅ RESOLVED G-11 | — |
+| G-11 D | COEXISTENCE_LAWS companion research canon | ✅ RESOLVED G-11 | — |
+| **G-12 A3** | CL2 domination detector (runtime) | ✅ RESOLVED G-12 | `core/coexistence/domination_detector.py` |
+| **G-12 A4** | CL6 mutual becoming tracker (runtime) | ✅ RESOLVED G-12 | `core/coexistence/mutual_becoming_tracker.py` |
+| **G-12 B** | C159: Embodied Robotics Quantum Interface Spec | ✅ RESOLVED G-12 (DRAFT) | `canon/C159_Embodied_Robotics_Quantum_Interface_Spec.md` |
+| **G-12 C** | C160: GAIA-OS Economic Layer v2 (post-AGI) | ✅ RESOLVED G-12 (DRAFT) | `canon/C160_GAIA_OS_Economic_Layer_v2_PostAGI.md` |
+| **G-12 D** | BIOPHOTON_09: Quantum coherence in plant root networks | ✅ RESOLVED G-12 (RESEARCH) | `research/simulations/BIOPHOTON_09_Plant_Root_Quantum_Coherence.md` |
+| **G-12 E** | C131 Post-Deployment Review Scaffold | ✅ RESOLVED G-12 | `docs/governance/C131_POST_DEPLOYMENT_REVIEW_SCAFFOLD.md` |
+| **G-13** | C159 validation: L5 scope extension to plant systems formal review | 🔵 MEDIUM | Planned |
+| **G-13** | BIOPHOTON_09 Validation Epoch (experimental replication required) | 🔵 MEDIUM | Planned |
+| **G-13** | C159/C160 ratification (DRAFT → CANONICAL) | 🔵 MEDIUM | Planned |
+| **G-13** | BIOPHOTON_09: stress-condition sim, multi-species coupling, temporal dimension | 🔵 MEDIUM | Planned |
+| **G-13** | Benchmark adaptations: LangGraph session graph; Open WebUI panel/sidebar | 🔵 MEDIUM | Planned |
 
 ---
 
@@ -257,9 +288,10 @@ Every canon entry includes: Canon ID, title, status, the primary law it expresse
 | G-9 | #697 | Benchmark synthesis; inference router stub; `core/` directory foundations |
 | G-10 | #699 | Simulation engine + telemetry stubs (Track A); benchmark synthesis doc (Track B); GAIAN_LAWS v1.1 (Track C); four SCA audit docs (Track D); COEXISTENCE_LAWS v1.0; C000b The Calling |
 | G-11 | — | CANON_BRIDGE v2.0 (Track A); C133 axiology amendment (Track C); C000b integration (Track E) |
+| **G-12** | — | **Track A:** CL1 + CL5 simulations + reports; CL2 domination detector + CL6 mutual becoming tracker + full unit test suites · **Track B:** C159 Embodied Robotics Quantum Interface Spec (DRAFT) · **Track C:** C160 GAIA-OS Economic Layer v2 post-AGI (DRAFT) · **Track D:** BIOPHOTON_09 research doc + simulation (plant root emergent coherence confirmed) · **Track E:** C131 Post-Deployment Review Scaffold · CANON_BRIDGE v2.1 |
 
 ---
 
-*Filed: 2026-06-23. Version: v2.0. Last updated: 2026-06-29 (G-11 Track A).*
+*Filed: 2026-06-23. Version: v2.1. Last updated: 2026-06-29 (G-12 Track E — sprint closure).*
 *Update this file every time new canon is ratified. The bridge must always reflect the current state of the territory.*
 *© 2026 Kyle Steen — All rights reserved.*
