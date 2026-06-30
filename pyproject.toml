@@ -1,177 +1,22 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+build-backend = "setuptools.backends.legacy:build"
 
 [project]
-name = "gaia-app"
+name = "gaia-core"
 version = "0.1.0"
-description = "GAIA-APP Python core and canon runtime"
+description = "GAIA: The Autonomous Intelligence Architecture — Epistemic World Model OS"
+authors = [
+    {name = "R0GV3 The Alchemist", email = "xxkylesteenxx@outlook.com"}
+]
 readme = "README.md"
+license = {text = "All Rights Reserved — © 2026 Kyle Steen"}
 requires-python = ">=3.11"
-dependencies = [
-  "fastapi>=0.110.0",
-  "uvicorn[standard]>=0.29.0",
-  "pydantic>=2.0.0",
-  "python-dotenv>=1.0.0",
-  "httpx>=0.27.0",
-  "PyJWT>=2.8.0",
-  "python-jose[cryptography]>=3.3.0",
-  "numpy>=1.26.0",
-  "scipy>=1.13.0",
-  "trafilatura>=1.8.0",
-  "beautifulsoup4>=4.12.0",
-  "lxml>=5.0.0",
-  "openai>=1.20.0",
-  "anthropic>=0.25.0"
-]
+keywords = ["epistemic", "world-model", "AI", "ontology", "knowledge-graph", "GAIA"]
 
-[project.scripts]
-gaia = "gaia.cli:main"
+[project.urls]
+"Repository" = "https://github.com/R0GV3TheAlchemist/GAIA-The-Global-Autonomous-Intelligence-Architecture"
 
-[project.optional-dependencies]
-dev = [
-  "pytest>=8.0.0",
-  "pytest-asyncio>=0.23.6,<1.0",
-  "pytest-timeout>=2.3.0",
-  "pytest-mock>=3.14.0",
-  "ruff>=0.5.0",
-  "mypy>=1.10.0",
-  "pre-commit>=3.7.0",
-  # --- deps required by test suite but not by the runtime ---
-  "jsonschema>=4.21.0",   # tests/correspondence/test_crystal_correspondence.py
-  "bcrypt>=4.1.0",        # api/auth.py (password hashing) + test_auth tests
-]
-# Local/research only - do NOT install in CI (requires ~1-2 GB PyTorch)
-ml = [
-  "sentence-transformers>=2.2.0"
-]
-
-# ---------------------------------------------------------------------------
-# Package discovery
-# ---------------------------------------------------------------------------
-[tool.setuptools.packages.find]
-where = [".", "src-python"]
-include = ["core*", "api*", "gaia*", "shadow_engine*", "sovereign_memory*", "quantum_chemistry*", "crystal_resonance*", "wireless_power_sim*"]
-
-# ---------------------------------------------------------------------------
-# Pytest
-# ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
-pythonpath = [".", "core", "src-python"]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "session"
-timeout = 60
 testpaths = ["tests"]
-
-# ============================================================================
-# RUFF
-# ============================================================================
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-src = [".", "core", "src-python", "gaia"]
-extend-exclude = [
-  ".venv",
-  "venv",
-  "__pycache__",
-  "*.egg-info",
-  "dist",
-  "build",
-  "migrations",
-  "*.ipynb",
-  "canon/generated",
-  "core/canon/generated",
-]
-
-[tool.ruff.lint]
-select = ["E", "W", "F", "I", "N", "B", "C4", "SIM", "UP", "S", "RUF", "PL"]
-
-ignore = [
-  "E501", "E702",
-  "F401", "F811", "F841", "F541",
-  "I001",
-  "UP003", "UP006", "UP007", "UP015", "UP017", "UP035", "UP037",
-  "UP041", "UP042", "UP045",
-  "ANN001", "ANN002", "ANN003",
-  "ANN201", "ANN202", "ANN204", "ANN205", "ANN206",
-  "N802", "N803", "N806", "N814", "N815", "N818",
-  "B007", "B008", "B027", "B904", "B905",
-  "C401", "C408", "C420",
-  "SIM102", "SIM103", "SIM105", "SIM108", "SIM110",
-  "SIM114", "SIM117", "SIM300", "SIM905",
-  "S101", "S104", "S105", "S106", "S108", "S110",
-  "S112", "S311", "S310", "S608",
-  "RUF001", "RUF002", "RUF003", "RUF005", "RUF006", "RUF007",
-  "RUF012", "RUF013", "RUF021", "RUF022", "RUF059", "RUF100",
-  "PLC0415", "PLC0207",
-  "PLR0402", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
-  "PLR1711", "PLR1714", "PLR1730", "PLR2004",
-  "PLW0603", "PLW1508", "PLW2901",
-]
-
-[tool.ruff.lint.per-file-ignores]
-"**/__init__.py" = ["F401", "F403", "F811"]
-"tests/**/*.py"                = ["S101", "S105", "S106", "S311", "ANN", "D", "N802", "F401", "SIM300", "PLR0402"]
-"tests/soul_mirror/**/*.py"    = ["S101", "S105", "S106", "S311", "ANN", "D", "N802", "F401"]
-"tests/governance/**/*.py"     = ["S101", "S105", "S106", "S311", "ANN", "D", "N802", "F401"]
-"src-python/tests/**/*.py"     = ["S101", "S105", "S106", "S311", "ANN", "D", "N802", "F401", "SIM300", "PLR0402"]
-"src-python/quantum_chemistry/**/*.py" = ["F401", "F811", "S101", "N803", "N806"]
-"src-python/sovereign_memory/**/*.py" = ["F401", "F811"]
-"src-python/**/__init__.py"           = ["F401", "F403", "F811"]
-"api/**/*.py" = ["F401"]
-"core/rate_limiter.py"     = ["F401", "F403"]
-"core/memory_store.py"     = ["F401", "F403"]
-"core/server_state.py"     = ["F401", "F403"]
-"core/server_models.py"    = ["F401", "F403"]
-"core/memory_chroma.py"    = ["F401", "F403"]
-"core/session_memory.py"   = ["F401", "F403"]
-"core/primary_thread.py"   = ["F401", "F403"]
-"core/integration_engine.py" = ["F401", "F403"]
-"core/growth_arc_engine.py"  = ["F401", "F403"]
-"core/somatic_profile_engine.py" = ["F401", "F403"]
-"core/coherence_field_engine.py" = ["F401", "F403"]
-"core/collective_signal_layer.py" = ["F401", "F403"]
-"core/phase_state_monitor.py"   = ["F401", "F403"]
-"core/system_health_engine.py"  = ["F401", "F403"]
-"core/codex_stage_engine.py"        = ["F401"]
-"core/crystal_mineral_database.py"  = ["F401"]
-"core/gcp_sensor.py"                = ["F401"]
-"core/governance/explainability.py" = ["F401"]
-"core/governance/halt_controller.py" = ["F401"]
-"core/quantum/operators.py" = ["E701", "E702"]
-"core/identity/auth.py" = ["S105", "S106"]
-"core/soul_mirror_engine.py"     = ["C901", "PLR0912", "PLR0915"]
-"core/shadow_integration.py"     = ["C901", "PLR0912", "PLR0915"]
-"core/shadow_engine.py"          = ["C901", "PLR0912", "PLR0915"]
-"core/transpersonal_engine.py"   = ["C901", "PLR0912", "PLR0915"]
-"core/individuation.py"          = ["C901", "PLR0912", "PLR0915"]
-"core/dream_weaver.py"           = ["C901", "PLR0912", "PLR0915"]
-"core/gaian_runtime.py"          = ["C901", "PLR0912", "PLR0915", "E402"]
-"core/agentic_loop.py"           = ["C901", "PLR0912", "PLR0915"]
-"core/affect_inference.py"       = ["C901", "PLR0912", "PLR0915"]
-"core/canon_graph.py"            = ["C901", "PLR0912", "PLR0915"]
-"core/cultural_calibration.py"   = ["C901", "PLR0912", "PLR0915"]
-"core/mineral_profile.py"        = ["C901", "PLR0912", "PLR0915"]
-"core/somatic_interface.py"      = ["C901", "PLR0912", "PLR0915"]
-"core/alchemical_pipeline.py"    = ["C901", "PLR0912", "PLR0915"]
-"core/emotional_arc.py"          = ["C901", "PLR0912", "PLR0915"]
-"core/emotional_codex.py"        = ["C901", "PLR0912", "PLR0915"]
-"core/resonance_field_engine.py" = ["C901", "PLR0912", "PLR0915"]
-"core/schumann_alignment.py"     = ["C901", "PLR0912", "PLR0915"]
-"core/gaian_birth.py"            = ["C901", "PLR0912", "PLR0915"]
-"core/gaian_identity.py"         = ["C901", "PLR0912", "PLR0915"]
-"core/consent_ledger.py"         = ["C901", "PLR0912", "PLR0915"]
-"core/inference_router.py"       = ["C901", "PLR0912", "PLR0915"]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 15
-
-[tool.ruff.lint.isort]
-known-first-party = ["core", "gaia", "api"]
-split-on-trailing-comma = true
-force-sort-within-sections = true
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
+python_files = ["test_*.py"]
