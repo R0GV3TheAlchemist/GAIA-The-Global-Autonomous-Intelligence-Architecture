@@ -23,4 +23,23 @@ def detect(node_states: Dict[str, Dict]) -> List[Dict[str, Any]]:
             })
 
     conflicts = []
-    for claim_id, perspectives in 
+    for claim_id, perspectives in per_claim.items():
+        if len(perspectives) < 2:
+            continue
+        statuses = [p["entry"].get("status", "unknown") for p in perspectives]
+        has_pos  = bool(set(statuses) & POSITIVE)
+        has_neg  = bool(set(statuses) & NEGATIVE)
+        if has_pos and has_neg:
+            conflicts.append({
+                "claim_id":      claim_id,
+                "conflict_type": "inter_node_status_conflict",
+                "perspectives":  [
+                    {
+                        "node_id":    p["node_id"],
+                        "status":     p["entry"].get("status"),
+                        "confidence": p["entry"].get("confidence", 0)
+                    }
+                    for p in perspectives
+                ]
+            })
+    return conflicts

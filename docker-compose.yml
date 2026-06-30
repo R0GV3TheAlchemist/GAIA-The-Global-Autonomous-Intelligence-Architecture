@@ -1,106 +1,74 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# GAIA-OS — Docker Compose (development)
-# Tracks: Issue #265
+# GAIA Distributed Runtime — v0.5
+# Three-node epistemic network.
+# Each node is an independent FastAPI server with its own world state.
+# Nodes sync over the internal Docker network.
 #
-# Services:
-#   gaia        — FastAPI backend (dev target, hot-reload)
-#   chromadb    — Vector memory store
-#   redis       — Session state / event bus
+# Run:
+#   docker-compose build
+#   docker-compose up
 #
-# Optional (uncomment to enable):
-#   ollama      — Local LLM inference (requires GPU or CPU build)
+# Submit a claim to Node A:
+#   curl -X POST http://localhost:8001/claim \
+#     -H "Content-Type: application/json" \
+#     -d '{"statement": "The sky is blue", "confidence": 0.9}'
 #
-# Usage:
-#   docker-compose up            # start all services
-#   docker-compose up gaia       # backend only
-#   docker-compose logs -f gaia  # follow logs
-# ─────────────────────────────────────────────────────────────────────────────
+# Check if it propagated to Node B:
+#   curl http://localhost:8002/state
+
+version: "3.9"
 
 services:
 
-  gaia:
-    build:
-      context: .
-      target: dev
-    image: gaia-dev:latest
-    container_name: gaia-backend
+  gaia-node-a:
+    build: .
     ports:
-      - "8008:8008"
-    volumes:
-      # Hot-reload: mount source into container
-      - .:/app
-      # Persist state between restarts
-      - gaia-data:/app/data
+      - "8001:8000"
     environment:
-      - GAIA_PORT=8008
-      - GAIA_ROUTING_MODE=local-first
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8000
-      - REDIS_URL=redis://redis:6379/0
-    env_file:
-      - .env.example   # override with .env in dev
-    depends_on:
-      chromadb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: gaia-chromadb
-    ports:
-      - "8000:8000"
+      - NODE_ID=A
+      - NODE_DOMAIN=biophotonics
+      - NODE_TRUST=0.90
+      - PEERS=http://gaia-node-b:8000,http://gaia-node-c:8000
     volumes:
-      - chroma-data:/chroma/chroma
-    environment:
-      - IS_PERSISTENT=TRUE
-      - ANONYMIZED_TELEMETRY=FALSE
+      - ./data/node-a:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  redis:
-    image: redis:7-alpine
-    container_name: gaia-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
-      timeout: 3s
-      retries: 5
+      timeout: 5s
+      retries: 3
 
-  # ── Optional: local Ollama inference ────────────────────────────────────────
-  # Uncomment if you want a containerised Ollama alongside GAIA.
-  # For GPU: add `deploy.resources.reservations.devices` (NVIDIA runtime required).
-  #
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   container_name: gaia-ollama
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama-models:/root/.ollama
-  #   restart: unless-stopped
+  gaia-node-b:
+    build: .
+    ports:
+      - "8002:8000"
+    environment:
+      - NODE_ID=B
+      - NODE_DOMAIN=architecture
+      - NODE_TRUST=0.85
+      - PEERS=http://gaia-node-a:8000,http://gaia-node-c:8000
+    volumes:
+      - ./data/node-b:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-volumes:
-  gaia-data:
-  chroma-data:
-  redis-data:
-  # ollama-models:
+  gaia-node-c:
+    build: .
+    ports:
+      - "8003:8000"
+    environment:
+      - NODE_ID=C
+      - NODE_DOMAIN=epistemics
+      - NODE_TRUST=0.88
+      - PEERS=http://gaia-node-a:8000,http://gaia-node-b:8000
+    volumes:
+      - ./data/node-c:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
