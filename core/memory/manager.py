@@ -11,6 +11,8 @@ Integrates with:
   - AuditTrail (C03) for revocation logging
   - GaianTwinProfile (C04) for session close updates
   - ShadowRegistry (C23) for pattern learning
+  - PersistentMemoryModule (SIM_017) for relational, connectivity-weighted
+    retrieval across long-horizon sessions
 """
 
 from __future__ import annotations
@@ -25,13 +27,16 @@ from .identity import IdentityMemoryStore, GaianTwinProfile
 from .shared import SharedMemoryStore
 from .shadow_registry import ShadowRegistry, ShadowPattern, ShadowEntry
 from .retrieval import MemoryRetrievalEngine, RetrievalQuery, RankedMemory
+from .persistent_memory import PersistentMemoryModule, PersistentMemoryRecord
+from .connectivity_graph import ConnectivityGraph
+from .relevance_scorer import RelevanceScorer, RelevanceBreakdown
 
 
 class MemoryManager:
     """The unified memory API for a single Gaian instance.
 
-    One MemoryManager per Gaian instance. Contains all five layers
-    and the retrieval engine.
+    One MemoryManager per Gaian instance. Contains all five layers,
+    the retrieval engine, and the SIM_017 persistent relational memory module.
 
     Usage:
         mm = MemoryManager(gaian_id=gaian.id, human_principal_id=hp.id)
@@ -39,6 +44,11 @@ class MemoryManager:
         session.append("User expressed desire to build GAIA OS", tags=[MemoryTag.FACTUAL])
         mm.close_session(session_id="xyz", authorise_persist=True)
         results = mm.retrieve(RetrievalQuery(tags=[MemoryTag.FACTUAL]))
+
+        # Relational persistent memory
+        rec = mm.persistent.ingest("GAIA OS memory module designed", layer="episodic")
+        mm.persistent.relate(rec.memory_id, other_id)
+        ranked = mm.persistent.retrieve([(rec.memory_id, 0.92)])
     """
 
     def __init__(self, gaian_id: str, human_principal_id: str) -> None:
@@ -55,6 +65,9 @@ class MemoryManager:
             semantic=self.semantic,
             identity=self.identity,
         )
+
+        # SIM_017: persistent relational memory module
+        self.persistent = PersistentMemoryModule()
 
         self._active_sessions: dict[str, SessionBuffer] = {}
 
@@ -91,9 +104,8 @@ class MemoryManager:
         """Close a session buffer.
 
         If authorise_persist=True (Human Principal consent), transfers
-        M0 records to M1 Episodic Memory.
-        Updates the GaianTwinProfile with session history.
-        Clears the buffer regardless.
+        M0 records to M1 Episodic Memory AND ingests a relational record
+        into PersistentMemoryModule so long-horizon context is retained.
 
         Returns the list of M1 records created (empty if not persisted).
         """
@@ -115,6 +127,16 @@ class MemoryManager:
                     tags=[MemoryTag.SESSION_SUMMARY],
                     confidence=1.0,
                     source="SESSION_CLOSE",
+                )
+                # Ingest session summary into persistent relational memory
+                self.persistent.ingest(
+                    text=session_summary,
+                    layer="episodic",
+                    metadata={
+                        "session_id": session_id,
+                        "gaian_id": self.gaian_id,
+                        "human_principal_id": self.human_principal_id,
+                    },
                 )
 
         # Update Twin Profile
@@ -171,8 +193,21 @@ class MemoryManager:
             raise ValueError(f"Cannot directly write to layer {layer.value} via remember().")
 
     def retrieve(self, query: RetrievalQuery) -> list[RankedMemory]:
-        """Cross-layer relevance-ranked retrieval."""
+        """Cross-layer relevance-ranked retrieval (existing engine)."""
         return self.retrieval.retrieve(query)
+
+    def retrieve_persistent(
+        self,
+        candidates: list[tuple[str, float]],
+        limit: int = 5,
+    ) -> list[RelevanceBreakdown]:
+        """SIM_017 relational retrieval through PersistentMemoryModule.
+
+        Accepts a list of (memory_id, semantic_score) pairs — typically
+        the output of the embedding search phase — and returns them
+        re-ranked by connectivity-weighted relevance score.
+        """
+        return self.persistent.retrieve(candidates, limit=limit)
 
     def log_shadow(
         self,
@@ -191,11 +226,7 @@ class MemoryManager:
     def forget_session(
         self, session_id: str, audit_id: str
     ) -> int:
-        """Revoke all episodic records from a specific session.
-
-        Human Principal's right to forget. The audit trail records
-        that revocation occurred — not what was revoked.
-        """
+        """Revoke all episodic records from a specific session."""
         return self.episodic.revoke_session(session_id, audit_id)
 
     def forget_fact(self, concept: str, audit_id: str) -> bool:
@@ -203,11 +234,7 @@ class MemoryManager:
         return self.semantic.revoke_fact(concept, audit_id)
 
     def full_identity_revocation(self, audit_id: str) -> None:
-        """Full M3 revocation. Terminates the Gaian instance per C17.
-
-        This is the nuclear option. The HP invokes this to completely
-        end the Gaian relationship. Cannot be undone.
-        """
+        """Full M3 revocation. Terminates the Gaian instance per C17."""
         self.identity.full_revocation(audit_id)
 
     # ------------------------------------------------------------------
@@ -224,6 +251,7 @@ class MemoryManager:
     # ------------------------------------------------------------------
 
     def stats(self) -> dict[str, Any]:
+        persistent_state = self.persistent.export_state()
         return {
             "gaian_id": self.gaian_id,
             "human_principal_id": self.human_principal_id,
@@ -237,11 +265,14 @@ class MemoryManager:
             "relationship_depth": self.identity.profile.relationship_depth
             if not self.identity.is_terminated else None,
             "shadow_flags": self.shadow.active_flags(),
+            "persistent_record_count": len(persistent_state["records"]),
+            "persistent_connectivity_nodes": len(persistent_state["connectivity"]),
         }
 
     def __repr__(self) -> str:
         return (
             f"<MemoryManager gaian={self.gaian_id[:8]} "
             f"episodic={self.episodic.count()} "
-            f"semantic={self.semantic.count()}>"
+            f"semantic={self.semantic.count()} "
+            f"persistent={len(self.persistent._records)}>"
         )
