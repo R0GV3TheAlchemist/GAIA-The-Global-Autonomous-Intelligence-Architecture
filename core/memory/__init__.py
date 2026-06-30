@@ -25,19 +25,25 @@ from core.memory.manager import MemoryManager
 from core.memory.layers import MemoryLayer, MemoryTag
 from core.memory.shadow_registry import ShadowPattern
 from core.memory.retrieval import RetrievalQuery
+from core.memory.connectivity_graph import ConnectivityGraph, ConnectivityNode
+from core.memory.relevance_scorer import RelevanceScorer, RelevanceBreakdown
+from core.memory.persistent_memory import PersistentMemoryModule, PersistentMemoryRecord
 
 __all__ = [
-    # Hierarchy types
     "MemoryTier",
     "MemoryQuery",
     "MemoryStore",
     "MemoryRouter",
-    # Factory
     "build_default_router",
-    # High-level manager API (used by tests and runtime)
     "MemoryManager",
     "MemoryLayer",
     "MemoryTag",
     "ShadowPattern",
     "RetrievalQuery",
+    "ConnectivityGraph",
+    "ConnectivityNode",
+    "RelevanceScorer",
+    "RelevanceBreakdown",
+    "PersistentMemoryModule",
+    "PersistentMemoryRecord",
 ]
