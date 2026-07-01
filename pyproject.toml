@@ -17,6 +17,69 @@ keywords = ["epistemic", "world-model", "AI", "ontology", "knowledge-graph", "GA
 [project.urls]
 "Repository" = "https://github.com/R0GV3TheAlchemist/GAIA-The-Global-Autonomous-Intelligence-Architecture"
 
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
+# Discover tests in all four locations:
+#   tests/                          — root integration suite
+#   server/tests/                   — API + dashboard tests (89 tests)
+#   core/primordial/tests/          — session hook tests (34 tests)
+#   core/persistence/tests/         — persistence tests
+testpaths = [
+    "tests",
+    "server/tests",
+    "core/primordial/tests",
+    "core/persistence/tests",
+]
+python_files  = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Short tracebacks in CI; override with -v locally
+addopts = "--tb=short -q"
+# Treat unknown marks as errors to prevent silent typos
+strict_markers = true
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    "alembic",
+    "node_modules",
+    "src-tauri",
+    "ui",
+    "client",
+    "src",
+    ".venv",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4"]
+ignore = ["E501", "E402", "B008", "UP007"]
+
+# ---------------------------------------------------------------------------
+# coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source   = ["core", "server"]
+branch   = true
+omit     = [
+    "*/tests/*",
+    "*/conftest.py",
+    "alembic/*",
+]
+
+[tool.coverage.report]
+show_missing        = true
+skip_covered        = true
+fail_under          = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\.\\.",
+]
