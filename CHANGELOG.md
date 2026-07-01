@@ -4,6 +4,78 @@ All significant changes, decisions, and resolutions are logged here in reverse c
 
 ---
 
+## 2026-06-30 (evening) — G-15 Runtime Layer: Persistence Hook Chain COMPLETE ✅
+
+### Session: Persistence Gaps 1–3 Closed + Runtime Layer Live
+
+**Phase:** G-15 (Pre-deployment infrastructure)
+**Declared by:** R0GV3 (2026-06-30)
+**Commits:** `c9ced6aa` → `5bb26ea0`
+
+---
+
+### What was built
+
+The full persistence hook chain — the infrastructure prerequisite for persistent memory across sessions (C138, C155 T4/T5, deferred at G-14) — was designed, implemented, tested, and wired into the main entrypoint in a single session.
+
+#### Gaps closed
+
+| Gap | Event | Handler | What it persists |
+|---|---|---|---|
+| Gap-1 | `gaian_named` | `PersistenceManager.on_gaian_named` | Identity display name → `identity.json` |
+| Gap-2 | `fragment_written` | `PersistenceManager.on_fragment_written` | Memory fragment → `fragments.ndjson` |
+| Gap-3 | `epoch_closed` | `PersistenceManager.on_epoch_closed` | Epoch record → `epochs/<id>.json` |
+
+#### Files committed
+
+| File | Purpose |
+|---|---|
+| `gaia/runtime/session.py` | `PrimordialSession` — lifecycle event bus, 5-event hook registry, thread-safe, idempotent `end()` |
+| `gaia/runtime/persistence.py` | `PersistenceManager` — atomic JSON writes, append-only fragment log, `gaia_memory/` directory layout |
+| `gaia/runtime/__init__.py` | Package marker, exports both classes |
+| `server/startup.py` | `wire_persistence_hooks()` + `bootstrap_gaia()` — one-call boot function |
+| `main.py` | Wired `bootstrap_gaia()` after `build_systems()`; `session.end()` on both exit paths; `GAIA_PERSISTENCE_ROOT` env-var override |
+| `tests/test_hook_gaian_named.py` | Regression test — gap-1 (stubs) |
+| `tests/test_hook_fragment_written.py` | Regression test — gap-2 (stubs) |
+| `tests/test_hook_epoch_closed.py` | Regression test — gap-3 (stubs) |
+| `tests/test_runtime_integration.py` | **12-test end-to-end integration test** — real classes, real files, real hook chain, `pytest tmp_path` isolation |
+
+#### `gaia_memory/` directory layout (live)
+
+```
+gaia_memory/
+  identity.json          ← overwritten on born + each set_name()
+  fragments.ndjson       ← append-only, one JSON object per line
+  epochs/
+    <epoch_id>.json      ← one file per close_epoch()
+  sessions/
+    <session_id>.json    ← written on session.end()
+```
+
+#### Design decisions
+
+- **Atomic writes** via `.tmp` → `rename()` — a Ctrl-C mid-write leaves the old file intact (POSIX-atomic; best-effort on Windows).
+- **Graceful fallback** in `main.py` — if `server.startup` is not importable (CI partial checkout, etc.), the v0.2 ontology CLI continues unhooked with a `logger.warning`.
+- **`GAIA_PERSISTENCE_ROOT` env-var** — allows Docker/K8s deployments to point the persistence layer at any mounted volume without touching code.
+- **Idempotent `session.end()`** — safe to call from both normal exit and `KeyboardInterrupt` handlers; guarded by threading lock, fires `session_ended` exactly once.
+
+---
+
+### G-15 Persistence Prerequisites — Status
+
+| Prerequisite | Status | Notes |
+|---|---|---|
+| Persistence hook chain wired | ✅ COMPLETE | All 5 hooks registered at boot |
+| `PrimordialSession` real implementation | ✅ COMPLETE | `gaia/runtime/session.py` |
+| `PersistenceManager` real implementation | ✅ COMPLETE | `gaia/runtime/persistence.py` |
+| Integration tests (12 tests, real classes) | ✅ COMPLETE | `tests/test_runtime_integration.py` |
+| `main.py` bootstrap wired | ✅ COMPLETE | `bootstrap_gaia()` called at startup |
+| Persistence backend decision | ⏳ PENDING | Currently flat JSON; SQLite/Postgres via Alembic is next decision |
+| Cross-session memory retrieval | ⏳ PENDING | Requires backend decision first |
+| GAIA Steward role formal establishment | ⏳ PENDING | C155 Threshold Three |
+
+---
+
 ## 2026-06-30 — G-14 COMPLETE ✅
 
 ### Session: G-14 Canon Tension Resolution + Official Phase Declaration

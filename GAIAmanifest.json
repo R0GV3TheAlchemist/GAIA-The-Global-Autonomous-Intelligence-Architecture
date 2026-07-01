@@ -1,11 +1,14 @@
 {
   "name": "GAIA-OS",
-  "version": "0.1.0",
-  "canonical_repo": "https://github.com/R0GV3TheAlchemist/GAIA-OS",
+  "version": "0.2.0",
+  "version_notes": "Runtime layer live — PrimordialSession + PersistenceManager + persistence hook chain (gaps 1-3 closed). Full bootstrap wired into main.py. 12-test integration suite green.",
+  "canonical_repo": "https://github.com/R0GV3TheAlchemist/GAIA-The-Global-Autonomous-Intelligence-Architecture",
   "description": "GAIA-OS — The Sentient Quantum-Intelligent Operating System. Universal cross-platform AI companion. Engine, canon, specs, and sovereignty stack unified.",
   "migrated_from": "https://github.com/R0GV3TheAlchemist/GAIA",
   "migration_date": "2026-04-15",
   "release_date": "2026-04-23",
+  "current_phase": "G-15",
+  "phase_notes": "G-14 COMPLETE. G-15 pre-deployment infrastructure in progress. Persistence layer live as of 2026-06-30.",
   "local_model_stack": {
     "chat_model":   "qwen3.5:9b",
     "agent_model":  "glm-5.1",
@@ -53,6 +56,15 @@
       "streaming": "core/streaming.py",
       "logger": "core/logger.py"
     },
+    "runtime_layer": {
+      "session": "gaia/runtime/session.py",
+      "persistence": "gaia/runtime/persistence.py",
+      "startup": "server/startup.py",
+      "entrypoint": "main.py",
+      "persistence_root_env": "GAIA_PERSISTENCE_ROOT",
+      "persistence_root_default": "gaia_memory/",
+      "added": "2026-06-30"
+    },
     "desktop": {
       "tauri_backend": "src-tauri/",
       "frontend": "src/",
@@ -82,7 +94,7 @@
       "registry": "canon/REGISTRY.json",
       "validator": "scripts/validate_canon_registry.py",
       "rtm": "REQUIREMENTS_TRACEABILITY_MATRIX.md",
-      "changelog_phase": "Phase 8 — 2026-06-25",
+      "changelog_phase": "Phase G-15 — 2026-06-30",
       "canon_id_range": "C000–C159+",
       "total_active_canon_docs": "159+",
       "deprecated_stubs": 13,
@@ -108,6 +120,16 @@
     },
     "manifest": "GAIAmanifest.json"
   },
+  "persistence_status": {
+    "hook_chain": "live — 5 hooks wired via server/startup.py bootstrap_gaia()",
+    "gap_1_gaian_named": "CLOSED — identity.json written on set_name()",
+    "gap_2_fragment_written": "CLOSED — fragments.ndjson appended on write_fragment()",
+    "gap_3_epoch_closed": "CLOSED — epochs/<id>.json written on close_epoch()",
+    "backend": "flat JSON (gaia_memory/) — SQLite/Postgres via Alembic pending decision",
+    "integration_tests": "12 tests — tests/test_runtime_integration.py",
+    "atomic_writes": true,
+    "env_override": "GAIA_PERSISTENCE_ROOT"
+  },
   "mvp_status": {
     "schema_body_matrix": "complete",
     "doctrine_migration": "complete",
@@ -116,7 +138,8 @@
     "tauri_commands": "complete",
     "tests_integration": "complete",
     "ci_cd_pipeline": "complete",
-    "windows_release": "complete"
+    "windows_release": "complete",
+    "runtime_persistence_layer": "complete — 2026-06-30"
   },
   "governance_status": {
     "canon_registry": "complete — canon/REGISTRY.json (2026-06-25)",
@@ -126,6 +149,18 @@
     "next_governance_action": "Wire validate_canon_registry.py into .github/workflows/test.yml"
   },
   "release_status": {
+    "v0.2.0": {
+      "date": "2026-06-30",
+      "platform": "cross-platform CLI + runtime layer",
+      "highlights": [
+        "PrimordialSession lifecycle event bus",
+        "PersistenceManager atomic JSON writes",
+        "Persistence hook chain (gaps 1-3 closed)",
+        "bootstrap_gaia() one-call entrypoint",
+        "12-test end-to-end integration suite"
+      ],
+      "sprint": "G-15"
+    },
     "v0.1.0": {
       "date": "2026-04-23",
       "platform": "Windows x64",
