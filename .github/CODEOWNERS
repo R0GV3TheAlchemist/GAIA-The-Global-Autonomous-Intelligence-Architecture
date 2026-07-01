@@ -1,0 +1,57 @@
+# CODEOWNERS — GAIA OS
+#
+# GitHub uses this file to automatically request reviews on pull requests.
+# The last matching pattern wins. Patterns follow .gitignore syntax.
+#
+# Format:  <pattern>  <@owner> [<@owner> ...]
+#
+# Until the team grows, all paths map to the sole architect/owner.
+# Add team members here as contributors join each subsystem.
+# ---------------------------------------------------------------------------
+
+# --- Global fallback ---------------------------------------------------
+# Every file not matched below routes to the primary architect.
+*                                         @R0GV3TheAlchemist
+
+# --- Core OS subsystems ------------------------------------------------
+/core/primordial/**                        @R0GV3TheAlchemist
+/core/identity/**                          @R0GV3TheAlchemist
+/core/memory/**                            @R0GV3TheAlchemist
+/core/runtime/**                           @R0GV3TheAlchemist
+/core/fs/**                                @R0GV3TheAlchemist
+/core/api/**                               @R0GV3TheAlchemist
+/core/persistence/**                       @R0GV3TheAlchemist
+
+# --- Sentinel (immune system) -----------------------------------------
+# Sentinel changes carry the highest review weight.
+# All Sentinel PRs must be reviewed by the architect.
+/core/sentinel/**                          @R0GV3TheAlchemist
+/server/routes_sentinel.py                 @R0GV3TheAlchemist
+/server/tests/test_sentinel_routes.py      @R0GV3TheAlchemist
+
+# --- Server layer ------------------------------------------------------
+/server/**                                 @R0GV3TheAlchemist
+
+# --- CLI ---------------------------------------------------------------
+/cli/**                                    @R0GV3TheAlchemist
+
+# --- Infrastructure & CI -----------------------------------------------
+# Workflow and config changes need careful review — they affect every
+# contributor and the deployment pipeline.
+/.github/workflows/**                      @R0GV3TheAlchemist
+/Dockerfile                                @R0GV3TheAlchemist
+/docker-compose.yml                        @R0GV3TheAlchemist
+requirements.txt                           @R0GV3TheAlchemist
+
+# --- Canon & governance docs ------------------------------------------
+# These are protected documents. Any change to canon requires
+# architect sign-off.
+/.github/CANON_BASELINE_2026-06-27.md      @R0GV3TheAlchemist
+/.github/BRANCH_PROTECTION.md             @R0GV3TheAlchemist
+CANON.md                                   @R0GV3TheAlchemist
+MANIFESTO.md                               @R0GV3TheAlchemist
+ARCHITECTURE.md                            @R0GV3TheAlchemist
+
+# --- Tests -------------------------------------------------------------
+/core/**/tests/**                          @R0GV3TheAlchemist
+/server/tests/**                           @R0GV3TheAlchemist
