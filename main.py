@@ -23,6 +23,7 @@ Commands:
 import sys
 import json
 import uuid
+import logging
 import argparse
 from pathlib import Path
 
@@ -36,7 +37,24 @@ from gaia.world.graph import WorldGraph
 from gaia.world.persistence import WorldPersistence
 from gaia.governance.policy_engine import PolicyEngine
 
+# ---------------------------------------------------------------------------
+# Runtime layer — PrimordialSession + PersistenceManager via server/startup.py
+# Imported here so gaps 1-3 (gaian_named, fragment_written, epoch_closed) are
+# closed at boot.  Graceful fallback keeps the v0.2 ontology CLI working even
+# in environments where the runtime layer is not yet installed.
+# ---------------------------------------------------------------------------
+try:
+    import os
+    from server.startup import bootstrap_gaia
+    _RUNTIME_AVAILABLE = True
+except ImportError:
+    _RUNTIME_AVAILABLE = False
+
+logger = logging.getLogger("gaia.main")
+
 STATE_FILE = Path("world_state.json")
+PERSISTENCE_ROOT = os.environ.get("GAIA_PERSISTENCE_ROOT", "gaia_memory") \
+    if _RUNTIME_AVAILABLE else "gaia_memory"
 
 BANNER = """
 ┌──────────────────────────────────────────────┐
@@ -183,7 +201,25 @@ def main():
     print(BANNER)
     ontology, evaluator, world, graph, persister, policy, kb = build_systems()
 
-    # Load prior state
+    # ------------------------------------------------------------------
+    # Runtime layer bootstrap — wires persistence hooks for gaps 1-3.
+    # session.end() must be called on every exit path so the
+    # session_ended hook flushes in-flight writes.
+    # ------------------------------------------------------------------
+    _session = None
+    if _RUNTIME_AVAILABLE:
+        try:
+            _session, _manager = bootstrap_gaia(persistence_root=PERSISTENCE_ROOT)
+            logger.info("[main] GAIA runtime layer active — persistence_root=%s",
+                        PERSISTENCE_ROOT)
+        except Exception as exc:
+            logger.warning("[main] bootstrap_gaia() failed (%s); "
+                           "running without persistence hooks.", exc)
+    else:
+        logger.warning("[main] server.startup not importable; "
+                       "running without persistence hooks (ontology CLI mode).")
+
+    # Load prior world-model state
     prior = persister.load(STATE_FILE)
     if prior.get("state"):
         world._state = prior["state"]
@@ -200,6 +236,8 @@ def main():
             user_input = input("GAIA > ").strip()
         except (KeyboardInterrupt, EOFError):
             persister.save(world.snapshot(), STATE_FILE)
+            if _session is not None:
+                _session.end()
             print("\n  World state saved. Goodbye.")
             break
 
@@ -208,6 +246,8 @@ def main():
 
         if user_input.lower() in ("/exit", "/quit"):
             persister.save(world.snapshot(), STATE_FILE)
+            if _session is not None:
+                _session.end()
             print("  World state saved. Goodbye.")
             break
 
