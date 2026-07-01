@@ -81,7 +81,9 @@ class TestConnectorFlow:
         c1 = FakeConnector(kind=ConnectorKind.CALENDAR)
         c2 = FakeConnector(kind=ConnectorKind.CALENDAR)
         c3 = FakeConnector(kind=ConnectorKind.NETWORK)
-        reg.register(c1); reg.register(c2); reg.register(c3)
+        reg.register(c1)
+        reg.register(c2)
+        reg.register(c3)
         assert len(mgr.list_by_kind(ConnectorKind.CALENDAR)) == 2
 
     def test_find_by_capability(self):
@@ -89,7 +91,8 @@ class TestConnectorFlow:
         mgr = ConnectorManager(reg)
         c1 = FakeConnector(capabilities=["bluetooth", "pair"])
         c2 = FakeConnector(capabilities=["read"])
-        reg.register(c1); reg.register(c2)
+        reg.register(c1)
+        reg.register(c2)
         results = mgr.find_by_capability("bluetooth")
         assert len(results) == 1
 

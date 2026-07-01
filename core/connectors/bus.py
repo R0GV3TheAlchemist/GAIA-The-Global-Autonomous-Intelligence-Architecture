@@ -130,7 +130,7 @@ class ConnectorBus:
         error_count = sum(1 for r in results if isinstance(r, Exception))
         if error_count:
             self._error_count += error_count
-            for i, r in enumerate(results):
+            for _i, r in enumerate(results):
                 if isinstance(r, Exception):
                     logger.error(
                         "ConnectorBus handler error for event '%s': %s",

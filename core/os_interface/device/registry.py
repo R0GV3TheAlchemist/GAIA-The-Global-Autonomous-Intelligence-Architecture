@@ -110,7 +110,7 @@ class HALRegistry:
         self._listeners.append(listener)
 
     def remove_listener(self, listener: HotplugListener) -> None:
-        self._listeners = [l for l in self._listeners if l is not listener]
+        self._listeners = [lsnr for lsnr in self._listeners if lsnr is not listener]
 
     def _emit(self, event: HotplugEvent) -> None:
         for listener in self._listeners:

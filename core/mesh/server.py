@@ -425,7 +425,7 @@ class MeshServer:
 
     async def _broadcast_raw(self, msg: dict) -> None:
         """Send a message to ALL currently connected peers."""
-        for peer_id, ws in list(self._connections.items()):
+        for _peer_id, ws in list(self._connections.items()):
             await self._send(ws, msg)
 
     # ── Introspection ─────────────────────────────────────────────────────────

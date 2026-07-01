@@ -231,7 +231,7 @@ class TaskScheduler:
                 self._running.values(),
                 return_when=asyncio.ALL_COMPLETED,
             )
-            for fut in done:
+            for _fut in done:
                 pass  # results stored on task objects in _execute()
             self._running.clear()
 

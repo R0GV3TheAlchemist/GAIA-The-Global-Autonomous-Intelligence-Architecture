@@ -68,9 +68,12 @@ def assert_field(label: str, data: dict, key: str, expected=None):
     return val
 
 
+def sep(t: str) -> None:
+    print(f"\n{'='*54}\n  {t}\n{'='*54}")
+
+
 def main():
     client = httpx.Client(base_url=BASE, timeout=15.0)
-    sep = lambda t: print(f"\n{'='*54}\n  {t}\n{'='*54}")
 
     # ------------------------------------------------------------------
     # 1. Health
