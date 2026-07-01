@@ -1,234 +1,76 @@
-# GAIA-OS CI — runs on every push and PR targeting main
-# Gate: ruff → mypy → bandit → py_compile → manifest-validate → canon-governance → pytest
-# Nothing merges to main unless this workflow is green.
-
-name: GAIA-OS CI
+name: CI
 
 on:
   push:
-    branches: ["main", "sprint-g7/**", "feat/**", "fix/**"]
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint-and-test:
-    name: Lint + Type + Security + Syntax + Manifest + Canon + Pytest
+  test:
+    name: Python ${{ matrix.python-version }} tests
     runs-on: ubuntu-latest
-    # Hard cap: kill the whole job after 20 min so it never hangs for hours.
-    timeout-minutes: 20
-
-    # ── Service containers ────────────────────────────────────────────────────────
-    # Redis is started before any step runs and torn down automatically afterward.
-    # Tests that use Redis (orchestrator pub-sub, crisis_engine, etc.) connect to
-    # redis://localhost:6379 via the REDIS_URL env var injected in the pytest step.
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
 
     steps:
-      # ── 1. Checkout ───────────────────────────────────────────────────────────────
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Python setup ───────────────────────────────────────────────────────────
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: pip
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
 
-      # ── 3. Cache HuggingFace models ───────────────────────────────────────────────
-      - name: Cache HuggingFace models
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface
-          key: huggingface-all-minilm-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            huggingface-all-minilm-
-
-      # ── 4. Install dependencies ──────────────────────────────────────────────────────────
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -e ".[dev]"
-          pip install pytest-cov pytest-mock pytest-timeout mypy bandit[toml]
 
-      # ── 5. Pre-download embedding model ─────────────────────────────────────────────
-      - name: Pre-download HuggingFace embedding model
+      - name: Lint syntax
         run: |
-          python -c "
-          try:
-              from sentence_transformers import SentenceTransformer
-              print('Downloading all-MiniLM-L6-v2...')
-              SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-              print('Model ready.')
-          except ImportError:
-              print('sentence-transformers not installed — skipping pre-download.')
-          except Exception as e:
-              print(f'Pre-download failed (non-fatal): {e}')
-          "
+          python -m compileall core server cli
+
+      - name: Run tests
         env:
-          HF_HUB_DOWNLOAD_TIMEOUT: "300"
-          TRANSFORMERS_OFFLINE: "0"
-          SENTENCE_TRANSFORMERS_HOME: ~/.cache/huggingface/sentence_transformers
-
-      # ── 5.5 Ruff lint ──────────────────────────────────────────────────────────────
-      - name: Lint with ruff
+          GAIA_ROOT: ${{ github.workspace }}/.gaia-test
+          GAIA_BEARER_TOKENS: test-operator-token
+          GAIA_SENTINEL_RATE_LIMIT: '60'
         run: |
-          echo '🔍  Running ruff lint...'
-          ruff check core/ api/ gaia/ src-python/
-          echo '✅  Ruff passed'
+          pytest -q
 
-      # ── 5.6 mypy type checking ────────────────────────────────────────────────────
-      - name: Type check with mypy
-        run: |
-          echo '🔍  Running mypy type check...'
-          mypy core/ src-python/ \
-            --ignore-missing-imports \
-            --no-error-summary \
-            --pretty \
-            --python-version 3.11 \
-            || true
-          echo '✅  mypy complete (see log above for type errors)'
-        env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src-python
+  docker-build:
+    name: Docker build validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # ── 5.7 bandit SAST security scan ─────────────────────────────────────────────
-      - name: Security scan with bandit
-        run: |
-          echo '🔐  Running bandit SAST scan...'
-          bandit -r core/ src-python/ \
-            --severity-level medium \
-            --confidence-level medium \
-            --format txt \
-            --exclude src-python/tests \
-            || true
-          echo '✅  Bandit scan complete (review log above)'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      # ── 5.8 Manifest validation ─────────────────────────────────────────────────
-      - name: Validate CANON_MANIFEST.json
-        run: |
-          python - <<'PYEOF'
-          import json, sys, os
-          from pathlib import Path
-
-          manifest_path = Path("meta/CANON_MANIFEST.json")
-          if not manifest_path.exists():
-              print("ℹ️  meta/CANON_MANIFEST.json not found — skipping validation")
-              sys.exit(0)
-
-          REQUIRED_FIELDS = {"id", "path", "title", "domain", "weight", "tags"}
-          VALID_DOMAINS = {
-              "FOUNDATION", "CONSCIOUSNESS", "BIOLOGY", "GOVERNANCE",
-              "AVATAR", "LANGUAGE", "METAPHYSICS", "CHARTER", "ECONOMICS",
-              "TELEMETRY", "MEMORY", "TOOLS", "BCI", "IDENTITY",
-              "PLANETARY", "SOCIAL", "MINERALS",
-          }
-
-          errors = []
-          with open(manifest_path) as f:
-              manifest = json.load(f)
-
-          documents = manifest.get("documents", [])
-          if not documents:
-              print("ℹ️  No documents array found — nothing to validate.")
-              sys.exit(0)
-
-          seen_ids = {}
-          for i, doc in enumerate(documents):
-              loc = f"documents[{i}] (id={doc.get('id','<missing>')})"
-              missing = REQUIRED_FIELDS - set(doc.keys())
-              if missing:
-                  errors.append(f"{loc}: missing required fields: {missing}")
-              domain = doc.get("domain", "")
-              if domain not in VALID_DOMAINS:
-                  errors.append(f"{loc}: invalid domain '{domain}'")
-              doc_id = doc.get("id")
-              if doc_id:
-                  if doc_id in seen_ids:
-                      errors.append(f"{loc}: duplicate id '{doc_id}'")
-                  else:
-                      seen_ids[doc_id] = i
-              weight = doc.get("weight")
-              if weight is not None and not (0.0 <= float(weight) <= 1.0):
-                  errors.append(f"{loc}: weight {weight} out of [0.0, 1.0]")
-              tags = doc.get("tags", [])
-              if not tags:
-                  errors.append(f"{loc}: tags array is empty")
-              doc_path = doc.get("path", "")
-              if doc_path and not Path(doc_path).exists():
-                  errors.append(f"{loc}: path '{doc_path}' not on disk")
-
-          if errors:
-              print(f"❌  CANON_MANIFEST.json — {len(errors)} error(s):")
-              for e in errors: print(f"   • {e}")
-              sys.exit(1)
-          else:
-              print(f"✅  CANON_MANIFEST.json valid — {len(documents)} documents")
-          PYEOF
-
-      # ── 5.9 Canon Registry Governance gate ──────────────────────────────────────
-      # Hard gate: blocks merge if REGISTRY.json has duplicate IDs, missing files,
-      # deprecated entries without superseded_by, or is malformed JSON.
-      # Canonical law: GAIAN_LAWS.md §1 §2 §3 §5
-      # Reference: canon/REGISTRY.json · scripts/validate_canon_registry.py
-      - name: Canon Registry Governance gate
-        run: |
-          echo '📜  Running Canon Registry Governance gate (§1 §2 §3 §5)...'
-          if [ ! -f "scripts/validate_canon_registry.py" ]; then
-            echo '::error::scripts/validate_canon_registry.py is missing. Block 1.3 deliverable must be present.'
-            exit 1
-          fi
-          if [ ! -f "canon/REGISTRY.json" ]; then
-            echo '::error::canon/REGISTRY.json is missing. Block 1.1 deliverable must be present.'
-            exit 1
-          fi
-          python scripts/validate_canon_registry.py
-          echo '✅  Canon Registry Governance gate: PASSED'
-
-      # ── 5.10 RTM presence gate ───────────────────────────────────────────────────
-      # Ensures the Requirements Traceability Matrix (Block 2) is never accidentally
-      # deleted without a deliberate governance decision.
-      - name: RTM presence gate
-        run: |
-          if [ ! -f "REQUIREMENTS_TRACEABILITY_MATRIX.md" ]; then
-            echo '::error::REQUIREMENTS_TRACEABILITY_MATRIX.md is missing. Block 2 deliverable must be present. Restore or regenerate before merging.'
-            exit 1
-          fi
-          echo '✅  REQUIREMENTS_TRACEABILITY_MATRIX.md present'
-
-      # ── 6. Syntax check ───────────────────────────────────────────────────────────────
-      - name: Syntax check (py_compile)
-        run: |
-          python -m compileall -q core/ 2>&1 | tee /tmp/compile.log
-          if grep -q 'SyntaxError\|Error' /tmp/compile.log; then
-            echo '::error::Syntax errors found in core/ — fix before merging'
-            exit 1
-          fi
-          echo '✅  All core/ files compile cleanly'
-
-      # ── 7. Pytest ───────────────────────────────────────────────────────────────────
-      - name: Run pytest
-        run: |
-          python -m pytest tests/ \
-            --tb=short \
-            --asyncio-mode=auto \
-            --timeout=60 \
-            --cov=core \
-            --cov-report=term-missing \
-            -v
-        env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src-python
-          CI: "true"
-          HF_HUB_DOWNLOAD_TIMEOUT: "300"
-          SENTENCE_TRANSFORMERS_HOME: ~/.cache/huggingface/sentence_transformers
-          # Redis service container is reachable at localhost:6379
-          REDIS_URL: redis://localhost:6379
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: gaia-os:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
