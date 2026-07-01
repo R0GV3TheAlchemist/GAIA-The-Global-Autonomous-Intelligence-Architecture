@@ -1,14 +1,10 @@
 name: Ruff Autofix
 
 on:
-  # Run automatically on every push to main so auto-fixable issues
-  # self-heal without manual workflow_dispatch triggers.
-  push:
-    branches: [main]
-    paths:
-      - '**.py'
-      - 'pyproject.toml'
-  # Keep manual trigger for on-demand runs from Actions tab.
+  # Manual trigger only — run from the Actions tab when you want to
+  # batch-apply auto-fixable ruff issues across the codebase.
+  # Do NOT run on push: that causes the bot commit to become HEAD
+  # on main, which suppresses CI check reporting.
   workflow_dispatch:
 
 jobs:
@@ -19,7 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Fetch full history so the bot push doesn't trigger another run loop
           fetch-depth: 0
 
       - name: Set up Python
@@ -38,5 +33,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "chore: ruff --fix autofix [skip ci]"
+          git diff --cached --quiet || git commit -m "chore: ruff --fix autofix"
           git push

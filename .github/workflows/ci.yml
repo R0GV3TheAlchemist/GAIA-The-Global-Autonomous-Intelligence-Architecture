@@ -31,6 +31,13 @@
 # ───────
 #   pip dependencies are cached by requirements hash so repeated
 #   pushes that don't change deps install in < 5 seconds.
+#
+# Ruff configuration
+# ──────────────────
+#   All rule selection, ignores, excludes, and per-file overrides
+#   live in pyproject.toml [tool.ruff] / [tool.ruff.lint].
+#   The lint step below runs bare `ruff check .` so pyproject.toml
+#   is the single source of truth — no inline flags here.
 # =============================================================================
 
 name: CI
@@ -76,15 +83,9 @@ jobs:
         run: pip install --quiet ruff
 
       - name: Run ruff
-        # E/W = pycodestyle errors/warnings  F = pyflakes  I = isort
-        # UP = pyupgrade  B = bugbear  C4 = comprehensions
-        # Ignore E501 (line length) — handled by formatter separately
-        run: |
-          ruff check \
-            --select E,W,F,I,UP,B,C4 \
-            --ignore E501,E402,B008,UP007 \
-            --exclude alembic,node_modules,src-tauri,ui,client,src \
-            .
+        # All rule config (select, ignore, exclude, per-file-ignores)
+        # is in pyproject.toml [tool.ruff.lint] — single source of truth.
+        run: ruff check .
 
   # ---------------------------------------------------------------------------
   # test
