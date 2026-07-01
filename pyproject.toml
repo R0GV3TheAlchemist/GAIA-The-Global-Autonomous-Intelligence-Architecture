@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "gaia-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "GAIA: The Autonomous Intelligence Architecture — Epistemic World Model OS"
 authors = [
     {name = "R0GV3 The Alchemist", email = "xxkylesteenxx@outlook.com"}
@@ -81,5 +81,5 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
-    "\\.\.\\.",
+    '\.\.\.', 
 ]
