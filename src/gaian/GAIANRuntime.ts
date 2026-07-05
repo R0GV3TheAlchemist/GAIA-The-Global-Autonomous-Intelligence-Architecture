@@ -2,7 +2,7 @@
  * GAIANRuntime.ts
  * Central execution loop for GAIA-OS.
  * Wires SpectralForceEngine + MagnumOpusStageEngine into every response cycle.
- * Issue #439 — feat(runtime): full system prompt injection
+ * Issue #439 — feat(runtime): full system prompt assembly
  */
 
 import { SpectralForceEngine, SpectralSnapshot } from '../field/SpectralForceEngine';
@@ -48,7 +48,7 @@ export interface SessionInitResult {
 
 export class SystemPromptBuilder {
   /**
-   * Assembles the [SPECTRAL FIELD] injection block from a SpectralSnapshot.
+   * Assembles the [SPECTRAL FIELD] context block from a SpectralSnapshot.
    */
   static buildSpectralBlock(spectral: SpectralSnapshot): string {
     const corridorStr = spectral.corridor ? spectral.corridor : 'None — in attractor';
@@ -64,7 +64,7 @@ export class SystemPromptBuilder {
   }
 
   /**
-   * Assembles the [MAGNUM OPUS STAGE] injection block from stage data.
+   * Assembles the [MAGNUM OPUS STAGE] context block from stage data.
    */
   static buildOpusStageBlock(stage: MagnumOpusStage, capabilities: StageCapabilitySet): string {
     const capStr = Object.entries(capabilities)
@@ -78,7 +78,7 @@ export class SystemPromptBuilder {
   }
 
   /**
-   * Assembles all injection blocks into an ordered array.
+   * Assembles all context blocks into an ordered array.
    */
   static buildAll(spectral: SpectralSnapshot, stage: MagnumOpusStage, capabilities: StageCapabilitySet): string[] {
     return [
@@ -132,7 +132,7 @@ export class GAIANRuntime {
   /**
    * GAIA_SESSION_INIT Protocol
    * Runs once at session start. Loads Akashic record, detects stage and force,
-   * builds initial system prompt.
+   * builds initial system context.
    * Canon: GAIA_SESSION_INIT.md
    */
   async sessionInit(ctx: RuntimeContext): Promise<SessionInitResult> {
@@ -151,7 +151,7 @@ export class GAIANRuntime {
     const hex = await this.spectralColorEngine.getHex(spectral.force, spectral.corridor, ctx.phi);
     spectral.hex = hex;
 
-    // 4. Build initial system prompt with all blocks
+    // 4. Build initial context blocks
     const stage_capabilities = await this.magnumOpusEngine.getStageCapabilities(opus_stage);
     const gated_capabilities = enforceCapabilityGates(opus_stage, stage_capabilities);
     const system_prompt_blocks = SystemPromptBuilder.buildAll(spectral, opus_stage, gated_capabilities);
@@ -198,7 +198,7 @@ export class GAIANRuntime {
     const lux_gated = isLuxGated(opus_stage);
     const stage_capabilities = enforceCapabilityGates(opus_stage, raw_capabilities);
 
-    // 6. Build system prompt injection blocks
+    // 6. Build context blocks for this cycle
     const system_prompt_blocks = SystemPromptBuilder.buildAll(spectral, opus_stage, stage_capabilities);
 
     // 7. Run RAG pipeline with spectral + stage context
