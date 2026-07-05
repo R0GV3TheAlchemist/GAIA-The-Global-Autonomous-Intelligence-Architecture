@@ -7,14 +7,15 @@
 
 import React from 'react';
 import { useCrystal } from '../hooks/useCrystal';
-import { crystalStore, CrystalMode } from '../store/crystalStore';
+import { crystalStore } from '../store/crystalStore';
 
 export const SovereignGuard: React.FC = () => {
   const { activeCrystal, emergencyStop, returnToSovereign, emergencyStopped } = useCrystal();
-  const showReturn = activeCrystal !== CrystalMode.SOVEREIGN_CORE;
+  const showReturn = activeCrystal !== 'SOVEREIGN';
 
   function handleResume(): void {
-    crystalStore.clearEmergencyStop();
+    // returnToSovereign clears emergencyStopped and transitions back
+    crystalStore.returnToSovereign();
     returnToSovereign();
   }
 
@@ -44,7 +45,7 @@ export const SovereignGuard: React.FC = () => {
           aria-label="Emergency stop"
           disabled={emergencyStopped}
         >
-          {emergencyStopped ? '✦ Stopped' : '■ Stop everything'}
+          {emergencyStopped ? '❆ Stopped' : '■ Stop everything'}
         </button>
       </div>
 
