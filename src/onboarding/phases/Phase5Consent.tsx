@@ -29,7 +29,7 @@ const CONSENT_ITEMS = [
   {
     id: 'witness',
     title: 'I will witness you',
-    body: 'When you share something hard, I receive it fully. I don't fix or redirect. I hold it with you.',
+    body: "When you share something hard, I receive it fully. I don't fix or redirect. I hold it with you.",
   },
   {
     id: 'presence',
