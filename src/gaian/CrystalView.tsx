@@ -20,10 +20,23 @@
  *   - Click backdrop
  *   - Press ✕ button
  *   - Press Escape
+ *
+ * M2 addition (Issue #756):
+ *   Accepts an optional `profile: GAIANProfile` prop.  When provided,
+ *   the tab bar filters against profile.activeModules — tabs for modules
+ *   not yet active are shown in a locked state (dimmed, not clickable,
+ *   aria-disabled) rather than hidden entirely, so the architect always
+ *   knows what exists and what is still unlocking.
+ *
+ *   The coherence tab (Ψ) is always unlocked regardless of activeModules.
+ *
+ *   When profile is not provided (null/undefined), all tabs are shown
+ *   unlocked — identical to the pre-M2 behavior.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import type { CrystalState } from '../hooks/useCrystalCore';
+import type { GAIANProfile } from './GAIANProfile';
 import { ClarusLensView } from '../crystals/ClarusLens/ClarusLensView';
 import { AnchorPrismView } from '../crystals/AnchorPrism/AnchorPrismView';
 import { SomnusVeilView } from '../crystals/SomnusVeil/SomnusVeilView';
@@ -41,19 +54,29 @@ export type CrystalTab =
   | 'somnus'
   | 'sovereign';
 
-const TABS: { id: CrystalTab; label: string; icon: string }[] = [
-  { id: 'coherence', label: 'Coherence',    icon: '\u03a8' },   // Ψ
-  { id: 'clarus',    label: 'ClarusLens',   icon: '\ud83d\udd2d' }, // 🔭
-  { id: 'anchor',    label: 'AnchorPrism',  icon: '\u25c7' },   // ◇
-  { id: 'somnus',    label: 'SomnusVeil',   icon: '\ud83c\udf19' }, // 🌙
-  { id: 'sovereign', label: 'SovereignCore',icon: '\ud83d\udc51' }, // 👑
+/**
+ * Static tab definitions.
+ * `moduleKey` maps to the key used in GAIANProfile.activeModules.
+ * 'coherence' has no moduleKey — it is always unlocked.
+ */
+const TABS: { id: CrystalTab; label: string; icon: string; moduleKey?: string }[] = [
+  { id: 'coherence', label: 'Coherence',     icon: '\u03a8' },           // always unlocked
+  { id: 'clarus',    label: 'ClarusLens',    icon: '\ud83d\udd2d', moduleKey: 'ClarusLens'    },
+  { id: 'anchor',    label: 'AnchorPrism',   icon: '\u25c7',      moduleKey: 'AnchorPrism'   },
+  { id: 'somnus',    label: 'SomnusVeil',    icon: '\ud83c\udf19', moduleKey: 'SomnusVeil'    },
+  { id: 'sovereign', label: 'SovereignCore', icon: '\ud83d\udc51', moduleKey: 'SovereignCore' },
 ];
 
 interface CrystalViewProps {
-  state:   CrystalState | null;
-  onClose: () => void;
+  state:       CrystalState | null;
+  onClose:     () => void;
   /** Optional: open directly to a specific tab */
   initialTab?: CrystalTab;
+  /**
+   * M2 — architect profile.  When provided, tab availability is gated
+   * by profile.activeModules.  When absent, all tabs are unlocked.
+   */
+  profile?:    GAIANProfile | null;
 }
 
 // Persist active tab across open/close within the session
@@ -89,7 +112,7 @@ const SWIPE_THRESHOLD = 80;
 // CrystalView component
 // ---------------------------------------------------------------------------
 
-export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
+export function CrystalView({ state, onClose, initialTab, profile }: CrystalViewProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<CrystalTab>(initialTab ?? _persistedTab);
 
@@ -105,8 +128,45 @@ export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
   const somnusViewRef    = useRef<SomnusVeilView    | null>(null);
   const sovereignViewRef = useRef<SovereignCoreView | null>(null);
 
-  // ── Swipe-to-dismiss ─────────────────────────────────────────────────────
-  const [dragY, setDragY]         = useState(0);
+  // ── M2: derive unlocked tab set from profile.activeModules ─────────────────────
+  //
+  // unlockedModules is a Set of moduleKey strings that are active.
+  // 'coherence' has no moduleKey and is always unlocked.
+  // When profile is absent, all modules are treated as unlocked.
+  const unlockedModules = useMemo<Set<string>>(() => {
+    if (!profile || !profile.activeModules) {
+      // No profile — unlock everything (pre-M2 behavior)
+      return new Set(TABS.map(t => t.moduleKey ?? ''));
+    }
+    return new Set(
+      Object.entries(profile.activeModules)
+        .filter(([, active]) => active)
+        .map(([key]) => key)
+    );
+  }, [profile]);
+
+  /**
+   * Returns true when a tab is available for interaction.
+   * Coherence is always available.  Others require their moduleKey
+   * to be present in unlockedModules.
+   */
+  const isUnlocked = useCallback((tab: typeof TABS[number]): boolean => {
+    if (!tab.moduleKey) return true;  // coherence — always unlocked
+    return unlockedModules.has(tab.moduleKey);
+  }, [unlockedModules]);
+
+  // If the currently-active tab becomes locked (e.g. profile changes at
+  // runtime), fall back to coherence so the UI is never stranded.
+  useEffect(() => {
+    const currentTabDef = TABS.find(t => t.id === activeTab);
+    if (currentTabDef && !isUnlocked(currentTabDef)) {
+      setActiveTab('coherence');
+      _persistedTab = 'coherence';
+    }
+  }, [activeTab, isUnlocked]);
+
+  // ── Swipe-to-dismiss ────────────────────────────────────────────────────────
+  const [dragY, setDragY]           = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const touchStartY = useRef<number | null>(null);
 
@@ -137,14 +197,13 @@ export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
     if (delta >= SWIPE_THRESHOLD) onClose();
   };
 
-  // ── Tab switch: persist + lazy-mount crystal views ───────────────────────
-  const handleTabChange = useCallback((tab: CrystalTab) => {
+  // ── Tab switch: persist + lazy-mount crystal views ─────────────────────────
+  const handleTabChange = useCallback((tab: CrystalTab, unlocked: boolean) => {
+    if (!unlocked) return;   // locked tab — ignore click
     _persistedTab = tab;
     setActiveTab(tab);
   }, []);
 
-  // After each render, lazy-mount the active crystal view if not yet created.
-  // Using useEffect so the host div is guaranteed to exist in the DOM.
   useEffect(() => {
     if (activeTab === 'clarus' && clarusHostRef.current && !clarusViewRef.current) {
       clarusViewRef.current = new ClarusLensView(clarusHostRef.current);
@@ -170,12 +229,12 @@ export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
     };
   }, []);
 
-  // ── Focus trap + Escape ───────────────────────────────────────────────────
+  // ── Focus trap + Escape ──────────────────────────────────────────────────
   useEffect(() => {
     const el = sheetRef.current;
     if (!el) return;
     const focusable = el.querySelectorAll<HTMLElement>(
-      'button, [href], input, textarea, [tabindex]:not([tabindex="-1"])'
+      'button:not([aria-disabled="true"]), [href], input, textarea, [tabindex]:not([tabindex="-1"])'
     );
     (focusable[0] as HTMLElement | undefined)?.focus();
 
@@ -193,9 +252,9 @@ export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose, activeTab]); // re-run when tab changes so focusable list updates
+  }, [onClose, activeTab]);
 
-  // ── Derived coherence values ──────────────────────────────────────────────
+  // ── Derived coherence values ────────────────────────────────────────────────
   const psi   = state?.psi  ?? 0.5;
   const band  = state?.band ?? 'Coherent';
   const tone  = state?.persona_tone ?? 'GROUNDED';
@@ -207,7 +266,7 @@ export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
       ? { transform: `translateY(${dragY}px)`, transition: 'none' }
       : {};
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <>
       {/* Backdrop */}
@@ -243,21 +302,32 @@ export function CrystalView({ state, onClose, initialTab }: CrystalViewProps) {
           </button>
         </div>
 
-        {/* Tab bar */}
+        {/* Tab bar — M2: locked tabs are dimmed + aria-disabled */}
         <div className="crystal-tabs" role="tablist" aria-label="Crystal panels">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              className={`crystal-tab${activeTab === tab.id ? ' crystal-tab--active' : ''}`}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              aria-controls={`crystal-panel-${tab.id}`}
-              onClick={() => handleTabChange(tab.id)}
-            >
-              <span className="crystal-tab__icon" aria-hidden="true">{tab.icon}</span>
-              <span className="crystal-tab__label">{tab.label}</span>
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const unlocked = isUnlocked(tab);
+            return (
+              <button
+                key={tab.id}
+                className={[
+                  'crystal-tab',
+                  activeTab === tab.id  ? 'crystal-tab--active' : '',
+                  !unlocked            ? 'crystal-tab--locked' : '',
+                ].filter(Boolean).join(' ')}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`crystal-panel-${tab.id}`}
+                aria-disabled={!unlocked || undefined}
+                title={!unlocked ? `${tab.label} — not yet active` : undefined}
+                onClick={() => handleTabChange(tab.id, unlocked)}
+              >
+                <span className="crystal-tab__icon" aria-hidden="true">
+                  {unlocked ? tab.icon : '\ud83d\udd12'}
+                </span>
+                <span className="crystal-tab__label">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Coherence panel (always in DOM, hidden when inactive) ── */}
