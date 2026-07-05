@@ -15,12 +15,17 @@ is_lux_gated(result) -> bool
 SystemPromptBuilder
     Fluent builder that assembles structured system-prompt blocks
     (opus-stage, spectral-force, etc.) for injection into inference.
+
+GAIANProfileModel  (M2 — Issue #756)
+    Python-side mirror of the TypeScript GAIANProfile interface.
+    Used by the Python core to consume, validate, and update profile
+    data without depending on the TypeScript layer.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +209,43 @@ class SystemPromptBuilder:
         self._blocks.append(block)
         return self
 
+    def add_profile_block(
+        self,
+        profile: "GAIANProfileModel",
+    ) -> "SystemPromptBuilder":
+        """
+        Append a GAIAN_IDENTITY block derived from a GAIANProfileModel.
+
+        Mirrors SystemPromptBuilder.buildProfileBlock() in GAIANRuntime.ts
+        so the Python inference layer produces the same context structure
+        as the TypeScript session layer.
+
+        Parameters
+        ----------
+        profile:
+            A populated GAIANProfileModel instance.
+        """
+        constitutional = profile.constitutional
+        block: dict[str, Any] = {
+            "type": "GAIAN_IDENTITY",
+            "architect_id": profile.architect_id,
+            "content": "\n".join([
+                "[GAIAN IDENTITY]",
+                f"Architect: {profile.name} ({profile.pronouns})",
+                f"Jungian Role: {profile.jungian_role}",
+                f"Crystal: {profile.preferred_crystal}",
+                f"LCI Baseline: {profile.lci_baseline:.3f} | Trend: {profile.lci_trend}",
+                f"Sessions: {profile.total_sessions}",
+                f"Service Mode: {constitutional.service_mode}",
+                f"Ethical Guardrail: {'ACTIVE' if constitutional.ethical_guardrail_active else 'INACTIVE'}",
+                f"Human Mode: {'ON' if constitutional.human_mode_active else 'OFF'}",
+                f"Superhuman Ready: {'YES' if constitutional.superhuman_mode_ready else 'NO'}",
+                f"Recovery Mode: {'ACTIVE' if profile.lci_trend == 'volatile' else 'INACTIVE'}",
+            ]),
+        }
+        self._blocks.append(block)
+        return self
+
     # ------------------------------------------------------------------
     # Finaliser
     # ------------------------------------------------------------------
@@ -214,3 +256,213 @@ class SystemPromptBuilder:
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"SystemPromptBuilder(blocks={len(self._blocks)})"
+
+
+# ---------------------------------------------------------------------------
+# GAIANProfileModel  (M2 — Issue #756)
+#
+# Python-side mirror of the TypeScript GAIANProfile interface defined in
+# src/gaian/GAIANProfile.ts.  Field names use snake_case per Python
+# convention; the TypeScript camelCase equivalents are noted in comments.
+#
+# Design constraints:
+#   - All fields have safe defaults so partial deserialization never raises.
+#   - ethical_guardrail_active is typed as Literal[True] — it cannot be
+#     set to False through any code path.  Any PR attempting to change
+#     this must be rejected at review.  (ADR-FE-006)
+#   - profile_version is bumped when the shape changes; consumers must
+#     check it before assuming field presence.
+# ---------------------------------------------------------------------------
+
+# LCI trend literals — mirrors LCITrend in GAIANProfile.ts
+LCITrend = Literal["rising", "stable", "falling", "volatile"]
+
+# Service mode literals — mirrors ServiceMode in GAIANProfile.ts
+ServiceMode = Literal["healing", "protection", "clarity", "balance"]
+
+# Crystal resonance literals — mirrors CrystalResonance in GAIANProfile.ts
+CrystalResonance = Literal[
+    "amethyst",
+    "clear-quartz",
+    "citrine",
+    "obsidian",
+    "labradorite",
+    "rose-quartz",
+    "selenite",
+    "black-tourmaline",
+    "lapis-lazuli",
+]
+
+
+@dataclass
+class LCIHistoryEntry:
+    """
+    A single LCI snapshot recorded at session open.
+    Mirrors LCIHistoryEntry in GAIANProfile.ts.
+    """
+    phi: float        # LCI value at this point, 0.0-1.0  (ts: phi)
+    timestamp: str    # ISO 8601                           (ts: timestamp)
+    session_id: str   # Session identifier                 (ts: sessionId)
+
+    def __post_init__(self) -> None:
+        if not (0.0 <= self.phi <= 1.0):
+            raise ValueError(
+                f"LCIHistoryEntry.phi must be in [0.0, 1.0], got {self.phi}"
+            )
+
+
+@dataclass
+class ConstitutionalLayerModel:
+    """
+    Python mirror of ConstitutionalLayer in GAIANProfile.ts.
+
+    IMPORTANT: ethical_guardrail_active is always True.
+    It is typed as Literal[True] and validated in __post_init__.
+    Any attempt to set it False must be rejected at PR review.
+    (ADR-FE-006)
+    """
+    ethical_guardrail_active: Literal[True] = True   # ts: ethicalGuardrailActive
+    activation_locked: bool = True                    # ts: activationLocked
+    service_mode: str = "healing"                     # ts: serviceMode
+    human_mode_active: bool = True                    # ts: humanModeActive
+    superhuman_mode_ready: bool = False               # ts: superhumanModeReady
+    sequence_lock_active: bool = True                 # ts: sequenceLockActive
+    full_access_active: bool = False                  # ts: fullAccessActive
+    experimental_access: bool = False                 # ts: experimentalAccess
+
+    def __post_init__(self) -> None:
+        # Hard invariant — enforce at runtime, not just at type-check time
+        if self.ethical_guardrail_active is not True:
+            raise ValueError(
+                "ConstitutionalLayerModel.ethical_guardrail_active must always "
+                "be True. This value is not configurable. (ADR-FE-006)"
+            )
+
+
+@dataclass
+class GAIANProfileModel:
+    """
+    Python-side mirror of the TypeScript GAIANProfile interface.
+
+    Consumed by the Python core (inference layer, RAGPipeline, AkashicEngine)
+    to read and update per-architect identity state without depending on
+    the TypeScript Tauri layer.
+
+    Serialization:
+        Use dataclasses.asdict(profile) to produce a JSON-serializable dict.
+        Use GAIANProfileModel(**data) to deserialize from a dict.
+        LCIHistoryEntry and ConstitutionalLayerModel must be reconstructed
+        manually from their sub-dicts when deserializing.
+
+    Field mapping (Python snake_case -> TypeScript camelCase):
+        architect_id          -> architectId
+        name                  -> name
+        slug                  -> slug
+        base_form_id          -> baseFormId
+        avatar_color          -> avatarColor
+        avatar_style          -> avatarStyle
+        jungian_role          -> jungianRole
+        pronouns              -> pronouns
+        did                   -> did
+        first_words           -> firstWords
+        born_at               -> bornAt
+        lci_baseline          -> lciBaseline
+        lci_history           -> lciHistory
+        lci_trend             -> lciTrend
+        preferred_crystal     -> preferredCrystal
+        constitutional        -> constitutional
+        last_session_id       -> lastSessionId
+        last_session_at       -> lastSessionAt
+        total_sessions        -> totalSessions
+        profile_version       -> profileVersion
+    """
+
+    # ── Identity ────────────────────────────────────────────────────────
+    architect_id:      str   = ""          # ts: architectId
+    name:              str   = ""          # ts: name
+    slug:              str   = ""          # ts: slug
+    base_form_id:      str   = ""          # ts: baseFormId
+    avatar_color:      str   = ""          # ts: avatarColor
+    avatar_style:      str   = ""          # ts: avatarStyle
+    jungian_role:      str   = ""          # ts: jungianRole
+    pronouns:          str   = ""          # ts: pronouns
+    did:               str   = ""          # ts: did
+    first_words:       str   = ""          # ts: firstWords
+    born_at:           str   = ""          # ts: bornAt  (ISO 8601)
+
+    # ── LCI state ───────────────────────────────────────────────────────
+    lci_baseline:      float = 0.0         # ts: lciBaseline  (0.0–1.0)
+    lci_history:       list[LCIHistoryEntry] = field(default_factory=list)
+    lci_trend:         str   = "stable"    # ts: lciTrend  (LCITrend literal)
+
+    # ── Crystal state ───────────────────────────────────────────────────
+    preferred_crystal: str   = "amethyst"  # ts: preferredCrystal
+
+    # ── Constitutional layer ────────────────────────────────────────────
+    constitutional: ConstitutionalLayerModel = field(
+        default_factory=ConstitutionalLayerModel
+    )
+
+    # ── Session metadata ────────────────────────────────────────────────
+    last_session_id:   str | None = None   # ts: lastSessionId
+    last_session_at:   str | None = None   # ts: lastSessionAt  (ISO 8601)
+    total_sessions:    int        = 0      # ts: totalSessions
+
+    # ── Profile version ─────────────────────────────────────────────────
+    profile_version:   int        = 1      # ts: profileVersion  (current: 1)
+
+    def __post_init__(self) -> None:
+        if not (0.0 <= self.lci_baseline <= 1.0):
+            raise ValueError(
+                f"GAIANProfileModel.lci_baseline must be in [0.0, 1.0], "
+                f"got {self.lci_baseline}"
+            )
+        valid_trends = {"rising", "stable", "falling", "volatile"}
+        if self.lci_trend not in valid_trends:
+            raise ValueError(
+                f"GAIANProfileModel.lci_trend must be one of {valid_trends}, "
+                f"got {self.lci_trend!r}"
+            )
+
+    # ── Convenience helpers ─────────────────────────────────────────────
+
+    @property
+    def is_volatile(self) -> bool:
+        """True when LCI trend is volatile — Recovery Mode should be active."""
+        return self.lci_trend == "volatile"
+
+    @property
+    def akashic_gate_open(self) -> bool:
+        """True when lci_baseline meets the OA-4 Akashic gate threshold (>= 0.72)."""
+        return self.lci_baseline >= 0.72
+
+    @property
+    def sigil_unlocked(self) -> bool:
+        """True when lci_baseline meets the Sigil unlock threshold (>= 0.30)."""
+        return self.lci_baseline >= 0.30
+
+    def compute_lci_trend(self, current_phi: float) -> str:
+        """
+        Recomputes the LCI trend from the last 4 history entries + current_phi.
+        Mirrors computeLCITrend() in GAIANProfile.ts.
+
+        Returns one of: 'rising', 'stable', 'falling', 'volatile'.
+        Does NOT mutate self — call site is responsible for updating lci_trend.
+        """
+        recent = [e.phi for e in self.lci_history[-4:]] + [current_phi]
+        if len(recent) < 2:
+            return "stable"
+
+        mean = sum(recent) / len(recent)
+        variance = sum((v - mean) ** 2 for v in recent) / len(recent)
+        std_dev = variance ** 0.5
+
+        if std_dev > 0.15:
+            return "volatile"
+
+        delta = recent[-1] - recent[0]
+        if delta > 0.05:
+            return "rising"
+        if delta < -0.05:
+            return "falling"
+        return "stable"
