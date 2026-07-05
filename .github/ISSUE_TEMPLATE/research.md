@@ -1,44 +1,43 @@
 ---
-name: "🔬 Research — Investigation Before Code"
-about: "Exploratory or architecture work that must be investigated before implementation begins."
-title: "[RESEARCH] "
-labels: ["research"]
-assignees: []
+name: "🔬 Research"
+about: "Exploratory work — investigation required before implementation"
+labels: "research, needs-triage"
 ---
 
 ## Research Question
+<!-- What do we need to understand before we can build? -->
 
-<!-- What specific question must be answered before code can be written? -->
 
-## Why This Must Be Researched First
+## Why This Matters
+<!-- What decision or implementation is blocked until this is answered? -->
 
-<!-- What happens if we skip this and just code? What goes wrong? -->
 
-## Milestone
+## Scope
+<!-- What is in scope for this research? What is explicitly out of scope? -->
 
-<!-- Which milestone does this feed into? M0 / M1 / M2 / M3 / M4 / M5 / M6 / Backlog -->
-**Milestone:** 
-
-## Prerequisites
-
-<!-- List any issues that must be resolved before this research can begin. -->
-- Blocked by: #
-
-## Research Outputs Required
-
-<!-- What must exist when this issue closes? -->
-- [ ] Written implementation plan (posted as comment or linked doc)
-- [ ] Decision made on approach (or ADR filed if architectural)
-- [ ] Downstream feature/ADR issue filed with this research as prerequisite
-
-## Known Unknowns
-
-<!-- List what you don't know yet. This is the point of the issue. -->
+**In scope:**
 - 
+
+**Out of scope:**
+- 
+
+## Deliverables
+<!-- What does this research produce? A memo? An ADR? A proof of concept? -->
+- [ ] 
+- [ ] 
+
+## Definition of Done
+- [ ] Research question is answered
+- [ ] Deliverables above are committed
+- [ ] A follow-up `feature` or `adr` issue is filed if implementation work is required
 
 ## Related Issues
+- Blocks: 
+- Blocked by: 
+- Related: 
 
-- 
+## Milestone
+Milestone: 
 
----
-*Filed per CONTRIBUTING.md intake protocol — Issue #757*
+## Resources
+<!-- Links, papers, prior art, relevant code -->

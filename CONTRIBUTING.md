@@ -1,87 +1,62 @@
-# Contributing to GAIA
+# CONTRIBUTING.md — How Ideas Become Code in GAIA
 
 > *"Power without process is just chaos with an audience."*
 > — GAIA Canon
 
-Welcome. GAIA is a serious engineering project with a sophisticated multi-language codebase (TypeScript, Python, Rust/Tauri) and an active architectural vision. Contributions are welcome when they follow the protocols below.
+---
 
-These protocols exist not to slow you down — they exist so that every piece of work has a name, a place, and a path to completion.
+## Why This Document Exists
+
+GAIA has 400+ open issues, a multi-language codebase (TypeScript, Python, Rust/Tauri), and contributors who care deeply about getting it right. Without a shared protocol, work drifts: issues are duplicated, PRs reference nothing, code lands before prerequisites are met, and nobody can tell what is in-progress versus abandoned versus blocked.
+
+This document is the single source of truth for how every contribution moves from idea → issue → branch → PR → merge.
+
+**The rule beneath all rules:** Every state of work has a name. Unnamed states become chaos.
 
 ---
 
-## Before You Begin
+## Protocol 1 — Intake: How an Idea Becomes an Issue
 
-1. Read [`docs/adr/README.md`](docs/adr/README.md) — understand why decisions were made
-2. Read [`docs/architecture/KNOWLEDGE_TYPE_TAXONOMY.md`](docs/architecture/KNOWLEDGE_TYPE_TAXONOMY.md) — understand the core epistemic model
-3. Run the test suite: `pytest tests/` — all tests must pass before opening a PR
-4. Run the minimal pipeline: `python examples/minimal_pipeline.py` — confirm your environment works
-5. Search open issues before filing a new one — duplicates cost everyone time
+Before filing anything:
 
----
+1. **Search first.** Is this already an open issue? Use GitHub search with keywords.
+2. If yes → comment on the existing issue. Do not file a duplicate.
+3. If no → file a new issue using the correct template (see `.github/ISSUE_TEMPLATE/`).
 
-## 1. The Intake Protocol — How an Idea Becomes an Issue
+### Issue Templates
 
-```
-Idea → Is it already an issue? (Search first)
-     → YES: Comment on the existing issue
-     → NO:  File a new issue using the correct template
-```
-
-**Issue templates** (`.github/ISSUE_TEMPLATE/`):
-
-| Template | When to use |
+| Template | When to Use |
 |---|---|
-| `feature.md` | New capability or system |
-| `research.md` | Exploratory / architecture work requiring investigation before code |
+| `feature.md` | New capability, system, or component |
+| `research.md` | Exploratory work — you need to investigate before you can code |
 | `bug.md` | Something broken in existing code |
 | `process.md` | Workflow, tooling, documentation, or project structure |
-| `adr.md` | Architecture Decision Record — when a significant design decision is made |
+| `adr.md` | Architecture Decision Record — a significant design choice |
 
-**Every issue must include:**
+### Every Issue Must Include
+
 - [ ] A one-sentence **problem statement** (what is wrong or missing right now)
-- [ ] A **Definition of Done** (exact, checkable, no ambiguity)
+- [ ] A **Definition of Done** — exact, checkable, no ambiguity
 - [ ] **Related issues** (what this blocks, what blocks this)
-- [ ] **Milestone assignment** (which phase this belongs to — see [Milestone Structure](#milestone-structure))
+- [ ] **Milestone assignment** (which phase this belongs to — see #758)
 
 ---
 
-## 2. The Triage Protocol — What Happens After Filing
+## Protocol 2 — Triage: What Happens After Filing
 
 Within 48 hours of filing, every issue must be:
 
-- **Labeled** correctly (`enhancement`, `bug`, `architecture`, `research`, `process`)
-- **Assigned to a Milestone** (see Milestone Structure below)
-- **Assessed for prerequisites** — are there blocking issues that must be resolved first?
-- If blocked: labeled `blocked` and the blocking issue number added to the body
+- Labeled correctly (`enhancement`, `bug`, `architecture`, `research`, `process`)
+- Assigned to a Milestone (see Issue #758 for Milestone structure)
+- Assessed for prerequisites — are there blocking issues that must be resolved first?
 
-If an issue has no Milestone assignment after 48 hours, it goes into `Milestone: Backlog` by default. **Nothing lives in limbo.**
+If blocked: label the issue `blocked` and add the blocking issue number to the body.
 
----
-
-## 3. Milestone Structure
-
-GAIA's work is organized into 8 milestones. Issues must not begin implementation until their milestone's gate condition is met.
-
-| Milestone | Focus | Gate |
-|---|---|---|
-| **M0 — Foundation & Process** | Process, ADRs, error-detection foundation | Must complete before all other milestones |
-| **M1 — Core Runtime Identity** | GAIANProfile, architectId, session persistence | M0 complete |
-| **M2 — Adaptive Console** | CrystalView, Orb, AlignmentIndicator adapt per profile | M1 complete |
-| **M3 — Protection & Containment** | Security, shielding, stability interfaces | M1 complete |
-| **M4 — Intelligence & Personalization** | Supercomputation Alignment, Provenance, RAG | M2 + M3 complete |
-| **M5 — Meta Control System** | Meta Control Console, Power Containment, Sigil, Crystal Routing | M2 + M3 complete |
-| **M6 — Planetary & Civilization Layer** | Governance, ecology, economy, eBPF, HAL | M1–M4 complete |
-| **Backlog** | All unassigned issues — staging only | Graduate into a milestone after triage |
-
-**Gate rules:**
-1. A milestone is not "in-progress" until its gate is cleared.
-2. A milestone is complete when **all** issues in it are closed and all Definitions of Done are satisfied.
-3. An issue may not move forward until its Definition of Done has no unchecked items.
-4. Gate blockers are named explicitly with the `blocked` label.
+If no Milestone is assigned within 48 hours, the issue goes to `Milestone: Backlog` by default. **Nothing lives in limbo.**
 
 ---
 
-## 4. The Branch Protocol — How Code Gets Written
+## Protocol 3 — Branching: How Code Gets Written
 
 ```
 Branch naming convention:
@@ -100,51 +75,45 @@ Examples:
 - One branch per issue. Never combine unrelated work into a single branch.
 - Branch off `main` unless the issue specifies a different base.
 - Never commit directly to `main`.
-- Branch names must include the issue number. No exceptions.
 
 ---
 
-## 5. The PR Protocol — How Code Gets Reviewed
+## Protocol 4 — Pull Requests: How Code Gets Reviewed
 
 **Before opening a PR:**
 - [ ] All Phase 1 prerequisites from the issue are complete
-- [ ] Tests written and passing locally (`pytest tests/` for Python, ESLint + type check for TypeScript)
+- [ ] Tests written and passing locally
 - [ ] No new lint errors introduced (Ruff for Python, ESLint for TypeScript)
-- [ ] `tools/claim_validator.py` passes on any new claim schemas
-- [ ] `knowledge_type` set on all new claims (per ADR-001)
-- [ ] No simulation results written directly to real-world state
-- [ ] This CONTRIBUTING.md read and followed
+- [ ] `CONTRIBUTING.md` read and followed
 
 **PR body must include:**
-- `Closes #` (links the PR to the issue — required)
+- `Closes #` (links the PR to the issue — GitHub closes the issue on merge)
 - Summary of what changed and why
 - Any known limitations or follow-up issues
-- Screenshots/recordings for any UI changes in `src/gaian/`
+- Screenshots or recordings for any UI changes
 
-**Review requirements:**
-- Self-review using the PR checklist before requesting review
-- For changes to `core/`, `src/gaian/`, or `docs/adr/`: explicit acknowledgment required before merge
-- If architectural: ADR written, accepted, and linked in the PR description
+**Review requirement:**
+- Minimum: self-review using the PR checklist
+- For architecture changes (any file in `core/`, `src/gaian/`, `docs/adr/`): explicit acknowledgment before merge
 
 ---
 
-## 6. The Merge Protocol — What "Done" Actually Means
+## Protocol 5 — Merge: What "Done" Actually Means
 
 A PR may be merged when:
 - [ ] All checklist items in the PR body are checked
 - [ ] All automated checks pass (lint, type check, tests)
 - [ ] The Definition of Done from the linked issue is fully satisfied
 - [ ] No `blocked` label remains on the issue
-- [ ] For architectural PRs: linked ADR has status `Accepted`
 
-**After merge:**
+After merge:
 - Close the linked issue
-- Update any parent/child issues that were waiting on this work
-- If this resolves a Milestone gate blocker, note it in the Milestone description
+- Update any parent/child issues waiting on this work
+- If this resolves a Milestone blocker, note it in the Milestone description
 
 ---
 
-## 7. The Chaos Protocol — What to Do When Work Is Uncertain
+## Protocol 6 — Chaos: What to Do When Work Is Uncertain
 
 This is the section most projects omit. GAIA names it explicitly.
 
@@ -155,53 +124,92 @@ This is the section most projects omit. GAIA names it explicitly.
 → Label the issue `blocked`. Add the blocking issue number. Do not start the work.
 
 **When work is volatile** (active development is destabilizing other things):
-→ Apply the `volatile` label. Note what is being destabilized and why in the issue body.
+→ Apply the `volatile` label. Note what is being destabilized and why.
 → This is not failure. This is named, tracked, and manageable.
 
 **When work is abandoned** (it no longer makes sense):
-→ Close the issue with `wont-fix` or `duplicate`. Never leave issues open that are no longer real work.
-
-**The rule: every state of work has a name. Unnamed states become chaos.**
+→ Close the issue with `won't fix` or `duplicate`. Never leave open issues that are no longer real work.
 
 ---
 
-## 8. The ADR Protocol — When Architecture Must Be Documented
+## Required Labels
 
-Every significant architectural decision needs an ADR before code is written.
+These labels must exist in the repository for this protocol to function:
 
-**File an ADR when:**
-- You are choosing between two or more viable technical approaches
-- A decision will be difficult or expensive to reverse
-- A decision affects more than one file, module, or language boundary
-- A new pattern is being established that future code will follow
-
-**ADR location:** `docs/adr/` for OS-layer decisions, `docs/adr/FE/` for `src/gaian/` frontend decisions.
-
-**ADR template:** [`docs/adr/ADR-000-template.md`](docs/adr/ADR-000-template.md)
-
-The code is allowed to prove the architecture wrong. That is not failure. That is refinement. (ADR-003)
-
----
-
-## Contribution Type Reference
-
-| Type | Protocol |
+| Label | Meaning |
 |---|---|
-| Bug fix | Issue (bug template) → branch → PR with test that reproduces + fixes |
-| New feature | Issue (feature template) → milestone assignment → branch → PR |
-| Architecture change | Issue (research template) → ADR written + accepted → branch → PR |
-| Documentation | PR directly for typos/clarity; issue first for structural changes |
-| Process change | Issue (process template) → discussion → PR |
-| ADR | Issue (adr template) → write ADR file → PR to `docs/adr/` |
+| `blocked` | This issue cannot proceed until a dependency is resolved |
+| `volatile` | Active development here is destabilizing other systems |
+| `needs-triage` | Newly filed; not yet labeled or assigned to a Milestone |
+| `has-pr` | A PR exists for this issue |
+| `enhancement` | New feature or capability |
+| `bug` | Something is broken |
+| `architecture` | Design-level decision or structural change |
+| `research` | Investigation required before implementation |
+| `process` | Workflow, tooling, or documentation |
+| `security` | Security-relevant change |
+
+---
+
+## Milestone Structure
+
+See Issue #758 for the full Milestone architecture. The short version:
+
+| Milestone | Gate | Focus |
+|---|---|---|
+| M0 Foundation | Always open | Process, ADRs, templates |
+| M1 Core Runtime Identity | M0 complete | GAIANProfile Phase 1 |
+| M2 Adaptive Console | M1 complete | Console adaptation |
+| M3 Protection & Containment | M1 complete | Security, resilience |
+| M4 Intelligence | M2 + M3 complete | Learning, personalization |
+| M5 Meta Control | M2 + M3 complete | Powers, containment UI |
+| M6 Planetary Layer | M1–M4 complete | Civilization-scale |
+| Backlog | — | Everything unassigned |
+
+**Gate rule:** A Milestone is not "in-progress" until its gate is cleared. Starting before the gate is the cause of most chaos.
+
+---
+
+## ADR Protocol
+
+An Architecture Decision Record (ADR) must be filed before writing code for:
+- Any new directory in `core/` or `src/gaian/`
+- Any change to how two major systems communicate
+- Any decision that future contributors would otherwise reconstruct from scratch
+
+ADR location: `docs/adr/` (OS layer) and `docs/adr/FE/` (frontend layer)
+
+See Issue #759 for the full FE ADR series.
+
+---
+
+## Development Environment
+
+```bash
+# Python setup
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# TypeScript / Tauri setup
+pnpm install
+pnpm tauri dev
+
+# Run tests
+pytest tests/
+
+# Lint
+ruff check .
+```
 
 ---
 
 ## Questions
 
-Open an issue with the `question` label. Every question is a signal that documentation is missing somewhere.
+If something is unclear, file a `process` issue. The process itself is a living system — it improves through use.
 
 ---
 
 *Last updated: July 5, 2026*
-*Governed by: Issue #757 — CONTRIBUTING.md & PR Protocol*
-*Related: Issue #758 (Milestone Structure), Issue #759 (ADR for src/gaian/)*
+*Governed by: Issue #757*
+*Related: #758 (Milestones), #759 (ADRs)*

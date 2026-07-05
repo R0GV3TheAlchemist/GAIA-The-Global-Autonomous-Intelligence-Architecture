@@ -1,61 +1,45 @@
 ---
-name: "🐛 Bug — Something Broken"
-about: "Something in existing code is not working correctly."
-title: "[BUG] "
-labels: ["bug"]
-assignees: []
+name: "🐛 Bug"
+about: "Something broken in existing code"
+labels: "bug, needs-triage"
 ---
 
-## Problem Statement
+## What Is Broken
+<!-- One sentence: what is wrong? -->
 
-<!-- One sentence: what is broken? -->
 
 ## Steps to Reproduce
-
 1. 
 2. 
 3. 
 
 ## Expected Behavior
-
 <!-- What should happen? -->
 
+
 ## Actual Behavior
+<!-- What is happening instead? -->
 
-<!-- What actually happens? Include error messages, stack traces, or screenshots. -->
-
-```
-<!-- paste error / stack trace here -->
-```
 
 ## Environment
-
 - OS: 
-- Node version: 
 - Python version: 
-- Rust/Tauri version: 
+- Node version: 
 - Branch/commit: 
 
-## Milestone
-
-<!-- Which milestone does this belong to? -->
-**Milestone:** 
-
-## Prerequisites
-
-- Blocked by: #
+## Error Output
+```
+<!-- Paste the full error, stack trace, or log output here -->
+```
 
 ## Definition of Done
-
-- [ ] Root cause identified and documented in this issue
-- [ ] Test added that reproduces the bug
-- [ ] Fix implemented and test passes
+- [ ] Root cause identified
+- [ ] Fix implemented
+- [ ] Test added that would have caught this bug
 - [ ] No regression in related functionality
-- [ ] All existing tests pass
 
 ## Related Issues
+- Related: 
 
-- 
-
----
-*Filed per CONTRIBUTING.md intake protocol — Issue #757*
+## Milestone
+Milestone: 

@@ -1,50 +1,50 @@
 ---
 name: "📐 ADR — Architecture Decision Record"
-about: "Document a significant architectural decision before or after it is made."
-title: "[ADR] "
-labels: ["architecture"]
-assignees: []
+about: "A significant architectural or design decision that must be documented before code is written"
+labels: "architecture, needs-triage"
 ---
 
-## Decision Required
+## ADR Title
+<!-- ADR-XX: Short descriptive title -->
 
-<!-- What architectural question must be answered? One sentence. -->
+
+## Status
+<!-- Proposed | Accepted | Deprecated | Superseded by ADR-XX -->
+Proposed
 
 ## Context
+<!-- What situation or question required a decision? What forces are at play? -->
 
-<!-- What situation or constraint is forcing this decision? -->
 
-## Options Considered
+## Decision
+<!-- What was decided? State it clearly and completely. -->
 
-<!-- List the viable approaches. At least two. -->
-1. 
-2. 
 
-## Recommendation
+## Rationale
+<!-- Why was this decided over alternatives? What alternatives were considered and rejected? -->
 
-<!-- Which option do you recommend and why? -->
 
-## Milestone
+## Consequences
+<!-- What becomes easier? What becomes harder? What new constraints does this introduce? -->
 
-**Milestone:** 
-
-## ADR File Location
-
-<!-- Where will the ADR Markdown file live? -->
-- OS-layer decisions: `docs/adr/ADR-XXXX-title.md`
-- Frontend (src/gaian/) decisions: `docs/adr/FE/ADR-FE-00X-title.md`
-
-## Definition of Done
-
-- [ ] ADR Markdown file written with status `Accepted`
-- [ ] All questions in the ADR answered
-- [ ] `docs/adr/README.md` updated to include this ADR
-- [ ] Downstream feature/fix issues filed that implement the decision
-
-## Related Issues
-
-- #759 — ADR series for src/gaian/
+**Easier:**
 - 
 
----
-*Filed per CONTRIBUTING.md intake protocol — Issue #757*
+**Harder:**
+- 
+
+**New constraints:**
+- 
+
+## Definition of Done
+- [ ] ADR document committed to `docs/adr/` (or `docs/adr/FE/` for frontend)
+- [ ] Status set to `Accepted`
+- [ ] All questions in Context section are answered
+- [ ] Related ADRs listed below
+- [ ] Any implementation issues filed as follow-ups
+
+## Related ADRs
+- 
+
+## Milestone
+Milestone: M0 Foundation

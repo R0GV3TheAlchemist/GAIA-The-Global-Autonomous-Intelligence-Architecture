@@ -1,42 +1,32 @@
 ---
-name: "✨ Feature — New Capability or System"
-about: "A new capability, module, or system to add to GAIA."
-title: "[FEATURE] "
-labels: ["enhancement"]
-assignees: []
+name: "✨ Feature"
+about: "New capability, system, or component"
+labels: "enhancement, needs-triage"
 ---
 
 ## Problem Statement
+<!-- One sentence: what is wrong or missing right now? -->
 
-<!-- One sentence: what is missing or wrong right now that this feature addresses? -->
 
 ## Proposed Solution
+<!-- What should exist after this is done? -->
 
-<!-- What are you building? Keep it to what, not how. The how belongs in an ADR or research issue. -->
-
-## Milestone
-
-<!-- Which milestone does this belong to? M0 / M1 / M2 / M3 / M4 / M5 / M6 / Backlog -->
-**Milestone:** 
-
-## Prerequisites
-
-<!-- List any issues that must be resolved before this can begin. -->
-- Blocks: #
-- Blocked by: #
 
 ## Definition of Done
-
-<!-- Exact, checkable items. No ambiguity. All must be checked before this issue closes. -->
+<!-- Exact, checkable items. No ambiguity. -->
 - [ ] 
 - [ ] 
-- [ ] All tests pass
-- [ ] No new lint errors
+- [ ] 
 
 ## Related Issues
+<!-- What does this block? What blocks this? -->
+- Blocks: 
+- Blocked by: 
+- Related: 
 
-<!-- Link to related issues, ADRs, or PRs. -->
-- 
+## Milestone
+<!-- Which milestone does this belong to? See #758 -->
+Milestone: 
 
----
-*Filed per CONTRIBUTING.md intake protocol — Issue #757*
+## Implementation Notes
+<!-- Optional: any early thinking on approach, constraints, or open questions -->

@@ -1,42 +1,31 @@
 ---
-name: "⚙️ Process — Workflow, Tooling, or Documentation"
-about: "Changes to how GAIA is built, tested, documented, or organized — not to what it does."
-title: "[PROCESS] "
-labels: ["process"]
-assignees: []
+name: "📋 Process"
+about: "Workflow, tooling, documentation, or project structure"
+labels: "process, needs-triage"
 ---
 
 ## Problem Statement
+<!-- What process gap, missing document, or tooling issue does this address? -->
 
-<!-- One sentence: what workflow, tooling, or documentation gap does this address? -->
 
 ## Proposed Change
+<!-- What should exist or be different after this is complete? -->
 
-<!-- What specifically will change? Files, directories, labels, workflows, docs. -->
 
-## Milestone
-
-<!-- Process issues usually belong to M0. -->
-**Milestone:** M0 — Foundation & Process
-
-## Prerequisites
-
-- Blocked by: #
+## Implementation Plan
+<!-- List the specific files, steps, or actions required -->
+- [ ] 
+- [ ] 
+- [ ] 
 
 ## Definition of Done
-
 - [ ] 
 - [ ] 
-- [ ] Change is documented (in CONTRIBUTING.md, README, or relevant ADR if architectural)
-
-## Impact
-
-<!-- Who or what does this change affect? What breaks if we don't do this? -->
 
 ## Related Issues
+- Blocks: 
+- Blocked by: 
+- Related: 
 
-- #757 — CONTRIBUTING.md
-- #758 — Milestone Structure
-
----
-*Filed per CONTRIBUTING.md intake protocol — Issue #757*
+## Milestone
+Milestone: M0 Foundation
