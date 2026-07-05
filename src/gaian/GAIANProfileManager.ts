@@ -1,10 +1,6 @@
 /**
  * GAIANProfileManager.ts
- * Phase 1 — Load, Save, Create, Record
- *
- * The steward of GAIAN identity across sessions.
- * All reads and writes to GAIANProfile pass through here.
- * No component touches the store directly.
+ * Phase 1 — Load, Save, Create, Record, SessionOpen
  *
  * Canon: docs/canon/GAIAN_IDENTITY.md
  * Issue: #756
@@ -16,26 +12,20 @@ import type {
   RuntimeResult,
   PersonalizationSignal,
   LCIRecord,
-  LCITrend,
 } from './GAIANProfile';
-import { createDefaultProfile } from './GAIANProfile';
+import { createDefaultProfile, computeLCITrend } from './GAIANProfile';
 
 // ---------------------------------------------------------------------------
-// Store key convention
+// Store key helpers
 // ---------------------------------------------------------------------------
 
-const PROFILE_STORE_KEY = (architectId: string) =>
-  `gaian_profile_${architectId}`;
+const PROFILE_KEY = (id: string) => `gaian_profile_${id}`;
+const RUNTIME_KEY = (id: string) => `gaian_last_runtime_${id}`;
 
-const LAST_RUNTIME_KEY = (architectId: string) =>
-  `gaian_last_runtime_${architectId}`;
-
-// LCI baseline rolling window
 const LCI_BASELINE_WINDOW = 30;
 
 // ---------------------------------------------------------------------------
-// Storage adapter interface
-// Abstracted so we can swap Tauri store, localStorage, or test mock
+// Storage adapter — swap Tauri store, localStorage, or test mock
 // ---------------------------------------------------------------------------
 
 export interface ProfileStoreAdapter {
@@ -45,124 +35,144 @@ export interface ProfileStoreAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// TauriStoreAdapter — production adapter using @tauri-apps/plugin-store
+// ---------------------------------------------------------------------------
+
+export class TauriStoreAdapter implements ProfileStoreAdapter {
+  private storeName: string;
+
+  constructor(storeName = 'gaian_profiles.dat') {
+    this.storeName = storeName;
+  }
+
+  private async getStore() {
+    // Dynamic import so non-Tauri environments don't break at module load
+    const { load } = await import('@tauri-apps/plugin-store');
+    return load(this.storeName);
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const store = await this.getStore();
+    const value = await store.get<T>(key);
+    return value ?? null;
+  }
+
+  async set<T>(key: string, value: T): Promise<void> {
+    const store = await this.getStore();
+    await store.set(key, value);
+    await store.save();
+  }
+
+  async delete(key: string): Promise<void> {
+    const store = await this.getStore();
+    await store.delete(key);
+    await store.save();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // GAIANProfileManager
 // ---------------------------------------------------------------------------
 
 export class GAIANProfileManager {
   private store: ProfileStoreAdapter;
 
-  constructor(store: ProfileStoreAdapter) {
-    this.store = store;
+  constructor(store?: ProfileStoreAdapter) {
+    // Default to Tauri store in production; pass mock in tests
+    this.store = store ?? new TauriStoreAdapter();
   }
 
-  // -------------------------------------------------------------------------
-  // Load profile for a given architectId
-  // Returns null if no profile exists (pre-birth state)
-  // -------------------------------------------------------------------------
+  // Load — returns null if pre-birth
   async load(architectId: string): Promise<GAIANProfile | null> {
-    return this.store.get<GAIANProfile>(PROFILE_STORE_KEY(architectId));
+    return this.store.get<GAIANProfile>(PROFILE_KEY(architectId));
   }
 
-  // -------------------------------------------------------------------------
-  // Save profile — always use this, never write to store directly
-  // -------------------------------------------------------------------------
+  // Save — always use this, never touch store directly
   async save(profile: GAIANProfile): Promise<void> {
-    await this.store.set(PROFILE_STORE_KEY(profile.architectId), profile);
+    await this.store.set(PROFILE_KEY(profile.architectId), profile);
   }
 
-  // -------------------------------------------------------------------------
-  // Create a new profile from a GaianBirth result
-  // Called exactly once per GAIAN per device
-  // -------------------------------------------------------------------------
+  // Create from birth — called exactly once per GAIAN per device
   async createFromBirth(birthResult: GaianBirthResult): Promise<GAIANProfile> {
     const existing = await this.load(birthResult.architectId);
     if (existing) {
-      // Birth has already occurred — return existing profile
-      // Canon: architectId is never regenerated
-      console.warn(
-        `[GAIANProfileManager] Birth called for existing GAIAN ${birthResult.architectId}. Returning existing profile.`
-      );
+      console.warn(`[GAIANProfileManager] Birth called for existing GAIAN ${birthResult.architectId}. Returning existing profile.`);
       return existing;
     }
-
     const profile = createDefaultProfile(birthResult);
     await this.save(profile);
     return profile;
   }
 
-  // -------------------------------------------------------------------------
-  // Record a completed session into the profile
-  // Updates LCI history, baseline, trend, cadence, and last-known state
-  // -------------------------------------------------------------------------
-  async recordSession(
-    profile: GAIANProfile,
-    result: RuntimeResult
-  ): Promise<GAIANProfile> {
+  /**
+   * recordSessionOpen — called by GAIANRuntime.sessionInit()
+   * Updates LCI history, trend, totalSessions, and last-known state
+   * at the START of a session (before the user's first query).
+   */
+  async recordSessionOpen(
+    architectId: string,
+    sessionId: string,
+    phi: number,
+    timestamp: string,
+  ): Promise<GAIANProfile | null> {
+    const profile = await this.load(architectId);
+    if (!profile) return null;
+
     const record: LCIRecord = {
-      sessionId: result.sessionId,
-      phi: result.phi,
-      force: result.force,
-      stage: result.stage,
-      timestamp: result.timestamp,
+      sessionId,
+      phi,
+      force: profile.lastKnownForce,
+      stage: profile.lastKnownStage,
+      timestamp,
     };
 
     const updatedHistory = [...profile.lciHistory, record];
-
-    // Rolling baseline over last N sessions
     const window = updatedHistory.slice(-LCI_BASELINE_WINDOW);
-    const newBaseline =
-      window.reduce((sum, r) => sum + r.phi, 0) / window.length;
-
-    // Derive trend from last 3 sessions
-    const trend = deriveTrend(updatedHistory);
-
-    // Update session cadence
-    const cadence = updateCadence(profile, result);
-
-    // Update preferred forces and stages (top 3 by frequency)
-    const preferredForces = topN(
-      updatedHistory.map((r) => r.force),
-      3
-    );
-    const preferredStages = topN(
-      updatedHistory.map((r) => r.stage),
-      3
-    );
-
-    // Merge query patterns
-    const queryPatterns = result.queryPatterns
-      ? Array.from(
-          new Set([...profile.queryPatterns, ...result.queryPatterns])
-        ).slice(-50)
-      : profile.queryPatterns;
+    const newBaseline = window.reduce((s, r) => s + r.phi, 0) / window.length;
+    const trend = computeLCITrend(updatedHistory, phi);
 
     const updated: GAIANProfile = {
       ...profile,
       lciHistory: updatedHistory,
       lciBaseline: newBaseline,
       lciTrend: trend,
+      totalSessions: profile.totalSessions + 1,
+      lastSessionTimestamp: timestamp,
+      lastKnownPhi: phi,
+    };
+
+    await this.save(updated);
+    return updated;
+  }
+
+  // recordSession — called at END of session with full RuntimeResult
+  async recordSession(
+    profile: GAIANProfile,
+    result: RuntimeResult
+  ): Promise<GAIANProfile> {
+    const cadence = updateCadence(profile, result);
+    const preferredForces = topN(profile.lciHistory.map((r) => r.force), 3);
+    const preferredStages = topN(profile.lciHistory.map((r) => r.stage), 3);
+    const queryPatterns = result.queryPatterns
+      ? Array.from(new Set([...profile.queryPatterns, ...result.queryPatterns])).slice(-50)
+      : profile.queryPatterns;
+
+    const updated: GAIANProfile = {
+      ...profile,
       sessionCadence: cadence,
       preferredForces,
       preferredStages,
       queryPatterns,
-      totalSessions: profile.totalSessions + 1,
-      lastSessionTimestamp: result.timestamp,
-      lastKnownPhi: result.phi,
       lastKnownForce: result.force,
       lastKnownStage: result.stage,
     };
 
     await this.save(updated);
-
-    // Cache last runtime result for offline fallback
-    await this.store.set(LAST_RUNTIME_KEY(profile.architectId), result);
-
+    await this.store.set(RUNTIME_KEY(profile.architectId), result);
     return updated;
   }
 
-  // -------------------------------------------------------------------------
   // Derive PersonalizationSignal for RAGPipeline
-  // -------------------------------------------------------------------------
   derivePersonalizationSignal(profile: GAIANProfile): PersonalizationSignal {
     return {
       architectId: profile.architectId,
@@ -176,83 +186,37 @@ export class GAIANProfileManager {
     };
   }
 
-  // -------------------------------------------------------------------------
-  // Delete profile — total, no ghost records
-  // Canon: deletion is complete and immediate
-  // -------------------------------------------------------------------------
+  // Delete — total, no ghost records (Canon: deletion is complete)
   async delete(architectId: string): Promise<void> {
-    await this.store.delete(PROFILE_STORE_KEY(architectId));
-    await this.store.delete(LAST_RUNTIME_KEY(architectId));
+    await this.store.delete(PROFILE_KEY(architectId));
+    await this.store.delete(RUNTIME_KEY(architectId));
   }
 
-  // -------------------------------------------------------------------------
-  // Get last cached runtime result (offline fallback)
-  // -------------------------------------------------------------------------
+  // Offline fallback
   async getLastRuntimeResult(architectId: string): Promise<RuntimeResult | null> {
-    return this.store.get<RuntimeResult>(LAST_RUNTIME_KEY(architectId));
+    return this.store.get<RuntimeResult>(RUNTIME_KEY(architectId));
   }
 }
 
 // ---------------------------------------------------------------------------
-// Internal helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
-function deriveTrend(history: LCIRecord[]): LCITrend {
-  if (history.length < 3) return 'stable';
-
-  const recent = history.slice(-3).map((r) => r.phi);
-  const [a, b, c] = recent;
-
-  const delta1 = b - a;
-  const delta2 = c - b;
-
-  // Volatile: direction reversal with significant magnitude
-  if (Math.sign(delta1) !== Math.sign(delta2) && Math.abs(delta1) + Math.abs(delta2) > 0.3) {
-    return 'volatile';
-  }
-
-  const avgDelta = (delta1 + delta2) / 2;
-
-  if (avgDelta > 0.05) return 'ascending';
-  if (avgDelta < -0.05) return 'descending';
-  return 'stable';
-}
-
-function updateCadence(
-  profile: GAIANProfile,
-  result: RuntimeResult
-) {
+function updateCadence(profile: GAIANProfile, result: RuntimeResult) {
   const hour = new Date(result.timestamp).getUTCHours();
-  const hours = Array.from(
-    new Set([...profile.sessionCadence.preferredHours, hour])
-  ).sort((a, b) => a - b);
-
-  const prevAvg = profile.sessionCadence.avgSessionDuration;
+  const hours = Array.from(new Set([...profile.sessionCadence.preferredHours, hour])).sort((a, b) => a - b);
   const n = profile.totalSessions;
-  const newAvg =
-    n === 0
-      ? result.durationMinutes
-      : (prevAvg * n + result.durationMinutes) / (n + 1);
-
-  const longest = Math.max(
-    profile.sessionCadence.longestSession,
-    result.durationMinutes
-  );
-
+  const prevAvg = profile.sessionCadence.avgSessionDuration;
+  const newAvg = n === 0 ? result.durationMinutes : (prevAvg * n + result.durationMinutes) / (n + 1);
   return {
     preferredHours: hours.slice(-24),
     avgSessionDuration: Math.round(newAvg * 10) / 10,
-    longestSession: longest,
+    longestSession: Math.max(profile.sessionCadence.longestSession, result.durationMinutes),
   };
 }
 
 function topN(values: string[], n: number): string[] {
   const counts: Record<string, number> = {};
-  for (const v of values) {
-    counts[v] = (counts[v] ?? 0) + 1;
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([v]) => v);
+  for (const v of values) counts[v] = (counts[v] ?? 0) + 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, n).map(([v]) => v);
 }

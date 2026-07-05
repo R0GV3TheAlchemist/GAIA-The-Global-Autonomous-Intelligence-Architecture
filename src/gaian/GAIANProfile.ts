@@ -1,12 +1,15 @@
 /**
  * GAIANProfile.ts
- * Phase 1 — Types & Storage
+ * Phase 1 — Types, Storage, Re-exports
  *
  * The living record of a GAIAN across all sessions.
  * Not a user profile. A recognized presence.
  *
  * Canon: docs/canon/GAIAN_IDENTITY.md
  * Issue: #756
+ *
+ * NOTE: GAIANProfileManager and computeLCITrend are re-exported here
+ * so GAIANRuntime.ts can import from a single path.
  */
 
 // ---------------------------------------------------------------------------
@@ -15,28 +18,37 @@
 
 export interface GAIANProfile {
   // Identity
-  architectId: string;           // Stable GAIAN identity anchor (from GaianBirth)
-  displayName: string;           // Preferred name
-  birthTimestamp: string;        // ISO 8601 — when this GAIAN was born
-  birthForce: string;            // Spectral force at time of birth
-  birthStage: string;            // MagnumOpus stage at time of birth
+  architectId: string;
+  displayName: string;
+  birthTimestamp: string;
+  birthForce: string;
+  birthStage: string;
 
-  // LCI History
-  lciBaseline: number;           // Rolling 30-session average phi
-  lciHistory: LCIRecord[];       // Per-session phi snapshots
-  lciTrend: LCITrend;            // Current trajectory
+  // Constitutional layer (required by GAIANRuntime.buildProfileBlock)
+  constitutional: ConstitutionalState;
+
+  // Jungian / Crystal identity (required by buildProfileBlock)
+  name: string;                  // Display alias (mirrors displayName)
+  pronouns: string;
+  jungianRole: string;
+  preferredCrystal: string;
+
+  // LCI
+  lciBaseline: number;
+  lciHistory: LCIRecord[];
+  lciTrend: LCITrend;
 
   // Console Preferences
-  activeModules: GAIANModule[];  // Which console modules are active
-  consoleLayout: ConsoleLayout;  // Layout preference
-  theme: string;                 // ViriditasTheme key
-  orbParams: OrbParamOverride;   // Per-profile orb customization
+  activeModules: GAIANModule[];
+  consoleLayout: ConsoleLayout;
+  theme: string;
+  orbParams: OrbParamOverride;
 
-  // Personalization Signals
-  queryPatterns: string[];           // Top recurring query categories
-  sessionCadence: SessionCadenceRecord; // When does this GAIAN typically engage?
-  preferredForces: string[];         // Spectral forces this GAIAN resonates with most
-  preferredStages: string[];         // MagnumOpus stages most frequently occupied
+  // Personalization
+  queryPatterns: string[];
+  sessionCadence: SessionCadenceRecord;
+  preferredForces: string[];
+  preferredStages: string[];
 
   // Session Metadata
   totalSessions: number;
@@ -45,16 +57,36 @@ export interface GAIANProfile {
   lastKnownForce: string;
   lastKnownStage: string;
 
-  // Akashic Link
+  // Akashic
   akashicLoaded: boolean;
-  akashicVersion: string;        // Last Akashic record version hash
+  akashicVersion: string;
 
-  // Schema versioning for future migrations
+  // Schema
   schemaVersion: number;
 }
 
 // ---------------------------------------------------------------------------
-// LCI (Living Coherence Index)
+// Constitutional State (governs service mode + safety gates)
+// ---------------------------------------------------------------------------
+
+export interface ConstitutionalState {
+  serviceMode: 'STANDARD' | 'RECOVERY' | 'SUPERHUMAN' | 'SHADOW';
+  ethicalGuardrailActive: boolean;
+  humanModeActive: boolean;
+  superhumanModeReady: boolean;
+}
+
+export function defaultConstitutionalState(): ConstitutionalState {
+  return {
+    serviceMode: 'STANDARD',
+    ethicalGuardrailActive: true,
+    humanModeActive: true,
+    superhumanModeReady: false,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LCI
 // ---------------------------------------------------------------------------
 
 export type LCITrend = 'ascending' | 'stable' | 'descending' | 'volatile';
@@ -64,7 +96,33 @@ export interface LCIRecord {
   phi: number;
   force: string;
   stage: string;
-  timestamp: string;             // ISO 8601
+  timestamp: string;
+}
+
+/**
+ * computeLCITrend — derives trend from history + current phi.
+ * Re-exported here so GAIANRuntime can import from './GAIANProfile'.
+ */
+export function computeLCITrend(
+  history: LCIRecord[],
+  currentPhi: number
+): LCITrend {
+  if (history.length < 2) return 'stable';
+
+  const recent = history.slice(-3).map((r) => r.phi);
+  recent.push(currentPhi);
+
+  const deltas = recent.slice(1).map((v, i) => v - recent[i]);
+  const avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+
+  // Volatile: direction reversal with magnitude
+  const signs = deltas.map(Math.sign);
+  const hasReversal = signs.some((s, i) => i > 0 && s !== 0 && s !== signs[i - 1]);
+  if (hasReversal && deltas.some((d) => Math.abs(d) > 0.1)) return 'volatile';
+
+  if (avgDelta > 0.05) return 'ascending';
+  if (avgDelta < -0.05) return 'descending';
+  return 'stable';
 }
 
 // ---------------------------------------------------------------------------
@@ -72,9 +130,9 @@ export interface LCIRecord {
 // ---------------------------------------------------------------------------
 
 export interface SessionCadenceRecord {
-  preferredHours: number[];      // 0–23 UTC hours most active
-  avgSessionDuration: number;    // minutes
-  longestSession: number;        // minutes
+  preferredHours: number[];
+  avgSessionDuration: number;
+  longestSession: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,17 +152,17 @@ export type GAIANModule =
 export type ConsoleLayout = 'crystal' | 'chat' | 'orb' | 'minimal' | 'full';
 
 // ---------------------------------------------------------------------------
-// Orb Customization
+// Orb
 // ---------------------------------------------------------------------------
 
 export interface OrbParamOverride {
-  colorOverride?: string;        // Hex color, if user has personalized
-  sizeScale?: number;            // 0.5–2.0 multiplier
-  pulseRate?: number;            // Beats per minute
+  colorOverride?: string;
+  sizeScale?: number;
+  pulseRate?: number;
 }
 
 // ---------------------------------------------------------------------------
-// Personalization Signal (fed into RAGPipeline)
+// Personalization Signal
 // ---------------------------------------------------------------------------
 
 export interface PersonalizationSignal {
@@ -119,7 +177,7 @@ export interface PersonalizationSignal {
 }
 
 // ---------------------------------------------------------------------------
-// GaianBirth result shape (consumed by createFromBirth)
+// Birth / Runtime shapes
 // ---------------------------------------------------------------------------
 
 export interface GaianBirthResult {
@@ -129,11 +187,10 @@ export interface GaianBirthResult {
   birthForce: string;
   birthStage: string;
   initialPhi: number;
+  pronouns?: string;
+  jungianRole?: string;
+  preferredCrystal?: string;
 }
-
-// ---------------------------------------------------------------------------
-// RuntimeResult shape (consumed by recordSession)
-// ---------------------------------------------------------------------------
 
 export interface RuntimeResult {
   sessionId: string;
@@ -153,33 +210,30 @@ export function createDefaultProfile(birth: GaianBirthResult): GAIANProfile {
   return {
     architectId: birth.architectId,
     displayName: birth.displayName,
+    name: birth.displayName,
+    pronouns: birth.pronouns ?? 'they/them',
+    jungianRole: birth.jungianRole ?? 'The Seeker',
+    preferredCrystal: birth.preferredCrystal ?? 'Clear Quartz',
     birthTimestamp: birth.birthTimestamp,
     birthForce: birth.birthForce,
     birthStage: birth.birthStage,
+
+    constitutional: defaultConstitutionalState(),
 
     lciBaseline: birth.initialPhi,
     lciHistory: [],
     lciTrend: 'stable',
 
     activeModules: [
-      'crystal_view',
-      'chat_view',
-      'orb',
-      'alignment_indicator',
-      'greeting',
-      'mood',
-      'home_background',
+      'crystal_view', 'chat_view', 'orb',
+      'alignment_indicator', 'greeting', 'mood', 'home_background',
     ],
     consoleLayout: 'full',
     theme: 'viriditas_default',
     orbParams: {},
 
     queryPatterns: [],
-    sessionCadence: {
-      preferredHours: [],
-      avgSessionDuration: 0,
-      longestSession: 0,
-    },
+    sessionCadence: { preferredHours: [], avgSessionDuration: 0, longestSession: 0 },
     preferredForces: [],
     preferredStages: [],
 
@@ -191,7 +245,11 @@ export function createDefaultProfile(birth: GaianBirthResult): GAIANProfile {
 
     akashicLoaded: false,
     akashicVersion: '',
-
     schemaVersion: 1,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Re-export GAIANProfileManager so GAIANRuntime can import from one path
+// ---------------------------------------------------------------------------
+export { GAIANProfileManager } from './GAIANProfileManager';
