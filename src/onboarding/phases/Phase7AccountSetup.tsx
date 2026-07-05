@@ -46,7 +46,7 @@ export function Phase7AccountSetup({ onComplete, onBack }: Props) {
       return;
     }
     if (!isValidEmail(trimmed)) {
-      setError('That doesn't look quite right. Try again?');
+      setError("That doesn't look quite right. Try again?");
       return;
     }
     setError('');
