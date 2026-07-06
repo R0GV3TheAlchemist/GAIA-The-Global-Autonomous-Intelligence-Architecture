@@ -177,9 +177,10 @@ def run_all_archetypes() -> list[ArchetypeResult]:
                 )
                 for t, intensity in archetype.interventions
             ]
-            rec_outcome = rec_sim.run(entity, interventions)
-            outcome     = rec_outcome.second_run
-            recovery_narrative = rec_outcome.narrative
+            rec_outcome        = rec_sim.run(entity, interventions)
+            outcome            = rec_outcome.second_run
+            # narrative lives in to_dict() — extract it directly
+            recovery_narrative = rec_outcome.to_dict()["narrative"]
         else:
             outcome = sim.run(entity)
             recovery_narrative = None
