@@ -9,3 +9,4 @@ from api import dimensional_engine  # noqa: F401
 from api import explainability  # noqa: F401
 from api import halt  # noqa: F401
 from api import psionic_regulation  # noqa: F401
+from api.primordial import router as primordial_router  # noqa: F401
