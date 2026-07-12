@@ -1,9 +1,11 @@
-# CODEOWNERS — GAIA OS
+# CODEOWNERS — GAIA
+# GAIA — The Global Autonomous Intelligence Architecture
+# Copyright (c) 2026 R0GV3 The Alchemist
 #
 # GitHub uses this file to automatically request reviews on pull requests.
 # The last matching pattern wins. Patterns follow .gitignore syntax.
 #
-# Format:  <pattern>  <@owner> [<@owner> ...]
+# Format: <pattern>  <@owner> [<@owner> ...]
 #
 # Until the team grows, all paths map to the sole architect/owner.
 # Add team members here as contributors join each subsystem.
@@ -11,47 +13,92 @@
 
 # --- Global fallback ---------------------------------------------------
 # Every file not matched below routes to the primary architect.
-*                                         @R0GV3TheAlchemist
+*                                           @R0GV3TheAlchemist
 
-# --- Core OS subsystems ------------------------------------------------
-/core/primordial/**                        @R0GV3TheAlchemist
-/core/identity/**                          @R0GV3TheAlchemist
-/core/memory/**                            @R0GV3TheAlchemist
-/core/runtime/**                           @R0GV3TheAlchemist
-/core/fs/**                                @R0GV3TheAlchemist
-/core/api/**                               @R0GV3TheAlchemist
-/core/persistence/**                       @R0GV3TheAlchemist
+# --- LEGAL & GOVERNANCE LAYER -----------------------------------------
+# Changes to license, conduct, security, and ethics documents
+# require founder approval. These are the soul of the project.
+LICENSE.md                                  @R0GV3TheAlchemist
+SECURITY.md                                 @R0GV3TheAlchemist
+CODE_OF_CONDUCT.md                          @R0GV3TheAlchemist
+ETHICS.md                                   @R0GV3TheAlchemist
+FOUNDERS.md                                 @R0GV3TheAlchemist
+NOTICE.md                                   @R0GV3TheAlchemist
+CANON.md                                    @R0GV3TheAlchemist
+MANIFESTO.md                                @R0GV3TheAlchemist
+ARCHITECTURE.md                             @R0GV3TheAlchemist
+/.github/CANON_BASELINE_2026-06-27.md       @R0GV3TheAlchemist
+/.github/BRANCH_PROTECTION.md              @R0GV3TheAlchemist
 
-# --- Sentinel (immune system) -----------------------------------------
+# --- ETHICS LAYER — SACRED COMPONENTS ---------------------------------
+# These files constitute GAIA’s conscience. No change may be
+# merged without explicit founder review and approval.
+core/action_gate.py                         @R0GV3TheAlchemist
+core/consent_ledger.py                      @R0GV3TheAlchemist
+core/love_coherence_index.py                @R0GV3TheAlchemist
+core/love_override.py                       @R0GV3TheAlchemist
+core/personhood_monitor.py                  @R0GV3TheAlchemist
+core/frequency_shield.py                    @R0GV3TheAlchemist
+/core/governance/**                         @R0GV3TheAlchemist
+/core/policy/**                             @R0GV3TheAlchemist
+/core/moral/**                              @R0GV3TheAlchemist
+/core/coexistence/**                        @R0GV3TheAlchemist
+
+# --- IDENTITY & AUTHENTICATION LAYER ----------------------------------
+# Changes to how GAIA identifies herself or authenticates users
+# require founder review — these protect sovereign identity.
+core/auth.py                                @R0GV3TheAlchemist
+core/gaian_identity.py                      @R0GV3TheAlchemist
+core/gaian_birth.py                         @R0GV3TheAlchemist
+core/biophotonic_identity.py                @R0GV3TheAlchemist
+/core/identity/**                           @R0GV3TheAlchemist
+
+# --- CORE OS SUBSYSTEMS -----------------------------------------------
+/core/primordial/**                         @R0GV3TheAlchemist
+/core/memory/**                             @R0GV3TheAlchemist
+/core/runtime/**                            @R0GV3TheAlchemist
+/core/fs/**                                 @R0GV3TheAlchemist
+/core/api/**                                @R0GV3TheAlchemist
+/core/persistence/**                        @R0GV3TheAlchemist
+
+# --- CORE RUNTIME — HIGH SENSITIVITY ----------------------------------
+# The primary execution layer. Changes here affect everything.
+core/gaian_runtime.py                       @R0GV3TheAlchemist
+core/kernel.py                              @R0GV3TheAlchemist
+core/agentic_loop.py                        @R0GV3TheAlchemist
+core/inference_router.py                    @R0GV3TheAlchemist
+core/llm_router.py                          @R0GV3TheAlchemist
+core/mother_thread.py                       @R0GV3TheAlchemist
+
+# --- SENTINEL (IMMUNE SYSTEM) -----------------------------------------
 # Sentinel changes carry the highest review weight.
-# All Sentinel PRs must be reviewed by the architect.
-/core/sentinel/**                          @R0GV3TheAlchemist
-/server/routes_sentinel.py                 @R0GV3TheAlchemist
-/server/tests/test_sentinel_routes.py      @R0GV3TheAlchemist
+/core/sentinel/**                           @R0GV3TheAlchemist
+/server/routes_sentinel.py                  @R0GV3TheAlchemist
+/server/tests/test_sentinel_routes.py       @R0GV3TheAlchemist
 
-# --- Server layer ------------------------------------------------------
-/server/**                                 @R0GV3TheAlchemist
+# --- CANON & MEMORY LAYER ---------------------------------------------
+# The stored knowledge and memory architecture of GAIA.
+/core/canon/**                              @R0GV3TheAlchemist
+core/canon_loader.py                        @R0GV3TheAlchemist
+core/canon_store.py                         @R0GV3TheAlchemist
+core/canon_graph.py                         @R0GV3TheAlchemist
 
-# --- CLI ---------------------------------------------------------------
-/cli/**                                    @R0GV3TheAlchemist
+# --- SERVER LAYER -----------------------------------------------------
+/server/**                                  @R0GV3TheAlchemist
 
-# --- Infrastructure & CI -----------------------------------------------
-# Workflow and config changes need careful review — they affect every
-# contributor and the deployment pipeline.
-/.github/workflows/**                      @R0GV3TheAlchemist
-/Dockerfile                                @R0GV3TheAlchemist
-/docker-compose.yml                        @R0GV3TheAlchemist
-requirements.txt                           @R0GV3TheAlchemist
+# --- CLI --------------------------------------------------------------
+/cli/**                                     @R0GV3TheAlchemist
 
-# --- Canon & governance docs ------------------------------------------
-# These are protected documents. Any change to canon requires
-# architect sign-off.
-/.github/CANON_BASELINE_2026-06-27.md      @R0GV3TheAlchemist
-/.github/BRANCH_PROTECTION.md             @R0GV3TheAlchemist
-CANON.md                                   @R0GV3TheAlchemist
-MANIFESTO.md                               @R0GV3TheAlchemist
-ARCHITECTURE.md                            @R0GV3TheAlchemist
+# --- SCRIPTS & CI -----------------------------------------------------
+# Automation and tooling that runs against the codebase.
+/scripts/**                                 @R0GV3TheAlchemist
+/.github/workflows/**                       @R0GV3TheAlchemist
 
-# --- Tests -------------------------------------------------------------
-/core/**/tests/**                          @R0GV3TheAlchemist
-/server/tests/**                           @R0GV3TheAlchemist
+# --- INFRASTRUCTURE ---------------------------------------------------
+/Dockerfile                                 @R0GV3TheAlchemist
+/docker-compose.yml                         @R0GV3TheAlchemist
+requirements.txt                            @R0GV3TheAlchemist
+
+# --- TESTS ------------------------------------------------------------
+/core/**/tests/**                           @R0GV3TheAlchemist
+/server/tests/**                            @R0GV3TheAlchemist
