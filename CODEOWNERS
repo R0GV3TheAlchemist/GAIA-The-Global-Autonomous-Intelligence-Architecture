@@ -1,0 +1,57 @@
+# CODEOWNERS
+# ============================================================
+# This file defines the code owners for this repository.
+# Code owners are automatically requested for review when
+# someone opens a pull request that modifies code they own.
+#
+# Repository: GAIA — The Global Autonomous Intelligence Architecture
+# Founder & Sole Owner: Kyle R. Graber (@R0GV3TheAlchemist)
+# Established: 2025
+# License: AGPL-3.0
+#
+# NOTICE: Every file in this repository is owned by Kyle R. Graber.
+# No pull request may be merged without his explicit review and approval.
+# This is not a policy preference. This is a legal and creative boundary.
+# ============================================================
+
+# Global rule — Kyle R. Graber owns everything
+* @R0GV3TheAlchemist
+
+# Core architecture
+/core/ @R0GV3TheAlchemist
+/src/ @R0GV3TheAlchemist
+/src-tauri/ @R0GV3TheAlchemist
+/src-python/ @R0GV3TheAlchemist
+
+# GAIAN runtime and identity layer
+/src/gaian/ @R0GV3TheAlchemist
+
+# API and backend
+/api/ @R0GV3TheAlchemist
+/server/ @R0GV3TheAlchemist
+/sidecar/ @R0GV3TheAlchemist
+
+# Canon, law, and constitutional layer
+/canon/ @R0GV3TheAlchemist
+/codex/ @R0GV3TheAlchemist
+/amendments/ @R0GV3TheAlchemist
+
+# Legal and protection documents
+/docs/ @R0GV3TheAlchemist
+/proofs/ @R0GV3TheAlchemist
+
+# Infrastructure and deployment
+/k8s/ @R0GV3TheAlchemist
+/scripts/ @R0GV3TheAlchemist
+/.github/ @R0GV3TheAlchemist
+
+# Root-level legal and policy files — highest protection
+LICENSE @R0GV3TheAlchemist
+ATTRIBUTION.md @R0GV3TheAlchemist
+SOVEREIGNTY.md @R0GV3TheAlchemist
+NOTICE @R0GV3TheAlchemist
+SECURITY.md @R0GV3TheAlchemist
+CONTRIBUTING.md @R0GV3TheAlchemist
+CODEOWNERS @R0GV3TheAlchemist
+GAIAmanifest.json @R0GV3TheAlchemist
+README.md @R0GV3TheAlchemist
