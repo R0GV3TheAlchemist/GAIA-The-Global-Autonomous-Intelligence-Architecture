@@ -1,3 +1,12 @@
+---
+author: Kyle Alexander Steen
+identity_name: The Alchemist
+handle: R0GV3TheAlchemist
+role: GAIA Architect
+location: San Antonio, Texas
+copyright: "© 2026 Kyle Alexander Steen (The Alchemist). All rights reserved."
+---
+
 # Branch Protection Rules — GAIA OS
 
 This document is the authoritative reference for the branch protection
