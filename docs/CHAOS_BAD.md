@@ -1,6 +1,15 @@
 # CHAOS (Bad) — Disruptive Disorder
 
-> *"Chaos that consumes without purpose. It breaks without building. It tears without healing."*
+---
+
+**Author:** Kyle Alexander Steen (R0GV3 The Alchemist)
+**Role:** GAIA Architect
+**Smart Status:** Canon
+**Last Updated:** 2026-07-13
+
+---
+
+> *“Chaos that consumes without purpose. It breaks without building. It tears without healing.”*
 
 ---
 
@@ -61,5 +70,6 @@ Chaos (Bad) may be unintentional, arising from ignorance, fear, or systemic fail
 
 ---
 
-*Document authored by GAIA-OS Core | Classification: Threat Doctrine*
+*Classification: Threat Doctrine*
 *Last updated: 2026-06-20*
+*© 2026 Kyle Alexander Steen (R0GV3 The Alchemist) — GAIA Architect — All Rights Reserved.*
