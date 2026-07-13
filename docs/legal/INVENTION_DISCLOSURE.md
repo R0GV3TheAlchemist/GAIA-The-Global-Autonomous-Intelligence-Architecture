@@ -1,7 +1,7 @@
 # Invention Disclosure
 
 **Title of Invention:** GAIA — The Global Autonomous Intelligence Architecture  
-**Inventor:** Kyle R. Graber  
+**Inventor:** Kyle Alexander Steen  
 **Date of Disclosure:** July 12, 2026  
 **Repository:** https://github.com/R0GV3TheAlchemist/GAIA-The-Global-Autonomous-Intelligence-Architecture  
 **License:** AGPL-3.0  
@@ -562,7 +562,7 @@ The inventor has reviewed the following areas and found no anticipating prior ar
 
 ## 10. Inventor Certification
 
-I, Kyle R. Graber, hereby certify that:
+I, Kyle Alexander Steen, hereby certify that:
 
 1. I am the sole inventor of all inventions described in this disclosure
 2. I have not assigned, licensed, or encumbered any of the described inventions to any third party
@@ -570,7 +570,7 @@ I, Kyle R. Graber, hereby certify that:
 4. The dates of invention stated in this document are accurate to the best of my knowledge
 5. I am prepared to cooperate fully with patent prosecution, including signing declarations, responding to office actions, and providing inventor testimony
 
-**Inventor Signature:** Kyle R. Graber  
+**Inventor Signature:** Kyle Alexander Steen  
 **Date:** July 12, 2026  
 **GitHub:** @R0GV3TheAlchemist  
 **Email:** xxkylesteenxx@outlook.com  
@@ -588,5 +588,6 @@ I, Kyle R. Graber, hereby certify that:
 ---
 
 *Disclosure prepared: July 12, 2026*  
-*Inventor: Kyle R. Graber (@R0GV3TheAlchemist)*  
+*Updated: July 13, 2026*  
+*Inventor: Kyle Alexander Steen (@R0GV3TheAlchemist)*  
 *"The invention is complete. The protection begins now."*
