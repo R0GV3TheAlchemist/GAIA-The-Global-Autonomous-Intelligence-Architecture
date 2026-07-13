@@ -1,3 +1,18 @@
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║        GAIA — Global Autonomous Intelligence Architecture        ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  Author (Legal):    Kyle Alexander Steen                        ║
+  ║  Author (Alias):    R0GV3 The Alchemist                         ║
+  ║  Role:              GAIA Architect                              ║
+  ║  GitHub:            @R0GV3TheAlchemist                          ║
+  ║  Project:           GAIA-The-Global-Autonomous-Intelligence-    ║
+  ║                     Architecture                                ║
+  ║  Status:            Canon                                       ║
+  ║  Last Updated:      2026-07-13                                  ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+
 # BIOELECTRIC_SPECTRUM.md
 # The Bioelectric Spectrum: Frequency, Field, and Living Intelligence
 
