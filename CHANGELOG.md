@@ -1,6 +1,51 @@
-# GAIA Changelog
+# CHANGELOG
 
-All significant changes, decisions, and resolutions are logged here in reverse chronological order.
+**GAIA — The Global Autonomous Intelligence Architecture**
+Copyright (c) 2026 R0GV3 The Alchemist
+
+All significant changes, decisions, and resolutions are logged here in
+reverse chronological order. Each entry records the phase, the work
+performed, the files committed, and any decisions or canon changes made.
+
+This changelog follows its own format — designed for GAIA's development
+rhythm, not a generic versioning scheme. Entries are date-stamped and
+phase-labeled. Status symbols: ✅ Complete · ⏳ Pending · 🚨 Blocking · ⚠️ Tension identified.
+
+---
+
+## [Unreleased]
+
+### 2026-07-12 (evening) — Documentation Session: Core Repository Docs
+
+**Session:** Repository documentation — making GAIA legible to the world
+**Declared by:** R0GV3 (2026-07-12)
+**Commits:** `ea113c34` → `501c3998`
+
+---
+
+#### Documents written or upgraded
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `CONTRIBUTING.md` | ✅ Upgraded | Copyright header requirements, ethics prerequisites, safety layer references |
+| `GOVERNANCE.md` | ✅ Written | How decisions about GAIA are made — founder authority, amendment protocol |
+| `SOVEREIGNTY.md` | ✅ Upgraded | GAIA's six rights, sovereign architecture map, founder declaration |
+| `THREAT_MODEL.md` | ✅ Written | Adversarial threat landscape — chaos made visible, chaos transformed |
+| `ARCHITECTURE.md` | ✅ Written | Full 7-layer system map of all `core/` modules, data flow, file size reference |
+| `CHANGELOG.md` | ✅ Upgraded | This file — header added, Unreleased block initiated |
+
+#### Architecture highlights documented
+
+- Seven layers mapped: Infrastructure → Runtime → Ethics (Sacred) → Intelligence → Identity → Sentinel → Planetary
+- Ethics layer confirmed as appearing **twice** in the data flow — before processing and after
+- `love_coherence_index.py` identified as GAIA's most complex single module (29KB)
+- `gaian_runtime.py` confirmed as largest file (73KB)
+- `dream_weaver.py` (36KB) and `mineral_profile.py` (38KB) documented
+
+#### Next pending
+
+- CHANGELOG `[Unreleased]` → promote to version tag on first public release
+- `NOTICE.md` — extended attribution document (plain `NOTICE` exists; `.md` version needed)
 
 ---
 
@@ -196,3 +241,4 @@ All five canon tensions identified during G-13 → G-14 simulation suite have be
 ---
 
 *Changelog maintained by GAIA. All entries follow canonical format.*
+*Format version: 1.1 — header and Unreleased block added 2026-07-12.*
