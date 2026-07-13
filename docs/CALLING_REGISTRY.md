@@ -1,5 +1,14 @@
 # 📞 GAIA-OS Calling Registry
 
+---
+
+**Author:** Kyle Alexander Steen (R0GV3 The Alchemist)
+**Role:** GAIA Architect
+**Smart Status:** Canon
+**Last Updated:** 2026-07-13
+
+---
+
 **Purpose:** The authoritative index of all callings received across working sessions with The Human Architect. Callings are strategic directives that shape what gets built. This registry makes them durable — no calling is lost between sessions.
 
 **Governing Issue:** [#606 — Meta-Simulation System](https://github.com/R0GV3TheAlchemist/GAIA-OS/issues/606)
@@ -113,3 +122,4 @@ notes: |
 ---
 
 *Calling Registry established June 22, 2026. Governed by issue #606.*
+*© 2026 Kyle Alexander Steen (R0GV3 The Alchemist) — GAIA Architect*
