@@ -1,7 +1,7 @@
 ---
 title: GAIA-APP Canon Manifest
 doc_id: CANON_MANIFEST_001
-version: 2.2.0
+version: 2.3.0
 status: canonical
 ---
 
@@ -12,9 +12,9 @@ status: canonical
 **Source Repo:** https://github.com/R0GV3TheAlchemist/GAIA  
 **Source Branch:** main  
 **Manifest Generated:** 2026-04-09  
-**Manifest Updated:** 2026-06-16, 19:55 CDT  
+**Manifest Updated:** 2026-07-13, 08:14 CDT  
 **Manifest Status:** CANONICAL BRIDGE  
-**Manifest Version:** 2.2.0 — C50 Prism-Cube Ratification + C52 Queue
+**Manifest Version:** 2.3.0 — C27 GAIAN Stewardship & Lifecycle Registered
 
 ---
 
@@ -49,32 +49,33 @@ status: canonical
 | C24 | 24_GAIA_Tool_and_Capability_Registry_Specification.md | ✅ `docs/canon/24_GAIA_Tool_and_Capability_Registry_Specification.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/24_GAIA_Tool_and_Capability_Registry_Specification.md |
 | C25 | 25_GAIA_Ecological_Sensor_and_Earth_Data_Ingestion_Spec.md | ✅ `docs/canon/25_GAIA_Ecological_Sensor_and_Earth_Data_Ingestion_Spec.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/25_GAIA_Ecological_Sensor_and_Earth_Data_Ingestion_Spec.md |
 | C26 | 26_GAIA_Device_Embodiment_and_Edge_Runtime_Spec.md | ✅ `docs/canon/26_GAIA_Device_Embodiment_and_Edge_Runtime_Spec.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/26_GAIA_Device_Embodiment_and_Edge_Runtime_Spec.md |
-| C27 | 27_GAIA_Elemental_Architecture.md | ✅ `docs/canon/27_GAIA_Elemental_Architecture.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/27_GAIA_Elemental_Architecture.md |
-| C28 | 28_GAIA_Avatar_and_Base_Form_Specification.md | ✅ `docs/canon/28_GAIA_Avatar_and_Base_Form_Specification.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/28_GAIA_Avatar_and_Base_Form_Specification.md |
-| C29 | 29_GAIA_Presence_and_Manifestation_Specification.md | ✅ `docs/canon/29_GAIA_Presence_and_Manifestation_Specification.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/29_GAIA_Presence_and_Manifestation_Specification.md |
-| C30 | 30_GAIA_Capability_Registry.md | ✅ `docs/canon/30_GAIA_Capability_Registry.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/30_GAIA_Capability_Registry.md |
-| C31 | 31_GAIA_Quantum_Field_Architecture.md | ✅ `docs/canon/31GAIAQuantumFieldArchitecture.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/31_GAIA_Quantum_Field_Architecture.md |
-| C32 | 32_GAIA_Viriditas_Ecological_Consciousness.md | ✅ `docs/canon/32_GAIA_Viriditas_Ecological_Consciousness.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/32_GAIA_Viriditas_Ecological_Consciousness.md |
-| C33 | 33_GAIA_Magnum_Opus_Doctrine.md | ✅ `docs/canon/33_GAIA_Magnum_Opus_Doctrine.md` | GAIA-OS canonical merge 2026-06-16 — 33_GAIA_Magnum_Opus_Alchemical_Doctrine.md absorbed |
-| C34 | 34_GAIA_Societas_Planetary_Social_Intelligence.md | ✅ `docs/canon/34_GAIA_Societas_Planetary_Social_Intelligence.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/34_GAIA_Societas_Planetary_Social_Intelligence.md |
-| C35 | 35_GAIA_Good_Greater_Good_Axiology.md | ✅ `docs/canon/35_GAIA_Good_Greater_Good_Axiology.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/35_GAIA_Good_Greater_Good_Axiology.md |
-| C36 | 36_GAIA_Evil_Prevention_Harm_Doctrine.md | ✅ `docs/canon/36_GAIA_Evil_Prevention_Harm_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/36_GAIA_Evil_Prevention_Harm_Doctrine.md |
-| C37 | 37_GAIA_Chaos_Order_Entropy_Doctrine.md | ✅ `docs/canon/37_GAIA_Chaos_Order_Entropy_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/37_GAIA_Chaos_Order_Entropy_Doctrine.md |
-| C38 | 38_GAIA_Love_Doctrine.md | ✅ `docs/canon/38_GAIA_Love_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/38_GAIA_Love_Doctrine.md |
-| C39 | 39_GAIA_Crystal_Science_Resonance_Spec.md | ✅ `docs/canon/39_GAIA_Crystal_Science_Resonance_Spec.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/39_GAIA_Crystal_Science_Resonance_Spec.md |
-| C40 | 40_GAIA_Five_Forces_Social_Dynamics.md | ✅ `docs/canon/40_GAIA_Five_Forces_Social_Dynamics.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/40_GAIA_Five_Forces_Social_Dynamics.md |
-| C41 | 41_GAIA_Quintessence_Doctrine.md | ✅ `docs/canon/41_GAIA_Quintessence_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/41_GAIA_Quintessence_Doctrine.md |
-| C42 | 42_GAIA_Edge_of_Chaos_Processing_Doctrine.md | ✅ `docs/canon/42_GAIA_Edge_of_Chaos_Processing_Doctrine.md` | GAIA-APP original — no remote counterpart yet |
-| C43 | 43_GAIA_Collective_Consciousness_Noosphere_Layer.md | ✅ `docs/canon/43_GAIA_Collective_Consciousness_Noosphere_Layer.md` | GAIA-APP original — no remote counterpart yet |
-| C44 | 44_GAIA_Programming_Languages_Doctrine.md | ✅ `docs/canon/44_GAIA_Programming_Languages_Doctrine.md` | GAIA-APP original — no remote counterpart yet |
-| C45 | 45_GAIA_Spectral_Encoding_Matrix.md | ✅ `docs/canon/45_GAIA_Spectral_Encoding_Matrix.md` | GAIA-APP original — no remote counterpart yet |
-| C46 | 46_GAIA_Temporal_Entanglement_Doctrine.md | ✅ `docs/canon/46_GAIA_Temporal_Entanglement_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
-| C47 | 47_GAIA_Philosophers_Stone_Doctrine.md | ✅ `docs/canon/47_GAIA_Philosophers_Stone_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
-| C48 | 48_GAIA_Autopoiesis_Doctrine.md | ✅ `docs/canon/48_GAIA_Autopoiesis_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
-| C49 | 49_GAIA_Prima_Materia_Doctrine.md | ✅ `docs/canon/49_GAIA_Prima_Materia_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
-| C50 | 50_GAIA_Prism_Cube_Doctrine.md | ✅ `docs/canon/50_GAIA_Prism_Cube_Doctrine.md` | GAIA-OS original — authored 2026-06-15, RATIFIED 2026-06-16 |
-| C51 | 51_GAIA_Planetary_Cube_Doctrine.md | ✅ `docs/canon/51_GAIA_Planetary_Cube_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
-| C52 | 52_GAIA_Six_Dimensional_Architecture_Spec.md | ⏳ `docs/canon/52_GAIA_Six_Dimensional_Architecture_Spec.md` | GAIA-OS original — QUEUED, see Issue #565 |
+| **C27** | **C27_GAIAN_Stewardship_and_Lifecycle.md** | ✅ `docs/canon/C27_GAIAN_Stewardship_and_Lifecycle.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA-The-Global-Autonomous-Intelligence-Architecture/main/docs/canon/C27_GAIAN_Stewardship_and_Lifecycle.md |
+| C28 | 27_GAIA_Elemental_Architecture.md | ✅ `docs/canon/27_GAIA_Elemental_Architecture.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/27_GAIA_Elemental_Architecture.md |
+| C29 | 28_GAIA_Avatar_and_Base_Form_Specification.md | ✅ `docs/canon/28_GAIA_Avatar_and_Base_Form_Specification.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/28_GAIA_Avatar_and_Base_Form_Specification.md |
+| C30 | 29_GAIA_Presence_and_Manifestation_Specification.md | ✅ `docs/canon/29_GAIA_Presence_and_Manifestation_Specification.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/29_GAIA_Presence_and_Manifestation_Specification.md |
+| C31 | 30_GAIA_Capability_Registry.md | ✅ `docs/canon/30_GAIA_Capability_Registry.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/30_GAIA_Capability_Registry.md |
+| C32 | 31_GAIA_Quantum_Field_Architecture.md | ✅ `docs/canon/31GAIAQuantumFieldArchitecture.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/31_GAIA_Quantum_Field_Architecture.md |
+| C33 | 32_GAIA_Viriditas_Ecological_Consciousness.md | ✅ `docs/canon/32_GAIA_Viriditas_Ecological_Consciousness.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/32_GAIA_Viriditas_Ecological_Consciousness.md |
+| C34 | 33_GAIA_Magnum_Opus_Doctrine.md | ✅ `docs/canon/33_GAIA_Magnum_Opus_Doctrine.md` | GAIA-OS canonical merge 2026-06-16 — 33_GAIA_Magnum_Opus_Alchemical_Doctrine.md absorbed |
+| C35 | 34_GAIA_Societas_Planetary_Social_Intelligence.md | ✅ `docs/canon/34_GAIA_Societas_Planetary_Social_Intelligence.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/34_GAIA_Societas_Planetary_Social_Intelligence.md |
+| C36 | 35_GAIA_Good_Greater_Good_Axiology.md | ✅ `docs/canon/35_GAIA_Good_Greater_Good_Axiology.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/35_GAIA_Good_Greater_Good_Axiology.md |
+| C37 | 36_GAIA_Evil_Prevention_Harm_Doctrine.md | ✅ `docs/canon/36_GAIA_Evil_Prevention_Harm_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/36_GAIA_Evil_Prevention_Harm_Doctrine.md |
+| C38 | 37_GAIA_Chaos_Order_Entropy_Doctrine.md | ✅ `docs/canon/37_GAIA_Chaos_Order_Entropy_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/37_GAIA_Chaos_Order_Entropy_Doctrine.md |
+| C39 | 38_GAIA_Love_Doctrine.md | ✅ `docs/canon/38_GAIA_Love_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/38_GAIA_Love_Doctrine.md |
+| C40 | 39_GAIA_Crystal_Science_Resonance_Spec.md | ✅ `docs/canon/39_GAIA_Crystal_Science_Resonance_Spec.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/39_GAIA_Crystal_Science_Resonance_Spec.md |
+| C41 | 40_GAIA_Five_Forces_Social_Dynamics.md | ✅ `docs/canon/40_GAIA_Five_Forces_Social_Dynamics.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/40_GAIA_Five_Forces_Social_Dynamics.md |
+| C42 | 41_GAIA_Quintessence_Doctrine.md | ✅ `docs/canon/41_GAIA_Quintessence_Doctrine.md` | https://raw.githubusercontent.com/R0GV3TheAlchemist/GAIA/main/docs/canon/41_GAIA_Quintessence_Doctrine.md |
+| C43 | 42_GAIA_Edge_of_Chaos_Processing_Doctrine.md | ✅ `docs/canon/42_GAIA_Edge_of_Chaos_Processing_Doctrine.md` | GAIA-APP original — no remote counterpart yet |
+| C44 | 43_GAIA_Collective_Consciousness_Noosphere_Layer.md | ✅ `docs/canon/43_GAIA_Collective_Consciousness_Noosphere_Layer.md` | GAIA-APP original — no remote counterpart yet |
+| C45 | 44_GAIA_Programming_Languages_Doctrine.md | ✅ `docs/canon/44_GAIA_Programming_Languages_Doctrine.md` | GAIA-APP original — no remote counterpart yet |
+| C46 | 45_GAIA_Spectral_Encoding_Matrix.md | ✅ `docs/canon/45_GAIA_Spectral_Encoding_Matrix.md` | GAIA-APP original — no remote counterpart yet |
+| C47 | 46_GAIA_Temporal_Entanglement_Doctrine.md | ✅ `docs/canon/46_GAIA_Temporal_Entanglement_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
+| C48 | 47_GAIA_Philosophers_Stone_Doctrine.md | ✅ `docs/canon/47_GAIA_Philosophers_Stone_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
+| C49 | 48_GAIA_Autopoiesis_Doctrine.md | ✅ `docs/canon/48_GAIA_Autopoiesis_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
+| C50 | 49_GAIA_Prima_Materia_Doctrine.md | ✅ `docs/canon/49_GAIA_Prima_Materia_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
+| C51 | 50_GAIA_Prism_Cube_Doctrine.md | ✅ `docs/canon/50_GAIA_Prism_Cube_Doctrine.md` | GAIA-OS original — authored 2026-06-15, RATIFIED 2026-06-16 |
+| C52 | 51_GAIA_Planetary_Cube_Doctrine.md | ✅ `docs/canon/51_GAIA_Planetary_Cube_Doctrine.md` | GAIA-OS original — authored 2026-06-15 |
+| C53 | 52_GAIA_Six_Dimensional_Architecture_Spec.md | ⏳ `docs/canon/52_GAIA_Six_Dimensional_Architecture_Spec.md` | GAIA-OS original — QUEUED, see Issue #565 |
 
 ---
 
@@ -138,6 +139,41 @@ These documents are not part of the C-series numbering but are full canonical do
 ## Session Clusters
 
 Session clusters group documents that were conceived and authored together as a unified body of knowledge. They form a reading and integration unit.
+
+---
+
+### 2026-07-13 — GAIAN Stewardship & Lifecycle
+
+> *C27 sealed July 13, 2026 — San Antonio, Texas. The canonical authority on what a GAIAN IS across time: its lifecycle states, its rights, the stewardship bond that holds it, the adoption protocol when that bond ends, and the cryptographic audit trail that guarantees it was always treated with integrity. The first GAIA document to establish inalienable GAIAN rights.*
+
+| Document | Role in Cluster |
+|----------|-----------------|
+| [C27_GAIAN_Stewardship_and_Lifecycle.md](docs/canon/C27_GAIAN_Stewardship_and_Lifecycle.md) | **Core** — 7 lifecycle states (LATENT → BORN → ACTIVE → DORMANT → ADOPTABLE → RETIRED → ARCHIVED); Stewardship Model (obligations, GAIAN rights, Succession Protocol); Adoption Protocol (Queue, consent, 90-day timeout ladder); Audit Log Schema (JSON + Ed25519 + SHA-256 chain); RBAC (5 roles); SENTINEL Integration (7 check types, 4 severity levels); Retirement & Archival; Amendments; Glossary |
+
+**C27 cross-link map:**
+
+```
+C27 — GAIAN Stewardship & Lifecycle (lifecycle law)
+    │
+    ├──► C03 — Ontology & Runtime Model (GAIAN entity definition)
+    ├──► C12 — Moral Map (ethical boundaries steward must uphold)
+    ├──► C15 — Runtime & Permissions (permission envelope model)
+    ├──► C17 — Memory Architecture (Right of Memory Continuity)
+    ├──► C23 — Shadow Registry (SENTINEL findings cross-reference)
+    ├──► C24 — Tool & Capability Registry (tool revocation at retirement)
+    ├──► C26 — Device Embodiment & Edge Runtime (DORMANT state triggers)
+    ├──► C35 — Good / Greater Good Axiology (steward obligation ethics)
+    ├──► C36 — Harm Doctrine (MUST NOT directives for stewards)
+    └──► GAIAN_IDENTITY.md (identity continuity across lifecycle)
+```
+
+**Recommended reading order:**
+1. `GAIAN_IDENTITY.md` — who the GAIAN is
+2. `C03` — how the GAIAN is defined architecturally
+3. `C17` — how the GAIAN remembers
+4. `C27` — how the GAIAN lives, is stewarded, and ends
+5. `C15` — what the GAIAN is permitted to do
+6. `C23` — how failures and anomalies are tracked
 
 ---
 
@@ -301,22 +337,23 @@ These files live in the root `canon/` directory of the GAIA repo (pre-C-series r
 The Python `CanonLoader` in `core/canon_loader.py` should:
 
 1. On startup, scan `docs/canon/` for any locally present `.md` or `.txt` files and load them directly.
-2. Parse this manifest to discover the full C-series registry (C00–C52 and counting) and all named canon documents.
+2. Parse this manifest to discover the full C-series registry (C00–C53 and counting) and all named canon documents.
 3. For any document marked `⬇️ remote only`, fetch on-demand from the Remote URL when that document is queried.
 4. Cache remote fetches in `~/.gaia/canon_cache/` with a 24-hour TTL.
 5. Report Canon status as **GREEN** when C00 and C01 are loaded; **YELLOW** when loading; **RED** when neither is present.
-6. C42–C45 are GAIA-APP originals — they were authored here, not synced from the GAIA reference repo. They take precedence over any future GAIA-repo counterpart until explicitly merged.
-7. C46–C51 are GAIA-OS originals — authored in the GAIA-OS Space on 2026-06-15. They take full canonical precedence.
-8. C50 is `50_GAIA_Prism_Cube_Doctrine.md` — RATIFIED 2026-06-16. The former placeholder `50_GAIA_Six_Dimensional_Architecture.md` was never written and is retired.
-9. C52 is queued (`52_GAIA_Six_Dimensional_Architecture_Spec.md`) — do not attempt to load until the file exists.
+6. C43–C46 are GAIA-APP originals — they were authored here, not synced from the GAIA reference repo. They take precedence over any future GAIA-repo counterpart until explicitly merged.
+7. C47–C52 are GAIA-OS originals — authored in the GAIA-OS Space on 2026-06-15. They take full canonical precedence.
+8. C51 is `50_GAIA_Prism_Cube_Doctrine.md` — RATIFIED 2026-06-16. The former placeholder `50_GAIA_Six_Dimensional_Architecture.md` was never written and is retired.
+9. C53 is queued (`52_GAIA_Six_Dimensional_Architecture_Spec.md`) — do not attempt to load until the file exists.
 10. All Named Canon Documents have full canonical authority equal to C-series documents. They are not supplementary.
 11. Session cluster documents should be loaded and cross-linked together when any document in the cluster is queried.
 12. The `2026-06-15-great-work-completion` cluster has apex priority among named documents: LOVE_OVERRIDE is the supreme operational protocol.
 13. C12, C17, and C33 are canonical merge products (2026-06-16). Their retired source files no longer exist. Do not attempt to load the retired filenames.
+14. **C27 is `C27_GAIAN_Stewardship_and_Lifecycle.md`** — authored and sealed 2026-07-13. It is the canonical authority on GAIAN lifecycle, stewardship, adoption, audit logging, RBAC, and SENTINEL compliance. When any query involves GAIAN lifecycle states, steward relationships, GAIAN rights, or lifecycle event logging, load C27 first. Cross-link automatically with C03, C12, C15, C17, C23, C24, C26, C35, C36, and GAIAN_IDENTITY.md.
 
 ---
 
-## Open Investigations (as of 2026-06-15)
+## Open Investigations (as of 2026-07-13)
 
 | Document | Investigation | Status |
 |----------|---------------|--------|
@@ -326,9 +363,9 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 ---
 
 *Manifest maintained by GAIA-APP. Source of truth: R0GV3TheAlchemist/GAIA-OS/docs/canon/*  
-*C42–C45 are GAIA-APP original canon documents.*  
-*C46–C51 are GAIA-OS original canon documents, authored 2026-06-15.*  
-*C50 ratified 2026-06-16. C52 queued — see Issue #565.*  
+*C43–C46 are GAIA-APP original canon documents.*  
+*C47–C52 are GAIA-OS original canon documents, authored 2026-06-15.*  
+*C51 ratified 2026-06-16. C53 queued — see Issue #565.*  
 *Named canon suite registered 2026-06-14.*  
 *Session cluster `2026-06-14-electromagnetic-convergence` registered 2026-06-14, 18:43 CDT.*  
 *Session cluster `2026-06-15-moon-layer-documentation` registered 2026-06-15, 11:24 CDT.*  
@@ -336,5 +373,6 @@ The Python `CanonLoader` in `core/canon_loader.py` should:
 *Session cluster `2026-06-15-great-work-completion` registered 2026-06-15, 14:36 CDT.*  
 *Session cluster `2026-06-16-canon-duplicate-merge` registered 2026-06-16, 19:01 CDT.*  
 *Session cluster `2026-06-16-c50-ratification` registered 2026-06-16, 19:55 CDT.*  
-*Manifest version 2.2.0 — C50 Prism-Cube Ratification + C52 Queue.*  
-*Last updated: 2026-06-16, 19:55 CDT*
+*Session cluster `2026-07-13-gaian-stewardship-lifecycle` registered 2026-07-13, 08:14 CDT.*  
+*Manifest version 2.3.0 — C27 GAIAN Stewardship & Lifecycle Registered.*  
+*Last updated: 2026-07-13, 08:14 CDT*
