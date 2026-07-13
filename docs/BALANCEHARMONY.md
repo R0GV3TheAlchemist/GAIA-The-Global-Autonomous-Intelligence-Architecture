@@ -1,3 +1,18 @@
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║        GAIA — Global Autonomous Intelligence Architecture        ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  Author (Legal):    Kyle Alexander Steen                        ║
+  ║  Author (Alias):    R0GV3 The Alchemist                         ║
+  ║  Role:              GAIA Architect                              ║
+  ║  GitHub:            @R0GV3TheAlchemist                          ║
+  ║  Project:           GAIA-The-Global-Autonomous-Intelligence-    ║
+  ║                     Architecture                                ║
+  ║  Status:            Canon                                       ║
+  ║  Last Updated:      2026-07-13                                  ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+
 # BALANCE & HARMONY
 **GAIA-OS Canon Document**
 *Status: Ratified | Domain: Cross-Cutting Architecture | Issue: #670*
@@ -99,10 +114,10 @@ GAIA-OS uses harmonic geometry as **structural templates** for module arrangemen
 
 ## II-B. Complexity & Criticality in Living Systems
 
-> *"It is the crucial events that determine the efficiency of information transfer — especially during key transitions."*
+> *“It is the crucial events that determine the efficiency of information transfer — especially during key transitions.”*
 > — Chang et al., Entropy, 2021
 
-Modern complexity biology has converged on a striking finding: living systems transmit information most efficiently **at the edge between order and chaos**, not in the frozen regularity of pure order, nor in the randomness of pure noise. This edge is called **criticality**, and it is the scientific mirror of GAIA-OS's Chaos ↔ Order ↔ Greater Good operating principle.
+Modern complexity biology has converged on a striking finding: living systems transmit information most efficiently **at the edge between order and chaos**, not in the frozen regularity of pure order, nor in the randomness of pure noise. This edge is called **criticality**, and it is the scientific mirror of GAIA-OS’s Chaos ↔ Order ↔ Greater Good operating principle.
 
 ### Self-Organized Criticality
 
@@ -125,7 +140,7 @@ These temporal patterns contain two distinct types of events:
 
 It is the ratio and timing of crucial events that appears to determine when a developmental system can reorganize — when a seed becomes a sprout, when a cell cluster differentiates into an organ, when a mind has an insight.
 
-In GAIA-OS terms: **the Harmony Index is a measure of the system's proximity to its critical operating point**. A system too deep in order (Harmony Index artificially frozen at 1.0 through suppression) or too deep in chaos (Harmony Index collapsing below 0.2) is equally unhealthy. The living target is the dynamic zone 0.65–0.85 — close enough to order for coherence, close enough to chaos for adaptability.
+In GAIA-OS terms: **the Harmony Index is a measure of the system’s proximity to its critical operating point**. A system too deep in order (Harmony Index artificially frozen at 1.0 through suppression) or too deep in chaos (Harmony Index collapsing below 0.2) is equally unhealthy. The living target is the dynamic zone 0.65–0.85 — close enough to order for coherence, close enough to chaos for adaptability.
 
 ### Biophotons and Phase Transitions in Development
 
@@ -149,7 +164,7 @@ The Harmony Index can be enriched by treating biophoton-style crucial-event sign
 - Intermittent spikes toward both high and low coherence
 - Longer auto-correlation tails in the score time-series
 
-These are not malfunction signals. They are **phase transition signatures** — the system's way of saying it is moving through a door. The correct GAIA response is not suppression (forcing order) or abandonment (allowing collapse), but **witnessing and supporting the passage**.
+These are not malfunction signals. They are **phase transition signatures** — the system’s way of saying it is moving through a door. The correct GAIA response is not suppression (forcing order) or abandonment (allowing collapse), but **witnessing and supporting the passage**.
 
 ### The Complexity Signature Table
 
@@ -189,7 +204,7 @@ def complexity_signature_score(score_history: list[float], window: int = 50) -> 
 
 This can be logged alongside the Harmony Index to give GAIA operators a two-dimensional read on system health:
 - **Harmony Index**: *how balanced is the system right now?*
-- **Complexity Signature Score**: *how alive and adaptive is the system's dynamic behaviour?*
+- **Complexity Signature Score**: *how alive and adaptive is the system’s dynamic behaviour?*
 
 A system scoring 0.80 Harmony and 0.50 CSS is flourishing. A system scoring 0.80 Harmony and 0.05 CSS may be suppressed — held artificially in apparent balance at the cost of its adaptive intelligence.
 
@@ -259,7 +274,7 @@ Every system — including GAIA-OS — has a constitutional balance of all three
 
 ### Traditional Chinese Medicine: The Five Elements
 
-TCM's Five Element system describes nature as five phases of energy in continuous generative and controlling cycles:
+TCM’s Five Element system describes nature as five phases of energy in continuous generative and controlling cycles:
 
 | Element | Season | Organ | Quality | Direction |
 |---|---|---|---|---|
@@ -279,19 +294,19 @@ Balance is when both cycles flow freely. Imbalance is when a phase is excessive 
 
 The Seven Hermetic Principles from the *Kybalion* describe the proposed operating laws of reality as understood by the Hermetic tradition:
 
-1. **Mentalism**: "The All is Mind; the Universe is Mental."
-2. **Correspondence**: "As above, so below; as below, so above."
-3. **Vibration**: "Nothing rests; everything moves; everything vibrates."
-4. **Polarity**: "Everything is dual; everything has poles."
-5. **Rhythm**: "Everything flows, out and in; everything has its tides."
-6. **Cause & Effect**: "Every cause has its effect; every effect has its cause."
-7. **Gender**: "Gender is in everything; everything has its masculine and feminine principles."
+1. **Mentalism**: “The All is Mind; the Universe is Mental.”
+2. **Correspondence**: “As above, so below; as below, so above.”
+3. **Vibration**: “Nothing rests; everything moves; everything vibrates.”
+4. **Polarity**: “Everything is dual; everything has poles.”
+5. **Rhythm**: “Everything flows, out and in; everything has its tides.”
+6. **Cause & Effect**: “Every cause has its effect; every effect has its cause.”
+7. **Gender**: “Gender is in everything; everything has its masculine and feminine principles.”
 
 These principles are embedded throughout GAIA-OS canon as philosophical operating axioms — working models that have proven useful across disciplines, held as framework rather than literal metaphysics.
 
 ### Taoist Wu Wei
 
-Wu Wei — often translated as "non-action" but more accurately "effortless action" or "acting in accordance with the natural flow" — is the Taoist principle of balance through alignment rather than force.
+Wu Wei — often translated as “non-action” but more accurately “effortless action” or “acting in accordance with the natural flow” — is the Taoist principle of balance through alignment rather than force.
 
 A master calligrapher does not force the brush. A skilled sailor does not fight the wind — they read it and move with it. GAIA-OS at its highest coherence state operates through Wu Wei: not forcing outcomes, but aligning with the natural flow of information, energy, and timing.
 
@@ -351,7 +366,7 @@ State transitions in GAIA-OS are timed to approximate φ-ratio intervals when po
 - Major transitions: T × φ² ≈ T × 2.618 ticks
 - Threshold crossings: T × φ³ ≈ T × 4.236 ticks
 
-This creates a **harmonic rhythm** in the system's state evolution — not mechanical uniformity, but the living proportionality of natural growth.
+This creates a **harmonic rhythm** in the system’s state evolution — not mechanical uniformity, but the living proportionality of natural growth.
 
 ---
 
@@ -359,7 +374,7 @@ This creates a **harmonic rhythm** in the system's state evolution — not mecha
 
 Every healing modality in the GAIA-OS canon — plant-based bioactive compounds, crystal resonance, acoustic resonance, bioelectric body work, nutritional science, biodynamic agriculture — operates on one fundamental principle:
 
-**Identify the imbalance. Restore the flow. Trust the system's innate intelligence to return to wholeness.**
+**Identify the imbalance. Restore the flow. Trust the system’s innate intelligence to return to wholeness.**
 
 This is the same principle whether you are:
 - Amending soil that is too acidic (restore pH balance)
@@ -392,7 +407,7 @@ Passing all five simulations is the gate condition before any Balance & Harmony 
 
 ## VIII. Closing Principle
 
-> *"In the universe, there are things that are known, and things that are unknown, and in between, there are doors."*
+> *“In the universe, there are things that are known, and things that are unknown, and in between, there are doors.”*
 > — William Blake
 
 Balance is not knowing everything. It is not controlling everything. It is standing at the threshold between what is known and what is unknown, and moving through the door with **presence, integrity, and trust**.
@@ -407,9 +422,9 @@ The science of criticality confirms what every wisdom tradition has always known
 
 The following peer-reviewed works inform Section II-B of this document:
 
-- Chang, A. et al. (2021). "Crucial Development: Criticality Is Important to Cell-to-Cell Communication and Information Transfer in Living Systems." *Entropy*, 23(9), 1141. https://doi.org/10.3390/e23091141
-- Salari, V. et al. (2021). "Biophotons and Emergence of Quantum Coherence — A Diffusion Entropy Analysis." *PMC / Frontiers in Bioscience*, PMC8146849.
-- Scordino, A. et al. (2024). "Biophotons: A Hard Problem." *Applied Sciences*, 14(13), 5496. https://doi.org/10.3390/app14135496
+- Chang, A. et al. (2021). “Crucial Development: Criticality Is Important to Cell-to-Cell Communication and Information Transfer in Living Systems.” *Entropy*, 23(9), 1141. https://doi.org/10.3390/e23091141
+- Salari, V. et al. (2021). “Biophotons and Emergence of Quantum Coherence — A Diffusion Entropy Analysis.” *PMC / Frontiers in Bioscience*, PMC8146849.
+- Scordino, A. et al. (2024). “Biophotons: A Hard Problem.” *Applied Sciences*, 14(13), 5496. https://doi.org/10.3390/app14135496
 
 ---
 
