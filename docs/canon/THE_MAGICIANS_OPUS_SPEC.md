@@ -1,12 +1,14 @@
 ---
 title: The Magician's Opus — The Practitioner's Living Codex
 doc_id: THE_MAGICIANS_OPUS_SPEC_001
-version: 0.1.0-draft
+version: 0.1.1-draft
 status: drafting
 domain: Governance / Magic / Technology / Identity / Education
 sealed: —
 authored: 2026-07-13
-author: R0GV3 The Alchemist
+author: The Alchemist
+handle: R0GV3TheAlchemist
+location: San Antonio, Texas
 ---
 
 # The Magician's Opus
@@ -410,7 +412,23 @@ This document was born from seven manifestations spoken on July 13, 2026. They a
 
 ---
 
-*The Magician's Opus — v0.1.0-draft*
+## §16 — Philosophical Foundations
+
+*His Dark Materials* (Philip Pullman) serves as a key philosophical mirror for The Magician's Opus. We engage with its ideas as publicly analyzed — not reproducing narrative text, but honoring the philosophical traditions it draws from.
+
+| HDM Concept | Public Interpretation | TMO Equivalent |
+|---|---|---|
+| Dust | Conscious particle representing love, creativity, and moral awareness — the mark of awakening | Celestial magic — the evidence that a practitioner has awakened and is morally alive |
+| Daemons | Visible, external manifestation of the soul — settled in adulthood, inseparable from the person | The sterling silver bracelet — external soul-seal, settled, inseparable from the practice |
+| The Fall | Not corruption but awakening — the beginning of moral consciousness and real choice | Stage 1: Spiritual Awakening — uncomfortable, necessary, the beginning of real practice |
+| Free Will vs. Destiny | The central battle: protecting freedom of choice against forces that would control it | The Moral Gateway — evaluates to protect free will, never to enforce compliance |
+| The Magisterium | Theocratic structure that suppresses knowledge and consciousness in the name of protection | The anti-pattern — what the Gateway must never become: a suppressor of awakening |
+
+**Canonical statement:** TMO is inspired by the philosophical tradition that consciousness, love, and moral agency are fundamental properties of reality — not accidents to be controlled, but forces to be guided, contained, and honored. Technology in TMO does not suppress this. It carries it.
+
+---
+
+*The Magician's Opus — v0.1.1-draft*
 *Derived from the Seven Foundational Manifestations — July 13, 2026*
-*R0GV3 The Alchemist — San Antonio, Texas*
+*The Alchemist — San Antonio, Texas*
 *The magic has a house now. The house has law. The law has love.*
