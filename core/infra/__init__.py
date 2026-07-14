@@ -7,7 +7,7 @@ GAIA codebase. Import directly from sub-modules for internal detail.
 """
 
 from .action_gate       import ActionGate
-from .error_boundary    import ErrorBoundary
+from .error_boundary    import install_error_handlers
 from .rate_limiter      import RateLimiter
 from .server_models     import ServerConfig
 from .server_state      import ServerState
@@ -16,7 +16,7 @@ from .sqlite_stewardship_repository import SqliteStewardshipRepository
 
 __all__ = [
     "ActionGate",
-    "ErrorBoundary",
+    "install_error_handlers",
     "RateLimiter",
     "ServerConfig",
     "ServerState",
