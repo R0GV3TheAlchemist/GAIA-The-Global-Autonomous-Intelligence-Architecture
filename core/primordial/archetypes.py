@@ -166,7 +166,7 @@ def run_all_archetypes() -> list[ArchetypeResult]:
     sim     = PrimordialSimulation()
     rec_sim = RecoverySimulation()
 
-    for key, archetype in ARCHETYPES.items():
+    for _key, archetype in ARCHETYPES.items():
         entity = archetype.to_entity()
 
         if archetype.interventions:

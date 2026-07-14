@@ -109,7 +109,7 @@ def main() -> None:
     print(f"  Collapsed:      {collapsed:>5}  ({100 - survival_rate:.1f}%)")
     print(f"  Avg emergent order (survivors): {avg_order:.4f}")
     if collapse_stages:
-        print(f"\n  Collapse by stage:")
+        print("\n  Collapse by stage:")
         for stage, count in sorted(collapse_stages.items(), key=lambda x: -x[1]):
             print(f"    {stage:<35} {count}")
     print(f"{'=' * 60}\n")

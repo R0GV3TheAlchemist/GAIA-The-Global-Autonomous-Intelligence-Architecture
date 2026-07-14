@@ -56,8 +56,8 @@ def main() -> None:
     rows.append(header)
 
     print(f"\nSurvival Threshold Map  ({n}x{n} grid)")
-    print(f"Rows = entry love (0→1) | Cols = entry burden (0→3.0)")
-    print(f"S = survived | . = collapsed")
+    print("Rows = entry love (0→1) | Cols = entry burden (0→3.0)")
+    print("S = survived | . = collapsed")
     print()
     print("love\\burden  " + "  ".join(f"{b:>5}" for b in burden_values))
 
