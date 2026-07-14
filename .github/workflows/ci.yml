@@ -24,8 +24,10 @@
 # ────────
 #   Branch coverage is measured for core/ and server/ packages.
 #   The job fails if overall coverage drops below 80 %.
-#   An HTML + XML report is uploaded as a workflow artifact so
-#   engineers can browse it without re-running locally.
+#   An XML report is uploaded as a workflow artifact (7-day retention).
+#   HTML reports are NOT uploaded — they are large and exhaust the
+#   free-tier 500 MB artifact quota. Browse coverage locally:
+#     pytest --cov=core --cov=server --cov-report=html && open htmlcov/index.html
 #
 # Caching
 # ───────
@@ -140,21 +142,14 @@ jobs:
             --cov-branch \
             --cov-report=term-missing:skip-covered \
             --cov-report=xml:coverage.xml \
-            --cov-report=html:htmlcov \
             --cov-fail-under=80
 
-      - name: Upload coverage report
-        if: matrix.python-version == '3.12'
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html
-          path: htmlcov/
-          retention-days: 14
-
-      - name: Upload coverage XML (for external tools)
+      # HTML report intentionally not uploaded — too large for free-tier quota.
+      # Run locally: pytest --cov=core --cov=server --cov-report=html
+      - name: Upload coverage XML
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-xml
           path: coverage.xml
-          retention-days: 14
+          retention-days: 7
