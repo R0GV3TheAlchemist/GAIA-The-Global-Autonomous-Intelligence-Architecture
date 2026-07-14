@@ -1,45 +1,25 @@
 """
-core/infra/
-===========
-GAIA Infrastructure Layer — server lifecycle, logging, rate limiting,
-error boundaries, and utility services.
+core/infra/__init__.py
+GAIA Infrastructure Layer
 
-Phase C: Files physically live here. Flat core/ stubs re-export from here
-for zero-breakage backward compatibility.
+Exports the stable public surface of core/infra for use across the
+GAIA codebase. Import directly from sub-modules for internal detail.
 """
 
-from .error_boundary import install_error_handlers
-from .rate_limiter import RateLimitMiddleware, rate_limit, clear_store
-from .action_gate import ActionGate, RiskTier
-from .server_state import (
-    SERVER_VERSION,
-    GAIANS_MEMORY_DIR,
-    canon,
-    get_magnum_opus_report,
-    set_magnum_opus_report,
-    _get_runtime,
-    _inference_router,
-    _mother_thread,
-    _RUNTIME_REGISTRY,
-)
-from .server_models import (
-    QueryRequest,
-    ChatRequest,
-    CreateGaianRequest,
-    BirthRequest,
-    RememberRequest,
-    VisibleMemoryRequest,
-    SetGaianRequest,
-    ConsentRequest,
-)
+from .action_gate       import ActionGate
+from .error_boundary    import ErrorBoundary
+from .rate_limiter      import RateLimiter
+from .server_models     import ServerConfig
+from .server_state      import ServerState
+from .sqlite_lifecycle_repository   import SqliteLifecycleRepository
+from .sqlite_stewardship_repository import SqliteStewardshipRepository
 
 __all__ = [
-    "install_error_handlers",
-    "RateLimitMiddleware", "rate_limit", "clear_store",
-    "ActionGate", "RiskTier",
-    "SERVER_VERSION", "GAIANS_MEMORY_DIR", "canon",
-    "get_magnum_opus_report", "set_magnum_opus_report",
-    "_get_runtime", "_inference_router", "_mother_thread", "_RUNTIME_REGISTRY",
-    "QueryRequest", "ChatRequest", "CreateGaianRequest", "BirthRequest",
-    "RememberRequest", "VisibleMemoryRequest", "SetGaianRequest", "ConsentRequest",
+    "ActionGate",
+    "ErrorBoundary",
+    "RateLimiter",
+    "ServerConfig",
+    "ServerState",
+    "SqliteLifecycleRepository",
+    "SqliteStewardshipRepository",
 ]
