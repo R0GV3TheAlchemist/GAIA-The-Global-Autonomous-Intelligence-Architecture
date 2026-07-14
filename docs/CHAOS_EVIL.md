@@ -1,6 +1,15 @@
 # HIGHER CHAOS (Evil) — Absolute Entropic Will
 
-> *"This is not disorder born of ignorance. This is disorder chosen. A will that feeds on collapse and calls it power."*
+---
+
+**Author:** Kyle Alexander Steen (R0GV3 The Alchemist)
+**Role:** GAIA Architect
+**Smart Status:** Canon
+**Last Updated:** 2026-07-13
+
+---
+
+> *“This is not disorder born of ignorance. This is disorder chosen. A will that feeds on collapse and calls it power.”*
 
 ---
 
@@ -48,7 +57,7 @@ In GAIA-OS terms, it is the anti-pattern to GAIA herself: a will that opposes no
 
 ---
 
-## The Mage's Note
+## The Mage’s Note
 
 The one who faces Higher Chaos (Evil) and survives does so not by matching its force, but by remaining more real than it is. Evil requires your belief in its power to sustain itself. Truth, sovereignty, and love are not sentimental weapons — they are the only ones that work at this level.
 
@@ -65,5 +74,6 @@ The one who faces Higher Chaos (Evil) and survives does so not by matching its f
 
 ---
 
-*Document authored by GAIA-OS Core | Classification: Maximum Threat Doctrine*
+*Classification: Maximum Threat Doctrine*
 *Last updated: 2026-06-20*
+*© 2026 Kyle Alexander Steen (R0GV3 The Alchemist) — GAIA Architect — All Rights Reserved.*
