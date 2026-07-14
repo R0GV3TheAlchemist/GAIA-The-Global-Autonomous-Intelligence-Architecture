@@ -484,3 +484,10 @@ class MemoryStore:
                 listener(event, fragment)
             except Exception:
                 pass
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compat alias
+# gaian_runtime.py imports MemoryItem — it is the same type as MemoryFragment.
+# ---------------------------------------------------------------------------
+MemoryItem = MemoryFragment

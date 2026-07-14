@@ -26,24 +26,32 @@ Design principles:
 Key types:
   MemoryKind       — the type of a memory fragment
   MemoryFragment   — a single atomic memory unit
+  MemoryItem       — alias for MemoryFragment (compat)
   MemoryEpoch      — a consolidated summary of a time period
   MemoryStore      — the live, queryable memory for one GAIAN
+  MemoryManager    — alias for MemoryStore (compat)
   GAIAMemoryStore  — GAIA's own sovereign memory
 """
 from core.memory.store import (
     MemoryKind,
     MemoryScope,
     MemoryFragment,
+    MemoryItem,
     MemoryEpoch,
     MemoryStore,
 )
 from core.memory.gaia_memory import GAIAMemoryStore
 
+# Backwards-compat aliases
+MemoryManager = MemoryStore
+
 __all__ = [
     "MemoryKind",
     "MemoryScope",
     "MemoryFragment",
+    "MemoryItem",
     "MemoryEpoch",
     "MemoryStore",
+    "MemoryManager",
     "GAIAMemoryStore",
 ]
