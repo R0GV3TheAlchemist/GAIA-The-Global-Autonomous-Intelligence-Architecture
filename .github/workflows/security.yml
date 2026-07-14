@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  actions: read
 
 jobs:
   codeql:
@@ -40,6 +41,8 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
 
   pip-audit:
     name: Dependency audit
