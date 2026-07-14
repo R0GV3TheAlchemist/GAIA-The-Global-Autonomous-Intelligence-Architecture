@@ -69,10 +69,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12", "3.13"]
 
     steps:
       - name: Checkout
@@ -147,7 +147,7 @@ jobs:
       # HTML report intentionally not uploaded — too large for free-tier quota.
       # Run locally: pytest --cov=core --cov=server --cov-report=html
       - name: Upload coverage XML
-        if: matrix.python-version == '3.12'
+        if: matrix.python-version == '3.13'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-xml
