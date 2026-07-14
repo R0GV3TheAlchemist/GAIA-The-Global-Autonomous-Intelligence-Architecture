@@ -20,44 +20,35 @@ on:
 
 jobs:
 
-  # ── 1. Build Python sidecar (Linux only for CI) ───────────────────────────
   build-sidecar:
     name: Sidecar (Linux)
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
+          python-version: "3.13"
       - name: Install Python dependencies
         run: pip install -r requirements.txt pyinstaller
-
       - name: Install Linux system deps
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev
-
       - name: Build gaia-backend sidecar
         run: pyinstaller gaia-backend.spec
-
       - name: Stage sidecar with triple name
         run: |
           dest="src-tauri/binaries/gaia-backend-x86_64-unknown-linux-gnu"
           cp dist/gaia-backend "$dest"
           chmod +x "$dest"
           echo "Staged: $(wc -c < $dest) bytes"
-
+      # Best-effort: quota exhaustion must not break the build job.
       - name: Upload sidecar artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: sidecar-x86_64-unknown-linux-gnu
           path: src-tauri/binaries/gaia-backend-x86_64-unknown-linux-gnu
+          retention-days: 3
 
-
-  # ── 2. Build Tauri app (Linux only for CI) ─────────────────────────────
-  # macOS + Windows are built only on tagged releases (release.yml)
   build-tauri:
     name: Tauri (Linux)
     needs: build-sidecar
@@ -65,31 +56,22 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
-
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: sccache
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+          python-version: "3.13"
+      - uses: pnpm/action-setup@v4
         with:
           version: latest
           run_install: false
-
-      - name: Set up Node 24
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-
       - name: Install Linux system deps
         run: |
           sudo apt-get update
@@ -99,29 +81,16 @@ jobs:
             librsvg2-dev \
             patchelf \
             rpm
-
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Install Node deps
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Build frontend (Vite)
-        run: pnpm run build
-
-      - name: Download sidecar
-        uses: actions/download-artifact@v4
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm run build
+      - uses: actions/download-artifact@v4
         with:
           name: sidecar-x86_64-unknown-linux-gnu
           path: src-tauri/binaries/
-
-      - name: Mark sidecar executable
-        run: chmod +x src-tauri/binaries/gaia-backend-x86_64-unknown-linux-gnu
-
-      - name: Install Pillow & regenerate icons
-        run: pip install Pillow
+      - run: chmod +x src-tauri/binaries/gaia-backend-x86_64-unknown-linux-gnu
+      - run: pip install Pillow
         shell: bash
-
       - name: Regenerate icons
         shell: python
         run: |
@@ -163,26 +132,23 @@ jobs:
               out.write(header + entries)
               for f in frames: out.write(f)
           print(f"icon.ico: {os.path.getsize(ico_path)} bytes")
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-gnu
-
-      - name: Rust cache (registry + cross-compile target)
-        uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
           cache-targets: "false"
-
       - name: Build Tauri bundles
         timeout-minutes: 55
         run: pnpm tauri build --target x86_64-unknown-linux-gnu --bundles deb
-
+      # Best-effort: quota exhaustion must not break the build job.
       - name: Upload bundle artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: bundle-linux
           path: |
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/**/*.deb
           if-no-files-found: warn
+          retention-days: 3

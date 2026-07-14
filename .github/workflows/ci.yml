@@ -1,47 +1,6 @@
 # =============================================================================
 # GAIA OS — Continuous Integration
 # =============================================================================
-#
-# Runs on every push to main and every pull request targeting main.
-#
-# Jobs
-# ────
-#   lint     — ruff (fast linter, replaces flake8/isort/pyupgrade)
-#   test     — pytest across all test suites with coverage
-#
-# Test suites discovered
-# ──────────────────────
-#   tests/                              root integration suite
-#   server/tests/test_sentinel_routes.py   21 tests
-#   server/tests/test_persistence_hooks.py 37 tests
-#   server/tests/test_dashboard.py         31 tests
-#   core/primordial/tests/                 34 tests
-#   core/**/tests/                         existing core suites
-#                                         ─────────────────────
-#                                         ≥ 123 tests total
-#
-# Coverage
-# ────────
-#   Branch coverage is measured for core/ and server/ packages.
-#   The job fails if overall coverage drops below 80 %.
-#   An XML report is uploaded as a workflow artifact (7-day retention).
-#   HTML reports are NOT uploaded — they are large and exhaust the
-#   free-tier 500 MB artifact quota. Browse coverage locally:
-#     pytest --cov=core --cov=server --cov-report=html && open htmlcov/index.html
-#
-# Caching
-# ───────
-#   pip dependencies are cached by requirements hash so repeated
-#   pushes that don't change deps install in < 5 seconds.
-#
-# Ruff configuration
-# ──────────────────
-#   All rule selection, ignores, excludes, and per-file overrides
-#   live in pyproject.toml [tool.ruff] / [tool.ruff.lint].
-#   The lint step below runs bare `ruff check .` so pyproject.toml
-#   is the single source of truth — no inline flags here.
-# =============================================================================
-
 name: CI
 
 on:
@@ -50,85 +9,55 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel in-progress runs for the same branch on new pushes
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
 
-  # ---------------------------------------------------------------------------
-  # lint
-  # ---------------------------------------------------------------------------
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
-      - name: Cache pip
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: lint-${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: lint-${{ runner.os }}-pip-
+      - run: pip install --quiet ruff
+      - run: ruff check .
 
-      - name: Install ruff
-        run: pip install --quiet ruff
-
-      - name: Run ruff
-        # All rule config (select, ignore, exclude, per-file-ignores)
-        # is in pyproject.toml [tool.ruff.lint] — single source of truth.
-        run: ruff check .
-
-  # ---------------------------------------------------------------------------
-  # test
-  # ---------------------------------------------------------------------------
   test:
     name: Test (pytest ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: lint
-
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.12", "3.13"]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: test-${{ runner.os }}-py${{ matrix.python-version }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: test-${{ runner.os }}-py${{ matrix.python-version }}-pip-
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # Test-only extras not in requirements.txt
           pip install pytest pytest-cov pytest-asyncio httpx
-
       - name: Run tests with coverage
         env:
-          # Prevent the session from trying to boot real persistence paths
           GAIA_ROOT: /tmp/gaia-ci
           GAIA_REQUIRE_AUTH: "false"
           PYTHONDONTWRITEBYTECODE: "1"
@@ -143,13 +72,12 @@ jobs:
             --cov-report=term-missing:skip-covered \
             --cov-report=xml:coverage.xml \
             --cov-fail-under=80
-
-      # HTML report intentionally not uploaded — too large for free-tier quota.
-      # Run locally: pytest --cov=core --cov=server --cov-report=html
+      # Upload is best-effort: storage quota must never block a CI result.
       - name: Upload coverage XML
         if: matrix.python-version == '3.13'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: coverage-xml
           path: coverage.xml
-          retention-days: 7
+          retention-days: 3
