@@ -1,16 +1,16 @@
 """
 core/lifecycle/__init__.py
-C27 — GAIAN Stewardship & Lifecycle  |  Phase 1 Package
+Phase 1 + Phase 2 exports
 """
 
 from .gaian_lifecycle_state import GAIANLifecycleState, LifecycleTransitionError, VALID_TRANSITIONS
 from .lifecycle_manager import LifecycleManager
-from .stewardship import (
-    StewardRole,
-    StewardshipBond,
-    StewardshipRegistry,
-)
+from .stewardship import StewardRole, StewardshipBond, StewardshipRegistry
 from .lifecycle_audit_logger import LifecycleAuditLogger, LifecycleEvent
+from .adoption_queue import AdoptionQueue, AdoptionQueueEntry, AdoptionVisibility
+from .compliance_sentinel import ComplianceSentinel, SentinelFinding, SentinelSeverity, SentinelCheckID
+from .permissions import PermissionManager, PermissionEnvelope, LifecycleRole
+from .ed25519_audit import CanonicalAuditEntry, AuditSignature, Phase2Ed25519BridgeSigner
 
 __all__ = [
     "GAIANLifecycleState",
@@ -22,4 +22,17 @@ __all__ = [
     "StewardshipRegistry",
     "LifecycleAuditLogger",
     "LifecycleEvent",
+    "AdoptionQueue",
+    "AdoptionQueueEntry",
+    "AdoptionVisibility",
+    "ComplianceSentinel",
+    "SentinelFinding",
+    "SentinelSeverity",
+    "SentinelCheckID",
+    "PermissionManager",
+    "PermissionEnvelope",
+    "LifecycleRole",
+    "CanonicalAuditEntry",
+    "AuditSignature",
+    "Phase2Ed25519BridgeSigner",
 ]
