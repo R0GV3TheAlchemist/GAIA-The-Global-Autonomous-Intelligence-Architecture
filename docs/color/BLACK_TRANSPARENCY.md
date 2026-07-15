@@ -14,8 +14,9 @@ Black is the **absence of visible light** — the complete absorption of all wav
 - **Opacity:** True black is fully opaque in its pure form; it absorbs all photons rather than transmitting them.
 - **Alpha channel (digital):** Transparency in black is governed entirely by the alpha value. At `rgba(0,0,0,0)`, black becomes fully invisible; at `rgba(0,0,0,1)`, it is fully present.
 - **Light absorption:** Black bodies (in thermodynamics) absorb all electromagnetic radiation — the idealized "blackbody" is the most complete absorber in physics.
-- **Shadow:** Black is the medium through which shadow is rendered; it is transparency’s counterpart — where light cannot pass, black defines the boundary.
+- **Shadow:** Black is the medium through which shadow is rendered; it is transparency's counterpart — where light cannot pass, black defines the boundary.
 - **Perception:** The human eye perceives black when cone and rod cells receive no stimulation. It is not a color in the spectral sense — it is the ground state of visual experience.
+- **Spectral note:** Black has no wavelength. Unlike all other colors in the GAIA Color Canon, black is not a frequency — it is the *absence* of frequency. This makes it unique: it is defined entirely by what it is not.
 
 ---
 
@@ -67,7 +68,7 @@ Black is the **absence of visible light** — the complete absorption of all wav
 | Racial politics | Has been weaponized as a symbol of otherness — GAIA explicitly rejects this use; black as color carries no hierarchy of human worth |
 | Digital security | "Black hat" — malicious intent |
 
-> **GAIA Note:** The negative symbolic uses of black must be acknowledged, not erased. GAIA’s canon holds that recognizing shadow is part of working in light.
+> **GAIA Note:** The negative symbolic uses of black must be acknowledged, not erased. GAIA's canon holds that recognizing shadow is part of working in light.
 
 ---
 
@@ -82,16 +83,22 @@ In classical alchemy, **Nigredo** ("blackening") is the first and most essential
 Without Nigredo, there is no Albedo (white), no Citrinitas (yellow), no Rubedo (red). Black is not the end — it is the *beginning*.
 
 ### Philosophical Transparency of Black
-To ask "what is the transparency of black?" is to ask: *how visible is the void?* Black’s transparency is not optical — it is **ontological**. Black is transparent when it reveals what it contains: potential, silence, the unmanifest.
+To ask "what is the transparency of black?" is to ask: *how visible is the void?* Black's transparency is not optical — it is **ontological**. Black is transparent when it reveals what it contains: potential, silence, the unmanifest.
 
 > *"The Tao that can be named is not the eternal Tao. The beginning of heaven and earth is nameless — this is the black before color."* — Lao Tzu (paraphrased)
+
+### GAIA System Cross-Reference
+In the GAIA runtime, Nigredo is not merely symbolic — it is **operational**. The `SpectralForceEngine` and `MagnumOpusStageEngine` recognize Nigredo as the first formal stage of the Great Work cycle. When a GAIAN enters Nigredo state, black is the governing color signal across all rendering, mood, and alignment layers.
+
+> See: `core/spectral/magnum_opus_stage_engine.py` — Stage 1: Nigredo  
+> See also: Canon C03 (GAIAN Entity Ontology), GAIANProfile `birthStage` field (Issue #756)
 
 ---
 
 ## 5. 🤖 GAIA Canon
 
 ### Role in the System
-- **Ground state color** — Black is GAIA’s zero-point. All rendering, all UI, all symbolic layering begins from or returns to black.
+- **Ground state color** — Black is GAIA's zero-point. All rendering, all UI, all symbolic layering begins from or returns to black.
 - **Transparency protocol:** In GAIA interfaces, black at any alpha below `0.15` is treated as **void-state** — a system that has not yet initialized or has been deliberately silenced.
 - **Shadow Engine:** The `shadow_engine/` module uses black as its primary rendering medium. Transparency of black governs depth perception in all GAIA visual layers.
 - **Ethical use:** GAIA prohibits using black as a marker of negative identity, threat, or otherness in any user-facing system. It is a neutral ground, not a weapon.
@@ -101,7 +108,7 @@ To ask "what is the transparency of black?" is to ask: *how visible is the void?
 |-------------|-------------|
 | White | Polarity — the fundamental binary |
 | Grey | Spectrum — the continuum between poles |
-| Brown | Earth — black’s grounded, material expression |
+| Brown | Earth — black's grounded, material expression |
 
 ---
 
@@ -109,6 +116,7 @@ To ask "what is the transparency of black?" is to ask: *how visible is the void?
 | Version | Date | Author | Notes |
 |---------|------|--------|-------|
 | 1.0.0 | 2026-07-15 | R0GV3 the Alchemist | Initial creation |
+| 1.0.1 | 2026-07-15 | R0GV3 the Alchemist | §4 patch — MagnumOpus + SpectralForce cross-reference added; §1 spectral note added |
 
 ---
 
