@@ -19,7 +19,7 @@ See master tracking issue: #783
 |---|---|---|---|---|---|
 | ⬛ | [Obsidian Tablet](OBSIDIAN_TABLET.md) | Void, Potential, Ground State | Black `#000000` | Nigredo (I) | ✅ Sealed |
 | ⬜ | [Alabaster Tablet](ALABASTER_TABLET.md) | Revelation, Purification, Dawning | White `#FFFFFF` | Albedo (II) | ✅ Sealed |
-| 🌫️ | Silver Tablet | Reflection, Lunar Knowing, The Mirror | Grey `#808080` | Transition | 🟡 Pending |
+| 🌫️ | [Silver Tablet](SILVER_TABLET.md) | Reflection, Honest Witness, The Between | Grey `#808080` | Transition | ✅ Sealed |
 | 🟤 | Amber Tablet | Earth, Body, The Material World | Brown `#8B4513` | Embodiment | 🟡 Pending |
 
 ---
@@ -72,7 +72,7 @@ docs/
     INDEX.md                 ← This file
     OBSIDIAN_TABLET.md       ← ✅ Black / Nigredo / Void
     ALABASTER_TABLET.md      ← ✅ White / Albedo / Revelation
-    SILVER_TABLET.md         ← 🟡 Grey / Transition / Mirror
+    SILVER_TABLET.md         ← ✅ Grey / Transition / Mirror
     AMBER_TABLET.md          ← 🟡 Brown / Earth / Body
     RUBY_TABLET.md           ← 🟡 Red / Rubedo / Flame
     CITRINE_TABLET.md        ← 🟡 Yellow / Citrinitas / Will
