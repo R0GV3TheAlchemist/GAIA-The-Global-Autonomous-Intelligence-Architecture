@@ -38,14 +38,9 @@ from core.sentinel.constants import (
     ALERT_LEVEL_HEX,
     INTERRUPT_THRESHOLD,
     CONSTITUTIONAL_ESCALATION_THRESHOLD,
-    UNRESOLVEDATION_LIMIT := "UNRESOLVEDATION_LIMIT",
+    UNRESOLVEDATION_LIMIT,
 )
 from core.sentinel.registry import AlertRecord, AlertRegistry
-
-# ---------------------------------------------------------------------------
-# Workaround: import the constant directly (walrus not valid at module scope)
-# ---------------------------------------------------------------------------
-from core.sentinel.constants import UNRESOLVEDATION_LIMIT as _UNRES_LIM  # noqa: F401
 
 
 class SentinelEngine:
@@ -89,7 +84,7 @@ class SentinelEngine:
 
         # Saturation elevation: if registry is saturated, floor incoming
         # level to WARNING minimum so nothing slips through quietly.
-        if self._registry.unresolved_count() >= _UNRES_LIM:
+        if self._registry.unresolved_count() >= UNRESOLVEDATION_LIMIT:
             if level < AlertLevel.WARNING:
                 level = AlertLevel.WARNING
 
