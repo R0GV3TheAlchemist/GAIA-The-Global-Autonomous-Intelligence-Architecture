@@ -1,53 +1,63 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
-GREEN spectral constants.
-Alchemical Stage: Conjunction
-Wavelength: 495–570 nm
-Governing Tablet: Tablet of Mercury / Heart Bridge
+core/spectral/green/constants.py
+=================================
+Emerald Tablet — Law of the Living Earth
 """
 
-COLOR = "GREEN"
-HEX = "#00C853"
-HEX_ALT = "#69F0AE"
-WAVELENGTH_RANGE = (495, 570)
-ALCHEMICAL_PHASE = "conjunction"
-STAGE = 4
-GOVERNING_TABLET = "mercury_heart_bridge"
-
-SENTINEL_LEVELS = {
-    "HEART_CLOSING": 1,
-    "GRIEF_OVERFLOW": 2,
-    "COMPASSION_DEPLETION": 3,
-    "CONJUNCTION_DISRUPTION": 4,
-    "HEART_FRACTURE": 5,
+GREEN_HEX: dict[str, str] = {
+    "VIRIDITAS":     "#16A34A",  # Viriditas activation — living green force
+    "GROWTH":        "#15803D",  # SENTINEL level-1 alert
+    "DEEP_FOREST":   "#166534",  # SENTINEL level-2 — deep earth warning
+    "EMERALD":       "#4ADE80",  # Completion signal — emerald integration
+    "BLIGHT":        "#86EFAC",  # Error state — stagnant, over-lush
+    "SPRING":        "#BBF7D0",  # Living Earth mode — full vitality
 }
 
-UI_STATE = {
-    "idle": "#69F0AE",
-    "active": "#00C853",
-    "alert": "#00897B",
-    "shadow": "#004D40",
-    "integration": "#B9F6CA",
+WAVELENGTH_RANGE: tuple[int, int] = (495, 565)  # nanometres
+
+ALCHEMICAL_PHASE: str = "Viriditas"
+STAGE: int = 5
+GOVERNING_TABLET: str = "Emerald Tablet"
+
+SENTINEL_LEVEL_HEX: dict[int, str] = {
+    1: GREEN_HEX["GROWTH"],
+    2: GREEN_HEX["DEEP_FOREST"],
+    3: GREEN_HEX["BLIGHT"],
 }
 
-HEART_ARCHETYPES = [
-    "healer",
-    "beloved",
-    "grief_keeper",
-    "compassion_warrior",
-    "wounded_healer",
-]
+SENTINEL_LEVEL_LABEL: dict[int, str] = {
+    1: "GROWTH",
+    2: "DEEP_FOREST",
+    3: "BLIGHT",
+}
 
-CONJUNCTION_MARKERS = [
-    "lower_upper_bridge",
-    "masculine_feminine_union",
-    "heart_opening",
-    "empathy_expansion",
-    "love_without_condition",
-]
-
-GRIEF_MARKERS = [
-    "unprocessed_loss",
-    "grief_freeze",
-    "compassion_fatigue",
-    "heart_armoring",
-]
+UI_STATES: dict[str, dict] = {
+    "viriditas_activation": {
+        "hex":       GREEN_HEX["VIRIDITAS"],
+        "animation": "pulsing",
+        "label":     "Viriditas Activation",
+    },
+    "sentinel_alert": {
+        "hex":       GREEN_HEX["GROWTH"],
+        "animation": "solid",
+        "label":     "SENTINEL Alert",
+    },
+    "completion_signal": {
+        "hex":       GREEN_HEX["EMERALD"],
+        "animation": "static",
+        "label":     "Emerald Completion",
+    },
+    "error_state": {
+        "hex":       GREEN_HEX["BLIGHT"],
+        "animation": "solid",
+        "label":     "Blight Error State",
+    },
+    "living_earth_mode": {
+        "hex":       GREEN_HEX["SPRING"],
+        "animation": "animated",
+        "label":     "Living Earth Mode",
+    },
+}

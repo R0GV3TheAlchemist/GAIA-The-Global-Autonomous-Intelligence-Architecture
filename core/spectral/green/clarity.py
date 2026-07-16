@@ -1,82 +1,63 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 """
-GREEN clarity layer — depth-readable signals.
-Domain: distinguishing genuine compassion from codependency,
-grief processing, heart armoring, conjunction bridge health.
+core/spectral/green/clarity.py — Depth-readable signals, VIRIDITAS layer.
 """
+from __future__ import annotations
+from typing import Any
+from .constants import GREEN_HEX, ALCHEMICAL_PHASE
 
-from .constants import GRIEF_MARKERS
-
-
-def distinguish_compassion_codependency(signal: dict) -> str:
-    compassion_index = signal.get("compassion_index", 0.5)
-    boundary_score = signal.get("boundary_score", 0.5)
-    self_sacrifice = signal.get("self_sacrifice", 0.0)
-
-    if self_sacrifice > 0.75 and boundary_score < 0.3:
-        return "codependency"
-    if compassion_index > 0.7 and boundary_score > 0.6:
-        return "healthy_compassion"
-    if self_sacrifice > 0.5:
-        return "self_dissolving"
-    return "integrated"
+_EARTH_ARCHETYPES = {
+    "gardener":   "The Gardener — tending, nurturing, patient growth",
+    "healer":     "The Healer — restoring balance, mending wounds",
+    "wildling":   "The Wildling — uncontained growth, boundary-less",
+    "dormant":    "The Dormant Seed — potential held in stillness",
+}
 
 
-def detect_grief_pattern(signal: dict) -> dict:
-    markers = signal.get("grief_markers", [])
-    active = [m for m in markers if m in GRIEF_MARKERS]
-    depth = signal.get("grief_depth", 0.0)
-    return {
-        "grief_present": len(active) > 0 or depth > 0.4,
-        "active_markers": active,
-        "depth": depth,
-        "intervention_suggested": depth > 0.65,
-    }
+def distinguish_growth_healing(signal: dict[str, Any]) -> str:
+    has_growth  = bool(signal.get("expansion") or signal.get("building"))
+    has_healing = bool(signal.get("restoration") or signal.get("mending"))
+    if has_growth and has_healing: return "integrated"
+    if has_growth: return "growth"
+    if has_healing: return "healing"
+    return "undifferentiated"
 
 
-def classify_green_fire(signal: dict) -> str:
-    conjunction_flag = signal.get("conjunction_flag", False)
-    grief_depth = signal.get("grief_depth", 0.0)
-    compassion_index = signal.get("compassion_index", 0.5)
-
-    if conjunction_flag:
-        return "conjunction"
-    if grief_depth > 0.6:
-        return "grief_immersion"
-    if compassion_index >= 0.8:
-        return "heart_ignition"
-    return "neutral"
-
-
-def assess_bridge_health(signal: dict) -> dict:
-    """Assesses the lower/upper chakra bridge (the conjunction bridge)."""
-    coherence = signal.get("coherence", 0.5)
-    bridge_stability = signal.get("bridge_stability", 0.5)
-    grief_load = signal.get("grief_load", 0.0)
-
-    if coherence > 0.75 and bridge_stability > 0.7:
-        status = "stable"
-    elif grief_load > 0.65:
-        status = "grief_burdened"
-    elif bridge_stability < 0.3:
-        status = "fractured"
-    else:
-        status = "forming"
-
-    return {"status": status, "coherence": coherence, "bridge_stability": bridge_stability}
+def detect_earth_wound(signal: dict[str, Any]) -> dict[str, Any]:
+    patterns: list[tuple[bool, str, str]] = [
+        (bool(signal.get("over_giving")),  "depletion wound — self-sacrificial giving", "severe"),
+        (bool(signal.get("hoarding")),      "contraction wound — resource hoarding",    "moderate"),
+        (bool(signal.get("stagnation")),    "stagnation — growth blocked inward",       "moderate"),
+        (bool(signal.get("rootlessness")), "rootless — no ground to grow from",        "mild"),
+    ]
+    for detected, pattern, severity in patterns:
+        if detected:
+            return {"wound_detected": True, "pattern": pattern, "severity": severity}
+    return {"wound_detected": False, "pattern": "", "severity": "none"}
 
 
-def map_heart_archetype(signal: dict) -> str:
-    compassion_index = signal.get("compassion_index", 0.5)
-    grief_load = signal.get("grief_load", 0.0)
-    self_sacrifice = signal.get("self_sacrifice", 0.0)
-    coherence = signal.get("coherence", 0.5)
+def classify_green_vitality(signal: dict[str, Any]) -> str:
+    intensity = float(signal.get("intensity", 0.0))
+    rooted    = bool(signal.get("rooted"))
+    blocked   = bool(signal.get("blocked"))
+    if blocked or intensity < 0.2: return "dormant"
+    if rooted and intensity >= 0.5: return "flourishing"
+    return "overgrown"
 
-    if coherence >= 0.85 and compassion_index >= 0.8:
-        return "beloved"
-    if grief_load >= 0.7:
-        return "grief_keeper"
-    if self_sacrifice >= 0.7:
-        return "wounded_healer"
-    if compassion_index >= 0.7:
-        return "compassion_warrior"
-    return "healer"
+
+def assess_earth_integration(signal: dict[str, Any]) -> float:
+    score = 0.0
+    if signal.get("rooted"):     score += 0.25
+    if signal.get("reciprocal"): score += 0.25
+    if signal.get("patient"):    score += 0.25
+    intensity = float(signal.get("intensity", 0.0))
+    if 0.4 <= intensity <= 0.85: score += 0.25
+    return round(score, 4)
+
+
+def map_earth_archetype(signal: dict[str, Any]) -> str:
+    vitality    = classify_green_vitality(signal)
+    integration = assess_earth_integration(signal)
+    if vitality == "dormant":     return "dormant" if integration < 0.25 else "gardener"
+    if vitality == "overgrown":   return "wildling"
+    return "healer" if integration >= 0.75 else "gardener"

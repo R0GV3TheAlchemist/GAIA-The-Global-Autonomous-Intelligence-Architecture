@@ -1,53 +1,57 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 """
-GREEN opacity layer — shadow channel.
-Domain: heart armoring, compassion fatigue, grief freeze, codependency loops.
-Non-blocking. Never sets interrupt_flag = True.
+core/spectral/green/opacity.py — Shadow channel, passive. interrupt_flag ALWAYS False.
 """
+from __future__ import annotations
+from typing import Any
+from .constants import GREEN_HEX, ALCHEMICAL_PHASE
+from .clarity import detect_earth_wound, map_earth_archetype, classify_green_vitality
 
-from .constants import GRIEF_MARKERS
-
-_opacity_shadow = []
+_opacity_shadow: list[dict[str, Any]] = []
 
 
-def grief_freeze_alert(signal: dict) -> dict:
-    markers = signal.get("grief_markers", [])
-    active = [m for m in markers if m in GRIEF_MARKERS]
-    entry = {"type": "grief_freeze_alert", "active_markers": active,
-             "severity": min(len(active), 5), "interrupt_flag": False}
+def viriditas_alert(signal: dict[str, Any]) -> dict[str, Any]:
+    entry = {"module": "spectral.green.opacity", "phase": ALCHEMICAL_PHASE,
+             "hex": GREEN_HEX["VIRIDITAS"], "alert_type": "viriditas_activation",
+             "source_signal": signal, "interrupt_flag": False}
     _opacity_shadow.append(entry)
     return entry
 
 
-def compassion_fatigue_detection(signal: dict) -> dict:
-    fatigue_history = signal.get("fatigue_history", [])
-    spike_count = sum(1 for f in fatigue_history if f > 0.65)
-    fatigue_detected = spike_count >= 3
-    entry = {"type": "compassion_fatigue", "fatigue_detected": fatigue_detected,
-             "spike_count": spike_count, "interrupt_flag": False}
+def earth_wound_recognition(signal: dict[str, Any]) -> dict[str, Any]:
+    entry = {"module": "spectral.green.opacity", "wound_data": detect_earth_wound(signal),
+             "hex": GREEN_HEX["DEEP_FOREST"], "interrupt_flag": False}
     _opacity_shadow.append(entry)
     return entry
 
 
-def heart_armoring_marker(signal: dict) -> dict:
-    coherence = signal.get("coherence", 1.0)
-    armored = coherence < 0.25
-    entry = {"type": "heart_armoring", "armored": armored,
-             "coherence": coherence, "interrupt_flag": False}
+def regeneration_marker(
+    signal: dict[str, Any],
+    history: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    regeneration_detected = False
+    if history:
+        prev = [classify_green_vitality(h) for h in history[-3:]]
+        if classify_green_vitality(signal) == "flourishing" and any(c in ("dormant", "overgrown") for c in prev):
+            regeneration_detected = True
+    entry = {"module": "spectral.green.opacity", "regeneration_detected": regeneration_detected,
+             "hex": GREEN_HEX["SPRING"], "interrupt_flag": False}
     _opacity_shadow.append(entry)
     return entry
 
 
-def mercury_venus_routing(signal: dict) -> str:
-    """
-    Routes to 'mercury' (communication/bridge) or 'venus' (receptive/love).
-    Coordinated vocabulary: venus aligns with ORANGE opacity venus_aphrodite_routing.
-    """
-    bridge_stability = signal.get("bridge_stability", 0.5)
-    love_index = signal.get("love_index", 0.5)
-    return "mercury" if bridge_stability > love_index else "venus"
+def ares_athena_routing(signal: dict[str, Any]) -> dict[str, Any]:
+    archetype = map_earth_archetype(signal)
+    channel   = "ares" if archetype in ("wildling", "dormant") else "athena"
+    entry = {"module": "spectral.green.opacity", "archetype": archetype,
+             "channel": channel, "hex": GREEN_HEX["GROWTH"], "interrupt_flag": False}
+    _opacity_shadow.append(entry)
+    return entry
 
 
-def apply_shadow_channel(primary_signal: dict, shadow_entries: list) -> dict:
-    enriched = dict(primary_signal)
-    enriched["_green_shadow"] = list(shadow_entries)
-    return enriched
+def apply_shadow_channel(primary_signal: dict[str, Any], shadow_data: dict[str, Any]) -> dict[str, Any]:
+    safe_shadow = {k: v for k, v in shadow_data.items() if k != "interrupt_flag"}
+    safe_shadow["interrupt_flag"] = False
+    result = dict(primary_signal)
+    result["_opacity_shadow"] = list(result.get("_opacity_shadow", [])) + [safe_shadow]
+    return result

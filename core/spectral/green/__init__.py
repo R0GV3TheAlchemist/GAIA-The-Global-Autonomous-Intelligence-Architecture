@@ -1,34 +1,16 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 """
-GREEN spectral module — public API.
-Alchemical Stage: Conjunction
+core/spectral/green — Viriditas phase, Emerald Tablet.
 """
-
-from .constants import (
-    COLOR, HEX, HEX_ALT, WAVELENGTH_RANGE, ALCHEMICAL_PHASE,
-    STAGE, GOVERNING_TABLET, SENTINEL_LEVELS, UI_STATE,
-    HEART_ARCHETYPES, CONJUNCTION_MARKERS, GRIEF_MARKERS,
-)
-from .transparency import (
-    detect_heart_state, emit_heart_alert, classify_heart_urgency,
-    get_ui_state, is_conjunction_signal,
-)
-from .clarity import (
-    distinguish_compassion_codependency, detect_grief_pattern,
-    classify_green_fire, assess_bridge_health, map_heart_archetype,
-)
-from .opacity import (
-    grief_freeze_alert, compassion_fatigue_detection, heart_armoring_marker,
-    mercury_venus_routing, apply_shadow_channel,
-)
+from .constants import GREEN_HEX, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE, GOVERNING_TABLET, SENTINEL_LEVEL_HEX, SENTINEL_LEVEL_LABEL, UI_STATES
+from .transparency import detect_viriditas_state, emit_sentinel_alert, classify_urgency, get_ui_state, is_emerald_completion_signal
+from .clarity import distinguish_growth_healing, detect_earth_wound, classify_green_vitality, assess_earth_integration, map_earth_archetype
+from .opacity import viriditas_alert, earth_wound_recognition, regeneration_marker, ares_athena_routing, apply_shadow_channel
 
 __all__ = [
-    "COLOR", "HEX", "HEX_ALT", "WAVELENGTH_RANGE", "ALCHEMICAL_PHASE",
-    "STAGE", "GOVERNING_TABLET", "SENTINEL_LEVELS", "UI_STATE",
-    "HEART_ARCHETYPES", "CONJUNCTION_MARKERS", "GRIEF_MARKERS",
-    "detect_heart_state", "emit_heart_alert", "classify_heart_urgency",
-    "get_ui_state", "is_conjunction_signal",
-    "distinguish_compassion_codependency", "detect_grief_pattern",
-    "classify_green_fire", "assess_bridge_health", "map_heart_archetype",
-    "grief_freeze_alert", "compassion_fatigue_detection", "heart_armoring_marker",
-    "mercury_venus_routing", "apply_shadow_channel",
+    "GREEN_HEX", "WAVELENGTH_RANGE", "ALCHEMICAL_PHASE", "STAGE", "GOVERNING_TABLET",
+    "SENTINEL_LEVEL_HEX", "SENTINEL_LEVEL_LABEL", "UI_STATES",
+    "detect_viriditas_state", "emit_sentinel_alert", "classify_urgency", "get_ui_state", "is_emerald_completion_signal",
+    "distinguish_growth_healing", "detect_earth_wound", "classify_green_vitality", "assess_earth_integration", "map_earth_archetype",
+    "viriditas_alert", "earth_wound_recognition", "regeneration_marker", "ares_athena_routing", "apply_shadow_channel",
 ]

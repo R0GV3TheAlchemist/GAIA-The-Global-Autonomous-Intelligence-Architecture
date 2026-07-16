@@ -1,34 +1,27 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 import pytest
-from core.spectral.green.transparency import (
-    detect_heart_state, emit_heart_alert,
-    classify_heart_urgency, get_ui_state, is_conjunction_signal
-)
+from core.spectral.green.transparency import detect_viriditas_state, emit_sentinel_alert, classify_urgency, get_ui_state, is_emerald_completion_signal
+from core.spectral.green.constants import GREEN_HEX, ALCHEMICAL_PHASE
 
 
-def test_detect_heart_state_full_coherence():
-    s = {"coherence": 0.9, "compassion_index": 0.85, "grief_load": 0.05}
-    result = detect_heart_state(s)
-    assert result["phase"] == "full_heart_coherence"
-    assert result["archetype"] == "beloved"
+class TestDetectViriditasState:
+    def test_phase_match(self): assert detect_viriditas_state({"phase": ALCHEMICAL_PHASE}) is True
+    def test_hex_match(self): assert detect_viriditas_state({"hex": GREEN_HEX["VIRIDITAS"]}) is True
+    def test_wavelength_in_range(self): assert detect_viriditas_state({"wavelength": 530}) is True
+    def test_out_of_range(self): assert detect_viriditas_state({"wavelength": 700}) is False
+    def test_non_dict(self): assert detect_viriditas_state(None) is False
 
 
-def test_detect_heart_state_grief():
-    s = {"coherence": 0.4, "compassion_index": 0.4, "grief_load": 0.8}
-    result = detect_heart_state(s)
-    assert result["phase"] == "grief_processing"
+class TestEmitSentinelAlert:
+    def test_interrupt_always_false(self):
+        for lvl in (1, 2, 3): assert emit_sentinel_alert(lvl)["interrupt_flag"] is False
 
 
-def test_emit_heart_alert_never_interrupts():
-    alert = emit_heart_alert("HEART_FRACTURE")
-    assert alert["interrupt_flag"] is False
-    assert alert["severity"] == 5
+class TestClassifyUrgency:
+    def test_low(self): assert classify_urgency(0.1) == "low"
+    def test_high(self): assert classify_urgency(0.9) == "high"
 
 
-def test_classify_heart_urgency_critical():
-    s = {"coherence": 0.5, "grief_load": 0.5, "fracture_flag": True}
-    assert classify_heart_urgency(s) == "critical"
-
-
-def test_is_conjunction_signal_true():
-    s = {"coherence": 0.85}
-    assert is_conjunction_signal(s) is True
+class TestIsEmeraldCompletionSignal:
+    def test_emerald_hex(self): assert is_emerald_completion_signal({"hex": GREEN_HEX["EMERALD"]}) is True
+    def test_no_signal(self): assert is_emerald_completion_signal({"hex": "#000"}) is False

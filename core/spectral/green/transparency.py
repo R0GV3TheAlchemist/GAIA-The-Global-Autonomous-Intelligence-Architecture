@@ -1,73 +1,53 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 """
-GREEN transparency layer — open-field signals.
-Domain: heart coherence, healing, compassion, conjunction bridge.
+core/spectral/green/transparency.py — Open-field signals, VIRIDITAS layer.
 """
+from __future__ import annotations
+from typing import Any
+from .constants import GREEN_HEX, ALCHEMICAL_PHASE, SENTINEL_LEVEL_HEX, SENTINEL_LEVEL_LABEL, UI_STATES, WAVELENGTH_RANGE
 
-from .constants import (
-    SENTINEL_LEVELS, UI_STATE, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
-)
+
+def detect_viriditas_state(signal: dict[str, Any]) -> bool:
+    if not isinstance(signal, dict):
+        return False
+    phase = signal.get("phase", "")
+    if isinstance(phase, str) and phase.strip().lower() == ALCHEMICAL_PHASE.lower():
+        return True
+    if signal.get("hex") in GREEN_HEX.values():
+        return True
+    wl = signal.get("wavelength")
+    if isinstance(wl, (int, float)):
+        lo, hi = WAVELENGTH_RANGE
+        if lo <= wl <= hi:
+            return True
+    return False
 
 
-def detect_heart_state(signal: dict) -> dict:
-    coherence = signal.get("coherence", 0.5)
-    compassion_index = signal.get("compassion_index", 0.5)
-    grief_load = signal.get("grief_load", 0.0)
-
-    if coherence >= 0.85 and compassion_index >= 0.8:
-        phase = "full_heart_coherence"
-        archetype = "beloved"
-    elif grief_load >= 0.7:
-        phase = "grief_processing"
-        archetype = "grief_keeper"
-    elif coherence < 0.3:
-        phase = "heart_closing"
-        archetype = "wounded_healer"
-    elif compassion_index >= 0.7:
-        phase = "compassion_active"
-        archetype = "compassion_warrior"
-    else:
-        phase = "heart_opening"
-        archetype = "healer"
-
+def emit_sentinel_alert(level: int, context: str = "") -> dict[str, Any]:
+    safe_level = level if level in SENTINEL_LEVEL_HEX else 1
     return {
-        "color": "GREEN",
-        "phase": phase,
-        "archetype": archetype,
-        "alchemical_stage": ALCHEMICAL_PHASE,
-        "stage_index": STAGE,
-        "coherence": coherence,
-    }
-
-
-def emit_heart_alert(level_key: str, context: dict = None) -> dict:
-    level = SENTINEL_LEVELS.get(level_key, 1)
-    return {
-        "color": "GREEN",
-        "alert": level_key,
-        "severity": level,
-        "context": context or {},
-        "band": WAVELENGTH_RANGE,
+        "module": "spectral.green", "phase": ALCHEMICAL_PHASE,
+        "level": safe_level, "label": SENTINEL_LEVEL_LABEL[safe_level],
+        "hex": SENTINEL_LEVEL_HEX[safe_level], "context": context,
         "interrupt_flag": False,
     }
 
 
-def classify_heart_urgency(signal: dict) -> str:
-    coherence = signal.get("coherence", 0.5)
-    grief_load = signal.get("grief_load", 0.0)
-    fracture_flag = signal.get("fracture_flag", False)
-
-    if fracture_flag or grief_load >= 0.9:
-        return "critical"
-    if coherence < 0.2:
-        return "high"
-    if coherence < 0.5:
-        return "moderate"
-    return "low"
+def classify_urgency(intensity: float) -> str:
+    if intensity < 0.33: return "low"
+    if intensity < 0.66: return "moderate"
+    return "high"
 
 
-def get_ui_state(phase: str) -> str:
-    return UI_STATE.get(phase, UI_STATE["idle"])
+def get_ui_state(state_name: str) -> dict[str, Any]:
+    return UI_STATES.get(state_name, {})
 
 
-def is_conjunction_signal(signal: dict) -> bool:
-    return signal.get("conjunction_flag", False) or signal.get("coherence", 0.0) >= 0.8
+def is_emerald_completion_signal(signal: dict[str, Any]) -> bool:
+    if not isinstance(signal, dict):
+        return False
+    if signal.get("hex") == GREEN_HEX["EMERALD"]:
+        return True
+    if signal.get("completion") is True and detect_viriditas_state(signal):
+        return True
+    return False

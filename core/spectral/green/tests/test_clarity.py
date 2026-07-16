@@ -1,32 +1,31 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 import pytest
-from core.spectral.green.clarity import (
-    distinguish_compassion_codependency, detect_grief_pattern,
-    classify_green_fire, assess_bridge_health, map_heart_archetype
-)
+from core.spectral.green.clarity import distinguish_growth_healing, detect_earth_wound, classify_green_vitality, assess_earth_integration, map_earth_archetype
 
 
-def test_distinguish_codependency():
-    s = {"compassion_index": 0.6, "boundary_score": 0.2, "self_sacrifice": 0.85}
-    assert distinguish_compassion_codependency(s) == "codependency"
+class TestDistinguishGrowthHealing:
+    def test_growth(self): assert distinguish_growth_healing({"expansion": True}) == "growth"
+    def test_healing(self): assert distinguish_growth_healing({"restoration": True}) == "healing"
+    def test_integrated(self): assert distinguish_growth_healing({"expansion": True, "mending": True}) == "integrated"
+    def test_undiff(self): assert distinguish_growth_healing({}) == "undifferentiated"
 
 
-def test_distinguish_healthy_compassion():
-    s = {"compassion_index": 0.85, "boundary_score": 0.75, "self_sacrifice": 0.2}
-    assert distinguish_compassion_codependency(s) == "healthy_compassion"
+class TestDetectEarthWound:
+    def test_over_giving_severe(self):
+        r = detect_earth_wound({"over_giving": True})
+        assert r["wound_detected"] is True and r["severity"] == "severe"
+    def test_none(self): assert detect_earth_wound({"patient": True})["wound_detected"] is False
 
 
-def test_classify_green_fire_conjunction():
-    s = {"conjunction_flag": True}
-    assert classify_green_fire(s) == "conjunction"
+class TestClassifyGreenVitality:
+    def test_dormant(self): assert classify_green_vitality({"blocked": True}) == "dormant"
+    def test_flourishing(self): assert classify_green_vitality({"rooted": True, "intensity": 0.7}) == "flourishing"
+    def test_overgrown(self): assert classify_green_vitality({"intensity": 0.6}) == "overgrown"
 
 
-def test_detect_grief_pattern_present():
-    s = {"grief_markers": ["grief_freeze", "compassion_fatigue"], "grief_depth": 0.75}
-    result = detect_grief_pattern(s)
-    assert result["grief_present"] is True
-    assert result["intervention_suggested"] is True
-
-
-def test_map_heart_archetype_beloved():
-    s = {"coherence": 0.9, "compassion_index": 0.88, "grief_load": 0.05, "self_sacrifice": 0.1}
-    assert map_heart_archetype(s) == "beloved"
+class TestMapEarthArchetype:
+    def test_dormant_low_is_dormant(self): assert map_earth_archetype({"blocked": True}) == "dormant"
+    def test_overgrown_is_wildling(self): assert map_earth_archetype({"intensity": 0.6}) == "wildling"
+    def test_flourishing_healer(self):
+        s = {"rooted": True, "intensity": 0.7, "reciprocal": True, "patient": True}
+        assert map_earth_archetype(s) == "healer"

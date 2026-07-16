@@ -1,38 +1,29 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 import pytest
-from core.spectral.green.opacity import (
-    grief_freeze_alert, compassion_fatigue_detection,
-    heart_armoring_marker, mercury_venus_routing, apply_shadow_channel
-)
+from core.spectral.green.opacity import viriditas_alert, earth_wound_recognition, regeneration_marker, ares_athena_routing, apply_shadow_channel
 
 
-def test_grief_freeze_alert_never_interrupts():
-    s = {"grief_markers": ["grief_freeze"]}
-    result = grief_freeze_alert(s)
-    assert result["interrupt_flag"] is False
+class TestInterruptFlagInvariant:
+    def test_viriditas_alert(self): assert viriditas_alert({})["interrupt_flag"] is False
+    def test_earth_wound(self): assert earth_wound_recognition({})["interrupt_flag"] is False
+    def test_regen_marker(self): assert regeneration_marker({})["interrupt_flag"] is False
+    def test_ares_athena(self): assert ares_athena_routing({})["interrupt_flag"] is False
+    def test_strip_true(self):
+        r = apply_shadow_channel({}, {"interrupt_flag": True})
+        assert r["_opacity_shadow"][0]["interrupt_flag"] is False
 
 
-def test_compassion_fatigue_detected():
-    s = {"fatigue_history": [0.7, 0.8, 0.9]}
-    result = compassion_fatigue_detection(s)
-    assert result["fatigue_detected"] is True
-    assert result["interrupt_flag"] is False
+class TestRegenerationMarker:
+    def test_no_history(self): assert regeneration_marker({"intensity": 0.1})["regeneration_detected"] is False
+    def test_detected(self):
+        history = [{"blocked": True}]
+        current = {"rooted": True, "intensity": 0.7}
+        assert regeneration_marker(current, history=history)["regeneration_detected"] is True
 
 
-def test_heart_armoring_flagged():
-    s = {"coherence": 0.1}
-    result = heart_armoring_marker(s)
-    assert result["armored"] is True
-    assert result["interrupt_flag"] is False
-
-
-def test_mercury_venus_routing():
-    assert mercury_venus_routing({"bridge_stability": 0.9, "love_index": 0.3}) == "mercury"
-    assert mercury_venus_routing({"bridge_stability": 0.2, "love_index": 0.8}) == "venus"
-
-
-def test_apply_shadow_channel_no_mutation():
-    primary = {"coherence": 0.6}
-    shadow = [{"type": "heart_armoring", "interrupt_flag": False}]
-    enriched = apply_shadow_channel(primary, shadow)
-    assert "_green_shadow" in enriched
-    assert "_green_shadow" not in primary
+class TestApplyShadowChannel:
+    def test_primary_not_mutated(self):
+        p = {"k": "v"}
+        c = dict(p)
+        apply_shadow_channel(p, {"x": 1})
+        assert p == c
