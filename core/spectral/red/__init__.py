@@ -1,15 +1,18 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
 core/spectral/red
 =================
 RED — Rubedo (Stage IV of the Magnum Opus)
 Governing Tablet: Ruby Tablet
-Wavelength: 620–750 nm
+Wavelength: 620-750 nm
 Shadow Doctrine: The wound beneath the warrior; the fire that knows why it burns.
 
 Three-layer architecture:
-  transparency  → the open-field red signals
-  clarity       → the depth-readable red signals
-  opacity       → the shadow-channel red signals (passive, appended, never blocking)
+  transparency  -> the open-field red signals
+  clarity       -> the depth-readable red signals
+  opacity       -> the shadow-channel red signals (passive, appended, never blocking)
 """
 
 from .constants import RED_HEX, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE, GOVERNING_TABLET

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
 core/spectral/red/opacity.py
 ==============================
@@ -123,17 +126,15 @@ def wound_pattern_recognition(signal: dict, history: list) -> dict:
     real_score = len(features & _REAL_URGENCY_MARKERS)
     echo_score = len(features & _ECHO_URGENCY_MARKERS)
 
-    # Check history for repeating pattern (wound echo strengthens with repetition)
     echo_repetitions = sum(
         1 for h in (history or [])
         if set(str(f) for f in h.get("features", [])) & _ECHO_URGENCY_MARKERS
     )
-    echo_score += echo_repetitions * 0.5  # weight historical pattern
+    echo_score += echo_repetitions * 0.5
 
     urgency_type = "real_urgency" if real_score > echo_score else "echo_urgency"
     wound_echo   = echo_score > 0
 
-    # Metabolization stage derived from signal or inferred
     raw_stage = signal.get("metabolization_stage", "")
     if raw_stage in _METABOLIZATION_STAGES:
         metabolization_stage = raw_stage
@@ -158,14 +159,14 @@ def red_lion_detection(signal: dict) -> dict:
     The Red Lion is raw sulfuric energy that has not found its vessel —
     force without form, power without purpose.
 
-    force_level: 0.0–1.0 (above 0.7 triggers transmutation_required flag).
+    force_level: 0.0-1.0 (above 0.7 triggers transmutation_required flag).
 
     Parameters
     ----------
     signal : dict
         Expected keys:
           'features' (list[str])
-          'force_level' (float, 0.0–1.0)  — optional caller override
+          'force_level' (float, 0.0-1.0)  — optional caller override
 
     Returns
     -------
@@ -178,17 +179,15 @@ def red_lion_detection(signal: dict) -> dict:
     """
     if not signal:
         return {
-            "red_lion_active":      False,
-            "transmutation_required": False,
-            "force_level":         0.0,
+            "red_lion_active":         False,
+            "transmutation_required":  False,
+            "force_level":             0.0,
         }
 
-    # Caller may provide an explicit force_level
     raw_force = signal.get("force_level", None)
     if raw_force is not None:
         force_level = max(0.0, min(1.0, float(raw_force)))
     else:
-        # Infer from feature density
         features = set(str(f) for f in signal.get("features", []))
         unbound_markers = frozenset({
             "unbound_force",
@@ -201,7 +200,7 @@ def red_lion_detection(signal: dict) -> dict:
         match_count = len(features & unbound_markers)
         force_level = round(min(1.0, match_count / max(1, len(unbound_markers))), 4)
 
-    red_lion_active       = force_level > 0.0
+    red_lion_active        = force_level > 0.0
     transmutation_required = force_level > 0.7
 
     return {
@@ -244,8 +243,8 @@ def phoenix_marker(entity_id: str, cycle_history: list) -> dict:
     if not cycle_history:
         return {"phoenix_complete": False, "cycle_count": 0, "integration_gain": 0.0}
 
-    cycle_count    = 0
-    in_descent     = False
+    cycle_count      = 0
+    in_descent       = False
     integration_gain = 0.0
 
     for entry in cycle_history:
@@ -255,15 +254,14 @@ def phoenix_marker(entity_id: str, cycle_history: list) -> dict:
         elif phase == "rubedo" and in_descent:
             cycle_count      += 1
             in_descent        = False
-            # Each completed cycle adds integration gain (diminishing returns)
             integration_gain += 0.20 / (cycle_count ** 0.5)
 
     integration_gain = round(min(1.0, integration_gain), 4)
     phoenix_complete = cycle_count > 0
 
     return {
-        "phoenix_complete": phoenix_complete,
-        "cycle_count":     cycle_count,
+        "phoenix_complete":  phoenix_complete,
+        "cycle_count":      cycle_count,
         "integration_gain": integration_gain,
     }
 
@@ -276,8 +274,8 @@ def ares_athena_routing(signal: dict) -> str:
     """
     Final routing function — classifies force deployment.
 
-    'ares'   → blind force, no strategic context
-    'athena' → purposeful, consequence-aware force
+    'ares'   -> blind force, no strategic context
+    'athena' -> purposeful, consequence-aware force
 
     Interfaces with clarity.map_warrior_archetype() — return values are
     coordinated.  Opacity reads deeper (shadow channel); Clarity reads
@@ -296,12 +294,10 @@ def ares_athena_routing(signal: dict) -> str:
     if not signal:
         return "ares"
 
-    # Check for shadow-layer override first
     shadow_override = signal.get("_shadow_archetype", "")
     if shadow_override in ("ares", "athena"):
         return shadow_override
 
-    # Delegate to clarity layer (surface read)
     return map_warrior_archetype(signal)
 
 
@@ -342,11 +338,11 @@ def apply_shadow_channel(
     cycle_history = cycle_history or []
 
     shadow = {
-        "nigredo":      nigredo_alert(signal),
+        "nigredo":       nigredo_alert(signal),
         "wound_pattern": wound_pattern_recognition(signal, history),
-        "red_lion":     red_lion_detection(signal),
-        "phoenix":      phoenix_marker(entity_id, cycle_history),
-        "ares_athena":  ares_athena_routing(signal),
+        "red_lion":      red_lion_detection(signal),
+        "phoenix":       phoenix_marker(entity_id, cycle_history),
+        "ares_athena":   ares_athena_routing(signal),
     }
 
     result = dict(signal)           # shallow copy — never mutate caller's signal

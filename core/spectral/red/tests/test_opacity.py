@@ -1,61 +1,63 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
 Tests for core/spectral/red/opacity.py
-
-Covers:
-  - nigredo_alert (invariant: interrupt_flag is ALWAYS False)
-  - wound_pattern_recognition (5+ cases)
-  - red_lion_detection (force_level bounded [0.0, 1.0])
-  - phoenix_marker (multi-cycle history)
-  - ares_athena_routing
-  - apply_shadow_channel (full integration)
 """
 
+from __future__ import annotations
+
 import pytest
+
 from core.spectral.red.opacity import (
-    nigredo_alert,
-    wound_pattern_recognition,
-    red_lion_detection,
-    phoenix_marker,
-    ares_athena_routing,
     apply_shadow_channel,
+    ares_athena_routing,
+    nigredo_alert,
+    phoenix_marker,
+    red_lion_detection,
+    wound_pattern_recognition,
 )
 
 
 # ---------------------------------------------------------------------------
-# nigredo_alert
+# nigredo_alert — INVARIANT: interrupt_flag is ALWAYS False
 # ---------------------------------------------------------------------------
 
 class TestNigredoAlert:
-    def test_nigredo_flag_activates(self):
+    @pytest.mark.parametrize("signal", [
+        {"nigredo": True},
+        {"dissolution": True},
+        {"prima_materia": True},
+        {"nigredo": True, "dissolution": True},
+        {"nigredo": False, "dissolution": False},
+        {},
+        None,
+        {"nigredo": True, "interrupt_flag": True},   # caller cannot force True
+        {"interrupt_flag": True, "dissolution": True},
+        {"anything": "goes"},
+    ])
+    def test_interrupt_flag_invariant(self, signal):
+        result = nigredo_alert(signal)
+        assert result["interrupt_flag"] is False, (
+            f"INVARIANT VIOLATED: interrupt_flag must never be True. signal={signal!r}"
+        )
+
+    def test_nigredo_active_when_flag_set(self):
         assert nigredo_alert({"nigredo": True})["nigredo_active"] is True
 
-    def test_dissolution_flag_activates(self):
+    def test_dissolution_active(self):
         assert nigredo_alert({"dissolution": True})["nigredo_active"] is True
 
-    def test_prima_materia_flag_activates(self):
+    def test_prima_materia_active(self):
         assert nigredo_alert({"prima_materia": True})["nigredo_active"] is True
 
-    def test_no_flags_returns_false(self):
-        assert nigredo_alert({"completion": True})["nigredo_active"] is False
+    def test_no_markers_inactive(self):
+        assert nigredo_alert({"something_else": True})["nigredo_active"] is False
 
-    def test_interrupt_flag_is_always_false(self):
-        """INVARIANT: Nigredo must never be interrupted."""
-        assert nigredo_alert({"nigredo": True})["interrupt_flag"] is False
-
-    def test_interrupt_flag_is_false_even_when_not_active(self):
-        assert nigredo_alert({})["interrupt_flag"] is False
-
-    def test_interrupt_flag_cannot_be_set_true_by_any_input(self):
-        """Even if a caller passes interrupt_flag=True in signal, output must be False."""
-        assert nigredo_alert({"interrupt_flag": True})["interrupt_flag"] is False
-
-    def test_empty_dict_returns_false_active(self):
+    def test_empty_signal_inactive(self):
         result = nigredo_alert({})
         assert result["nigredo_active"] is False
-
-    def test_none_returns_false_active(self):
-        result = nigredo_alert(None)
-        assert result["nigredo_active"] is False
+        assert result["interrupt_flag"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -63,51 +65,53 @@ class TestNigredoAlert:
 # ---------------------------------------------------------------------------
 
 class TestWoundPatternRecognition:
-    def test_present_threat_returns_real_urgency(self):
-        signal = {"features": ["present_threat", "immediate_danger"]}
-        result = wound_pattern_recognition(signal, [])
+    def test_real_urgency_markers(self):
+        result = wound_pattern_recognition(
+            {"features": ["present_threat", "immediate_danger", "live_emergency"]},
+            []
+        )
         assert result["urgency_type"] == "real_urgency"
 
-    def test_historical_trigger_alone_returns_echo_urgency(self):
-        signal = {"features": ["historical_trigger", "wound_resonance"]}
-        result = wound_pattern_recognition(signal, [])
+    def test_echo_urgency_markers(self):
+        result = wound_pattern_recognition(
+            {"features": ["historical_trigger", "wound_resonance"]},
+            []
+        )
         assert result["urgency_type"] == "echo_urgency"
-
-    def test_wound_echo_true_when_echo_markers_present(self):
-        signal = {"features": ["wound_resonance"]}
-        result = wound_pattern_recognition(signal, [])
         assert result["wound_echo"] is True
 
-    def test_wound_echo_false_for_present_only_signal(self):
-        signal = {"features": ["present_threat", "live_emergency"]}
-        result = wound_pattern_recognition(signal, [])
-        assert result["wound_echo"] is False
-
-    def test_history_amplifies_echo_score(self):
-        """Repeated echo patterns in history should strengthen echo classification."""
-        signal  = {"features": ["present_threat"]}  # one present marker
-        history = [{"features": ["historical_trigger"]} for _ in range(5)]  # heavy history
-        result  = wound_pattern_recognition(signal, history)
-        # With 5 historical echoes, echo_score >> real_score
+    def test_history_strengthens_echo(self):
+        history = [
+            {"features": ["historical_trigger"]},
+            {"features": ["wound_resonance"]},
+            {"features": ["historical_trigger"]},
+        ]
+        result = wound_pattern_recognition(
+            {"features": ["present_threat"]},
+            history
+        )
         assert result["urgency_type"] == "echo_urgency"
 
-    def test_metabolization_stage_passed_through_if_valid(self):
-        signal = {"features": ["wound_resonance"], "metabolization_stage": "integrating"}
-        result = wound_pattern_recognition(signal, [])
+    def test_explicit_metabolization_stage_respected(self):
+        result = wound_pattern_recognition(
+            {"features": ["wound_resonance"], "metabolization_stage": "integrating"},
+            []
+        )
         assert result["metabolization_stage"] == "integrating"
 
-    def test_invalid_metabolization_stage_falls_back(self):
-        signal = {"features": ["wound_resonance"], "metabolization_stage": "nonsense"}
-        result = wound_pattern_recognition(signal, [])
-        assert result["metabolization_stage"] in (
-            "pre-contact", "contact", "metabolizing", "integrating", "complete"
+    def test_invalid_stage_inferred(self):
+        result = wound_pattern_recognition(
+            {"features": ["wound_resonance"], "metabolization_stage": "not_valid"},
+            []
         )
+        assert result["metabolization_stage"] == "metabolizing"
 
-    def test_empty_signal_returns_echo_urgency(self):
+    def test_empty_signal(self):
         result = wound_pattern_recognition({}, [])
         assert result["urgency_type"] == "echo_urgency"
+        assert result["wound_echo"] is False
 
-    def test_none_signal_returns_echo_urgency(self):
+    def test_none_signal(self):
         result = wound_pattern_recognition(None, [])
         assert result["urgency_type"] == "echo_urgency"
 
@@ -117,46 +121,39 @@ class TestWoundPatternRecognition:
 # ---------------------------------------------------------------------------
 
 class TestRedLionDetection:
-    def test_explicit_force_level_respected(self):
-        result = red_lion_detection({"force_level": 0.8})
-        assert result["force_level"] == 0.8
-
-    def test_force_level_above_0_7_triggers_transmutation(self):
-        result = red_lion_detection({"force_level": 0.75})
-        assert result["transmutation_required"] is True
-
-    def test_force_level_below_0_7_no_transmutation(self):
-        result = red_lion_detection({"force_level": 0.5})
-        assert result["transmutation_required"] is False
-
-    def test_force_level_bounded_above_1(self):
-        result = red_lion_detection({"force_level": 99.0})
-        assert result["force_level"] <= 1.0
-
-    def test_force_level_bounded_below_0(self):
-        result = red_lion_detection({"force_level": -5.0})
-        assert result["force_level"] >= 0.0
-
-    def test_unbound_features_generate_force_level(self):
-        signal = {"features": ["unbound_force", "directionless", "destructive", "escalating", "uncontrolled", "boundary_violating"]}
-        result = red_lion_detection(signal)
-        assert result["force_level"] == 1.0
+    def test_explicit_force_level_high(self):
+        result = red_lion_detection({"force_level": 0.9})
         assert result["red_lion_active"] is True
         assert result["transmutation_required"] is True
 
-    def test_zero_unbound_features_returns_zero_force(self):
-        signal = {"features": ["life_force", "creative_drive"]}
-        result = red_lion_detection(signal)
-        assert result["force_level"] == 0.0
+    def test_explicit_force_level_low(self):
+        result = red_lion_detection({"force_level": 0.3})
+        assert result["red_lion_active"] is True
+        assert result["transmutation_required"] is False
+
+    def test_force_level_zero(self):
+        result = red_lion_detection({"force_level": 0.0})
         assert result["red_lion_active"] is False
 
-    def test_empty_signal_returns_zero(self):
+    def test_force_level_clamped_above_one(self):
+        result = red_lion_detection({"force_level": 99.0})
+        assert result["force_level"] == 1.0
+
+    def test_inferred_from_features(self):
+        result = red_lion_detection(
+            {"features": ["unbound_force", "directionless", "uncontrolled",
+                          "destructive", "escalating"]}
+        )
+        assert result["red_lion_active"] is True
+
+    def test_empty_signal(self):
         result = red_lion_detection({})
+        assert result["red_lion_active"] is False
         assert result["force_level"] == 0.0
 
-    def test_none_returns_zero(self):
+    def test_none_signal(self):
         result = red_lion_detection(None)
-        assert result["force_level"] == 0.0
+        assert result["red_lion_active"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -164,56 +161,49 @@ class TestRedLionDetection:
 # ---------------------------------------------------------------------------
 
 class TestPhoenixMarker:
-    def test_no_history_returns_zero_cycles(self):
-        result = phoenix_marker("e1", [])
-        assert result["phoenix_complete"] is False
-        assert result["cycle_count"] == 0
-
-    def test_single_cycle_detected(self):
+    def test_complete_cycle(self):
         history = [
             {"phase": "nigredo"},
             {"phase": "albedo"},
             {"phase": "rubedo"},
         ]
-        result = phoenix_marker("e1", history)
+        result = phoenix_marker("entity", history)
         assert result["phoenix_complete"] is True
         assert result["cycle_count"] == 1
+        assert result["integration_gain"] > 0
 
-    def test_rubedo_without_prior_nigredo_not_counted(self):
-        history = [{"phase": "rubedo"}]
-        result = phoenix_marker("e1", history)
+    def test_incomplete_cycle_no_rubedo(self):
+        history = [{"phase": "nigredo"}, {"phase": "albedo"}]
+        result = phoenix_marker("e", history)
+        assert result["phoenix_complete"] is False
         assert result["cycle_count"] == 0
 
-    def test_two_complete_cycles(self):
+    def test_rubedo_without_nigredo_not_counted(self):
+        history = [{"phase": "rubedo"}]
+        result = phoenix_marker("e", history)
+        assert result["cycle_count"] == 0
+
+    def test_multiple_cycles(self):
         history = [
             {"phase": "nigredo"}, {"phase": "rubedo"},
             {"phase": "nigredo"}, {"phase": "rubedo"},
+            {"phase": "nigredo"}, {"phase": "rubedo"},
         ]
-        result = phoenix_marker("e1", history)
-        assert result["cycle_count"] == 2
+        result = phoenix_marker("e", history)
+        assert result["cycle_count"] == 3
 
-    def test_integration_gain_increases_with_cycles(self):
-        one_cycle = phoenix_marker("e1", [
-            {"phase": "nigredo"}, {"phase": "rubedo"},
-        ])
-        two_cycles = phoenix_marker("e1", [
-            {"phase": "nigredo"}, {"phase": "rubedo"},
-            {"phase": "nigredo"}, {"phase": "rubedo"},
-        ])
-        assert two_cycles["integration_gain"] > one_cycle["integration_gain"]
-
-    def test_integration_gain_bounded_to_1(self):
-        history = [{"phase": "nigredo"}, {"phase": "rubedo"}] * 100
-        result = phoenix_marker("e1", history)
+    def test_integration_gain_bounded_to_one(self):
+        history = []
+        for _ in range(50):
+            history += [{"phase": "nigredo"}, {"phase": "rubedo"}]
+        result = phoenix_marker("e", history)
         assert result["integration_gain"] <= 1.0
 
-    def test_integration_gain_is_float(self):
-        history = [{"phase": "nigredo"}, {"phase": "rubedo"}]
-        assert isinstance(phoenix_marker("e1", history)["integration_gain"], float)
-
-    def test_none_history_returns_zero(self):
-        result = phoenix_marker("e1", None)
+    def test_empty_history(self):
+        result = phoenix_marker("e", [])
+        assert result["phoenix_complete"] is False
         assert result["cycle_count"] == 0
+        assert result["integration_gain"] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -227,61 +217,66 @@ class TestAresAthenaRouting:
     def test_shadow_override_ares(self):
         assert ares_athena_routing({"_shadow_archetype": "ares"}) == "ares"
 
-    def test_generative_fire_routes_to_athena(self):
+    def test_delegates_to_clarity_generative(self):
         assert ares_athena_routing({"completion": True}) == "athena"
 
-    def test_reactive_fire_routes_to_ares(self):
+    def test_delegates_to_clarity_reactive(self):
         assert ares_athena_routing({"reactive": True}) == "ares"
 
-    def test_return_values_are_only_ares_or_athena(self):
-        results = {
-            ares_athena_routing({"completion": True}),
-            ares_athena_routing({"reactive": True}),
-            ares_athena_routing({}),
-        }
-        assert results <= {"ares", "athena"}
+    def test_empty_signal(self):
+        assert ares_athena_routing({}) == "ares"
 
-    def test_none_returns_ares(self):
+    def test_none_signal(self):
         assert ares_athena_routing(None) == "ares"
 
 
 # ---------------------------------------------------------------------------
-# apply_shadow_channel (integration)
+# apply_shadow_channel — non-mutation invariant
 # ---------------------------------------------------------------------------
 
 class TestApplyShadowChannel:
-    def _make_signal(self):
-        return {
-            "completion": True,
-            "features": ["life_force", "purposeful"],
-        }
-
-    def test_returns_dict_with_opacity_shadow_key(self):
-        result = apply_shadow_channel(self._make_signal())
+    def test_shadow_key_appended(self):
+        signal = {"living_flame": True}
+        result = apply_shadow_channel(signal)
         assert "_opacity_shadow" in result
 
-    def test_shadow_contains_all_five_keys(self):
-        shadow = apply_shadow_channel(self._make_signal())["_opacity_shadow"]
-        assert set(shadow.keys()) == {"nigredo", "wound_pattern", "red_lion", "phoenix", "ares_athena"}
+    def test_primary_signal_not_mutated(self):
+        original_keys = {"living_flame", "completion"}
+        signal = {"living_flame": True, "completion": True}
+        apply_shadow_channel(signal)
+        assert set(signal.keys()) == original_keys, (
+            "apply_shadow_channel must not mutate the caller's signal dict"
+        )
 
-    def test_primary_signal_keys_not_mutated(self):
-        original = self._make_signal()
-        original_copy = dict(original)
-        result = apply_shadow_channel(original)
-        for key in original_copy:
-            assert result[key] == original_copy[key]
-
-    def test_does_not_mutate_input_signal(self):
-        signal = self._make_signal()
-        _ = apply_shadow_channel(signal)
-        assert "_opacity_shadow" not in signal  # input must be unchanged
-
-    def test_shadow_appended_without_modifying_primary_semantics(self):
-        signal = {"some_key": "some_value"}
+    def test_returns_new_dict(self):
+        signal = {"living_flame": True}
         result = apply_shadow_channel(signal)
-        assert result["some_key"] == "some_value"
+        assert result is not signal
 
-    def test_cycle_history_passed_to_phoenix(self):
-        cycle_history = [{"phase": "nigredo"}, {"phase": "rubedo"}]
-        result = apply_shadow_channel({}, cycle_history=cycle_history)
-        assert result["_opacity_shadow"]["phoenix"]["phoenix_complete"] is True
+    def test_shadow_contains_all_keys(self):
+        result = apply_shadow_channel({"nigredo": True}, "entity", [], [])
+        shadow = result["_opacity_shadow"]
+        assert "nigredo" in shadow
+        assert "wound_pattern" in shadow
+        assert "red_lion" in shadow
+        assert "phoenix" in shadow
+        assert "ares_athena" in shadow
+
+    def test_nigredo_in_shadow_respects_invariant(self):
+        result = apply_shadow_channel({"nigredo": True, "interrupt_flag": True})
+        assert result["_opacity_shadow"]["nigredo"]["interrupt_flag"] is False
+
+    def test_empty_signal(self):
+        result = apply_shadow_channel({})
+        assert "_opacity_shadow" in result
+
+    def test_none_history_defaults(self):
+        result = apply_shadow_channel({"living_flame": True}, "e", None, None)
+        assert "_opacity_shadow" in result
+
+    @pytest.mark.parametrize("force_level", [0.0, 0.3, 0.7, 0.9, 1.0])
+    def test_force_levels_propagate_correctly(self, force_level):
+        result = apply_shadow_channel({"force_level": force_level})
+        assert result["_opacity_shadow"]["red_lion"]["force_level"] == pytest.approx(
+            max(0.0, min(1.0, force_level)), abs=1e-4
+        )

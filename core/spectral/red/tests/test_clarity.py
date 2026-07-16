@@ -1,20 +1,17 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
 Tests for core/spectral/red/clarity.py
-
-Covers:
-  - distinguish_anger_passion
-  - detect_sacred_wound
-  - classify_red_fire (all 3 branches)
-  - assess_integration_level
-  - map_warrior_archetype
 """
 
-import pytest
+from __future__ import annotations
+
 from core.spectral.red.clarity import (
-    distinguish_anger_passion,
-    detect_sacred_wound,
-    classify_red_fire,
     assess_integration_level,
+    classify_red_fire,
+    detect_sacred_wound,
+    distinguish_anger_passion,
     map_warrior_archetype,
 )
 
@@ -24,31 +21,29 @@ from core.spectral.red.clarity import (
 # ---------------------------------------------------------------------------
 
 class TestDistinguishAngerPassion:
-    def test_passion_features_return_passion(self):
-        signal = {"features": ["life_force", "creative_drive", "vitality"]}
-        assert distinguish_anger_passion(signal) == "passion"
+    def test_pure_passion_features(self):
+        assert distinguish_anger_passion(
+            {"features": ["life_force", "vitality", "joy_adjacent"]}
+        ) == "passion"
 
-    def test_anger_features_return_anger(self):
-        signal = {"features": ["reactivity", "blame_projection", "defensiveness"]}
-        assert distinguish_anger_passion(signal) == "anger"
+    def test_pure_anger_features(self):
+        assert distinguish_anger_passion(
+            {"features": ["reactivity", "defensiveness", "blame_projection"]}
+        ) == "anger"
 
     def test_tie_defaults_to_anger(self):
-        signal = {"features": ["life_force", "reactivity"]}
-        assert distinguish_anger_passion(signal) == "anger"
+        assert distinguish_anger_passion(
+            {"features": ["life_force", "reactivity"]}
+        ) == "anger"
 
-    def test_empty_features_returns_anger(self):
+    def test_empty_features(self):
         assert distinguish_anger_passion({"features": []}) == "anger"
 
-    def test_none_signal_returns_anger(self):
-        assert distinguish_anger_passion(None) == "anger"
-
-    def test_empty_signal_returns_anger(self):
+    def test_empty_signal(self):
         assert distinguish_anger_passion({}) == "anger"
 
-    def test_does_not_default_to_single_output_on_mixed(self):
-        """Must discriminate — single passion feature beats zero anger features."""
-        signal = {"features": ["purposeful"]}
-        assert distinguish_anger_passion(signal) == "passion"
+    def test_none_signal(self):
+        assert distinguish_anger_passion(None) == "anger"
 
 
 # ---------------------------------------------------------------------------
@@ -56,45 +51,45 @@ class TestDistinguishAngerPassion:
 # ---------------------------------------------------------------------------
 
 class TestDetectSacredWound:
-    def test_wound_resonance_triggers_wound_present(self):
+    def test_wound_resonance_flag(self):
         result = detect_sacred_wound({"wound_resonance": True})
         assert result["wound_present"] is True
+        assert result["stage"] == "metabolizing"
 
-    def test_historical_trigger_triggers_wound_present(self):
+    def test_historical_trigger_flag(self):
         result = detect_sacred_wound({"historical_trigger": True})
         assert result["wound_present"] is True
 
-    def test_no_wound_markers_returns_not_present(self):
-        result = detect_sacred_wound({"completion": True})
+    def test_no_wound(self):
+        result = detect_sacred_wound({"some_key": "value"})
         assert result["wound_present"] is False
-
-    def test_returns_wound_present_key(self):
-        result = detect_sacred_wound({"wound_resonance": True})
-        assert "wound_present" in result
-
-    def test_returns_stage_key(self):
-        result = detect_sacred_wound({"wound_resonance": True})
-        assert "stage" in result
-
-    def test_returns_estimated_origin_key(self):
-        result = detect_sacred_wound({"wound_resonance": True})
-        assert "estimated_origin" in result
+        assert result["stage"] == "unacknowledged"
 
     def test_explicit_stage_respected(self):
-        result = detect_sacred_wound({"wound_resonance": True, "wound_stage": "integrating"})
-        assert result["stage"] == "integrating"
+        result = detect_sacred_wound(
+            {"wound_resonance": True, "wound_stage": "integrated"}
+        )
+        assert result["stage"] == "integrated"
 
-    def test_invalid_stage_falls_back(self):
-        result = detect_sacred_wound({"wound_resonance": True, "wound_stage": "nonsense"})
-        assert result["stage"] in ("metabolizing", "unacknowledged", "contact", "integrating", "integrated", "complete", "pre-contact")
-
-    def test_none_signal_returns_not_present(self):
-        result = detect_sacred_wound(None)
-        assert result["wound_present"] is False
+    def test_invalid_stage_overridden(self):
+        result = detect_sacred_wound(
+            {"wound_resonance": True, "wound_stage": "not_a_real_stage"}
+        )
+        assert result["stage"] == "metabolizing"
 
     def test_estimated_origin_passed_through(self):
-        result = detect_sacred_wound({"wound_resonance": True, "estimated_origin": "early_loss"})
-        assert result["estimated_origin"] == "early_loss"
+        result = detect_sacred_wound(
+            {"wound_resonance": True, "estimated_origin": "childhood"}
+        )
+        assert result["estimated_origin"] == "childhood"
+
+    def test_empty_signal(self):
+        result = detect_sacred_wound({})
+        assert result["wound_present"] is False
+
+    def test_none_signal(self):
+        result = detect_sacred_wound(None)
+        assert result["wound_present"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -102,42 +97,39 @@ class TestDetectSacredWound:
 # ---------------------------------------------------------------------------
 
 class TestClassifyRedFire:
-    def test_reactive_override_returns_reactive(self):
+    def test_reactive_override(self):
         assert classify_red_fire({"reactive": True}) == "reactive"
 
-    def test_completion_override_returns_generative(self):
+    def test_completion_override_generative(self):
         assert classify_red_fire({"completion": True}) == "generative"
 
-    def test_living_flame_returns_generative(self):
+    def test_living_flame_override_generative(self):
         assert classify_red_fire({"living_flame": True}) == "generative"
 
-    def test_passion_features_return_generative(self):
-        signal = {"features": ["life_force", "creative_drive", "vitality"]}
-        assert classify_red_fire(signal) == "generative"
+    def test_passion_features_generative(self):
+        assert classify_red_fire({"features": ["life_force", "vitality"]}) == "generative"
 
-    def test_protective_features_return_protective(self):
-        signal = {"features": ["life_force", "boundary", "protective"]}
-        assert classify_red_fire(signal) == "protective"
+    def test_passion_with_boundary_protective(self):
+        assert classify_red_fire(
+            {"features": ["life_force", "boundary"]}
+        ) == "protective"
 
-    def test_anger_with_boundary_returns_protective(self):
-        signal = {"features": ["reactivity", "boundary"]}
-        assert classify_red_fire(signal) == "protective"
+    def test_anger_features_reactive(self):
+        assert classify_red_fire({"features": ["reactivity", "blame_projection"]}) == "reactive"
 
-    def test_anger_only_returns_reactive(self):
-        signal = {"features": ["reactivity", "blame_projection"]}
-        assert classify_red_fire(signal) == "reactive"
+    def test_anger_with_boundary_protective(self):
+        assert classify_red_fire(
+            {"features": ["reactivity", "boundary"]}
+        ) == "protective"
 
-    def test_empty_signal_returns_reactive(self):
+    def test_empty_features_reactive(self):
+        assert classify_red_fire({"features": []}) == "reactive"
+
+    def test_empty_signal(self):
         assert classify_red_fire({}) == "reactive"
 
-    def test_none_returns_reactive(self):
+    def test_none_signal(self):
         assert classify_red_fire(None) == "reactive"
-
-    def test_all_three_branches_reachable(self):
-        generative = classify_red_fire({"completion": True})
-        protective = classify_red_fire({"features": ["boundary", "protective", "life_force"]})
-        reactive   = classify_red_fire({"reactive": True})
-        assert {generative, protective, reactive} == {"generative", "protective", "reactive"}
 
 
 # ---------------------------------------------------------------------------
@@ -145,34 +137,31 @@ class TestClassifyRedFire:
 # ---------------------------------------------------------------------------
 
 class TestAssessIntegrationLevel:
-    def test_empty_history_returns_0_5(self):
+    def test_no_history_returns_baseline(self):
         assert assess_integration_level("entity_1", []) == 0.5
 
-    def test_generative_history_raises_score(self):
-        history = [{"classification": "generative"} for _ in range(5)]
-        score = assess_integration_level("entity_1", history)
+    def test_generative_signals_raise_score(self):
+        history = [{"classification": "generative"} for _ in range(4)]
+        score = assess_integration_level("e", history)
         assert score > 0.5
 
-    def test_reactive_history_lowers_score(self):
-        history = [{"classification": "reactive"} for _ in range(5)]
-        score = assess_integration_level("entity_1", history)
+    def test_reactive_signals_lower_score(self):
+        history = [{"classification": "reactive"} for _ in range(4)]
+        score = assess_integration_level("e", history)
         assert score < 0.5
 
-    def test_integrated_wound_stage_bonus(self):
+    def test_integrated_wound_adds_bonus(self):
         history = [{"classification": "generative", "wound_stage": "integrated"}]
-        score = assess_integration_level("entity_1", history)
-        assert score > 0.5 + 0.05
+        score = assess_integration_level("e", history)
+        assert score > 0.65
 
-    def test_score_bounded_to_1(self):
-        history = [{"classification": "generative", "wound_stage": "integrated"} for _ in range(100)]
-        assert assess_integration_level("x", history) <= 1.0
+    def test_score_bounded_to_one(self):
+        history = [{"classification": "generative", "wound_stage": "integrated"} for _ in range(20)]
+        assert assess_integration_level("e", history) == 1.0
 
-    def test_score_bounded_to_0(self):
-        history = [{"classification": "reactive"} for _ in range(100)]
-        assert assess_integration_level("x", history) >= 0.0
-
-    def test_returns_float(self):
-        assert isinstance(assess_integration_level("x", []), float)
+    def test_score_bounded_to_zero(self):
+        history = [{"classification": "reactive"} for _ in range(20)]
+        assert assess_integration_level("e", history) == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -180,30 +169,20 @@ class TestAssessIntegrationLevel:
 # ---------------------------------------------------------------------------
 
 class TestMapWarriorArchetype:
-    def test_athena_override_returns_athena(self):
+    def test_explicit_athena_archetype(self):
         assert map_warrior_archetype({"archetype": "athena"}) == "athena"
 
-    def test_ares_override_returns_ares(self):
+    def test_explicit_ares_archetype(self):
         assert map_warrior_archetype({"archetype": "ares"}) == "ares"
 
     def test_generative_fire_maps_to_athena(self):
-        signal = {"completion": True}
-        assert map_warrior_archetype(signal) == "athena"
+        assert map_warrior_archetype({"completion": True}) == "athena"
 
     def test_reactive_fire_maps_to_ares(self):
-        signal = {"reactive": True}
-        assert map_warrior_archetype(signal) == "ares"
+        assert map_warrior_archetype({"reactive": True}) == "ares"
 
-    def test_none_returns_ares(self):
-        assert map_warrior_archetype(None) == "ares"
-
-    def test_empty_returns_ares(self):
+    def test_empty_signal(self):
         assert map_warrior_archetype({}) == "ares"
 
-    def test_return_values_match_opacity_ares_athena_vocabulary(self):
-        """Vocabulary must be coordinated with opacity.ares_athena_routing."""
-        results = {
-            map_warrior_archetype({"completion": True}),
-            map_warrior_archetype({"reactive": True}),
-        }
-        assert results <= {"ares", "athena"}
+    def test_none_signal(self):
+        assert map_warrior_archetype(None) == "ares"

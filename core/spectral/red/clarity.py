@@ -1,3 +1,6 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
 core/spectral/red/clarity.py
 ==============================
@@ -77,7 +80,7 @@ def distinguish_anger_passion(signal: dict) -> str:
 
     if passion_score > anger_score:
         return "passion"
-    return "anger"  # tie → anger (default; flag for clarity review)
+    return "anger"  # tie -> anger (default; flag for clarity review)
 
 
 # ---------------------------------------------------------------------------
@@ -112,10 +115,10 @@ def detect_sacred_wound(signal: dict) -> dict:
     if not signal:
         return {"wound_present": False, "stage": "unacknowledged", "estimated_origin": "unknown"}
 
-    wound_present = bool(signal.get("wound_resonance", False)) or \
-                    bool(signal.get("historical_trigger", False))
+    wound_present = bool(signal.get("wound_resonance", False)) or bool(
+        signal.get("historical_trigger", False)
+    )
 
-    # Stage: caller may specify; otherwise infer from signal richness
     raw_stage = signal.get("wound_stage", "")
     stage = raw_stage if raw_stage in _WOUND_STAGES else (
         "metabolizing" if wound_present else "unacknowledged"
@@ -154,7 +157,6 @@ def classify_red_fire(signal: dict) -> str:
     if not signal:
         return "reactive"
 
-    # Direct overrides
     if signal.get("reactive"):
         return "reactive"
     if signal.get("completion") or signal.get("living_flame"):
@@ -237,8 +239,8 @@ def map_warrior_archetype(signal: dict) -> str:
     Pre-routes to the Opacity layer's ares_athena_routing() — return
     values are deliberately aligned.
 
-    'ares'   → blind force, no strategic context
-    'athena' → purposeful, consequence-aware force
+    'ares'   -> blind force, no strategic context
+    'athena' -> purposeful, consequence-aware force
 
     Parameters
     ----------
