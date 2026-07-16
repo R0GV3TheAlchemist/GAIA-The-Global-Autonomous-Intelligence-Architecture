@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Optional
 
 
-# ── Constants ────────────────────────────────────────────────────────────────────────────
+# ── Constants ────────────────────────────────────────────────────────────────────────────────────
 
 GAIA_OWNER      = "R0GV3TheAlchemist"
 GAIA_REPO       = "GAIA-The-Global-Autonomous-Intelligence-Architecture"
@@ -38,7 +38,7 @@ ZERO_WIDTH_CHARS = [
 ]
 
 
-# ── Core: Fingerprint Generation ─────────────────────────────────────────────────
+# ── Core: Fingerprint Generation ──────────────────────────────────────────────────
 
 def generate_fingerprint(content: str, secret_key: Optional[str] = None) -> dict:
     """
@@ -71,7 +71,7 @@ def generate_fingerprint(content: str, secret_key: Optional[str] = None) -> dict
     }
 
 
-# ── Visible Watermark ───────────────────────────────────────────────────────────────────
+# ── Visible Watermark ───────────────────────────────────────────────────────────────────────────
 
 def embed_visible_watermark(content: str, fp: dict, file_ext: str = ".py") -> str:
     """Prepends a visible provenance block appropriate for the file type."""
@@ -111,7 +111,7 @@ def embed_visible_watermark(content: str, fp: dict, file_ext: str = ".py") -> st
     return block + content
 
 
-# ── Invisible Watermark (Zero-Width Steganography) ───────────────────────────────────────
+# ── Invisible Watermark (Zero-Width Steganography) ──────────────────────────────────────────
 
 def _bits_to_zwc(bits: str) -> str:
     """Encode a bitstring as zero-width characters."""
@@ -158,7 +158,7 @@ def extract_invisible_watermark(content: str) -> Optional[str]:
         return None
 
 
-# ── Manifest Registry ──────────────────────────────────────────────────────────────────────
+# ── Manifest Registry ──────────────────────────────────────────────────────────────────────────────
 
 MANIFEST_FILE = Path(".gaia_manifest.json")
 
@@ -188,7 +188,7 @@ def register_document(fp: dict, filepath: str) -> None:
     _save_manifest(manifest)
 
 
-# ── Main API ───────────────────────────────────────────────────────────────────────────
+# ── Main API ──────────────────────────────────────────────────────────────────────────────────
 
 def protect_file(filepath: str, secret_key: Optional[str] = None) -> str:
     """
@@ -243,7 +243,7 @@ def verify_file(filepath: str) -> bool:
     return authentic
 
 
-# ── CLI ────────────────────────────────────────────────────────────────────────────────
+# ── CLI ──────────────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import sys
