@@ -38,5 +38,5 @@ jobs:
           git config user.name "gaia-autofix[bot]"
           git config user.email "gaia-autofix[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "chore: ruff --fix autofix [skip ci]"
+          git diff --cached --quiet || git commit -m "chore: ruff --fix autofix"
           git push

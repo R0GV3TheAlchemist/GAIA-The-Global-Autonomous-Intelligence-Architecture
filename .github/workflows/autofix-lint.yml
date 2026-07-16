@@ -1,16 +1,15 @@
-# Auto-fix Ruff Lint & Format
-# STATUS: DISABLED — was creating a push loop with ci.yml.
-# The autofix bot committed --unsafe-fixes back to main on every push,
-# which re-triggered ci.yml, causing a perpetual red loop.
-#
-# To re-enable: change the 'on:' trigger below from 'workflow_dispatch' only
-# back to also include 'push: branches: [main]' AFTER the ruff baseline is clean
-# and the [tool.ruff] config in pyproject.toml is locked down.
-
-name: Auto-fix Ruff Lint & Format
+name: Autofix Lint
 
 on:
-  workflow_dispatch:  # manual trigger only — disabled from auto-running on push
+  push:
+    branches: [main]
+    paths:
+      - '**.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.py'
+  workflow_dispatch:
 
 jobs:
   autofix:
@@ -21,28 +20,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install ruff
-        run: pip install "ruff>=0.4.0"
+      - name: Install lint tools
+        run: pip install ruff black isort
 
-      # Safe fixes only — no --unsafe-fixes to avoid mangling code logic
-      - name: ruff check --fix (safe only)
-        run: ruff check core/ api/ gaia/ --fix || true
+      - name: Run ruff fix
+        run: ruff check --fix . || true
 
-      - name: ruff format
-        run: ruff format core/ api/ gaia/ || true
+      - name: Run black format
+        run: black . || true
 
-      - name: Commit & push fixes
+      - name: Run isort
+        run: isort . || true
+
+      - name: Commit fixes (skip if nothing changed)
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "gaia-autofix[bot]"
+          git config user.email "gaia-autofix[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet \
-            && echo "✅ Nothing to fix — repo is already clean." \
-            || git commit -m "fix(lint): auto-fix safe ruff violations + ruff format"
-          git diff --cached --quiet || git push
+          git diff --cached --quiet || git commit -m "chore: autofix lint — ruff + black + isort"
+          git push
