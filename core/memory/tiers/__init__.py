@@ -1,18 +1,24 @@
 """
 core/memory/tiers/__init__.py
 
-Convenience re-exports for the five hierarchy tier stores.
+Public surface for GAIA's three-tier memory system.
+
+  HOT  — in-process LRU cache, sub-millisecond access, TTL eviction
+  WARM — SQLite-backed mid-term store, scored by relevance + recency
+  COLD — append-only compressed archive, long-term canonical storage
+
+Usage:
+    from core.memory.tiers import HotTier, WarmTier, ColdTier, MemoryTierRouter
 """
-from core.memory.tiers.working    import WorkingMemoryStore
-from core.memory.tiers.short_term import ShortTermMemoryStore
-from core.memory.tiers.episodic   import EpisodicMemoryStore
-from core.memory.tiers.semantic   import SemanticMemoryStore
-from core.memory.tiers.long_term  import LongTermMemoryStore
+
+from .hot_tier import HotTier
+from .warm_tier import WarmTier
+from .cold_tier import ColdTier
+from .tier_router import MemoryTierRouter
 
 __all__ = [
-    "WorkingMemoryStore",
-    "ShortTermMemoryStore",
-    "EpisodicMemoryStore",
-    "SemanticMemoryStore",
-    "LongTermMemoryStore",
+    "HotTier",
+    "WarmTier",
+    "ColdTier",
+    "MemoryTierRouter",
 ]
