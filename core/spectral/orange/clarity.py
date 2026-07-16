@@ -4,7 +4,7 @@ Domain: distinguishing healthy creativity from compulsion,
 sacral wounding, pleasure/guilt splits.
 """
 
-from .constants import SACRAL_ARCHETYPES, CALCINATION_MARKERS, DISSOLUTION_MARKERS
+from .constants import DISSOLUTION_MARKERS
 
 
 def distinguish_pleasure_compulsion(signal: dict) -> str:

@@ -4,7 +4,7 @@ Domain: distinguishing genuine unity from spiritual bypassing,
 embodied transcendence vs. dissociation, crown integration across full spectral stack.
 """
 
-from .constants import CROWN_ARCHETYPES, COAGULATION_MARKERS, FRAGMENTATION_MARKERS, SPECTRAL_ORDER
+from .constants import FRAGMENTATION_MARKERS, SPECTRAL_ORDER
 
 
 def distinguish_unity_bypassing(signal: dict) -> str:

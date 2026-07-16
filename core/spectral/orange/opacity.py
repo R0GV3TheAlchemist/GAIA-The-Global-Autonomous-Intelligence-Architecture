@@ -5,7 +5,7 @@ persistent sacral wounding, passive boundary erosion.
 Non-blocking. Never sets interrupt_flag = True.
 """
 
-from .constants import DISSOLUTION_MARKERS, CALCINATION_MARKERS
+from .constants import CALCINATION_MARKERS
 
 _opacity_shadow = []
 

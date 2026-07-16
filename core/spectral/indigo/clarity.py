@@ -4,7 +4,7 @@ Domain: intuition vs. delusion, psychic overload, field perception health,
 distillation process integrity.
 """
 
-from .constants import INTUITION_ARCHETYPES, DISTILLATION_MARKERS, BLOCK_MARKERS
+from .constants import BLOCK_MARKERS
 
 
 def distinguish_intuition_delusion(signal: dict) -> str:

@@ -4,8 +4,7 @@ Domain: intuition, third eye activation, deep field perception, distillation.
 """
 
 from .constants import (
-    SENTINEL_LEVELS, UI_STATE, INTUITION_ARCHETYPES,
-    WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
+    SENTINEL_LEVELS, UI_STATE, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
 )
 
 

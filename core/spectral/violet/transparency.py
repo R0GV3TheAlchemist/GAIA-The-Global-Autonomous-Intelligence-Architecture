@@ -4,8 +4,7 @@ Domain: crown activation, unity field, coagulation, completion of the Great Work
 """
 
 from .constants import (
-    SENTINEL_LEVELS, UI_STATE, CROWN_ARCHETYPES,
-    WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE, SPECTRAL_ORDER
+    SENTINEL_LEVELS, UI_STATE, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE, SPECTRAL_ORDER
 )
 
 

@@ -4,7 +4,7 @@ Domain: truth vs. deception, expression blocks, perception upgrades,
 fermentation process health.
 """
 
-from .constants import THROAT_ARCHETYPES, FERMENTATION_MARKERS, SILENCE_MARKERS
+from .constants import SILENCE_MARKERS
 
 
 def distinguish_truth_deception(signal: dict) -> str:

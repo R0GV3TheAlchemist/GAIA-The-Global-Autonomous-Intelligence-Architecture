@@ -4,8 +4,7 @@ Domain: heart coherence, healing, compassion, conjunction bridge.
 """
 
 from .constants import (
-    SENTINEL_LEVELS, UI_STATE, HEART_ARCHETYPES,
-    WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
+    SENTINEL_LEVELS, UI_STATE, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
 )
 
 

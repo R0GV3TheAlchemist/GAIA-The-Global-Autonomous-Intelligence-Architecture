@@ -4,7 +4,7 @@ Domain: ego inflation vs. healthy will, shame collapse,
 power dynamics, solar plexus integration.
 """
 
-from .constants import SOLAR_ARCHETYPES, SEPARATION_MARKERS, INFLATION_MARKERS
+from .constants import INFLATION_MARKERS
 
 
 def distinguish_will_ego(signal: dict) -> str:

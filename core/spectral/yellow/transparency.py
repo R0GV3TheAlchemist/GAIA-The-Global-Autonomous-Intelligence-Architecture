@@ -4,8 +4,7 @@ Domain: will, solar plexus activation, ego boundary, personal power.
 """
 
 from .constants import (
-    SENTINEL_LEVELS, UI_STATE, SOLAR_ARCHETYPES,
-    WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
+    SENTINEL_LEVELS, UI_STATE, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
 )
 
 

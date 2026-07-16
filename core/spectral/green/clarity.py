@@ -4,7 +4,7 @@ Domain: distinguishing genuine compassion from codependency,
 grief processing, heart armoring, conjunction bridge health.
 """
 
-from .constants import HEART_ARCHETYPES, CONJUNCTION_MARKERS, GRIEF_MARKERS
+from .constants import GRIEF_MARKERS
 
 
 def distinguish_compassion_codependency(signal: dict) -> str:
