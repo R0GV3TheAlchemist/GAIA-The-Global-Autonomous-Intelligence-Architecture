@@ -1,108 +1,140 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
-ORANGE clarity layer — depth-readable signals.
-Domain: distinguishing healthy creativity from compulsion,
-sacral wounding, pleasure/guilt splits.
+core/spectral/orange/clarity.py
+================================
+Depth-readable signals for the ORANGE (Citrinitas) spectral layer.
+Clarity layer: signals available to authorised interpreters.
+
+Functions
+---------
+distinguish_ambition_creativity  — Separate ambition-driven from creativity-driven signals.
+detect_solar_wound               — Identify suppressed solar/identity wound patterns.
+classify_orange_fire             — Classify the quality of the orange fire signal.
+assess_solar_integration         — Score how integrated the solar energy is (0.0-1.0).
+map_solar_archetype              — Map a signal to a solar archetype label.
 """
 
-from .constants import DISSOLUTION_MARKERS
+from __future__ import annotations
+from typing import Any
+
+from .constants import ORANGE_HEX, ALCHEMICAL_PHASE
+
+# Solar archetypes expressed in ORANGE frequency
+_SOLAR_ARCHETYPES = {
+    "creator":    "The Creator — generative, originative force",
+    "sovereign":  "The Sovereign — self-authoring, centred authority",
+    "adventurer": "The Adventurer — expansive, risk-embracing explorer",
+    "fool":       "The Fool — ungrounded fire, impulsive dispersal",
+}
 
 
-def distinguish_pleasure_compulsion(signal: dict) -> str:
+def distinguish_ambition_creativity(signal: dict[str, Any]) -> str:
     """
-    Distinguishes healthy pleasure-seeking from compulsive patterns.
-    Returns: 'healthy_pleasure' | 'compulsive_seeking' | 'guilt_suppression' | 'integrated'
+    Distinguish whether the signal is primarily ambition-driven or creativity-driven.
+
+    Heuristic
+    ---------
+    - If signal contains "goal" or "achievement" key with a value → "ambition"
+    - If signal contains "expression" or "play" key with a value  → "creativity"
+    - Both present → "integrated"
+    - Neither     → "undifferentiated"
     """
-    pleasure_score = signal.get("pleasure_score", 0.5)
-    guilt_index = signal.get("guilt_index", 0.0)
-    repetition_rate = signal.get("repetition_rate", 0.0)
+    has_ambition   = bool(signal.get("goal") or signal.get("achievement"))
+    has_creativity = bool(signal.get("expression") or signal.get("play"))
 
-    if guilt_index > 0.7 and pleasure_score < 0.4:
-        return "guilt_suppression"
-    if repetition_rate > 0.8 and guilt_index > 0.5:
-        return "compulsive_seeking"
-    if pleasure_score > 0.7 and guilt_index < 0.3:
-        return "healthy_pleasure"
-    return "integrated"
+    if has_ambition and has_creativity:
+        return "integrated"
+    if has_ambition:
+        return "ambition"
+    if has_creativity:
+        return "creativity"
+    return "undifferentiated"
 
 
-def detect_sacral_wound(signal: dict) -> dict:
+def detect_solar_wound(signal: dict[str, Any]) -> dict[str, Any]:
     """
-    Detects presence and depth of sacral wound patterns.
-    Returns wound descriptor dict.
+    Detect patterns indicative of a suppressed solar / identity wound.
+
+    Returns a dict with:
+      wound_detected  : bool
+      pattern         : str  — short description of the wound pattern
+      severity        : str  — "mild" | "moderate" | "severe"
     """
-    wound_markers = signal.get("wound_markers", [])
-    depth = signal.get("wound_depth", 0.0)
+    patterns: list[tuple[bool, str, str]] = [
+        (bool(signal.get("shame")),         "solar shame — identity collapse",    "severe"),
+        (bool(signal.get("grandiosity")),   "solar inflation — ego overreach",    "moderate"),
+        (bool(signal.get("performance")),   "performance mask — false solar self","moderate"),
+        (bool(signal.get("self_doubt")),    "solar doubt — creative paralysis",   "mild"),
+    ]
 
-    active_dissolution = [m for m in wound_markers if m in DISSOLUTION_MARKERS]
-    wound_present = len(active_dissolution) > 0 or depth > 0.4
+    for detected, pattern, severity in patterns:
+        if detected:
+            return {"wound_detected": True, "pattern": pattern, "severity": severity}
 
-    return {
-        "wound_present": wound_present,
-        "active_markers": active_dissolution,
-        "depth": depth,
-        "intervention_suggested": depth > 0.65,
-    }
+    return {"wound_detected": False, "pattern": "", "severity": "none"}
 
 
-def classify_orange_fire(signal: dict) -> str:
+def classify_orange_fire(signal: dict[str, Any]) -> str:
     """
-    Classifies the nature of the orange fire signal.
-    Returns: 'calcination' | 'dissolution' | 'creative_ignition' | 'neutral'
+    Classify the quality of the orange fire signal into one of three states.
+
+    "generative"  — healthy creative fire, constructive
+    "consuming"   — fire that burns without building, destructive
+    "dormant"     — fire present but not yet ignited
     """
-    calcination_flag = signal.get("calcination_flag", False)
-    dissolution_flag = signal.get("dissolution_flag", False)
-    creativity_index = signal.get("creativity_index", 0.0)
+    intensity = float(signal.get("intensity", 0.0))
+    direction = signal.get("direction", "inward")
+    blocked   = bool(signal.get("blocked"))
 
-    if calcination_flag:
-        return "calcination"
-    if dissolution_flag:
-        return "dissolution"
-    if creativity_index >= 0.7:
-        return "creative_ignition"
-    return "neutral"
+    if blocked or intensity < 0.2:
+        return "dormant"
+    if direction == "outward" and intensity >= 0.5:
+        return "generative"
+    return "consuming"
 
 
-def assess_boundary_health(signal: dict) -> dict:
+def assess_solar_integration(signal: dict[str, Any]) -> float:
     """
-    Assesses the health of personal boundaries.
-    Returns structured boundary health report.
+    Score how integrated the solar energy is, returning a float in [0.0, 1.0].
+
+    Factors contributing to integration score (+0.25 each):
+      - "grounded" key is True
+      - "purposeful" key is True
+      - "expressive" key is True
+      - intensity in [0.4, 0.85] (healthy range — not suppressed, not inflated)
     """
-    boundary_score = signal.get("boundary_score", 0.5)
-    permeability = signal.get("permeability", 0.5)
-    enforcement_rate = signal.get("enforcement_rate", 0.5)
-
-    if boundary_score > 0.75 and enforcement_rate > 0.7:
-        status = "healthy"
-    elif boundary_score < 0.3 or permeability > 0.8:
-        status = "compromised"
-    elif enforcement_rate < 0.3:
-        status = "inconsistent"
-    else:
-        status = "developing"
-
-    return {
-        "status": status,
-        "boundary_score": boundary_score,
-        "permeability": permeability,
-        "enforcement_rate": enforcement_rate,
-    }
+    score = 0.0
+    if signal.get("grounded"):
+        score += 0.25
+    if signal.get("purposeful"):
+        score += 0.25
+    if signal.get("expressive"):
+        score += 0.25
+    intensity = float(signal.get("intensity", 0.0))
+    if 0.4 <= intensity <= 0.85:
+        score += 0.25
+    return round(score, 4)
 
 
-def map_creative_archetype(signal: dict) -> str:
+def map_solar_archetype(signal: dict[str, Any]) -> str:
     """
-    Maps signal to a ORANGE sacral archetype.
-    Returns one of SACRAL_ARCHETYPES.
-    """
-    intensity = signal.get("intensity", 0.0)
-    guilt_index = signal.get("guilt_index", 0.0)
-    creativity_index = signal.get("creativity_index", 0.0)
+    Map a signal to a solar archetype label.
 
-    if creativity_index >= 0.8 and guilt_index < 0.2:
-        return "creator"
-    if guilt_index >= 0.7:
-        return "martyr"
-    if intensity >= 0.7 and creativity_index >= 0.6:
-        return "sovereign_of_pleasure"
-    if intensity < 0.3:
-        return "wounded_child"
-    return "lover"
+    Uses classify_orange_fire + assess_solar_integration to select archetype:
+      dormant   + low integration  → "fool"
+      dormant   + any             → "adventurer" (potential)
+      consuming + any             → "sovereign" (unclaimed)
+      generative + high (>=0.75)  → "creator"
+      generative + lower          → "adventurer"
+    """
+    fire_class  = classify_orange_fire(signal)
+    integration = assess_solar_integration(signal)
+
+    if fire_class == "dormant":
+        return "fool" if integration < 0.25 else "adventurer"
+    if fire_class == "consuming":
+        return "sovereign"
+    # generative
+    return "creator" if integration >= 0.75 else "adventurer"

@@ -1,86 +1,140 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
-ORANGE opacity layer — shadow channel.
-Domain: compulsive creativity, martyrdom loops,
-persistent sacral wounding, passive boundary erosion.
-Non-blocking. Never sets interrupt_flag = True.
+core/spectral/orange/opacity.py
+================================
+Shadow channel, passive, non-blocking signals for the ORANGE (Citrinitas) layer.
+Opacity layer: runs silently; NEVER interrupts the primary signal stream.
+
+CRITICAL INVARIANT
+------------------
+interrupt_flag MUST always be False. This is enforced in every function.
+
+Functions
+---------
+citrinitas_alert           — Shadow-channel alert for citrinitas activation.
+creative_wound_recognition — Passively tag creative wound patterns.
+phoenix_marker             — Track solar resurrection / citrinitas renewal.
+ares_athena_routing        — Route solar archetype to ares or athena channel.
+apply_shadow_channel       — Append shadow data without mutating primary signal.
 """
 
-from .constants import CALCINATION_MARKERS
+from __future__ import annotations
+from typing import Any
 
-_opacity_shadow = []
+from .constants import ORANGE_HEX, ALCHEMICAL_PHASE
+from .clarity import detect_solar_wound, map_solar_archetype
+
+# Module-level shadow channel store (append-only)
+_opacity_shadow: list[dict[str, Any]] = []
 
 
-def calcination_alert(signal: dict) -> dict:
+def citrinitas_alert(signal: dict[str, Any]) -> dict[str, Any]:
     """
-    Fires a shadow-channel alert when calcination markers are detected.
-    Appends to shadow log; never mutates primary signal.
+    Emit a shadow-channel citrinitas alert.
+    interrupt_flag is always False — passive observation only.
     """
-    markers = signal.get("calcination_markers", [])
-    active = [m for m in markers if m in CALCINATION_MARKERS]
     entry = {
-        "type": "calcination_alert",
-        "active_markers": active,
-        "severity": min(len(active), 5),
-        "interrupt_flag": False,
+        "module":         "spectral.orange.opacity",
+        "phase":          ALCHEMICAL_PHASE,
+        "hex":            ORANGE_HEX["CITRINITAS"],
+        "alert_type":     "citrinitas_activation",
+        "source_signal":  signal,
+        "interrupt_flag": False,  # INVARIANT — never True
     }
     _opacity_shadow.append(entry)
     return entry
 
 
-def martyrdom_loop_detection(signal: dict) -> dict:
+def creative_wound_recognition(signal: dict[str, Any]) -> dict[str, Any]:
     """
-    Detects persistent martyrdom loop patterns in the shadow channel.
+    Passively tag creative wound patterns from the shadow channel.
+    Does not modify the primary signal.
     """
-    guilt_history = signal.get("guilt_history", [])
-    loop_count = sum(1 for g in guilt_history if g > 0.6)
-    loop_detected = loop_count >= 3
-
+    wound_data = detect_solar_wound(signal)
     entry = {
-        "type": "martyrdom_loop",
-        "loop_detected": loop_detected,
-        "loop_count": loop_count,
-        "interrupt_flag": False,
+        "module":         "spectral.orange.opacity",
+        "wound_data":     wound_data,
+        "hex":            ORANGE_HEX["EMBER"],
+        "interrupt_flag": False,  # INVARIANT
     }
     _opacity_shadow.append(entry)
     return entry
 
 
-def sacral_depletion_marker(signal: dict) -> dict:
+def phoenix_marker(
+    signal: dict[str, Any],
+    history: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """
-    Marks sacral depletion events in the shadow channel.
+    Track solar resurrection events (citrinitas renewal cycles).
+
+    A phoenix marker is emitted when the signal transitions from a
+    dormant/consuming fire classification to generative across consecutive
+    entries in *history*.
+
+    Returns a marker dict with resurrection_detected: bool.
     """
-    vitality = signal.get("vitality", 1.0)
-    depletion_flag = vitality < 0.25
+    from .clarity import classify_orange_fire
+
+    resurrection_detected = False
+    if history:
+        prev_classes = [classify_orange_fire(h) for h in history[-3:]]
+        current_class = classify_orange_fire(signal)
+        if current_class == "generative" and any(
+            c in ("dormant", "consuming") for c in prev_classes
+        ):
+            resurrection_detected = True
 
     entry = {
-        "type": "sacral_depletion",
-        "depletion_flag": depletion_flag,
-        "vitality": vitality,
-        "interrupt_flag": False,
+        "module":               "spectral.orange.opacity",
+        "resurrection_detected": resurrection_detected,
+        "hex":                  ORANGE_HEX["DAWN_GOLD"],
+        "interrupt_flag":       False,  # INVARIANT
     }
     _opacity_shadow.append(entry)
     return entry
 
 
-def venus_aphrodite_routing(signal: dict) -> str:
+def ares_athena_routing(signal: dict[str, Any]) -> dict[str, Any]:
     """
-    Routes signal to venus (receptive/healing) or aphrodite (expressive/desire) channel.
-    Coordinated vocabulary with clarity.map_creative_archetype.
-    """
-    desire_index = signal.get("desire_index", 0.5)
-    receptivity = signal.get("receptivity", 0.5)
+    Route solar archetype to ares (raw fire) or athena (strategic fire) channel.
 
-    if desire_index > receptivity:
-        return "aphrodite"
-    return "venus"
+    Archetypes → channel mapping
+    ----------------------------
+    fool, adventurer  → "ares"   (unstructured energy)
+    creator, sovereign → "athena" (purposeful, structured energy)
+    """
+    archetype = map_solar_archetype(signal)
+    channel   = "ares" if archetype in ("fool", "adventurer") else "athena"
+
+    entry = {
+        "module":         "spectral.orange.opacity",
+        "archetype":      archetype,
+        "channel":        channel,
+        "hex":            ORANGE_HEX["SOLAR_FLARE"],
+        "interrupt_flag": False,  # INVARIANT
+    }
+    _opacity_shadow.append(entry)
+    return entry
 
 
-def apply_shadow_channel(primary_signal: dict, shadow_entries: list) -> dict:
+def apply_shadow_channel(
+    primary_signal: dict[str, Any],
+    shadow_data: dict[str, Any],
+) -> dict[str, Any]:
     """
-    Appends shadow channel data to a copy of primary_signal.
-    Primary signal is NEVER mutated.
-    Returns enriched copy.
+    Append shadow_data to the primary signal's "_opacity_shadow" key.
+
+    CRITICAL: primary_signal is NOT mutated.
+    Returns a new dict with _opacity_shadow appended.
+    interrupt_flag is stripped/forced False if present in shadow_data.
     """
-    enriched = dict(primary_signal)
-    enriched["_orange_shadow"] = list(shadow_entries)
-    return enriched
+    safe_shadow = {k: v for k, v in shadow_data.items() if k != "interrupt_flag"}
+    safe_shadow["interrupt_flag"] = False  # INVARIANT enforced
+
+    result = dict(primary_signal)  # shallow copy — primary untouched
+    existing = result.get("_opacity_shadow", [])
+    result["_opacity_shadow"] = list(existing) + [safe_shadow]
+    return result

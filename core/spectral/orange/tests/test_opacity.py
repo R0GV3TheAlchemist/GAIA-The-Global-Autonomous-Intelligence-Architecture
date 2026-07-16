@@ -1,43 +1,81 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+"""
+Tests for core/spectral/orange/opacity.py
+
+CRITICAL: interrupt_flag invariant — it MUST always be False regardless of input.
+"""
 import pytest
 from core.spectral.orange.opacity import (
-    calcination_alert, martyrdom_loop_detection,
-    sacral_depletion_marker, venus_aphrodite_routing, apply_shadow_channel
+    citrinitas_alert,
+    creative_wound_recognition,
+    phoenix_marker,
+    ares_athena_routing,
+    apply_shadow_channel,
 )
 
 
-def test_calcination_alert_never_interrupts():
-    s = {"calcination_markers": ["purification_by_fire", "desire_transmutation"]}
-    result = calcination_alert(s)
-    assert result["interrupt_flag"] is False
+class TestInterruptFlagInvariant:
+    """interrupt_flag must ALWAYS be False — this is the non-negotiable invariant."""
+
+    def test_citrinitas_alert_interrupt_false(self):
+        assert citrinitas_alert({})["interrupt_flag"] is False
+
+    def test_creative_wound_interrupt_false(self):
+        assert creative_wound_recognition({})["interrupt_flag"] is False
+
+    def test_phoenix_marker_interrupt_false(self):
+        assert phoenix_marker({})["interrupt_flag"] is False
+
+    def test_ares_athena_interrupt_false(self):
+        assert ares_athena_routing({})["interrupt_flag"] is False
+
+    def test_apply_shadow_strips_interrupt_true(self):
+        result = apply_shadow_channel({}, {"interrupt_flag": True, "data": "x"})
+        for shadow in result["_opacity_shadow"]:
+            assert shadow["interrupt_flag"] is False
 
 
-def test_martyrdom_loop_detection_detected():
-    s = {"guilt_history": [0.7, 0.8, 0.9, 0.65]}
-    result = martyrdom_loop_detection(s)
-    assert result["loop_detected"] is True
+class TestPhoenixMarker:
+    def test_no_history_no_resurrection(self):
+        result = phoenix_marker({"intensity": 0.1})
+        assert result["resurrection_detected"] is False
+
+    def test_resurrection_detected(self):
+        history = [
+            {"blocked": True},
+            {"intensity": 0.1},
+        ]
+        current = {"intensity": 0.7, "direction": "outward"}
+        result = phoenix_marker(current, history=history)
+        assert result["resurrection_detected"] is True
 
 
-def test_martyrdom_loop_not_detected():
-    s = {"guilt_history": [0.3, 0.2, 0.7]}
-    result = martyrdom_loop_detection(s)
-    assert result["loop_detected"] is False
+class TestAresAthenaRouting:
+    def test_fool_routes_to_ares(self):
+        result = ares_athena_routing({"blocked": True})
+        assert result["channel"] == "ares"
+
+    def test_creator_routes_to_athena(self):
+        signal = {"intensity": 0.7, "direction": "outward",
+                  "grounded": True, "purposeful": True, "expressive": True}
+        result = ares_athena_routing(signal)
+        assert result["channel"] == "athena"
 
 
-def test_sacral_depletion_flagged():
-    s = {"vitality": 0.1}
-    result = sacral_depletion_marker(s)
-    assert result["depletion_flag"] is True
-    assert result["interrupt_flag"] is False
+class TestApplyShadowChannel:
+    def test_primary_signal_not_mutated(self):
+        primary = {"data": "original"}
+        original_copy = dict(primary)
+        apply_shadow_channel(primary, {"extra": "shadow"})
+        assert primary == original_copy
 
+    def test_shadow_appended_to_result(self):
+        result = apply_shadow_channel({}, {"tag": "solar"})
+        assert len(result["_opacity_shadow"]) == 1
+        assert result["_opacity_shadow"][0]["tag"] == "solar"
 
-def test_venus_aphrodite_routing():
-    assert venus_aphrodite_routing({"desire_index": 0.8, "receptivity": 0.3}) == "aphrodite"
-    assert venus_aphrodite_routing({"desire_index": 0.2, "receptivity": 0.9}) == "venus"
-
-
-def test_apply_shadow_channel_does_not_mutate():
-    primary = {"intensity": 0.7, "color": "ORANGE"}
-    shadow = [{"type": "sacral_depletion", "interrupt_flag": False}]
-    enriched = apply_shadow_channel(primary, shadow)
-    assert "_orange_shadow" in enriched
-    assert "_orange_shadow" not in primary
+    def test_multiple_shadows_accumulate(self):
+        base = apply_shadow_channel({}, {"a": 1})
+        result = apply_shadow_channel(base, {"b": 2})
+        assert len(result["_opacity_shadow"]) == 2

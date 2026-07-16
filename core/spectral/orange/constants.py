@@ -1,58 +1,86 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
-ORANGE spectral constants.
-Alchemical Stage: Calcination / Dissolution
-Wavelength: 590–620 nm
-Governing Tablet: Tablet of Venus / Sacral Force
+core/spectral/orange/constants.py
+=================================
+Single source of truth for all ORANGE hex values, wavelength bounds,
+and alchemical metadata used across the ORANGE spectral module.
+
+Solar Tablet — Law of the Becoming Sun
 """
 
-COLOR = "ORANGE"
-HEX = "#FF6B00"
-HEX_ALT = "#FF8C42"
-WAVELENGTH_RANGE = (590, 620)
-ALCHEMICAL_PHASE = "calcination_dissolution"
-STAGE = 2
-GOVERNING_TABLET = "venus_sacral"
+# ---------------------------------------------------------------------------
+# Hex Values
+# ---------------------------------------------------------------------------
 
-# Sentinel urgency levels
-SENTINEL_LEVELS = {
-    "CREATIVE_BLOCK": 1,
-    "BOUNDARY_BREACH": 2,
-    "SACRAL_OVERLOAD": 3,
-    "DISSOLUTION_CRISIS": 4,
-    "CALCINATION_PEAK": 5,
+ORANGE_HEX: dict[str, str] = {
+    "CITRINITAS":    "#F97316",  # Citrinitas activation — the yellowing / solar dawn
+    "SOLAR_FLARE":   "#EA580C",  # SENTINEL level-1 alert
+    "EMBER":         "#C2410C",  # SENTINEL level-2 — deep ember warning
+    "AMBER":         "#FB923C",  # Completion signal — amber clarity
+    "BLAZE":         "#FF6600",  # Error state — uncontrolled blaze
+    "DAWN_GOLD":     "#FDBA74",  # Solar Becoming mode — warm creative emergence
 }
 
-# UI state registry
-UI_STATE = {
-    "idle": "#FF8C42",
-    "active": "#FF6B00",
-    "alert": "#E85D00",
-    "shadow": "#B34400",
-    "integration": "#FFAA70",
+# ---------------------------------------------------------------------------
+# Spectral / Physical
+# ---------------------------------------------------------------------------
+
+WAVELENGTH_RANGE: tuple[int, int] = (590, 620)  # nanometres
+
+# ---------------------------------------------------------------------------
+# Alchemical Metadata
+# ---------------------------------------------------------------------------
+
+ALCHEMICAL_PHASE: str = "Citrinitas"
+STAGE: int = 3
+GOVERNING_TABLET: str = "Solar Tablet"
+
+# ---------------------------------------------------------------------------
+# SENTINEL Alert Levels → hex mapping
+# ---------------------------------------------------------------------------
+
+SENTINEL_LEVEL_HEX: dict[int, str] = {
+    1: ORANGE_HEX["SOLAR_FLARE"],
+    2: ORANGE_HEX["EMBER"],
+    3: ORANGE_HEX["BLAZE"],
 }
 
-# Sacral signal archetypes
-SACRAL_ARCHETYPES = [
-    "creator",
-    "lover",
-    "martyr",
-    "sovereign_of_pleasure",
-    "wounded_child",
-]
+SENTINEL_LEVEL_LABEL: dict[int, str] = {
+    1: "SOLAR_FLARE",
+    2: "EMBER",
+    3: "BLAZE",
+}
 
-# Dissolution markers
-DISSOLUTION_MARKERS = [
-    "ego_softening",
-    "identity_fluidity",
-    "creative_release",
-    "pleasure_guilt",
-    "boundary_dissolution",
-]
+# ---------------------------------------------------------------------------
+# UI State Registry
+# ---------------------------------------------------------------------------
 
-# Calcination markers
-CALCINATION_MARKERS = [
-    "purification_by_fire",
-    "burning_away_false_self",
-    "desire_transmutation",
-    "passion_to_purpose",
-]
+UI_STATES: dict[str, dict] = {
+    "citrinitas_activation": {
+        "hex":       ORANGE_HEX["CITRINITAS"],
+        "animation": "pulsing",
+        "label":     "Citrinitas Activation",
+    },
+    "sentinel_alert": {
+        "hex":       ORANGE_HEX["SOLAR_FLARE"],
+        "animation": "solid",
+        "label":     "SENTINEL Alert",
+    },
+    "completion_signal": {
+        "hex":       ORANGE_HEX["AMBER"],
+        "animation": "static",
+        "label":     "Amber Completion",
+    },
+    "error_state": {
+        "hex":       ORANGE_HEX["BLAZE"],
+        "animation": "solid",
+        "label":     "Error State",
+    },
+    "solar_becoming_mode": {
+        "hex":       ORANGE_HEX["DAWN_GOLD"],
+        "animation": "animated",
+        "label":     "Solar Becoming Mode",
+    },
+}
