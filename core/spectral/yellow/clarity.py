@@ -1,85 +1,76 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
-YELLOW clarity layer — depth-readable signals.
-Domain: ego inflation vs. healthy will, shame collapse,
-power dynamics, solar plexus integration.
+core/spectral/yellow/clarity.py
+================================
+Depth-readable signals for the YELLOW (Xanthosis) spectral layer.
 """
 
-from .constants import INFLATION_MARKERS
+from __future__ import annotations
+from typing import Any
+
+from .constants import YELLOW_HEX, ALCHEMICAL_PHASE
+
+_MIND_ARCHETYPES = {
+    "sage":      "The Sage — integrated illumined intellect",
+    "trickster": "The Trickster — clever but destabilising",
+    "scholar":   "The Scholar — accumulating without integrating",
+    "dreamer":   "The Dreamer — visionary but untethered",
+}
 
 
-def distinguish_will_ego(signal: dict) -> str:
-    """
-    Distinguishes authentic will from ego-driven control.
-    Returns: 'authentic_will' | 'ego_control' | 'will_collapse' | 'integrated'
-    """
-    will_strength = signal.get("will_strength", 0.5)
-    ego_clarity = signal.get("ego_clarity", 0.5)
-    control_compulsion = signal.get("control_compulsion", 0.0)
-
-    if control_compulsion > 0.7:
-        return "ego_control"
-    if will_strength < 0.2:
-        return "will_collapse"
-    if will_strength > 0.7 and ego_clarity > 0.7:
-        return "authentic_will"
-    return "integrated"
+def distinguish_intellect_intuition(signal: dict[str, Any]) -> str:
+    has_intellect = bool(signal.get("analysis") or signal.get("logic"))
+    has_intuition = bool(signal.get("intuition") or signal.get("vision"))
+    if has_intellect and has_intuition:
+        return "integrated"
+    if has_intellect:
+        return "intellect"
+    if has_intuition:
+        return "intuition"
+    return "undifferentiated"
 
 
-def detect_inflation_pattern(signal: dict) -> dict:
-    markers = signal.get("inflation_markers", [])
-    active = [m for m in markers if m in INFLATION_MARKERS]
-    depth = signal.get("inflation_depth", 0.0)
-    return {
-        "inflation_present": len(active) > 0 or depth > 0.5,
-        "active_markers": active,
-        "depth": depth,
-        "intervention_suggested": depth > 0.7,
-    }
+def detect_mental_wound(signal: dict[str, Any]) -> dict[str, Any]:
+    patterns: list[tuple[bool, str, str]] = [
+        (bool(signal.get("overthinking")),  "analysis paralysis — mind loop",       "moderate"),
+        (bool(signal.get("rigidity")),       "mental rigidity — closed cognition",   "severe"),
+        (bool(signal.get("dissociation")),   "dissociative split — mind-body gap",   "severe"),
+        (bool(signal.get("scatteredness")), "scattered mind — unfocused dispersal", "mild"),
+    ]
+    for detected, pattern, severity in patterns:
+        if detected:
+            return {"wound_detected": True, "pattern": pattern, "severity": severity}
+    return {"wound_detected": False, "pattern": "", "severity": "none"}
 
 
-def classify_yellow_fire(signal: dict) -> str:
-    separation_flag = signal.get("separation_flag", False)
-    inflation_depth = signal.get("inflation_depth", 0.0)
-    will_strength = signal.get("will_strength", 0.5)
-
-    if separation_flag:
-        return "separation"
-    if inflation_depth > 0.6:
-        return "inflation"
-    if will_strength >= 0.75:
-        return "solar_ignition"
-    return "neutral"
+def classify_yellow_frequency(signal: dict[str, Any]) -> str:
+    intensity = float(signal.get("intensity", 0.0))
+    coherent  = bool(signal.get("coherent"))
+    blocked   = bool(signal.get("blocked"))
+    if blocked or intensity < 0.2:
+        return "dormant"
+    if coherent and intensity >= 0.5:
+        return "illuminated"
+    return "scattered"
 
 
-def assess_power_health(signal: dict) -> dict:
-    will_strength = signal.get("will_strength", 0.5)
-    control_compulsion = signal.get("control_compulsion", 0.0)
-    shame_index = signal.get("shame_index", 0.0)
-
-    if will_strength > 0.75 and control_compulsion < 0.3 and shame_index < 0.3:
-        status = "healthy"
-    elif shame_index > 0.65:
-        status = "shame_collapsed"
-    elif control_compulsion > 0.65:
-        status = "controlling"
-    else:
-        status = "developing"
-
-    return {"status": status, "will_strength": will_strength, "shame_index": shame_index}
+def assess_mental_integration(signal: dict[str, Any]) -> float:
+    score = 0.0
+    if signal.get("focused"):    score += 0.25
+    if signal.get("embodied"):   score += 0.25
+    if signal.get("discerning"): score += 0.25
+    intensity = float(signal.get("intensity", 0.0))
+    if 0.4 <= intensity <= 0.85: score += 0.25
+    return round(score, 4)
 
 
-def map_solar_archetype(signal: dict) -> str:
-    will_strength = signal.get("will_strength", 0.5)
-    control_compulsion = signal.get("control_compulsion", 0.0)
-    shame_index = signal.get("shame_index", 0.0)
-    ego_clarity = signal.get("ego_clarity", 0.5)
-
-    if will_strength >= 0.85 and ego_clarity >= 0.8:
-        return "sovereign"
-    if control_compulsion >= 0.7:
-        return "tyrant"
-    if shame_index >= 0.7:
-        return "doormat"
-    if will_strength >= 0.6:
-        return "warrior_of_will"
-    return "radiant_self"
+def map_mind_archetype(signal: dict[str, Any]) -> str:
+    freq        = classify_yellow_frequency(signal)
+    integration = assess_mental_integration(signal)
+    if freq == "dormant":
+        return "dreamer" if integration < 0.25 else "scholar"
+    if freq == "scattered":
+        return "trickster"
+    return "sage" if integration >= 0.75 else "scholar"

@@ -1,38 +1,38 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 import pytest
 from core.spectral.yellow.opacity import (
-    inflation_alert, shame_spiral_detection,
-    will_suppression_marker, sol_luna_routing, apply_shadow_channel
+    xanthosis_alert, mental_wound_recognition, illumination_marker,
+    ares_athena_routing, apply_shadow_channel,
 )
 
 
-def test_inflation_alert_never_interrupts():
-    s = {"inflation_markers": ["grandiosity"]}
-    result = inflation_alert(s)
-    assert result["interrupt_flag"] is False
+class TestInterruptFlagInvariant:
+    def test_xanthosis_alert(self): assert xanthosis_alert({})["interrupt_flag"] is False
+    def test_mental_wound(self): assert mental_wound_recognition({})["interrupt_flag"] is False
+    def test_illumination_marker(self): assert illumination_marker({})["interrupt_flag"] is False
+    def test_ares_athena(self): assert ares_athena_routing({})["interrupt_flag"] is False
+
+    def test_apply_shadow_strips_true(self):
+        r = apply_shadow_channel({}, {"interrupt_flag": True})
+        assert r["_opacity_shadow"][0]["interrupt_flag"] is False
 
 
-def test_shame_spiral_detected():
-    s = {"shame_history": [0.7, 0.8, 0.9, 0.7]}
-    result = shame_spiral_detection(s)
-    assert result["spiral_detected"] is True
-    assert result["interrupt_flag"] is False
+class TestIlluminationMarker:
+    def test_no_history(self): assert illumination_marker({"intensity": 0.1})["illumination_detected"] is False
+
+    def test_illumination_detected(self):
+        history = [{"blocked": True}, {"intensity": 0.1}]
+        current = {"coherent": True, "intensity": 0.7}
+        assert illumination_marker(current, history=history)["illumination_detected"] is True
 
 
-def test_will_suppression_flagged():
-    s = {"will_strength": 0.1}
-    result = will_suppression_marker(s)
-    assert result["suppressed"] is True
-    assert result["interrupt_flag"] is False
+class TestApplyShadowChannel:
+    def test_primary_not_mutated(self):
+        p = {"key": "val"}
+        copy = dict(p)
+        apply_shadow_channel(p, {"x": 1})
+        assert p == copy
 
-
-def test_sol_luna_routing():
-    assert sol_luna_routing({"will_strength": 0.9, "receptivity": 0.2}) == "sol"
-    assert sol_luna_routing({"will_strength": 0.2, "receptivity": 0.8}) == "luna"
-
-
-def test_apply_shadow_channel_no_mutation():
-    primary = {"will_strength": 0.6}
-    shadow = [{"type": "shame_spiral", "interrupt_flag": False}]
-    enriched = apply_shadow_channel(primary, shadow)
-    assert "_yellow_shadow" in enriched
-    assert "_yellow_shadow" not in primary
+    def test_shadow_appended(self):
+        r = apply_shadow_channel({}, {"tag": "mind"})
+        assert r["_opacity_shadow"][0]["tag"] == "mind"

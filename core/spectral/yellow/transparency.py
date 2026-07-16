@@ -1,73 +1,67 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
+# GAIA — The Global Autonomous Intelligence Architecture
+# Licensed under the GAIA Sovereign License (see LICENSE.md)
 """
-YELLOW transparency layer — open-field signals.
-Domain: will, solar plexus activation, ego boundary, personal power.
+core/spectral/yellow/transparency.py
+=====================================
+Open-field, non-blocking signals for the YELLOW (Xanthosis) spectral layer.
 """
 
+from __future__ import annotations
+from typing import Any
+
 from .constants import (
-    SENTINEL_LEVELS, UI_STATE, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE
+    YELLOW_HEX, ALCHEMICAL_PHASE, SENTINEL_LEVEL_HEX,
+    SENTINEL_LEVEL_LABEL, UI_STATES, WAVELENGTH_RANGE,
 )
 
 
-def detect_solar_state(signal: dict) -> dict:
-    will_strength = signal.get("will_strength", 0.5)
-    ego_clarity = signal.get("ego_clarity", 0.5)
-    shame_index = signal.get("shame_index", 0.0)
+def detect_xanthosis_state(signal: dict[str, Any]) -> bool:
+    if not isinstance(signal, dict):
+        return False
+    phase = signal.get("phase", "")
+    if isinstance(phase, str) and phase.strip().lower() == ALCHEMICAL_PHASE.lower():
+        return True
+    if signal.get("hex") in YELLOW_HEX.values():
+        return True
+    wl = signal.get("wavelength")
+    if isinstance(wl, (int, float)):
+        lo, hi = WAVELENGTH_RANGE
+        if lo <= wl <= hi:
+            return True
+    return False
 
-    if will_strength >= 0.85 and ego_clarity >= 0.8:
-        phase = "sovereign_activation"
-        archetype = "sovereign"
-    elif shame_index >= 0.7:
-        phase = "shame_collapse"
-        archetype = "doormat"
-    elif will_strength >= 0.8 and ego_clarity < 0.4:
-        phase = "ego_inflation"
-        archetype = "tyrant"
-    elif will_strength >= 0.6:
-        phase = "will_assertion"
-        archetype = "warrior_of_will"
-    else:
-        phase = "latent_solar"
-        archetype = "radiant_self"
 
+def emit_sentinel_alert(level: int, context: str = "") -> dict[str, Any]:
+    safe_level = level if level in SENTINEL_LEVEL_HEX else 1
     return {
-        "color": "YELLOW",
-        "phase": phase,
-        "archetype": archetype,
-        "alchemical_stage": ALCHEMICAL_PHASE,
-        "stage_index": STAGE,
-        "will_strength": will_strength,
-    }
-
-
-def emit_solar_alert(level_key: str, context: dict = None) -> dict:
-    level = SENTINEL_LEVELS.get(level_key, 1)
-    return {
-        "color": "YELLOW",
-        "alert": level_key,
-        "severity": level,
-        "context": context or {},
-        "band": WAVELENGTH_RANGE,
+        "module":  "spectral.yellow",
+        "phase":   ALCHEMICAL_PHASE,
+        "level":   safe_level,
+        "label":   SENTINEL_LEVEL_LABEL[safe_level],
+        "hex":     SENTINEL_LEVEL_HEX[safe_level],
+        "context": context,
         "interrupt_flag": False,
     }
 
 
-def classify_will_urgency(signal: dict) -> str:
-    will_strength = signal.get("will_strength", 0.5)
-    shame_index = signal.get("shame_index", 0.0)
-    collapse_flag = signal.get("collapse_flag", False)
-
-    if collapse_flag or shame_index >= 0.85:
-        return "critical"
-    if will_strength < 0.2:
-        return "high"
-    if will_strength < 0.5:
+def classify_urgency(intensity: float) -> str:
+    if intensity < 0.33:
+        return "low"
+    if intensity < 0.66:
         return "moderate"
-    return "low"
+    return "high"
 
 
-def get_ui_state(phase: str) -> str:
-    return UI_STATE.get(phase, UI_STATE["idle"])
+def get_ui_state(state_name: str) -> dict[str, Any]:
+    return UI_STATES.get(state_name, {})
 
 
-def is_separation_signal(signal: dict) -> bool:
-    return signal.get("separation_flag", False) or signal.get("ego_clarity", 0.5) >= 0.75
+def is_illumination_signal(signal: dict[str, Any]) -> bool:
+    if not isinstance(signal, dict):
+        return False
+    if signal.get("hex") == YELLOW_HEX["AMBER"]:
+        return True
+    if signal.get("completion") is True and detect_xanthosis_state(signal):
+        return True
+    return False

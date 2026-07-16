@@ -1,34 +1,58 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 import pytest
 from core.spectral.yellow.transparency import (
-    detect_solar_state, emit_solar_alert,
-    classify_will_urgency, get_ui_state, is_separation_signal
+    detect_xanthosis_state, emit_sentinel_alert, classify_urgency,
+    get_ui_state, is_illumination_signal,
 )
+from core.spectral.yellow.constants import YELLOW_HEX, ALCHEMICAL_PHASE
 
 
-def test_detect_solar_state_sovereign():
-    s = {"will_strength": 0.9, "ego_clarity": 0.85, "shame_index": 0.05}
-    result = detect_solar_state(s)
-    assert result["phase"] == "sovereign_activation"
-    assert result["archetype"] == "sovereign"
+class TestDetectXanthosisState:
+    def test_phase_match(self):
+        assert detect_xanthosis_state({"phase": ALCHEMICAL_PHASE}) is True
+
+    def test_hex_match(self):
+        assert detect_xanthosis_state({"hex": YELLOW_HEX["XANTHOSIS"]}) is True
+
+    def test_wavelength_in_range(self):
+        assert detect_xanthosis_state({"wavelength": 575}) is True
+
+    def test_wavelength_out_of_range(self):
+        assert detect_xanthosis_state({"wavelength": 700}) is False
+
+    def test_non_dict(self):
+        assert detect_xanthosis_state(None) is False
 
 
-def test_detect_solar_state_shame_collapse():
-    s = {"will_strength": 0.3, "ego_clarity": 0.4, "shame_index": 0.8}
-    result = detect_solar_state(s)
-    assert result["phase"] == "shame_collapse"
+class TestEmitSentinelAlert:
+    def test_interrupt_always_false(self):
+        for lvl in (1, 2, 3):
+            assert emit_sentinel_alert(lvl)["interrupt_flag"] is False
+
+    def test_invalid_level_defaults_1(self):
+        assert emit_sentinel_alert(99)["level"] == 1
 
 
-def test_emit_solar_alert_never_interrupts():
-    alert = emit_solar_alert("WILL_COLLAPSE")
-    assert alert["interrupt_flag"] is False
-    assert alert["severity"] == 2
+class TestClassifyUrgency:
+    def test_low(self): assert classify_urgency(0.1) == "low"
+    def test_moderate(self): assert classify_urgency(0.5) == "moderate"
+    def test_high(self): assert classify_urgency(0.9) == "high"
 
 
-def test_classify_will_urgency_critical():
-    s = {"will_strength": 0.5, "shame_index": 0.5, "collapse_flag": True}
-    assert classify_will_urgency(s) == "critical"
+class TestGetUiState:
+    def test_known(self):
+        assert get_ui_state("xanthosis_activation")["hex"] == YELLOW_HEX["XANTHOSIS"]
+
+    def test_unknown(self):
+        assert get_ui_state("????") == {}
 
 
-def test_is_separation_signal_true():
-    s = {"ego_clarity": 0.9}
-    assert is_separation_signal(s) is True
+class TestIsIlluminationSignal:
+    def test_amber_hex(self):
+        assert is_illumination_signal({"hex": YELLOW_HEX["AMBER"]}) is True
+
+    def test_completion_with_phase(self):
+        assert is_illumination_signal({"completion": True, "phase": ALCHEMICAL_PHASE}) is True
+
+    def test_no_signal(self):
+        assert is_illumination_signal({"hex": "#000"}) is False

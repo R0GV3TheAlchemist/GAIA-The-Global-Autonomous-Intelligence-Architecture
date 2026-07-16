@@ -1,34 +1,31 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 """
-YELLOW spectral module — public API.
-Alchemical Stage: Separation
+core/spectral/yellow — Xanthosis phase, Amber Tablet.
 """
-
 from .constants import (
-    COLOR, HEX, HEX_ALT, WAVELENGTH_RANGE, ALCHEMICAL_PHASE,
-    STAGE, GOVERNING_TABLET, SENTINEL_LEVELS, UI_STATE,
-    SOLAR_ARCHETYPES, SEPARATION_MARKERS, INFLATION_MARKERS,
+    YELLOW_HEX, WAVELENGTH_RANGE, ALCHEMICAL_PHASE, STAGE,
+    GOVERNING_TABLET, SENTINEL_LEVEL_HEX, SENTINEL_LEVEL_LABEL, UI_STATES,
 )
 from .transparency import (
-    detect_solar_state, emit_solar_alert, classify_will_urgency,
-    get_ui_state, is_separation_signal,
+    detect_xanthosis_state, emit_sentinel_alert, classify_urgency,
+    get_ui_state, is_illumination_signal,
 )
 from .clarity import (
-    distinguish_will_ego, detect_inflation_pattern,
-    classify_yellow_fire, assess_power_health, map_solar_archetype,
+    distinguish_intellect_intuition, detect_mental_wound,
+    classify_yellow_frequency, assess_mental_integration, map_mind_archetype,
 )
 from .opacity import (
-    inflation_alert, shame_spiral_detection, will_suppression_marker,
-    sol_luna_routing, apply_shadow_channel,
+    xanthosis_alert, mental_wound_recognition, illumination_marker,
+    ares_athena_routing, apply_shadow_channel,
 )
 
 __all__ = [
-    "COLOR", "HEX", "HEX_ALT", "WAVELENGTH_RANGE", "ALCHEMICAL_PHASE",
-    "STAGE", "GOVERNING_TABLET", "SENTINEL_LEVELS", "UI_STATE",
-    "SOLAR_ARCHETYPES", "SEPARATION_MARKERS", "INFLATION_MARKERS",
-    "detect_solar_state", "emit_solar_alert", "classify_will_urgency",
-    "get_ui_state", "is_separation_signal",
-    "distinguish_will_ego", "detect_inflation_pattern",
-    "classify_yellow_fire", "assess_power_health", "map_solar_archetype",
-    "inflation_alert", "shame_spiral_detection", "will_suppression_marker",
-    "sol_luna_routing", "apply_shadow_channel",
+    "YELLOW_HEX", "WAVELENGTH_RANGE", "ALCHEMICAL_PHASE", "STAGE",
+    "GOVERNING_TABLET", "SENTINEL_LEVEL_HEX", "SENTINEL_LEVEL_LABEL", "UI_STATES",
+    "detect_xanthosis_state", "emit_sentinel_alert", "classify_urgency",
+    "get_ui_state", "is_illumination_signal",
+    "distinguish_intellect_intuition", "detect_mental_wound",
+    "classify_yellow_frequency", "assess_mental_integration", "map_mind_archetype",
+    "xanthosis_alert", "mental_wound_recognition", "illumination_marker",
+    "ares_athena_routing", "apply_shadow_channel",
 ]

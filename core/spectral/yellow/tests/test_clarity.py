@@ -1,32 +1,45 @@
+# Copyright (c) 2026 R0GV3 The Alchemist — GAIA Project
 import pytest
 from core.spectral.yellow.clarity import (
-    distinguish_will_ego, detect_inflation_pattern,
-    classify_yellow_fire, assess_power_health, map_solar_archetype
+    distinguish_intellect_intuition, detect_mental_wound,
+    classify_yellow_frequency, assess_mental_integration, map_mind_archetype,
 )
 
 
-def test_distinguish_will_ego_control():
-    s = {"will_strength": 0.8, "ego_clarity": 0.4, "control_compulsion": 0.85}
-    assert distinguish_will_ego(s) == "ego_control"
+class TestDistinguishIntellectIntuition:
+    def test_intellect_only(self): assert distinguish_intellect_intuition({"analysis": True}) == "intellect"
+    def test_intuition_only(self): assert distinguish_intellect_intuition({"vision": True}) == "intuition"
+    def test_integrated(self): assert distinguish_intellect_intuition({"logic": True, "intuition": True}) == "integrated"
+    def test_undifferentiated(self): assert distinguish_intellect_intuition({}) == "undifferentiated"
 
 
-def test_distinguish_will_authentic():
-    s = {"will_strength": 0.85, "ego_clarity": 0.8, "control_compulsion": 0.1}
-    assert distinguish_will_ego(s) == "authentic_will"
+class TestDetectMentalWound:
+    def test_rigidity_severe(self):
+        r = detect_mental_wound({"rigidity": True})
+        assert r["wound_detected"] is True and r["severity"] == "severe"
+
+    def test_no_wound(self):
+        assert detect_mental_wound({"focused": True})["wound_detected"] is False
 
 
-def test_classify_yellow_fire_separation():
-    s = {"separation_flag": True}
-    assert classify_yellow_fire(s) == "separation"
+class TestClassifyYellowFrequency:
+    def test_dormant_blocked(self): assert classify_yellow_frequency({"blocked": True, "intensity": 0.9}) == "dormant"
+    def test_illuminated(self): assert classify_yellow_frequency({"coherent": True, "intensity": 0.7}) == "illuminated"
+    def test_scattered(self): assert classify_yellow_frequency({"intensity": 0.5}) == "scattered"
 
 
-def test_detect_inflation_pattern():
-    s = {"inflation_markers": ["grandiosity", "control_compulsion"], "inflation_depth": 0.8}
-    result = detect_inflation_pattern(s)
-    assert result["inflation_present"] is True
-    assert result["intervention_suggested"] is True
+class TestAssessMentalIntegration:
+    def test_full(self):
+        s = {"focused": True, "embodied": True, "discerning": True, "intensity": 0.6}
+        assert assess_mental_integration(s) == 1.0
+
+    def test_zero(self):
+        assert assess_mental_integration({}) == 0.0
 
 
-def test_map_solar_archetype_tyrant():
-    s = {"will_strength": 0.8, "control_compulsion": 0.75, "shame_index": 0.1, "ego_clarity": 0.5}
-    assert map_solar_archetype(s) == "tyrant"
+class TestMapMindArchetype:
+    def test_dormant_low_is_dreamer(self): assert map_mind_archetype({"blocked": True}) == "dreamer"
+    def test_scattered_is_trickster(self): assert map_mind_archetype({"intensity": 0.5}) == "trickster"
+    def test_illuminated_sage(self):
+        s = {"coherent": True, "intensity": 0.7, "focused": True, "embodied": True, "discerning": True}
+        assert map_mind_archetype(s) == "sage"
