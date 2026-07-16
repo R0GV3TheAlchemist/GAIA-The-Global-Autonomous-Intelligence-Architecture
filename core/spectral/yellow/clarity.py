@@ -10,8 +10,6 @@ Depth-readable signals for the YELLOW (Xanthosis) spectral layer.
 from __future__ import annotations
 from typing import Any
 
-from .constants import YELLOW_HEX, ALCHEMICAL_PHASE
-
 _MIND_ARCHETYPES = {
     "sage":      "The Sage — integrated illumined intellect",
     "trickster": "The Trickster — clever but destabilising",
@@ -58,11 +56,15 @@ def classify_yellow_frequency(signal: dict[str, Any]) -> str:
 
 def assess_mental_integration(signal: dict[str, Any]) -> float:
     score = 0.0
-    if signal.get("focused"):    score += 0.25
-    if signal.get("embodied"):   score += 0.25
-    if signal.get("discerning"): score += 0.25
+    if signal.get("focused"):
+        score += 0.25
+    if signal.get("embodied"):
+        score += 0.25
+    if signal.get("discerning"):
+        score += 0.25
     intensity = float(signal.get("intensity", 0.0))
-    if 0.4 <= intensity <= 0.85: score += 0.25
+    if 0.4 <= intensity <= 0.85:
+        score += 0.25
     return round(score, 4)
 
 
