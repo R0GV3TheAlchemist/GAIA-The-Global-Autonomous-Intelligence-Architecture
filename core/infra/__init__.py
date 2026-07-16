@@ -34,9 +34,9 @@ from .server_state          import (
     set_magnum_opus_report,
 )
 
-# sqlite repositories  →  classes confirmed present in their files
-from .sqlite_lifecycle_repository   import SqliteLifecycleRepository
-from .sqlite_stewardship_repository import SqliteStewardshipRepository
+# sqlite repositories — class names use SQLite (all caps) not Sqlite (camelCase)
+from .sqlite_lifecycle_repository   import SQLiteLifecycleRepository
+from .sqlite_stewardship_repository import SQLiteStewardshipRepository
 
 __all__ = [
     # action gate
@@ -60,7 +60,7 @@ __all__ = [
     "get_action_gate",
     "get_magnum_opus_report",
     "set_magnum_opus_report",
-    # repositories
-    "SqliteLifecycleRepository",
-    "SqliteStewardshipRepository",
+    # repositories — correct casing
+    "SQLiteLifecycleRepository",
+    "SQLiteStewardshipRepository",
 ]
