@@ -22,7 +22,6 @@ AGPL-3.0 Licensed. Unauthorised derivative works are prohibited.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from core.sentinel.constants import AlertLevel
 
