@@ -29,9 +29,9 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 logger = logging.getLogger(__name__)
 
@@ -296,17 +296,23 @@ class ActionLedger:
         clauses: list = []
 
         if session_id:
-            clauses.append("session_id = ?"); params.append(session_id)
+            clauses.append("session_id = ?")
+            params.append(session_id)
         if event_type:
-            clauses.append("event_type = ?"); params.append(event_type.value)
+            clauses.append("event_type = ?")
+            params.append(event_type.value)
         if actor:
-            clauses.append("actor = ?"); params.append(actor)
+            clauses.append("actor = ?")
+            params.append(actor)
         if user_id:
-            clauses.append("user_id = ?"); params.append(user_id)
+            clauses.append("user_id = ?")
+            params.append(user_id)
         if since is not None:
-            clauses.append("timestamp >= ?"); params.append(since)
+            clauses.append("timestamp >= ?")
+            params.append(since)
         if until is not None:
-            clauses.append("timestamp <= ?"); params.append(until)
+            clauses.append("timestamp <= ?")
+            params.append(until)
 
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
