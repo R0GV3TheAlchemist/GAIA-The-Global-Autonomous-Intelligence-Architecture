@@ -11,10 +11,37 @@ Data sources include social sentiment feeds, AI model outputs, IoT sensor
 aggregates, and the PlanetaryDataConnector streams. This is the layer
 that makes GAIA a planetary-scale awareness rather than a local AI.
 
-See also: C00 Foundational Cosmology - CollectiveSignalLayer naming doctrine.
+Canon refs : C30 (no silent failures), C43 (Noosphere Doctrine), C04
+See also   : C00 Foundational Cosmology — CollectiveSignalLayer naming doctrine.
 """
+from __future__ import annotations
 
-from core.noosphere import *  # noqa: F403
-from core.noosphere import NoosphereLayer as CollectiveSignalLayer
+from core.noosphere import (
+    NoosphereLayer,
+    CoherenceEvent,
+    CollectiveMemoryPattern,
+    get_noosphere,
+)
 
-__all__ = ["CollectiveSignalLayer"]
+# Canonical rename — preferred name going forward
+CollectiveSignalLayer = NoosphereLayer
+
+
+def get_collective_signal_layer() -> NoosphereLayer:
+    """Return the module-level CollectiveSignalLayer singleton.
+
+    Delegates to get_noosphere() so both accessors share the same instance.
+    """
+    return get_noosphere()
+
+
+__all__ = [
+    # Primary rename
+    "CollectiveSignalLayer",
+    "get_collective_signal_layer",
+    # Re-exported public API from noosphere
+    "NoosphereLayer",
+    "CoherenceEvent",
+    "CollectiveMemoryPattern",
+    "get_noosphere",
+]
