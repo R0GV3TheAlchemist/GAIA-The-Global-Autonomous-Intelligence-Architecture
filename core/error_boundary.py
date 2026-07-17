@@ -75,17 +75,19 @@ class BoundarySeverity(str, Enum):
     """
     How the error boundary treats a caught exception.
 
-    FATAL     — log + re-raise; no recovery attempted.
+    FATAL       — log + re-raise; no recovery attempted.
     RECOVERABLE — log + run recovery callback + re-raise if recovery fails.
-    DEGRADED  — log + run recovery callback + swallow if recovery succeeds.
-    SILENT    — FORBIDDEN by Canon. Kept as a named value so it can be
-                detected and rejected explicitly.
+    DEGRADED    — log + run recovery callback + swallow if recovery succeeds.
+
+    NOTE: A "SILENT" value is intentionally absent from this enum.
+    Silent failure (swallow without log or recovery) is forbidden by Canon C30.
+    If you need to suppress an error, use DEGRADED with a recovery callback
+    that returns a safe default value. The __init__ guard on ErrorBoundary
+    additionally rejects reraise=False without a recovery callback.
     """
     FATAL       = "fatal"
     RECOVERABLE = "recoverable"
     DEGRADED    = "degraded"
-    # SILENT is here only to be caught and rejected — never use it.
-    SILENT      = "silent"
 
 
 # ------------------------------------------------------------------ #
@@ -125,7 +127,6 @@ class GAIABoundaryError(Exception):
     context:            dict[str, Any]            = field(default_factory=dict)
     traceback_str:      str                       = ""
 
-    # Make it behave like a proper Exception
     def __post_init__(self) -> None:
         super().__init__(self._summary())
 
@@ -161,7 +162,7 @@ class GAIABoundaryError(Exception):
 class RecoveryResult:
     """Returned by ErrorBoundary.run() and __aenter__ when recovery ran."""
     succeeded:   bool
-    value:       Any             = None   # return value from recovery callable
+    value:       Any             = None
     error:       Optional[GAIABoundaryError] = None
 
 
@@ -189,11 +190,19 @@ class ErrorBoundary:
         def execute_query(self, q: str) -> list:
             ...
 
+        # Inspect the last boundary outcome after a call:
+        result = execute_query(q)
+        be = execute_query.last_boundary_error      # GAIABoundaryError | None
+        rr = execute_query.last_recovery_result     # RecoveryResult | None
+
     Decorator (async)
     -----------------
         @ErrorBoundary.wrap_async("gaia.search", "execute_query")
         async def execute_query(self, q: str) -> list:
             ...
+
+        be = execute_query.last_boundary_error
+        rr = execute_query.last_recovery_result
 
     Parameters
     ----------
@@ -222,12 +231,6 @@ class ErrorBoundary:
         context:   Optional[dict[str, Any]] = None,
         catch:     tuple[type[BaseException], ...] = (Exception,),
     ) -> None:
-        # Reject SILENT — Canon C30
-        if severity is BoundarySeverity.SILENT:
-            raise ValueError(
-                "BoundarySeverity.SILENT is forbidden by Canon C30. "
-                "Use DEGRADED with a recovery callback instead."
-            )
         if not reraise and severity is not BoundarySeverity.DEGRADED:
             raise ValueError(
                 "reraise=False is only valid with severity=DEGRADED. "
@@ -247,7 +250,6 @@ class ErrorBoundary:
         self.context   = context or {}
         self.catch     = catch
 
-        # Set after __exit__ / __aexit__ to let callers inspect
         self.boundary_error: Optional[GAIABoundaryError] = None
         self.recovery_result: Optional[RecoveryResult]   = None
 
@@ -260,7 +262,7 @@ class ErrorBoundary:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         if exc_type is None or not issubclass(exc_type, self.catch):
-            return False   # nothing to handle
+            return False
 
         tb_str = traceback.format_exc()
         boundary_error = GAIABoundaryError(
@@ -275,7 +277,6 @@ class ErrorBoundary:
 
         self._log(boundary_error, tb_str)
 
-        # Recovery
         if self.recovery is not None:
             boundary_error.recovery_attempted = True
             try:
@@ -297,7 +298,7 @@ class ErrorBoundary:
         if not self.reraise and (
             self.recovery_result and self.recovery_result.succeeded
         ):
-            return True   # swallow — recovery succeeded
+            return True
 
         raise boundary_error from exc_val
 
@@ -325,7 +326,6 @@ class ErrorBoundary:
 
         self._log(boundary_error, tb_str)
 
-        # Recovery (supports both async and sync callbacks)
         if self.recovery is not None:
             boundary_error.recovery_attempted = True
             try:
@@ -368,17 +368,34 @@ class ErrorBoundary:
         context:   Optional[dict] = None,
         catch:     tuple[type[BaseException], ...] = (Exception,),
     ) -> Callable[[F], F]:
-        """Sync function decorator."""
+        """
+        Sync function decorator.
+
+        The wrapper exposes two attributes for post-call inspection:
+          fn.last_boundary_error   -> GAIABoundaryError | None
+          fn.last_recovery_result  -> RecoveryResult | None
+
+        These are set on the wrapper object itself after each call so
+        retry logic and tests can inspect the last boundary outcome
+        without needing the context-manager form.
+        """
         def decorator(fn: F) -> F:
             @functools.wraps(fn)
             def wrapper(*args, **kwargs):
-                with cls(
+                eb = cls(
                     component=component, operation=operation,
                     severity=severity, recovery=recovery,
                     reraise=reraise, context=context or {},
                     catch=catch,
-                ):
-                    return fn(*args, **kwargs)
+                )
+                try:
+                    with eb:
+                        return fn(*args, **kwargs)
+                finally:
+                    wrapper.last_boundary_error  = eb.boundary_error
+                    wrapper.last_recovery_result = eb.recovery_result
+            wrapper.last_boundary_error  = None  # type: ignore[attr-defined]
+            wrapper.last_recovery_result = None  # type: ignore[attr-defined]
             return wrapper  # type: ignore[return-value]
         return decorator
 
@@ -393,17 +410,30 @@ class ErrorBoundary:
         context:   Optional[dict] = None,
         catch:     tuple[type[BaseException], ...] = (Exception,),
     ) -> Callable[[F], F]:
-        """Async function decorator."""
+        """
+        Async function decorator.
+
+        The wrapper exposes two attributes for post-call inspection:
+          fn.last_boundary_error   -> GAIABoundaryError | None
+          fn.last_recovery_result  -> RecoveryResult | None
+        """
         def decorator(fn: F) -> F:
             @functools.wraps(fn)
             async def wrapper(*args, **kwargs):
-                async with cls(
+                eb = cls(
                     component=component, operation=operation,
                     severity=severity, recovery=recovery,
                     reraise=reraise, context=context or {},
                     catch=catch,
-                ):
-                    return await fn(*args, **kwargs)
+                )
+                try:
+                    async with eb:
+                        return await fn(*args, **kwargs)
+                finally:
+                    wrapper.last_boundary_error  = eb.boundary_error
+                    wrapper.last_recovery_result = eb.recovery_result
+            wrapper.last_boundary_error  = None  # type: ignore[attr-defined]
+            wrapper.last_recovery_result = None  # type: ignore[attr-defined]
             return wrapper  # type: ignore[return-value]
         return decorator
 

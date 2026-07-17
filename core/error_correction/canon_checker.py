@@ -6,7 +6,7 @@ core/error_correction/canon_checker.py
 
 GAIA Error Correction — Canon Rule Checker (Phase 1b)
 
-Statically analyzes Python source files for violations of GAIA’s
+Statically analyzes Python source files for violations of GAIA's
 architectural Canon rules. Every finding is a GAIAErrorFinding with
 category=CANON_VIOLATION.
 
@@ -17,12 +17,12 @@ Enforced rules (Phase 1b)
   CANON-02  — C30 No Silent Failures: bare `except:` or `except Exception:`
                without a log/raise is forbidden.
   CANON-03  — C30 No Silent Failures: `pass` alone inside an except block
-               is forbidden.
+               is forbidden (deduplicated against CANON-02).
   CANON-04  — C01 Sovereignty: direct `print()` calls in core/*.py are
                forbidden — use get_logger().
   CANON-05  — C01 Sovereignty: `os.environ` accessed directly in core/*.py
                is forbidden outside config/settings modules — use
-               GAIA’s settings layer.
+               GAIA's settings layer.
   CANON-06  — C15 Consent: any file touching `user` data must not write
                PII to logs (naive heuristic: log calls containing
                `password`, `token`, `secret`, `api_key`).
@@ -31,9 +31,11 @@ Enforced rules (Phase 1b)
   CANON-08  — C01 Sovereignty: wildcard imports (`from x import *`) in
                core/*.py are forbidden except in explicit re-export stubs.
 
-Phase 2 rules (stubbed, not yet active):
+Phase 2 rules (stubbed — not yet active):
   CANON-09  — C32 Synergy: cross-module import cycles detected via AST.
+               Stub: _canon09_import_cycles()
   CANON-10  — C01: every public function in core/*.py must have a docstring.
+               Stub: _canon10_public_docstrings()
 
 Canon Ref: C01, C15, C30, Issue #755 Phase 1b
 """
@@ -41,8 +43,6 @@ from __future__ import annotations
 
 import ast
 import re
-import tokenize
-import io
 from pathlib import Path
 from typing import Iterator, Sequence
 
@@ -71,6 +71,31 @@ _SETTINGS_EXEMPT = re.compile(
     r"(config|settings|env|environment)[.\/]",
     re.IGNORECASE,
 )
+
+# AST attribute names that indicate a logging call for CANON-02
+_LOG_METHOD_NAMES = frozenset(
+    {"debug", "info", "warning", "warn", "error", "critical", "exception",
+     "log", "fatal"}
+)
+
+
+def _body_has_log_or_raise(handler: ast.ExceptHandler) -> bool:
+    """
+    Return True if the except handler body contains either:
+      - an ast.Raise node (re-raise), OR
+      - a Call whose func is an Attribute with a known logging method name
+        (catches ANY logger variable name, not just _logger / logging).
+    """
+    for node in ast.walk(handler):
+        if isinstance(node, ast.Raise):
+            return True
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in _LOG_METHOD_NAMES
+        ):
+            return True
+    return False
 
 
 class CanonChecker:
@@ -137,7 +162,6 @@ class CanonChecker:
             target = self.repo_root / d
             if target.is_dir():
                 yield from target.rglob("*.py")
-        # top-level server.py
         server = self.repo_root / "server.py"
         if server.exists():
             yield server
@@ -154,7 +178,6 @@ class CanonChecker:
             _logger.warning(f"CanonChecker: cannot read {path}: {exc}")
             return []
 
-        # Make path repo-relative for display
         try:
             rel = str(path.relative_to(self.repo_root))
         except ValueError:
@@ -162,14 +185,12 @@ class CanonChecker:
 
         findings: list[GAIAErrorFinding] = []
 
-        # Parse AST (best-effort — skip unparseable files)
         tree: ast.Module | None = None
         try:
             tree = ast.parse(source, filename=str(path))
         except SyntaxError:
-            pass  # syntax errors are Ruff’s domain; we skip AST checks
+            pass  # syntax errors are Ruff's domain; we skip AST checks
 
-        # Run each rule
         findings.extend(self._canon01_canon_ref_present(source, rel))
         if tree:
             findings.extend(self._canon02_bare_except(tree, rel))
@@ -189,12 +210,10 @@ class CanonChecker:
     def _canon01_canon_ref_present(
         self, source: str, rel: str
     ) -> list[GAIAErrorFinding]:
-        # Only enforce on core/ modules (not tests, migrations, stubs)
         if not rel.startswith("core/"):
             return []
         if "test" in rel or "migration" in rel or "__pycache__" in rel:
             return []
-        # Check first 40 lines for a Canon Ref annotation
         header = "\n".join(source.splitlines()[:40])
         if not _CANON_REF_RE.search(header):
             return [self._finding(
@@ -217,30 +236,36 @@ class CanonChecker:
     def _canon02_bare_except(
         self, tree: ast.Module, rel: str
     ) -> list[GAIAErrorFinding]:
+        """
+        Flag bare/broad except handlers that neither log nor re-raise.
+
+        Uses a proper AST body walk via _body_has_log_or_raise() so that
+        ANY logger variable name is accepted — not just _logger/logging.
+
+        Note: a pass-only body will always be caught here (it has no log
+        or raise), so CANON-03 skips blocks already reported by CANON-02
+        to prevent double-reporting the same line.
+        """
         findings = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.ExceptHandler):
                 continue
-            # Bare `except:` or `except Exception:` (no alias)
             is_bare = node.type is None
             is_broad = (
                 node.type is not None
                 and isinstance(node.type, ast.Name)
                 and node.type.id in ("Exception", "BaseException")
-                and node.name is None  # no `as e` binding
+                and node.name is None
             )
             if not (is_bare or is_broad):
                 continue
-            # Check if body contains a log call or re-raise
-            body_src = ast.unparse(node) if hasattr(ast, "unparse") else ""
-            has_log   = any(k in body_src for k in ("_logger", "logging", "log.", "logger."))
-            has_raise = any(isinstance(n, ast.Raise) for n in ast.walk(node))
-            if not (has_log or has_raise):
+            if not _body_has_log_or_raise(node):
                 findings.append(self._finding(
                     rule_id="CANON-02",
                     message=(
                         "Bare/broad except without log or re-raise swallows "
-                        "errors silently. Add logging or re-raise. (C30 No Silent Failures)"
+                        "errors silently. Add logging or re-raise. "
+                        "(C30 No Silent Failures)"
                     ),
                     file_path=rel,
                     severity=GAIASeverity.HIGH,
@@ -255,11 +280,30 @@ class CanonChecker:
     def _canon03_silent_pass(
         self, tree: ast.Module, rel: str
     ) -> list[GAIAErrorFinding]:
+        """
+        Flag except blocks whose sole statement is `pass`.
+
+        Deduplication: a pass-only block on a bare/broad except will
+        already have been reported by CANON-02 (which fires first and
+        catches all no-log/no-raise bodies). CANON-03 only fires when
+        the handler is *specific* (e.g. `except ValueError: pass`) so
+        the same line is never reported twice.
+        """
         findings = []
         for node in ast.walk(tree):
             if not isinstance(node, ast.ExceptHandler):
                 continue
-            # Body is exactly one `pass` statement
+            # Only fire on specific/named handlers — bare/broad already
+            # covered by CANON-02.
+            is_bare = node.type is None
+            is_broad = (
+                node.type is not None
+                and isinstance(node.type, ast.Name)
+                and node.type.id in ("Exception", "BaseException")
+                and node.name is None
+            )
+            if is_bare or is_broad:
+                continue
             if (
                 len(node.body) == 1
                 and isinstance(node.body[0], ast.Pass)
@@ -268,7 +312,8 @@ class CanonChecker:
                     rule_id="CANON-03",
                     message=(
                         "`pass` as the sole statement in an except block silently "
-                        "discards the error. Log it or re-raise. (C30 No Silent Failures)"
+                        "discards the error. Log it or re-raise. "
+                        "(C30 No Silent Failures)"
                     ),
                     file_path=rel,
                     severity=GAIASeverity.HIGH,
@@ -285,7 +330,6 @@ class CanonChecker:
     ) -> list[GAIAErrorFinding]:
         if not rel.startswith("core/"):
             return []
-        # Exempt: __init__.py re-export stubs, scripts/
         if "script" in rel or rel.endswith("__init__.py"):
             return []
         findings = []
@@ -319,7 +363,6 @@ class CanonChecker:
             return []
         findings = []
         for node in ast.walk(tree):
-            # os.environ or os.getenv
             if isinstance(node, ast.Attribute):
                 if (
                     isinstance(node.value, ast.Name)
@@ -330,7 +373,7 @@ class CanonChecker:
                         rule_id="CANON-05",
                         message=(
                             "Direct os.environ / os.getenv access in core/ module. "
-                            "Use GAIA’s settings layer (core/config/ or core/settings.py). "
+                            "Use GAIA's settings layer (core/config/ or core/settings.py). "
                             "(C01 Sovereignty)"
                         ),
                         file_path=rel,
@@ -403,7 +446,6 @@ class CanonChecker:
     ) -> list[GAIAErrorFinding]:
         if not rel.startswith("core/"):
             return []
-        # Re-export stubs explicitly suppress with noqa: F403
         if "noqa: F403" in source:
             return []
         findings = []
@@ -423,6 +465,56 @@ class CanonChecker:
                             line=getattr(node, "lineno", None),
                         ))
         return findings
+
+    # ---------------------------------------------------------------- #
+    #  CANON-09 (Phase 2 stub): Import cycle detection                 #
+    # ---------------------------------------------------------------- #
+
+    def _canon09_import_cycles(
+        self, tree: ast.Module, rel: str
+    ) -> list[GAIAErrorFinding]:
+        """
+        Phase 2 stub — C32 Synergy: detect cross-module import cycles.
+
+        Implementation note:
+        Build a directed import graph across all scanned files, then run
+        Tarjan's SCC algorithm. Any SCC with >1 node is a cycle.
+        Expected signature: receives the per-file AST and rel path;
+        the caller (run()) must accumulate edges across files and run
+        the cycle check as a post-pass after all files are visited.
+
+        Not yet active — raises NotImplementedError so Phase 2 work is
+        immediately visible and cannot be silently skipped.
+        """
+        raise NotImplementedError(
+            "CANON-09 (import cycle detection) is a Phase 2 rule. "
+            "Implement in Issue #755 Phase 2 before calling this method."
+        )
+
+    # ---------------------------------------------------------------- #
+    #  CANON-10 (Phase 2 stub): Public function docstrings             #
+    # ---------------------------------------------------------------- #
+
+    def _canon10_public_docstrings(
+        self, tree: ast.Module, rel: str
+    ) -> list[GAIAErrorFinding]:
+        """
+        Phase 2 stub — C01 Sovereignty: every public function/method in
+        core/*.py must have a docstring.
+
+        Implementation note:
+        Walk the AST for ast.FunctionDef / ast.AsyncFunctionDef nodes
+        whose name does not start with '_'. Check that the first statement
+        in node.body is an ast.Expr wrapping an ast.Constant (str).
+        Exempt: @property getters, @overload stubs, __dunder__ methods.
+
+        Not yet active — raises NotImplementedError so Phase 2 work is
+        immediately visible and cannot be silently skipped.
+        """
+        raise NotImplementedError(
+            "CANON-10 (public docstring enforcement) is a Phase 2 rule. "
+            "Implement in Issue #755 Phase 2 before calling this method."
+        )
 
     # ---------------------------------------------------------------- #
     #  Finding factory                                                  #
