@@ -1,6 +1,5 @@
-# CI retrigger — forces fresh check run with corrected workflow definitions.
-# Conflicts resolved: adopted current main versions of all three workflow files.
-# main is now at 4e5838ad (pipe fix + shell: bash on all lint steps).
+# CI retrigger -- pick up workflow fixes from main commit 50d9973e.
+# Workflows fixed: error-correction-scan, copyright_audit, security.
 # This file carries no logic. Safe to delete after first green run.
-# Retrigger timestamp: 2026-07-17T19:43Z
-RETRIGGER = "2026-07-17T19:43Z"
+# Retrigger timestamp: 2026-07-17T19:52Z
+RETRIGGER = "2026-07-17T19:52Z"
