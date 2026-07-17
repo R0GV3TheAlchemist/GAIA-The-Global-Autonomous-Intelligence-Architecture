@@ -1,0 +1,14 @@
+[INFO] Initializing environment for https://github.com/astral-sh/ruff-pre-commit.
+[INFO] Initializing environment for https://github.com/psf/black.
+[INFO] Initializing environment for https://github.com/PyCQA/isort.
+[WARNING] repo `https://github.com/PyCQA/isort` uses deprecated stage names (commit, merge-commit, push) which will be removed in a future version.  Hint: often `pre-commit autoupdate --repo https://github.com/PyCQA/isort` will fix this.  if it does not -- consider reporting an issue to that repo.
+[INFO] Installing environment for https://github.com/astral-sh/ruff-pre-commit.
+[INFO] Once installed this environment will be reused.
+[INFO] This may take a few minutes...
+ruff.....................................................................Failed
+- hook id: ruff
+- exit code: 1
+- files were modified by this hook
+
+Found 462 errors (462 fixed, 0 remaining).
+Found 182 errors (182 fixed, 0 remaining).
