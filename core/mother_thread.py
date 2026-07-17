@@ -22,6 +22,7 @@ The MotherThread now:
 
 Canon Ref:
   C04  — Gaian Identity & Relational Selfhood
+  C30  — No silent failures; all errors must be observable
   C43  — STEM Foundation Doctrine (epistemic integrity)
   C44  — Piezoelectric Resonance (field coherence)
   C47  — Sovereign Matrix Code (observer collapses the field)
@@ -40,6 +41,8 @@ import uuid
 from collections import Counter, deque
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Dict, List, Optional
+
+from core.error_boundary import BoundarySeverity, GAIABoundaryError, degraded, recoverable
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -321,7 +324,7 @@ class MotherThread:
     • From a sync context where a running loop already exists:
         mother.start()   # uses asyncio.get_running_loop()
 
-    Canon: C04, C43, C44, C47
+    Canon: C04, C30, C43, C44, C47
     """
 
     def __init__(self) -> None:
@@ -349,9 +352,9 @@ class MotherThread:
 
         Parameters
         ----------
-        mesh   : P2PMesh       — peer discovery & gossip transport
-        crdt   : CRDTStateEngine — shared state replication
-        weaver : ThreadWeaver  — distributed pulse schedule
+        mesh   : P2PMesh           — peer discovery & gossip transport
+        crdt   : CRDTStateEngine   — shared state replication
+        weaver : ThreadWeaver      — distributed pulse schedule
         """
         self._mesh = mesh
         self._crdt = crdt
@@ -362,10 +365,7 @@ class MotherThread:
         self._crdt.join_node(mesh.node_id)
 
         # Subscribe to incoming CRDT sync gossip
-        mesh.subscribe(
-            crdt.GOSSIP_TOPIC,
-            self._on_crdt_gossip,
-        )
+        mesh.subscribe(crdt.GOSSIP_TOPIC, self._on_crdt_gossip)
 
         # Subscribe to incoming mother_pulse gossip from remote nodes
         mesh.subscribe("mother_pulse", self._on_remote_pulse)
@@ -374,24 +374,39 @@ class MotherThread:
         weaver.on_slot(self._on_weaver_slot)
 
     def _on_crdt_gossip(self, envelope) -> None:
-        """Merge incoming CRDT state from a peer."""
-        if self._crdt is not None:
-            try:
+        """Merge incoming CRDT state from a peer.
+
+        C30: DEGRADED — a failed merge must be logged, never silently dropped.
+        Mesh errors are non-fatal; the local state remains valid.
+        """
+        if self._crdt is None:
+            return
+        try:
+            with degraded(
+                "core.mother_thread",
+                "on_crdt_gossip",
+                context={"topic": getattr(self._crdt, "GOSSIP_TOPIC", "crdt_sync")},
+            ):
                 self._crdt.merge_gossip(envelope.payload)
-            except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "[MotherThread] CRDT merge error: %s", exc
-                )
+        except GAIABoundaryError:
+            pass  # already logged by DEGRADED boundary
 
     def _on_remote_pulse(self, envelope) -> None:
+        """Handle a MotherPulse broadcast from a remote mesh node.
+
+        Logs the remote phi into the CRDT register for distributed field
+        averaging (future: multi-node phi fusion).
+
+        C30: DEGRADED — a malformed envelope must be logged, not silently dropped.
         """
-        Handle a MotherPulse broadcast from a remote mesh node.
-        Currently logs the remote phi into the CRDT register for
-        distributed field averaging (future: multi-node phi fusion).
-        """
-        if self._crdt is not None:
-            try:
+        if self._crdt is None:
+            return
+        try:
+            with degraded(
+                "core.mother_thread",
+                "on_remote_pulse",
+                context={"envelope_keys": list(envelope.payload.keys()) if hasattr(envelope, "payload") else []},
+            ):
                 remote_phi = envelope.payload.get("collective_field", {}).get("collective_phi")
                 remote_node = envelope.payload.get("mesh", {}).get("node_id", "unknown")
                 if remote_phi is not None:
@@ -401,29 +416,46 @@ class MotherThread:
                         float(remote_phi),
                         timestamp=envelope.payload.get("timestamp"),
                     )
-            except Exception:
-                pass
+        except GAIABoundaryError:
+            pass  # already logged by DEGRADED boundary
 
     def _on_weaver_slot(self, slot) -> None:
-        """
-        Called by the ThreadWeaver when a distributed slot fires.
+        """Called by the ThreadWeaver when a distributed slot fires.
+
         Triggers an immediate beat + broadcast without waiting for the
         internal asyncio sleep — keeps all mesh nodes pulse-aligned.
+
+        C30: RECOVERABLE — a failed task creation is not fatal but must be
+        logged; the fallback pulse loop will continue driving beats.
         """
         pulse = self._beat()
-        # Fire-and-forget broadcast in the running event loop
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self._broadcast(pulse))
-        except RuntimeError:
-            pass
+            with recoverable(
+                "core.mother_thread",
+                "on_weaver_slot.create_task",
+                context={"pulse_seq": pulse.sequence},
+            ):
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._broadcast(pulse))
+        except GAIABoundaryError:
+            pass  # already logged; fallback loop will fire next beat
 
     def _gossip_pulse(self, pulse: MotherPulse) -> None:
-        """Publish a MotherPulse to the mesh gossip layer."""
-        if self._mesh is not None and self._mesh_active:
-            try:
+        """Publish a MotherPulse to the mesh gossip layer.
+
+        C30: DEGRADED — a gossip transport error must be logged but must not
+        interrupt the local pulse cycle.  The field continues pulsing even
+        when mesh connectivity is degraded.
+        """
+        if self._mesh is None or not self._mesh_active:
+            return
+        try:
+            with degraded(
+                "core.mother_thread",
+                "gossip_pulse",
+                context={"pulse_seq": pulse.sequence, "node_id": getattr(self._mesh, "node_id", None)},
+            ):
                 self._mesh.gossip("mother_pulse", pulse.to_dict())
-                # Also push collective field scalars into CRDT register
                 if self._crdt is not None:
                     cf = pulse.collective_field
                     self._crdt.set_field("collective_phi", cf.collective_phi,
@@ -434,24 +466,19 @@ class MotherThread:
                                          timestamp=pulse.timestamp)
                     self._crdt.set_field("field_coherence_label", cf.field_coherence_label,
                                          timestamp=pulse.timestamp)
-                    # Broadcast merged CRDT state
                     self._mesh.gossip(
                         self._crdt.GOSSIP_TOPIC,
                         self._crdt.to_gossip_payload(),
                     )
-            except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "[MotherThread] Mesh gossip error: %s", exc
-                )
+        except GAIABoundaryError:
+            pass  # already logged; local pulse continues
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        """
-        Start the pulse loop from a sync context.
+        """Start the pulse loop from a sync context.
         Idempotent — safe to call multiple times.
         """
         if self._running:
@@ -461,8 +488,7 @@ class MotherThread:
         self._task = loop.create_task(self._pulse_loop())
 
     async def async_start(self) -> None:
-        """
-        Start the pulse loop from an async context.
+        """Start the pulse loop from an async context.
         Idempotent — safe to call multiple times.
         """
         if self._running:
@@ -519,13 +545,19 @@ class MotherThread:
         threads = list(self._threads.values())
         cf = _compute_collective_field(threads)
 
-        # Attempt to read criticality label — gracefully degrade if unavailable
+        # Attempt to read criticality label — gracefully degrade if unavailable.
+        # C30: DEGRADED so the import failure is logged, not silently swallowed.
         criticality_label = "critical"
         try:
-            from core.criticality_monitor import get_monitor
-            criticality_label = get_monitor().current_label
-        except Exception:
-            pass
+            with degraded(
+                "core.mother_thread",
+                "beat.criticality_monitor",
+                context={"pulse_seq": self._pulse_sequence},
+            ):
+                from core.criticality_monitor import get_monitor  # noqa: PLC0415
+                criticality_label = get_monitor().current_label
+        except GAIABoundaryError:
+            pass  # already logged; fall through with default label
 
         voice = _select_mother_voice(
             cf.collective_phi,
@@ -639,7 +671,7 @@ class MotherThread:
         crdt_status = self._crdt.get_status() if self._crdt else None
         weaver_status = self._weaver.get_status() if self._weaver else None
         return {
-            "doctrine": "C04, C43, C44, C47",
+            "doctrine": "C04, C30, C43, C44, C47",
             "running": self._running,
             "pulse_sequence": self._pulse_sequence,
             "pulse_interval_s": PULSE_INTERVAL_SECONDS,
