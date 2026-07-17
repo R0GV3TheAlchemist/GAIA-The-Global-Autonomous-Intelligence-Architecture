@@ -11,7 +11,7 @@ authors = [
 ]
 readme = "README.md"
 license = {text = "All Rights Reserved — © 2026 Kyle Steen"}
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 keywords = ["epistemic", "world-model", "AI", "ontology", "knowledge-graph", "GAIA"]
 
 [project.urls]
@@ -37,8 +37,8 @@ strict_markers = true
 # ruff
 # ---------------------------------------------------------------------------
 [tool.ruff]
-line-length = 100
-target-version = "py311"
+line-length = 88
+target-version = "py313"
 exclude = [
     "alembic",
     "node_modules",
@@ -55,14 +55,12 @@ exclude = [
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B"]
 ignore = [
-    # Line length — handled by formatter
+    # Line length — handled by black formatter
     "E501",
     # Module-level import not at top — common lazy-load pattern
     "E402",
     # Function call in default argument — FastAPI Depends() pattern
     "B008",
-    # Import sorting — auto-fixable but generates noisy diffs; fix incrementally
-    "I001",
     # HTTPException re-raises in FastAPI handlers are intentionally bare;
     # chaining with `from exc` would leak internal stack info to HTTP clients.
     "B904",
@@ -93,6 +91,20 @@ ignore = [
 "research/**"    = ["ALL"]
 "scripts/**"     = ["F", "E", "B", "W"]
 "node/**"        = ["F", "E", "B", "W"]
+
+# ---------------------------------------------------------------------------
+# black
+# ---------------------------------------------------------------------------
+[tool.black]
+target-version = ["py313"]
+line-length = 88
+
+# ---------------------------------------------------------------------------
+# isort
+# ---------------------------------------------------------------------------
+[tool.isort]
+profile = "black"
+line_length = 88
 
 # ---------------------------------------------------------------------------
 # coverage
