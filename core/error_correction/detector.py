@@ -4,18 +4,16 @@
 """
 core/error_correction/detector.py
 
-GAIA Error Correction — Detection Engine (Phase 1)
+GAIA Error Correction — Detection Engine (Phase 1b)
 
-Runs Ruff in JSON mode across the repo (or a subset of files) and
-normalizes every diagnostic into a GAIAErrorFinding.  Additional
-detectors (Black, isort, Canon rule checks) will be added in Phase 1b.
+Runs all configured detectors:
+  1. Ruff          — lint, format, import-order, syntax, security rules
+  2. CanonChecker  — GAIA architectural Canon rules (CANON-01 – CANON-08)
 
-Design principles:
-  - Detection only. No files are modified here.
-  - Every finding carries full provenance metadata.
-  - Stateless: create a new ErrorDetector per run.
+Every finding is normalized into a GAIAErrorFinding and sorted by severity.
+No files are ever modified here — detection only.
 
-Canon Ref: C01, C30, Issue #755 Phase 1
+Canon Ref: C01, C30, Issue #755 Phase 1b
 """
 from __future__ import annotations
 
@@ -30,6 +28,7 @@ from core.error_correction.models import (
     GAIAErrorFinding,
     GAIASeverity,
 )
+from core.error_correction.canon_checker import CanonChecker
 from core.logger import get_logger
 
 _logger = get_logger("gaia.error_correction.detector")
@@ -37,7 +36,7 @@ _logger = get_logger("gaia.error_correction.detector")
 
 class ErrorDetector:
     """
-    Runs configured detection tools and yields GAIAErrorFinding instances.
+    Runs all configured detection tools and yields GAIAErrorFinding instances.
 
     Usage
     -----
@@ -49,16 +48,19 @@ class ErrorDetector:
         self,
         repo_root: Optional[Path] = None,
         files: Optional[Sequence[str]] = None,
+        skip_canon: bool = False,
     ) -> None:
         """
         Parameters
         ----------
-        repo_root : Root of the repository. Defaults to cwd.
-        files     : Optional list of specific files to check.
-                    When None, the entire repo_root is scanned.
+        repo_root  : Root of the repository. Defaults to cwd.
+        files      : Optional list of specific files to check.
+                     When None, the entire repo_root is scanned.
+        skip_canon : Set True to skip the CanonChecker (Ruff only).
         """
-        self.repo_root = repo_root or Path(".")
-        self.files = list(files) if files else None
+        self.repo_root  = repo_root or Path(".")
+        self.files      = list(files) if files else None
+        self.skip_canon = skip_canon
 
     # ---------------------------------------------------------------- #
     #  Public API                                                       #
@@ -67,30 +69,54 @@ class ErrorDetector:
     def run(self) -> list[GAIAErrorFinding]:
         """Run all detectors and return a sorted list of findings."""
         findings: list[GAIAErrorFinding] = []
-        findings.extend(self._run_ruff())
-        # Phase 1b: findings.extend(self._run_copyright_check())
-        # Phase 1b: findings.extend(self._run_canon_rules())
-        findings.sort(key=lambda f: (f.severity.value, f.file_path, f.line or 0))
+
+        # 1. Ruff
+        ruff_findings = self._run_ruff()
+        findings.extend(ruff_findings)
+        _logger.info(f"Ruff: {len(ruff_findings)} finding(s)")
+
+        # 2. Canon Rule Checker
+        if not self.skip_canon:
+            canon_findings = self._run_canon_checker()
+            findings.extend(canon_findings)
+            _logger.info(f"CanonChecker: {len(canon_findings)} finding(s)")
+
+        # Phase 1c stubs (future):
+        # findings.extend(self._run_copyright_check())
+
+        # Sort: severity first, then file, then line
+        severity_order = {s: i for i, s in enumerate(GAIASeverity)}
+        findings.sort(
+            key=lambda f: (
+                severity_order.get(f.severity, 99),
+                f.file_path,
+                f.line or 0,
+            )
+        )
+
         _logger.info(
-            f"ErrorDetector: {len(findings)} finding(s) across "
-            f"{len({f.file_path for f in findings})} file(s)"
+            f"ErrorDetector: {len(findings)} total finding(s) across "
+            f"{len({f.file_path for f in findings})} file(s) | "
+            f"blocking={sum(1 for f in findings if f.is_blocking())}"
         )
         return findings
 
     def iter(self) -> Iterator[GAIAErrorFinding]:
         """Streaming variant — yields findings as each detector completes."""
         yield from self._run_ruff()
+        if not self.skip_canon:
+            yield from self._run_canon_checker()
 
     # ---------------------------------------------------------------- #
     #  Ruff detector                                                    #
     # ---------------------------------------------------------------- #
 
     def _run_ruff(self) -> list[GAIAErrorFinding]:
-        """Run `ruff check --output-format json` and parse diagnostics."""
+        """Run `ruff check --output-format json --no-fix` and parse diagnostics."""
         cmd = [
             sys.executable, "-m", "ruff", "check",
             "--output-format", "json",
-            "--no-fix",          # detection only — never mutate files
+            "--no-fix",
         ]
         if self.files:
             cmd.extend(self.files)
@@ -110,10 +136,8 @@ class ErrorDetector:
             _logger.error("ruff not found — install with: pip install ruff")
             return []
 
-        # Ruff exits 1 when findings exist — that’s normal, not an error
         raw = result.stdout.strip()
         if not raw:
-            _logger.debug("Ruff returned no findings.")
             return []
 
         try:
@@ -125,22 +149,31 @@ class ErrorDetector:
         findings = []
         for diag in diagnostics:
             file_path = diag.get("filename", "unknown")
-            # Make path repo-relative
             try:
                 file_path = str(
                     Path(file_path).relative_to(self.repo_root.resolve())
                 )
             except ValueError:
-                pass  # keep absolute path if relative fails
+                pass
             findings.append(
                 GAIAErrorFinding.from_ruff_diagnostic(diag, file_path)
             )
-
-        _logger.debug(f"Ruff: {len(findings)} finding(s)")
         return findings
 
     # ---------------------------------------------------------------- #
-    #  Convenience: blocking findings only                              #
+    #  Canon Rule Checker                                               #
+    # ---------------------------------------------------------------- #
+
+    def _run_canon_checker(self) -> list[GAIAErrorFinding]:
+        """Run the GAIA CanonChecker and return findings."""
+        checker = CanonChecker(
+            repo_root=self.repo_root,
+            paths=self.files,
+        )
+        return checker.run()
+
+    # ---------------------------------------------------------------- #
+    #  Convenience methods                                              #
     # ---------------------------------------------------------------- #
 
     def blocking_findings(self) -> list[GAIAErrorFinding]:
@@ -152,4 +185,11 @@ class ErrorDetector:
         result: dict[str, list[GAIAErrorFinding]] = {}
         for finding in self.run():
             result.setdefault(finding.file_path, []).append(finding)
+        return result
+
+    def findings_by_source(self) -> dict[str, list[GAIAErrorFinding]]:
+        """Group all findings by source tool (ruff, gaia.canon_checker, etc.)."""
+        result: dict[str, list[GAIAErrorFinding]] = {}
+        for finding in self.run():
+            result.setdefault(finding.source, []).append(finding)
         return result
