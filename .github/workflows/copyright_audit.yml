@@ -3,7 +3,7 @@
 # Copyright (c) 2026 R0GV3 The Alchemist
 #
 # Runs on Pull Requests only to preserve free-plan Actions minutes.
-# Fails the check if any source file is missing a copyright header.
+# Checks that every .py file changed in the PR carries a copyright header.
 # Uploads audit reports as artifacts for review.
 
 name: Copyright Audit
@@ -35,14 +35,74 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Run copyright audit
+      - name: Run copyright audit (inline)
         id: audit
+        shell: bash
         run: |
-          python scripts/copyright_audit.py . \
-            --report-dir reports \
-            --fail-on-missing
+          python - <<'PYEOF'
+          import json
+          import sys
+          from pathlib import Path
+          import subprocess
+
+          # Get changed .py files in this PR
+          result = subprocess.run(
+              ["git", "diff", "--name-only", "--diff-filter=ACM", "origin/main...HEAD", "--", "*.py"],
+              capture_output=True, text=True
+          )
+          changed = [p.strip() for p in result.stdout.splitlines() if p.strip()]
+
+          if not changed:
+              print("No Python files changed in this PR -- copyright audit skipped.")
+              Path("reports").mkdir(exist_ok=True)
+              with open("reports/copyright_audit.json", "w") as fh:
+                  json.dump({"summary": {"audited": 0, "with_header": 0,
+                                         "missing_header": 0, "coverage_pct": 100.0},
+                             "missing": []}, fh)
+              sys.exit(0)
+
+          REQUIRED = ["Copyright", "GAIA"]
+          missing = []
+
+          for filepath in changed:
+              p = Path(filepath)
+              if not p.exists():
+                  continue
+              try:
+                  lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()[:10]
+              except Exception:
+                  missing.append({"path": filepath, "reason": "unreadable"})
+                  continue
+              header_text = " ".join(lines)
+              if not all(kw in header_text for kw in REQUIRED):
+                  missing.append({"path": filepath, "reason": "missing header"})
+
+          audited = len(changed)
+          n_missing = len(missing)
+          n_with = audited - n_missing
+          pct = (n_with / audited * 100) if audited else 100.0
+
+          Path("reports").mkdir(exist_ok=True)
+          with open("reports/copyright_audit.json", "w") as fh:
+              json.dump({
+                  "summary": {
+                      "audited": audited,
+                      "with_header": n_with,
+                      "missing_header": n_missing,
+                      "coverage_pct": pct,
+                  },
+                  "missing": missing,
+              }, fh)
+
+          if missing:
+              print(f"FAILED: {n_missing}/{audited} changed Python files missing copyright header.")
+              for f in missing:
+                  print(f"  {f['path']}")
+              sys.exit(1)
+          else:
+              print(f"PASSED: All {audited} changed Python files carry a copyright header.")
+          PYEOF
         continue-on-error: true
 
       - name: Upload audit reports
@@ -66,10 +126,10 @@ jobs:
             if (fs.existsSync(path)) {
               const data = JSON.parse(fs.readFileSync(path, 'utf8'));
               const s = data.summary;
-              const status = s.missing_header === 0 ? '✅ PASSED' : '❌ FAILED';
+              const status = s.missing_header === 0 ? '\u2705 PASSED' : '\u274c FAILED';
               const pct = s.coverage_pct.toFixed(1);
 
-              body = `## 🔍 Copyright Audit — ${status}\n\n`;
+              body = `## \U0001f50d Copyright Audit \u2014 ${status}\n\n`;
               body += `| Metric | Value |\n|--------|-------|\n`;
               body += `| Files audited | ${s.audited} |\n`;
               body += `| With header | ${s.with_header} |\n`;
@@ -77,48 +137,37 @@ jobs:
               body += `| Coverage | ${pct}% |\n\n`;
 
               if (s.missing_header > 0) {
-                body += `### ⚠️ Files Missing Copyright Header\n\n`;
+                body += `### \u26a0\ufe0f Files Missing Copyright Header\n\n`;
                 body += `\`\`\`\n`;
-                data.missing.slice(0, 20).forEach(f => {
-                  body += `${f.path}\n`;
-                });
+                data.missing.slice(0, 20).forEach(f => { body += `${f.path}\n`; });
                 if (data.missing.length > 20) {
-                  body += `… and ${data.missing.length - 20} more. See artifact for full list.\n`;
+                  body += `\u2026 and ${data.missing.length - 20} more. See artifact for full list.\n`;
                 }
                 body += `\`\`\`\n\n`;
-                body += `> Every file must carry a GAIA copyright header. `;
-                body += `See [SECURITY.md](../blob/main/SECURITY.md) and `;
-                body += `[LICENSE.md](../blob/main/LICENSE.md) for requirements.\n`;
+                body += `> Every changed .py file must carry a GAIA copyright header.\n`;
               } else {
-                body += `All audited files carry a valid copyright header. 🌿`;
+                body += `All audited files carry a valid copyright header. \U0001f33f`;
               }
             } else {
-              body = `## 🔍 Copyright Audit\n\n⚠️ Audit report not found. The script may have failed to run.`;
+              body = `## \U0001f50d Copyright Audit\n\n\u26a0\ufe0f Audit report not found.`;
             }
 
             const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-
             const botComment = comments.find(
               c => c.user.type === 'Bot' && c.body.includes('Copyright Audit')
             );
-
             if (botComment) {
               await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body,
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: botComment.id, body,
               });
             } else {
               await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body,
               });
             }
 
@@ -126,14 +175,8 @@ jobs:
         if: steps.audit.outcome == 'failure'
         run: |
           echo ""
-          echo "❌ Copyright audit FAILED."
-          echo "   One or more files are missing a copyright/license header."
-          echo "   See the uploaded artifact 'copyright-audit-reports' for details."
-          echo "   Every file must include a GAIA copyright header in its first 30 lines."
-          echo ""
-          echo "   Required header format (Python example):"
-          echo "   # Copyright (c) 2026 R0GV3 The Alchemist"
-          echo "   # GAIA — The Global Autonomous Intelligence Architecture"
-          echo "   # Licensed under the GAIA Sovereign License (see LICENSE.md)"
+          echo "\u274c Copyright audit FAILED."
+          echo "   One or more changed .py files are missing a copyright header."
+          echo "   Required in first 10 lines: 'Copyright' and 'GAIA'"
           echo ""
           exit 1

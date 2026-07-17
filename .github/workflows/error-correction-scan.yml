@@ -14,7 +14,7 @@
 #
 # Canon Ref: C01 (Sovereignty), C30 (No silent failures), Issue #755
 
-name: "🔍 Error Correction Scan"
+name: "\U0001f50d Error Correction Scan"
 
 on:
   pull_request:
@@ -25,7 +25,7 @@ on:
 
 jobs:
   error-correction-scan:
-    name: "Error Correction — Phase 1b Detection (Ruff + Canon)"
+    name: "Error Correction \u2014 Phase 1b Detection (Ruff + Canon)"
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -54,6 +54,8 @@ jobs:
 
       - name: Run Error Correction Detector (Ruff + Canon)
         id: detector
+        env:
+          PYTHONPATH: .
         run: |
           python - <<'EOF'
           import json
@@ -65,7 +67,7 @@ jobs:
           output_dir = Path("reports/error-correction")
 
           print("=" * 60)
-          print("GAIA Error Correction Detection Engine — Phase 1b")
+          print("GAIA Error Correction Detection Engine \u2014 Phase 1b")
           print("Sources: Ruff + Canon Rule Checker")
           print("=" * 60)
 
@@ -79,7 +81,6 @@ jobs:
           total    = len(findings)
           files    = len({f.file_path for f in findings})
 
-          # Source breakdown
           by_source: dict[str, int] = {}
           for f in findings:
               by_source[f.source] = by_source.get(f.source, 0) + 1
@@ -92,6 +93,7 @@ jobs:
           print(f"\nMarkdown report : {paths['markdown']}")
           print(f"JSON artifact   : {paths['json']}")
 
+          Path("reports/error-correction").mkdir(parents=True, exist_ok=True)
           with open("reports/error-correction/run_summary.json", "w") as fh:
               json.dump({
                   "total":    total,
@@ -101,12 +103,12 @@ jobs:
               }, fh)
 
           if blocking:
-              print(f"\n❌ {len(blocking)} BLOCKING finding(s) (CRITICAL or HIGH).")
+              print(f"\n\u274c {len(blocking)} BLOCKING finding(s) (CRITICAL or HIGH).")
               for f in blocking[:5]:
                   print(f"  [{f.severity.value.upper()}] {f.rule_id} @ {f.location_str()}: {f.message[:80]}")
               sys.exit(1)
           else:
-              print(f"\n✅ No blocking findings. {total} low-severity finding(s) noted.")
+              print(f"\n\u2705 No blocking findings. {total} low-severity finding(s) noted.")
           EOF
         continue-on-error: true
 
@@ -137,12 +139,12 @@ jobs:
             }
 
             const status = blocking === 0
-              ? '✅ PASSED'
-              : `❌ BLOCKED (${blocking} critical/high)`;
+              ? '\u2705 PASSED'
+              : `\u274c BLOCKED (${blocking} critical/high)`;
 
             let sourceRows = '';
             for (const [src, count] of Object.entries(bySource)) {
-              const label = src === 'ruff' ? '🔍 Ruff' : '⚖️ Canon Checker';
+              const label = src === 'ruff' ? '\U0001f50d Ruff' : '\u2696\ufe0f Canon Checker';
               sourceRows += `| ${label} | ${count} |\n`;
             }
 
@@ -154,24 +156,24 @@ jobs:
                 .filter(f => f.severity === 'critical' || f.severity === 'high')
                 .slice(0, 10);
               if (blockers.length > 0) {
-                topFindings = `\n### ❌ Blocking Findings\n\n`;
+                topFindings = `\n### \u274c Blocking Findings\n\n`;
                 topFindings += `| Severity | Rule | Source | Location | Message |\n`;
                 topFindings += `|----------|------|--------|----------|---------|\n`;
                 for (const f of blockers) {
-                  const sev = f.severity === 'critical' ? '🔴 critical' : '🟠 high';
+                  const sev = f.severity === 'critical' ? '\U0001f534 critical' : '\U0001f7e0 high';
                   topFindings += `| ${sev} | \`${f.rule_id}\` | ${f.source} | \`${f.location}\` | ${f.message.slice(0,80)} |\n`;
                 }
-                if (blocking > 10) topFindings += `\n> … and ${blocking - 10} more. See artifact.\n`;
+                if (blocking > 10) topFindings += `\n> \u2026 and ${blocking - 10} more. See artifact.\n`;
               }
             }
 
             const body = [
-              `## 🔍 GAIA Error Correction Scan — ${status}`,
+              `## \U0001f50d GAIA Error Correction Scan \u2014 ${status}`,
               ``,
               `| Metric | Value |`,
               `|--------|-------|`,
               `| Total findings | ${total} |`,
-              `| 🔴🟠 Blocking (CRITICAL + HIGH) | ${blocking} |`,
+              `| \U0001f534\U0001f7e0 Blocking (CRITICAL + HIGH) | ${blocking} |`,
               `| Files affected | ${files} |`,
               ``,
               `### By Source`,
@@ -180,7 +182,7 @@ jobs:
               sourceRows,
               topFindings,
               `> Full reports in **error-correction-reports** artifact.`,
-              `> _Canon Ref: C01, C15, C30 — Issue #755 Phase 1b_`,
+              `> _Canon Ref: C01, C15, C30 \u2014 Issue #755 Phase 1b_`,
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
@@ -203,11 +205,11 @@ jobs:
               });
             }
 
-      - name: Enforce — fail on blocking findings
+      - name: Enforce -- fail on blocking findings
         if: steps.detector.outcome == 'failure'
         run: |
           echo ""
-          echo "❌ Error Correction Scan FAILED."
+          echo "\u274c Error Correction Scan FAILED."
           echo "   CRITICAL or HIGH findings detected (Ruff or Canon Rule Checker)."
           echo "   See 'error-correction-reports' artifact for details."
           echo ""
