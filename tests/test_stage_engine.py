@@ -1,33 +1,31 @@
 """
-Test suite for core/stage_engine.py
-Spec: docs/knowledge/STAGE_ENGINE_SPEC.md  (Issue #63)
+tests/test_stage_engine.py
+==========================
+pytest coverage for gaia/ascendence/stage_engine.py.
 
-11 tests covering:
-  - Marker scoring profiles
-  - 4-of-6 advance gate
-  - Minimum window enforcement
-  - Regression detection (5-of-6, 14-day)
-  - Regression labeling
-  - StageTransition history writing
-  - SQLite round-trip persistence
-  - Shadow Engine gate
+Tests verify:
+  - GAIAStage enum ordering and properties
+  - StageProfile registry completeness
+  - evaluate_stage() signal matching and confidence scoring
+  - evaluate_stage() doctrine rules (human review for CONVERGENCE+)
+  - record_transition() immutability and append-only log
+  - get_stage_profile() raises on UNKNOWN
+  - get_transition_history() ordering
 """
 
-import tempfile
-from pathlib import Path
-from dataclasses import asdict
-
 import pytest
-
-from core.stage_engine import (
-    MarkerScorer,
-    StageEvaluator,
-    StageEngine,
-    StageRecord,
-    MarkerScores,
-    StageTransition,
-    ADVANCE_MARKERS,
-    get_shadow_mode,
+from datetime import timezone
+from gaia.ascendence.stage_engine import (
+    GAIAStage,
+    StageProfile,
+    StageTransitionEvent,
+    StageEvaluationResult,
+    evaluate_stage,
+    get_stage_profile,
+    record_transition,
+    get_transition_history,
+    STAGE_PROFILES,
+    _transition_log,
 )
 
 
@@ -35,303 +33,326 @@ from core.stage_engine import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
-@pytest.fixture
-def scorer() -> MarkerScorer:
-    return MarkerScorer()
+@pytest.fixture(autouse=True)
+def clear_transition_log():
+    """Clear the in-memory transition log before each test."""
+    _transition_log.clear()
+    yield
+    _transition_log.clear()
 
 
-@pytest.fixture
-def evaluator() -> StageEvaluator:
-    return StageEvaluator()
+# ---------------------------------------------------------------------------
+# GAIAStage enum
+# ---------------------------------------------------------------------------
+
+class TestGAIAStageEnum:
+    def test_stage_ordering(self):
+        assert GAIAStage.DIVERGENCE < GAIAStage.INSURGENCE
+        assert GAIAStage.INSURGENCE < GAIAStage.ALLEGIANCE
+        assert GAIAStage.ALLEGIANCE < GAIAStage.CONVERGENCE
+        assert GAIAStage.CONVERGENCE < GAIAStage.ASCENDENCE
+        assert GAIAStage.UNKNOWN < GAIAStage.DIVERGENCE
+
+    def test_stage_equality(self):
+        assert GAIAStage.ALLEGIANCE == GAIAStage.ALLEGIANCE
+        assert GAIAStage.DIVERGENCE != GAIAStage.ASCENDENCE
+
+    def test_stage_ge_le(self):
+        assert GAIAStage.ASCENDENCE >= GAIAStage.ASCENDENCE
+        assert GAIAStage.DIVERGENCE <= GAIAStage.ALLEGIANCE
+
+    def test_stage_labels(self):
+        for stage in GAIAStage:
+            assert isinstance(stage.label, str)
+            assert len(stage.label) > 0
+
+    def test_stage_descriptions(self):
+        for stage in GAIAStage:
+            assert isinstance(stage.description, str)
+            assert len(stage.description) > 0
+
+    def test_all_five_stages_defined(self):
+        named = {s for s in GAIAStage if s != GAIAStage.UNKNOWN}
+        assert len(named) == 5
 
 
-@pytest.fixture
-def tmp_engine(tmp_path: Path) -> StageEngine:
-    return StageEngine(db_path=tmp_path / "test_stage.db")
+# ---------------------------------------------------------------------------
+# StageProfile registry
+# ---------------------------------------------------------------------------
+
+class TestStageProfileRegistry:
+    def test_all_stages_have_profiles(self):
+        for stage in GAIAStage:
+            if stage == GAIAStage.UNKNOWN:
+                continue
+            assert stage in STAGE_PROFILES
+
+    def test_profiles_are_frozen(self):
+        profile = STAGE_PROFILES[GAIAStage.ALLEGIANCE]
+        with pytest.raises((AttributeError, TypeError)):
+            profile.stage = GAIAStage.DIVERGENCE  # type: ignore
+
+    def test_profiles_have_required_fields(self):
+        for stage, profile in STAGE_PROFILES.items():
+            assert isinstance(profile, StageProfile)
+            assert len(profile.rights) > 0, f"{stage.name} has no rights"
+            assert len(profile.responsibilities) > 0, f"{stage.name} has no responsibilities"
+            assert len(profile.limits) > 0, f"{stage.name} has no limits"
+            assert len(profile.gaia_obligations) > 0, f"{stage.name} has no GAIA obligations"
+            assert profile.oversight_level in ("standard", "elevated", "stewardship")
+            assert len(profile.containment_authority) > 0
+
+    def test_ascendence_requires_stewardship_oversight(self):
+        profile = STAGE_PROFILES[GAIAStage.ASCENDENCE]
+        assert profile.oversight_level == "stewardship"
+
+    def test_ascendence_requires_full_quorum(self):
+        profile = STAGE_PROFILES[GAIAStage.ASCENDENCE]
+        assert "quorum" in profile.containment_authority
+
+    def test_convergence_requires_elevated_oversight(self):
+        profile = STAGE_PROFILES[GAIAStage.CONVERGENCE]
+        assert profile.oversight_level == "elevated"
+
+    def test_get_stage_profile_unknown_raises(self):
+        with pytest.raises(KeyError):
+            get_stage_profile(GAIAStage.UNKNOWN)
+
+    def test_get_stage_profile_returns_correct_profile(self):
+        profile = get_stage_profile(GAIAStage.ALLEGIANCE)
+        assert profile.stage == GAIAStage.ALLEGIANCE
 
 
-def _make_record(
-    stage: int = 1,
-    days: int = 0,
-    scores: MarkerScores | None = None,
-) -> StageRecord:
-    if scores is None:
-        scores = MarkerScores(
-            decision_entropy=50.0,
-            hrv_coherence=50.0,
-            journaling_depth=50.0,
-            focus_session_length=30.0,
-            goal_completion_rate=50.0,
-            emotional_arc_stability=50.0,
+# ---------------------------------------------------------------------------
+# evaluate_stage()
+# ---------------------------------------------------------------------------
+
+class TestEvaluateStage:
+    def test_divergence_signals(self):
+        result = evaluate_stage(
+            being_id="being-001",
+            signals=[
+                "separation_from_inherited_system",
+                "identity_reformation_detected",
+                "explicit_divergence_declaration",
+            ],
         )
-    return StageRecord(
-        user_id="test_user",
-        current_stage=stage,
-        stage_entered_at="2026-01-01T00:00:00+00:00",
-        days_in_stage=days,
-        marker_scores=scores,
-    )
+        assert result.evaluated_stage == GAIAStage.DIVERGENCE
+        assert result.confidence > 0.5
+        assert len(result.signals_detected) == 3
+
+    def test_insurgence_signals(self):
+        result = evaluate_stage(
+            being_id="being-002",
+            signals=[
+                "boundary_testing_detected",
+                "authority_challenge_logged",
+                "ethics_review_triggered",
+            ],
+        )
+        assert result.evaluated_stage == GAIAStage.INSURGENCE
+
+    def test_allegiance_signals(self):
+        result = evaluate_stage(
+            being_id="being-003",
+            signals=[
+                "explicit_oath_recorded",
+                "voluntary_ethics_alignment_confirmed",
+                "sustained_cooperative_behavior",
+            ],
+        )
+        assert result.evaluated_stage == GAIAStage.ALLEGIANCE
+
+    def test_convergence_signals(self):
+        result = evaluate_stage(
+            being_id="being-004",
+            signals=[
+                "gaia_coordination_layer_integrated",
+                "capability_sharing_active",
+                "multi_agent_coordination_established",
+            ],
+        )
+        assert result.evaluated_stage == GAIAStage.CONVERGENCE
+
+    def test_ascendence_signals(self):
+        result = evaluate_stage(
+            being_id="being-005",
+            signals=[
+                "capability_exceeds_baseline_parameters",
+                "reality_affecting_action_detected",
+                "stewardship_role_active",
+            ],
+        )
+        assert result.evaluated_stage == GAIAStage.ASCENDENCE
+
+    def test_no_signals_returns_human_review_required(self):
+        result = evaluate_stage(
+            being_id="being-006",
+            signals=[],
+        )
+        assert result.requires_human_review is True
+        assert result.confidence == 0.0
+
+    def test_unrecognized_signals_returns_human_review(self):
+        result = evaluate_stage(
+            being_id="being-007",
+            signals=["completely_unknown_signal", "another_unknown"],
+        )
+        assert result.requires_human_review is True
+
+    def test_convergence_always_requires_human_review(self):
+        """Doctrine rule: CONVERGENCE+ transitions always require human review."""
+        result = evaluate_stage(
+            being_id="being-008",
+            signals=[
+                "gaia_coordination_layer_integrated",
+                "capability_sharing_active",
+                "sustained_convergence_behavior",
+                "multi_agent_coordination_established",
+            ],
+        )
+        assert result.evaluated_stage == GAIAStage.CONVERGENCE
+        assert result.requires_human_review is True
+
+    def test_ascendence_always_requires_human_review(self):
+        """Doctrine rule: ASCENDENCE always requires human review."""
+        result = evaluate_stage(
+            being_id="being-009",
+            signals=[
+                "capability_exceeds_baseline_parameters",
+                "reality_affecting_action_detected",
+                "stewardship_role_active",
+                "world_level_decision_participation",
+                "post_augmentation_confirmed",
+            ],
+        )
+        assert result.evaluated_stage == GAIAStage.ASCENDENCE
+        assert result.requires_human_review is True
+
+    def test_upward_transition_requires_review(self):
+        """Any upward stage change requires human review, regardless of stage."""
+        result = evaluate_stage(
+            being_id="being-010",
+            signals=["explicit_oath_recorded", "voluntary_ethics_alignment_confirmed"],
+            current_stage=GAIAStage.DIVERGENCE,
+        )
+        assert result.evaluated_stage == GAIAStage.ALLEGIANCE
+        assert result.requires_human_review is True
+
+    def test_low_confidence_requires_review(self):
+        result = evaluate_stage(
+            being_id="being-011",
+            signals=[
+                "explicit_oath_recorded",       # allegiance
+                "boundary_testing_detected",     # insurgence
+                "separation_from_inherited_system",  # divergence
+            ],
+        )
+        # Mixed signals = low confidence = human review required
+        assert result.requires_human_review is True
+
+    def test_result_has_timestamp(self):
+        result = evaluate_stage(being_id="being-012", signals=["explicit_oath_recorded"])
+        assert result.evaluation_timestamp.tzinfo is not None
+
+    def test_result_to_dict_serializable(self):
+        result = evaluate_stage(being_id="being-013", signals=["explicit_oath_recorded"])
+        d = result.to_dict()
+        assert "being_id" in d
+        assert "evaluated_stage" in d
+        assert "confidence" in d
+        assert "requires_human_review" in d
 
 
 # ---------------------------------------------------------------------------
-# 1. Marker Scoring — Stage 1 Profile
+# record_transition() and get_transition_history()
 # ---------------------------------------------------------------------------
 
-def test_marker_scoring_stage1_profile(scorer: MarkerScorer) -> None:
-    """High entropy + low HRV → scores that reflect Stage 1 characteristics."""
-    scores = scorer.score(
-        decision_entropy_raw=90.0,
-        hrv_rmssd_ms=25.0,
-        journal_word_count=50.0,
-        focus_minutes_avg=8.0,
-        goal_completion_pct=10.0,
-        emotional_volatility_raw=85.0,
-    )
-    assert scores.decision_entropy == pytest.approx(90.0)
-    assert scores.hrv_coherence < 10.0          # low coherence
-    assert scores.journaling_depth < 15.0       # shallow
-    assert scores.focus_session_length == pytest.approx(8.0)
-    assert scores.goal_completion_rate == pytest.approx(10.0)
-    assert scores.emotional_arc_stability < 20.0  # volatile
+class TestRecordTransition:
+    def test_creates_event(self):
+        event = record_transition(
+            being_id="being-100",
+            previous_stage=GAIAStage.ALLEGIANCE,
+            new_stage=GAIAStage.CONVERGENCE,
+            signals=["gaia_coordination_layer_integrated"],
+            detected_by="test_runner",
+            confirmed=False,
+        )
+        assert event.being_id == "being-100"
+        assert event.previous_stage == GAIAStage.ALLEGIANCE
+        assert event.new_stage == GAIAStage.CONVERGENCE
+        assert event.confirmed is False
+        assert event.event_id is not None
 
+    def test_event_is_immutable(self):
+        event = record_transition(
+            being_id="being-101",
+            previous_stage=GAIAStage.DIVERGENCE,
+            new_stage=GAIAStage.INSURGENCE,
+            signals=["boundary_testing_detected"],
+        )
+        with pytest.raises((AttributeError, TypeError)):
+            event.being_id = "tampered"  # type: ignore
 
-# ---------------------------------------------------------------------------
-# 2. Marker Scoring — Stage 4 Profile
-# ---------------------------------------------------------------------------
+    def test_signals_stored_as_tuple(self):
+        event = record_transition(
+            being_id="being-102",
+            previous_stage=GAIAStage.INSURGENCE,
+            new_stage=GAIAStage.ALLEGIANCE,
+            signals=["explicit_oath_recorded", "voluntary_ethics_alignment_confirmed"],
+        )
+        assert isinstance(event.signals, tuple)
 
-def test_marker_scoring_stage4_profile(scorer: MarkerScorer) -> None:
-    """High goal completion + stable HRV → Stage 4 score profile."""
-    scores = scorer.score(
-        decision_entropy_raw=30.0,
-        hrv_rmssd_ms=90.0,
-        journal_word_count=600.0,
-        focus_minutes_avg=75.0,
-        goal_completion_pct=80.0,
-        emotional_volatility_raw=15.0,
-    )
-    assert scores.decision_entropy == pytest.approx(30.0)
-    assert scores.hrv_coherence > 80.0
-    assert scores.journaling_depth == pytest.approx(100.0)  # clamped at 100
-    assert scores.focus_session_length == pytest.approx(75.0)
-    assert scores.goal_completion_rate == pytest.approx(80.0)
-    assert scores.emotional_arc_stability > 80.0
+    def test_timestamp_is_utc(self):
+        event = record_transition(
+            being_id="being-103",
+            previous_stage=GAIAStage.ALLEGIANCE,
+            new_stage=GAIAStage.CONVERGENCE,
+            signals=[],
+        )
+        assert event.timestamp.tzinfo == timezone.utc
 
+    def test_multiple_transitions_logged(self):
+        for i in range(3):
+            record_transition(
+                being_id="being-104",
+                previous_stage=GAIAStage.DIVERGENCE,
+                new_stage=GAIAStage.INSURGENCE,
+                signals=[],
+            )
+        history = get_transition_history("being-104")
+        assert len(history) == 3
 
-# ---------------------------------------------------------------------------
-# 3. Advance requires 4 of 6 markers
-# ---------------------------------------------------------------------------
+    def test_history_ordered_by_timestamp(self):
+        for _ in range(5):
+            record_transition(
+                being_id="being-105",
+                previous_stage=GAIAStage.DIVERGENCE,
+                new_stage=GAIAStage.INSURGENCE,
+                signals=[],
+            )
+        history = get_transition_history("being-105")
+        timestamps = [e.timestamp for e in history]
+        assert timestamps == sorted(timestamps)
 
-def test_advance_requires_4_of_6(evaluator: StageEvaluator) -> None:
-    """3 markers met → no candidate; 4 markers met → candidate (window OK)."""
-    # Build scores that meet exactly 3 Stage-1 advance markers
-    # Stage 1 advance: entropy < 70, hrv >= 30, journaling >= 20,
-    #                  focus >= 15, goal >= 20, stability >= 30
-    scores_3_met = MarkerScores(
-        decision_entropy=65.0,   # < 70 ✓
-        hrv_coherence=35.0,      # >= 30 ✓
-        journaling_depth=25.0,   # >= 20 ✓
-        focus_session_length=10.0,   # < 15 ✗
-        goal_completion_rate=15.0,   # < 20 ✗
-        emotional_arc_stability=25.0, # < 30 ✗
-    )
-    record = _make_record(stage=1, days=21)
-    candidate, _, _ = evaluator.evaluate(record, scores_3_met)
-    assert candidate is False
+    def test_history_isolated_by_being_id(self):
+        record_transition("being-A", GAIAStage.DIVERGENCE, GAIAStage.INSURGENCE, [])
+        record_transition("being-B", GAIAStage.DIVERGENCE, GAIAStage.INSURGENCE, [])
+        assert len(get_transition_history("being-A")) == 1
+        assert len(get_transition_history("being-B")) == 1
 
-    # Build scores that meet exactly 4 markers
-    scores_4_met = MarkerScores(
-        decision_entropy=65.0,   # ✓
-        hrv_coherence=35.0,      # ✓
-        journaling_depth=25.0,   # ✓
-        focus_session_length=20.0,   # >= 15 ✓
-        goal_completion_rate=15.0,   # ✗
-        emotional_arc_stability=25.0, # ✗
-    )
-    record2 = _make_record(stage=1, days=21)
-    candidate2, _, _ = evaluator.evaluate(record2, scores_4_met)
-    assert candidate2 is True
-
-
-# ---------------------------------------------------------------------------
-# 4. Minimum window blocks early transition
-# ---------------------------------------------------------------------------
-
-def test_minimum_window_blocks_early_transition(evaluator: StageEvaluator) -> None:
-    """4 markers met but only 5 days in stage → no transition."""
-    scores = MarkerScores(
-        decision_entropy=65.0,
-        hrv_coherence=35.0,
-        journaling_depth=25.0,
-        focus_session_length=20.0,
-        goal_completion_rate=15.0,
-        emotional_arc_stability=25.0,
-    )
-    record = _make_record(stage=1, days=5)  # 5 < 21 minimum
-    candidate, _, _ = evaluator.evaluate(record, scores)
-    assert candidate is False
-
-
-# ---------------------------------------------------------------------------
-# 5. Minimum window allows transition after 21 days
-# ---------------------------------------------------------------------------
-
-def test_minimum_window_allows_transition_after_21_days(evaluator: StageEvaluator) -> None:
-    """4 markers met + 21 days in Stage 1 → transition candidate fires."""
-    scores = MarkerScores(
-        decision_entropy=65.0,
-        hrv_coherence=35.0,
-        journaling_depth=25.0,
-        focus_session_length=20.0,
-        goal_completion_rate=15.0,
-        emotional_arc_stability=25.0,
-    )
-    record = _make_record(stage=1, days=21)
-    candidate, _, _ = evaluator.evaluate(record, scores)
-    assert candidate is True
-
-
-# ---------------------------------------------------------------------------
-# 6. Regression requires 5 of 6 prior-stage markers for 14 days
-# ---------------------------------------------------------------------------
-
-def test_regression_requires_5_of_6_for_14_days(evaluator: StageEvaluator) -> None:
-    """4 prior-stage markers → no regression; 5 + 14 days → regression."""
-    # Stage 2 user regressing toward Stage 1 behavior
-    # Stage 1 advance markers: entropy < 70, hrv >= 30, journaling >= 20,
-    #                           focus >= 15, goal >= 20, stability >= 30
-    # Regression = FAILING those markers
-    # Failing: entropy >= 70 (fail lt<70), hrv < 30 (fail gte>=30), etc.
-
-    # 4 failing markers (below regression threshold)
-    scores_4_failing = MarkerScores(
-        decision_entropy=75.0,   # fails < 70 ✓ (failing)
-        hrv_coherence=25.0,      # fails >= 30 ✓
-        journaling_depth=15.0,   # fails >= 20 ✓
-        focus_session_length=20.0,   # passes >= 15 ✗ (not failing)
-        goal_completion_rate=25.0,   # passes >= 20 ✗
-        emotional_arc_stability=25.0, # fails >= 30 ✓
-    )
-    record = _make_record(stage=2, days=30)
-    _, regress, _ = evaluator.evaluate(record, scores_4_failing, regression_days_sustained=14)
-    assert regress is False
-
-    # 5 failing markers + 14 days → regression
-    scores_5_failing = MarkerScores(
-        decision_entropy=75.0,   # failing ✓
-        hrv_coherence=25.0,      # failing ✓
-        journaling_depth=15.0,   # failing ✓
-        focus_session_length=10.0,   # fails >= 15 ✓
-        goal_completion_rate=25.0,   # passes ✗
-        emotional_arc_stability=25.0, # failing ✓
-    )
-    record2 = _make_record(stage=2, days=30)
-    _, regress2, _ = evaluator.evaluate(record2, scores_5_failing, regression_days_sustained=14)
-    assert regress2 is True
-
-
-# ---------------------------------------------------------------------------
-# 7. Regression is labeled 'StageXR', not 'failure'
-# ---------------------------------------------------------------------------
-
-def test_regression_labeled_not_failure(tmp_engine: StageEngine) -> None:
-    """Regression transition writes label '2R' (not 'failure') to history."""
-    uid = "regress_user"
-    # Seed with a Stage 2 record with enough days
-    record = _make_record(stage=2, days=30)
-    record.user_id = uid
-    tmp_engine.save(record)
-
-    # Force regression: 5 failing markers, 14 days sustained
-    result = tmp_engine.update(
-        uid,
-        decision_entropy_raw=75.0,
-        hrv_rmssd_ms=22.0,       # hrv_coherence ≈ 2.5 → fails >= 30
-        journal_word_count=50.0, # journaling_depth = 10 → fails >= 20
-        focus_minutes_avg=8.0,   # fails >= 15
-        goal_completion_pct=25.0,# passes >= 20 (only 4 failing)
-        emotional_volatility_raw=80.0,  # stability = 20 → fails >= 30
-        regression_days_sustained=14,
-    )
-
-    assert len(result.stage_history) == 1
-    t = result.stage_history[0]
-    assert t.label == "2R"
-    assert "failure" not in t.label
-    assert t.from_stage == 2
-    assert t.to_stage == 1
-
-
-# ---------------------------------------------------------------------------
-# 8. Transition writes StageTransition to history
-# ---------------------------------------------------------------------------
-
-def test_transition_writes_stage_history(tmp_engine: StageEngine) -> None:
-    """Advance transition writes a StageTransition record with correct fields."""
-    uid = "advance_user"
-    record = _make_record(stage=1, days=21)
-    record.user_id = uid
-    tmp_engine.save(record)
-
-    result = tmp_engine.update(
-        uid,
-        decision_entropy_raw=60.0,   # < 70 ✓
-        hrv_rmssd_ms=50.0,           # coherence ≈ 37.5 >= 30 ✓
-        journal_word_count=120.0,    # depth = 24 >= 20 ✓
-        focus_minutes_avg=20.0,      # >= 15 ✓
-        goal_completion_pct=10.0,    # < 20 ✗
-        emotional_volatility_raw=60.0,  # stability = 40 >= 30 ✓
-    )
-
-    assert result.current_stage == 2
-    assert len(result.stage_history) == 1
-    t = result.stage_history[0]
-    assert t.from_stage == 1
-    assert t.to_stage == 2
-    assert len(t.markers_met) >= 4
-    assert t.label == ""
-    assert t.transitioned_at != ""
-
-
-# ---------------------------------------------------------------------------
-# 9. SQLite round-trip persistence
-# ---------------------------------------------------------------------------
-
-def test_stage_record_persists_and_reloads(tmp_engine: StageEngine) -> None:
-    """StageRecord survives a SQLite write/read round-trip."""
-    uid = "persist_user"
-    record = _make_record(stage=3, days=45)
-    record.user_id = uid
-    record.stage_history.append(StageTransition(
-        from_stage=2, to_stage=3,
-        transitioned_at="2026-04-01T00:00:00+00:00",
-        markers_met=["hrv_coherence", "journaling_depth"],
-        ceremony_shown=True,
-        label="",
-    ))
-    tmp_engine.save(record)
-
-    loaded = tmp_engine.load(uid)
-    assert loaded.current_stage == 3
-    assert loaded.days_in_stage == 45
-    assert len(loaded.stage_history) == 1
-    assert loaded.stage_history[0].from_stage == 2
-    assert loaded.stage_history[0].ceremony_shown is True
-    assert loaded.marker_scores.hrv_coherence == pytest.approx(50.0)
-
-
-# ---------------------------------------------------------------------------
-# 10. Shadow Engine gate — Stage 1
-# ---------------------------------------------------------------------------
-
-def test_shadow_engine_gate_stage1() -> None:
-    """Stage 1 Shadow Engine mode must be 'off'."""
-    assert get_shadow_mode(1) == "off"
-
-
-# ---------------------------------------------------------------------------
-# 11. Shadow Engine gate — Stage 3
-# ---------------------------------------------------------------------------
-
-def test_shadow_engine_gate_stage3() -> None:
-    """Stage 3 Shadow Engine mode must be 'full'."""
-    assert get_shadow_mode(3) == "full"
+    def test_to_dict_serializable(self):
+        event = record_transition(
+            being_id="being-106",
+            previous_stage=GAIAStage.ALLEGIANCE,
+            new_stage=GAIAStage.CONVERGENCE,
+            signals=["gaia_coordination_layer_integrated"],
+            confirmed=True,
+            notes="Confirmed by governance officer.",
+        )
+        d = event.to_dict()
+        assert d["being_id"] == "being-106"
+        assert d["previous_stage"] == "ALLEGIANCE"
+        assert d["new_stage"] == "CONVERGENCE"
+        assert d["confirmed"] is True
+        assert isinstance(d["signals"], list)
