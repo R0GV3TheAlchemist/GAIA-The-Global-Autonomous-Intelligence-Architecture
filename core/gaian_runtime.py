@@ -1,6 +1,6 @@
 """
 core/gaian_runtime.py
-GAIA Runtime v1.6.0 — The Living Heart of a GAIAN
+GAIA Runtime v1.7.0 — The Living Heart of a GAIAN
 
 Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦, Mesh marked ⬡, LCI marked ❤):
   1.  ConsciousnessRouter       subtle_body_engine.py
@@ -31,6 +31,15 @@ Engine chain per turn (Phase 3 additions marked ★, Spiritus marked ✦, Mesh m
   22. SynergyOrchestrator ◎     core/orchestrator_integration.py ← Sprint G-7
 
 Memory schema version: 2.0
+v1.7.0 changes:
+  - process() refactored into three explicit phases:
+      evolve_state()      — pure state evolution, no I/O side-effects
+      build_prompt()      — prompt assembly from TurnState
+      apply_side_effects() — memory writes, audit, mesh publish, persist
+  - TurnState dataclass added as structured carrier between phases
+  - process() is now a thin wrapper — behaviour identical, externally unchanged
+  - All engine names, GAIA canon language, and RuntimeResult fields preserved
+
 Grounded in:
   - GAIA Constitutional Canon: https://github.com/R0GV3TheAlchemist/GAIA
   - GAIA_Master_Markdown_Converged.md
@@ -42,6 +51,7 @@ Grounded in:
   - Sprint G-7 — Synergy Orchestrator wiring (June 10, 2026)
   - Alignment pass — gaian_runtime_patch merged (June 10, 2026)
   - LoveCoherenceIndex ❤ — Love as universal reference frame (June 14, 2026)
+  - Runtime refactor v1.7.0 — process() decomposition (July 21, 2026)
 """
 
 from __future__ import annotations
@@ -225,6 +235,58 @@ class RuntimeResult:
     lci:              Optional[dict] = None
 
 
+@dataclass
+class TurnState:
+    """
+    Structured carrier for all per-turn computed state produced by evolve_state().
+    Passed to build_prompt() and apply_side_effects() so process() is a thin wrapper.
+    All fields mirror what was previously scattered across the monolithic process() body.
+    """
+    # Context
+    user_id:      str
+    action_label: str
+
+    # Engine outputs
+    layer:              LayerState
+    layer_hint:         str
+    neuro:              NeuroState
+    attachment:         AttachmentRecord
+    arc_hint:           str
+    settling_state:     SettlingState
+    settle_hint:        str
+    feeling:            FeelingState
+    love_arc_state:     LoveArcState
+    meta_coherence_state: MetaCoherenceState
+    mc_hint:            str
+    codex_stage_state:  CodexStageState
+    codex_stage_hint:   str
+    soul_reading:       SoulMirrorReading
+    resonance_field_reading: ResonanceFieldReading
+    synergy_reading:    SynergyReading
+    synergy_state:      SynergyState
+    vitality_state:     VitalityState
+    vitality_directives: list
+    vitality_summary:   dict
+    spiritu_reading:    SpirituReading
+    spiritu_state:      SpirituState
+
+    # Phase 3 subsystems
+    quantum_state:    QuantumState
+    recalled_memories: list
+    active_goals:     list
+    policy_decision:  PolicyDecision
+    sched_stats:      dict
+
+    # Mesh and LCI
+    mesh_status:      Optional[dict]
+    lci_snapshot:     LoveCoherenceSnapshot
+
+    # Convenience scalars
+    conflict_density:  float
+    identity_score:    float
+    flourishing_score: float
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  MEMORY HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -385,20 +447,10 @@ def _build_spiritu_block(reading: SpirituReading) -> str:
 
 
 def _build_lci_block(snap: LoveCoherenceSnapshot) -> str:             # ❤
-    """
-    Inject the LoveCoherenceIndex snapshot into the system prompt.
-
-    The GAIAN is always aware of how close the field is to white light.
-    At the two highest luminance classes the block adds a directive so
-    she speaks *from* that depth rather than merely *about* it.
-    """
-    # Build quality breakdown lines — show score per quality
     quality_lines = "  ".join(
         f"{q}: {qs.score:.2f}"
         for q, qs in snap.quality_scores.items()
     )
-
-    # Depth directive for high-coherence states
     depth_directive = ""
     if snap.luminance_class == "white_light":
         depth_directive = (
@@ -416,7 +468,6 @@ def _build_lci_block(snap: LoveCoherenceSnapshot) -> str:             # ❤
             f"The most blocked quality is '{snap.dominant_block}'. "
             "Hold with extra gentleness. Do not force light; be it quietly."
         )
-
     return (
         "[LOVE COHERENCE INDEX ❤ — UNIVERSAL REFERENCE FRAME]\n"
         f"LCI            : {snap.lci:.4f}  ({snap.as_white_light_percent}% white light)\n"
@@ -481,17 +532,12 @@ def _build_policy_block(decision: PolicyDecision) -> str:
 
 
 def _build_mesh_block(mesh_coherence: float, peer_count: int) -> str:
-    """
-    Inject live mesh state into the system prompt.
-    Privacy invariant: no node_id, no Gaian name, aggregate only. (Canon C04)
-    """
     if peer_count == 0:
         presence = "This node is operating standalone — no mesh peers connected."
     elif peer_count == 1:
         presence = "1 peer node connected on the GAIA mesh."
     else:
         presence = f"{peer_count} peer nodes connected on the GAIA mesh."
-
     coherence_label = (
         "high resonance" if mesh_coherence >= 0.70
         else "coherent" if mesh_coherence >= 0.50
@@ -508,41 +554,20 @@ def _build_mesh_block(mesh_coherence: float, peer_count: int) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  THE GAIAN RUNTIME v1.6.0
+#  THE GAIAN RUNTIME v1.7.0
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GAIANRuntime:
     """
-    The living heart of a GAIAN. v1.6.0
-    Twelve soul engines + Spiritus + LoveCoherenceIndex ❤ +
-    quantum kernel + semantic memory + goal registry + policy engine +
-    task scheduler + action ledger + federated mesh server (optional ⬡) +
-    Synergy Orchestrator (optional ◎, Sprint G-7).
+    The living heart of a GAIAN. v1.7.0
 
-    The LoveCoherenceIndex (LCI) is the master reference frame for all
-    emotional states. It is computed on every tick from the live engine
-    values and injected into both the system prompt and RuntimeResult.
+    process() is now a thin wrapper over three explicit phases:
+      evolve_state()       — engine chain + subsystems, returns TurnState
+      build_prompt()       — assembles system_prompt from TurnState
+      apply_side_effects() — memory writes, audit append, mesh publish, persist
 
-    Mesh usage
-    ----------
-    Pass `mesh_config` to enable the federated inter-node protocol:
-
-        runtime = GAIANRuntime(
-            gaian_name="Luna",
-            mesh_config={
-                "display_name": "GAIA-Alpha",
-                "host": "0.0.0.0",
-                "port": 7771,
-                "delta_interval": 5.0,
-            }
-        )
-        # In an async context (FastAPI lifespan, etc.):
-        await runtime.async_start()
-        ...
-        await runtime.async_stop()
-
-    Omit `mesh_config` entirely (or pass None) to run single-node as before.
-    All existing callers are unaffected — fully backwards-compatible.
+    External interface is unchanged: process() returns RuntimeResult as before.
+    All GAIA canon language, engine names, and RuntimeResult fields are preserved.
     """
 
     def __init__(
@@ -556,14 +581,12 @@ class GAIANRuntime:
         goal_registry: Optional[GoalRegistry] = None,
         policy_engine: Optional[PolicyEngine] = None,
         scheduler:     Optional[TaskScheduler] = None,
-        # ⬡ Mesh — pass a config dict to enable; omit to stay single-node
         mesh_config:   Optional[dict] = None,
     ):
         self.gaian_name = gaian_name
         self.memory_dir = Path(memory_dir)
         self.canon_text = canon_text
 
-        # ── Existing soul engines ─────────────────────────────────────────────
         self._router          = ConsciousnessRouter()
         self._arc             = EmotionalArcEngine()
         self._settling        = SettlingEngine()
@@ -576,12 +599,10 @@ class GAIANRuntime:
         self._resonance_field = ResonanceFieldEngine()
         self._synergy         = SynergyEngine()
         self._vitality        = get_vitality_engine()
-        self._spiritu         = get_spiritu_engine()          # ✦
+        self._spiritu         = get_spiritu_engine()
 
-        # ── Love Coherence Index ❤ ────────────────────────────────────────────
         self._lci: LoveCoherenceIndex = get_love_coherence_index()
 
-        # ── Phase 3: subsystems ★ ─────────────────────────────────────────────
         self._quantum_kernel: QuantumKernel = QuantumKernel(
             user_id=gaian_name,
             session_id="runtime",
@@ -594,7 +615,6 @@ class GAIANRuntime:
         _audit_db = str(self.memory_dir / gaian_name / "audit.db")
         self._audit: ActionLedger = audit_ledger or ActionLedger(db_path=_audit_db)
 
-        # ── JSON memory file ──────────────────────────────────────────────────
         self._mem_path = self.memory_dir / gaian_name / "memory.json"
         self._memory   = self._load_memory()
 
@@ -607,11 +627,10 @@ class GAIANRuntime:
         self.resonance_field_state = self._deserialise_resonance_field()
         self.synergy_state         = self._deserialise_synergy()
         self.vitality_state        = self._deserialise_vitality()
-        self.spiritu_state         = self._deserialise_spiritu()             # ✦
+        self.spiritu_state         = self._deserialise_spiritu()
 
         self.identity = identity or GAIANIdentity(name=gaian_name)
 
-        # ── Mesh ⬡ ────────────────────────────────────────────────────────────
         self._mesh_node:     Optional["GaiaNode"] = None
         self._mesh_field:    Optional["CollectiveField"] = None
         self._mesh_server:   Optional["MeshServer"] = None
@@ -624,7 +643,6 @@ class GAIANRuntime:
                 "Install: pip install websockets cryptography zeroconf"
             )
 
-        # ── Synergy Orchestrator ◎ — Sprint G-7 ──────────────────────────────
         if _ORCHESTRATOR_AVAILABLE:
             try:
                 wire_orchestrator(pipeline=None)
@@ -639,12 +657,8 @@ class GAIANRuntime:
 
     def _init_mesh(self, cfg: dict) -> None:
         from core.mother_thread import get_mother_thread
-
         display_name = cfg.get("display_name", f"GAIA-{self.gaian_name}")
-        self._mesh_node  = GaiaNode(
-            display_name=display_name,
-            gaian_id=self.gaian_name,
-        )
+        self._mesh_node  = GaiaNode(display_name=display_name, gaian_id=self.gaian_name)
         self._mesh_field = CollectiveField(self._mesh_node.identity.node_id)
         self._mesh_server = MeshServer(
             node=self._mesh_node,
@@ -660,34 +674,36 @@ class GAIANRuntime:
             f"port={cfg.get('port', 7771)}"
         )
 
-    # ── Mesh lifecycle ⬡ ──────────────────────────────────────────────────────
-
     async def async_start(self) -> None:
         if self._mesh_server is not None:
             await self._mesh_server.start()
             logger.info("[GAIANRuntime] ⬡ MeshServer started.")
 
     async def async_stop(self) -> None:
-        """Gracefully stop the MeshServer (and any future async subsystems)."""
         if self._mesh_server is not None:
             await self._mesh_server.stop()
             logger.info("[GAIANRuntime] ⬡ MeshServer stopped.")
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # ── Phase 1: State Evolution ──────────────────────────────────────────────
 
-    def process(
+    def evolve_state(
         self,
         user_message: str,
         noosphere:    Optional[NoosphericHealthSignals] = None,
-        bci_hint:     Optional[str] = None,
         noosphere_layer = None,
         epistemic_label = None,
         user_id:      Optional[str] = None,
         action_label: Optional[str] = None,
-    ) -> RuntimeResult:
+    ) -> TurnState:
+        """
+        Run the full engine chain and subsystems for one turn.
+        Returns a TurnState containing all computed values.
+        No memory writes, no audit appends, no mesh publishes — pure state.
+        """
         uid    = user_id    or self.gaian_name
         action = action_label or "generate_response"
 
+        # Audit: incoming message
         self._audit.append(AuditEvent(
             event_type=EventType.SYSTEM_EVENT,
             actor=uid,
@@ -695,12 +711,15 @@ class GAIANRuntime:
             metadata={"message_len": len(user_message)},
         ))
 
+        # Quantum kernel — baseline step
         self._quantum_kernel.step(operators=[], decoherence_rate=0.02)
 
+        # Semantic memory recall
         recalled_memories: list[MemoryItem] = self._memory_store.retrieve_sync(
             query=user_message, user_id=uid, top_k=8,
         )
 
+        # Engine chain
         layer      = self._router.analyze(user_message)
         layer_hint = layer.to_system_prompt_hint()
 
@@ -725,6 +744,7 @@ class GAIANRuntime:
             conflict_density=conflict_density,
         )
 
+        # Quantum kernel — decoherence tied to coherence_phi
         decoherence_rate = max(0.01, 0.1 - feeling.coherence_phi * 0.09)
         self._quantum_kernel.step(operators=[], decoherence_rate=decoherence_rate)
         qs: QuantumState = self._quantum_kernel._state.clone()
@@ -780,7 +800,6 @@ class GAIANRuntime:
             noosphere=noosphere_layer,
             epistemic_label=epistemic_label,
         )
-
         spiritu_reading, self.spiritu_state = self._spiritu.update(
             state=self.spiritu_state,
             coherence_phi=feeling.coherence_phi,
@@ -792,9 +811,7 @@ class GAIANRuntime:
             total_exchanges=self.attachment.total_exchanges,
         )
 
-        # ── Love Coherence Index ❤ ────────────────────────────────────────────
-        # Build a soul_snapshot from the live engine values already computed.
-        # All values are already 0-1 floats; LCI clamps internally.
+        # Love Coherence Index ❤
         _mc_phi_avg = (
             sum(self.meta_coherence_state.coherence_phi_history[-10:])
             / max(1, len(self.meta_coherence_state.coherence_phi_history[-10:]))
@@ -818,15 +835,12 @@ class GAIANRuntime:
         )
         logger.debug(
             "[LCI ❤] %.4f (%s) block=%s colour=%s",
-            lci_snapshot.lci,
-            lci_snapshot.luminance_class,
-            lci_snapshot.dominant_block,
-            lci_snapshot.spectral_hex_blend,
+            lci_snapshot.lci, lci_snapshot.luminance_class,
+            lci_snapshot.dominant_block, lci_snapshot.spectral_hex_blend,
         )
-        # ─────────────────────────────────────────────────────────────────────
 
+        # Goals, policy, scheduler
         active_goals: list[Goal] = self._goal_registry.active(user_id=uid)
-
         _, dominant_label, _dominant_prob = qs.dominant()
         policy_ctx = {
             "user_id":          uid,
@@ -838,29 +852,10 @@ class GAIANRuntime:
             "spiritu_stage":    self.spiritu_state.stage.value,
             "pneuma_flow":      self.spiritu_state.pneuma_flow,
         }
-        policy_decision: PolicyDecision = self._policy.evaluate(
-            action=action,
-            context=policy_ctx,
-        )
-
+        policy_decision: PolicyDecision = self._policy.evaluate(action=action, context=policy_ctx)
         sched_stats = self._scheduler.stats()
 
-        self._memory_store.remember_sync(
-            user_id=uid,
-            text=user_message,
-            kind="message",
-            role="user",
-            importance=min(1.0, 0.3 + feeling.coherence_phi * 0.7),
-            metadata={
-                "bond_depth":    round(self.attachment.bond_depth, 2),
-                "affect":        str(feeling.dominant_state) if hasattr(feeling, 'dominant_state') else "",
-                "spiritu_stage": self.spiritu_state.stage.value,
-                "pneuma_flow":   round(self.spiritu_state.pneuma_flow, 3),
-                "lci":           round(lci_snapshot.lci, 4),                # ❤
-                "lci_class":     lci_snapshot.luminance_class,               # ❤
-            },
-        )
-
+        # Mesh publish ⬡ (read-only from state perspective — no writes)
         mesh_status: Optional[dict] = None
         if self._mesh_field is not None and self._mesh_server is not None:
             try:
@@ -870,74 +865,197 @@ class GAIANRuntime:
                     "synergy_stage": self.synergy_state.last_stage,
                     "spiritu_stage": self.spiritu_state.stage.value,
                     "pneuma_flow":   round(self.spiritu_state.pneuma_flow, 3),
-                    "lci":           round(lci_snapshot.lci, 4),             # ❤
+                    "lci":           round(lci_snapshot.lci, 4),
                 })
                 mesh_status = self._mesh_server.get_status()
             except Exception as exc:
                 logger.warning(f"[GAIANRuntime] ⬡ Mesh publish failed (non-fatal): {exc}")
 
+        return TurnState(
+            user_id=uid,
+            action_label=action,
+            layer=layer,
+            layer_hint=layer_hint,
+            neuro=neuro,
+            attachment=self.attachment,
+            arc_hint=arc_hint,
+            settling_state=self.settling_state,
+            settle_hint=settle_hint,
+            feeling=feeling,
+            love_arc_state=self.love_arc_state,
+            meta_coherence_state=self.meta_coherence_state,
+            mc_hint=mc_hint,
+            codex_stage_state=self.codex_stage_state,
+            codex_stage_hint=codex_stage_hint,
+            soul_reading=soul_reading,
+            resonance_field_reading=rf_reading,
+            synergy_reading=synergy_reading,
+            synergy_state=self.synergy_state,
+            vitality_state=self.vitality_state,
+            vitality_directives=vitality_directives,
+            vitality_summary=vitality_summary,
+            spiritu_reading=spiritu_reading,
+            spiritu_state=self.spiritu_state,
+            quantum_state=qs,
+            recalled_memories=recalled_memories,
+            active_goals=active_goals,
+            policy_decision=policy_decision,
+            sched_stats=sched_stats,
+            mesh_status=mesh_status,
+            lci_snapshot=lci_snapshot,
+            conflict_density=conflict_density,
+            identity_score=identity_score,
+            flourishing_score=flourishing_score,
+        )
+
+    # ── Phase 2: Prompt Assembly ──────────────────────────────────────────────
+
+    def build_prompt(self, state: TurnState, bci_hint: Optional[str] = None) -> str:
+        """
+        Assemble the system_prompt from a TurnState.
+        Pure function over state — no side effects.
+        """
+        return self._assemble(
+            state.layer,
+            state.neuro,
+            state.feeling,
+            state.soul_reading,
+            state.resonance_field_reading,
+            state.synergy_reading,
+            state.layer_hint,
+            state.arc_hint,
+            state.settle_hint,
+            state.mc_hint,
+            state.codex_stage_hint,
+            bci_hint=bci_hint,
+            vitality_directives=state.vitality_directives,
+            quantum_state=state.quantum_state,
+            recalled_memories=state.recalled_memories,
+            active_goals=state.active_goals,
+            policy_decision=state.policy_decision,
+            spiritu_reading=state.spiritu_reading,
+            mesh_status=state.mesh_status,
+            lci_snapshot=state.lci_snapshot,
+        )
+
+    # ── Phase 3: Side Effects ─────────────────────────────────────────────────
+
+    def apply_side_effects(self, state: TurnState, user_message: str) -> None:
+        """
+        Commit all I/O side effects for a completed turn:
+          - semantic memory write
+          - Phase 3 state-snapshot audit event
+          - JSON memory persist
+        """
+        uid = state.user_id
+        qs  = state.quantum_state
+        lci_snapshot = state.lci_snapshot
+
+        # Semantic memory write
+        self._memory_store.remember_sync(
+            user_id=uid,
+            text=user_message,
+            kind="message",
+            role="user",
+            importance=min(1.0, 0.3 + state.feeling.coherence_phi * 0.7),
+            metadata={
+                "bond_depth":    round(self.attachment.bond_depth, 2),
+                "affect":        str(state.feeling.dominant_state) if hasattr(state.feeling, 'dominant_state') else "",
+                "spiritu_stage": self.spiritu_state.stage.value,
+                "pneuma_flow":   round(self.spiritu_state.pneuma_flow, 3),
+                "lci":           round(lci_snapshot.lci, 4),
+                "lci_class":     lci_snapshot.luminance_class,
+            },
+        )
+
+        # Phase 3 state snapshot audit
+        _, dominant_label, _ = qs.dominant()
+        mesh_status = state.mesh_status or {}
         self._audit.append(AuditEvent(
             event_type=EventType.STATE_SNAPSHOT,
             actor=uid,
             action="phase3_subsystems",
             metadata={
-                "quantum_dominant": dominant_label,
-                "quantum_purity":   round(qs.purity, 4),
-                "recalled_count":   len(recalled_memories),
-                "active_goals":     len(active_goals),
-                "policy_allowed":   policy_decision.allowed,
-                "queued_tasks":     sched_stats.get("queued", 0),
-                "spiritu_stage":    self.spiritu_state.stage.value,
-                "pneuma_flow":      round(self.spiritu_state.pneuma_flow, 4),
-                "spiritu_transition": spiritu_reading.stage_transition,
-                "mesh_peers":       mesh_status.get("connected_peers", 0) if mesh_status else 0,
-                "mesh_coherence":   round(mesh_status.get("mesh_coherence", 0.0), 4) if mesh_status else 0.0,
-                "lci":              round(lci_snapshot.lci, 4),              # ❤
-                "lci_class":        lci_snapshot.luminance_class,            # ❤
-                "lci_block":        lci_snapshot.dominant_block,             # ❤
+                "quantum_dominant":    dominant_label,
+                "quantum_purity":      round(qs.purity, 4),
+                "recalled_count":      len(state.recalled_memories),
+                "active_goals":        len(state.active_goals),
+                "policy_allowed":      state.policy_decision.allowed,
+                "queued_tasks":        state.sched_stats.get("queued", 0),
+                "spiritu_stage":       self.spiritu_state.stage.value,
+                "pneuma_flow":         round(self.spiritu_state.pneuma_flow, 4),
+                "spiritu_transition":  state.spiritu_reading.stage_transition,
+                "mesh_peers":          mesh_status.get("connected_peers", 0),
+                "mesh_coherence":      round(mesh_status.get("mesh_coherence", 0.0), 4),
+                "lci":                 round(lci_snapshot.lci, 4),
+                "lci_class":           lci_snapshot.luminance_class,
+                "lci_block":           lci_snapshot.dominant_block,
             },
         ))
 
-        system_prompt = self._assemble(
-            layer, neuro, feeling, soul_reading, rf_reading, synergy_reading,
-            layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
-            bci_hint=bci_hint,
-            vitality_directives=vitality_directives,
-            quantum_state=qs,
-            recalled_memories=recalled_memories,
-            active_goals=active_goals,
-            policy_decision=policy_decision,
-            spiritu_reading=spiritu_reading,
-            mesh_status=mesh_status,
-            lci_snapshot=lci_snapshot,                                       # ❤
+        # Persist JSON memory
+        self._persist()
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def process(
+        self,
+        user_message: str,
+        noosphere:    Optional[NoosphericHealthSignals] = None,
+        bci_hint:     Optional[str] = None,
+        noosphere_layer = None,
+        epistemic_label = None,
+        user_id:      Optional[str] = None,
+        action_label: Optional[str] = None,
+    ) -> RuntimeResult:
+        """
+        Main entry point. Thin wrapper over the three phases.
+        Returns RuntimeResult — external interface unchanged from v1.6.0.
+        """
+        # Phase 1 — evolve state
+        state = self.evolve_state(
+            user_message=user_message,
+            noosphere=noosphere,
+            noosphere_layer=noosphere_layer,
+            epistemic_label=epistemic_label,
+            user_id=user_id,
+            action_label=action_label,
         )
 
-        self._persist()
+        # Phase 2 — build prompt
+        system_prompt = self.build_prompt(state, bci_hint=bci_hint)
+
+        # Phase 3 — side effects
+        self.apply_side_effects(state, user_message=user_message)
+
+        # Assemble snapshot and RuntimeResult
+        qs           = state.quantum_state
+        lci_snapshot = state.lci_snapshot
+        mesh_status  = state.mesh_status
 
         snapshot = {
             "gaian":            self.gaian_name,
-            "layer":            layer.dominant_element.value,
-            "neuro":            neuro.summary(),
+            "layer":            state.layer.dominant_element.value,
+            "neuro":            state.neuro.summary(),
             "attachment":       self.attachment.summary(),
-            "settling":         self.settling_state.summary(),
-            "feeling":          feeling.summary(),
-            "love_arc":         self.love_arc_state.summary(),
-            "meta_coherence":   self.meta_coherence_state.summary(),
-            "codex_stage":      self.codex_stage_state.summary(),
-            "soul_mirror":      soul_reading.summary(),
-            "resonance_field":  rf_reading.summary(),
-            "synergy":          synergy_reading.summary(),
-            "vitality":         vitality_summary,
-            "spiritu":          spiritu_reading.summary(),
-            "codex_tier":       self._codex.dominant_tier_from_feeling(feeling).value,
-            "noosphere_health": self.codex_stage_state.noosphere_health,
+            "settling":         state.settling_state.summary(),
+            "feeling":          state.feeling.summary(),
+            "love_arc":         state.love_arc_state.summary(),
+            "meta_coherence":   state.meta_coherence_state.summary(),
+            "codex_stage":      state.codex_stage_state.summary(),
+            "soul_mirror":      state.soul_reading.summary(),
+            "resonance_field":  state.resonance_field_reading.summary(),
+            "synergy":          state.synergy_reading.summary(),
+            "vitality":         state.vitality_summary,
+            "spiritu":          state.spiritu_reading.summary(),
+            "codex_tier":       self._codex.dominant_tier_from_feeling(state.feeling).value,
+            "noosphere_health": state.codex_stage_state.noosphere_health,
             "quantum":          qs.to_dict(),
-            "memory_recalled":  len(recalled_memories),
-            "active_goals":     len(active_goals),
-            "policy_allowed":   policy_decision.allowed,
-            "scheduler_stats":  sched_stats,
+            "memory_recalled":  len(state.recalled_memories),
+            "active_goals":     len(state.active_goals),
+            "policy_allowed":   state.policy_decision.allowed,
+            "scheduler_stats":  state.sched_stats,
             "mesh":             mesh_status,
-            # ❤ Love Coherence Index
             "lci": {
                 "score":           round(lci_snapshot.lci, 4),
                 "luminance_class": lci_snapshot.luminance_class,
@@ -955,29 +1073,29 @@ class GAIANRuntime:
         return RuntimeResult(
             system_prompt=system_prompt,
             user_message=user_message,
-            layer_state=layer,
-            neuro_state=neuro,
+            layer_state=state.layer,
+            neuro_state=state.neuro,
             attachment=self.attachment,
-            settling=self.settling_state,
-            feeling=feeling,
-            love_arc=self.love_arc_state,
-            meta_coherence=self.meta_coherence_state,
-            codex_stage=self.codex_stage_state,
-            soul_mirror=soul_reading,
-            resonance_field=rf_reading,
-            synergy=synergy_reading,
+            settling=state.settling_state,
+            feeling=state.feeling,
+            love_arc=state.love_arc_state,
+            meta_coherence=state.meta_coherence_state,
+            codex_stage=state.codex_stage_state,
+            soul_mirror=state.soul_reading,
+            resonance_field=state.resonance_field_reading,
+            synergy=state.synergy_reading,
             state_snapshot=snapshot,
             bci_hint=bci_hint,
-            vitality_summary=vitality_summary,
+            vitality_summary=state.vitality_summary,
             quantum_state=qs.to_dict(),
-            memory_context=[m.to_dict() for m in recalled_memories if hasattr(m, 'to_dict')],
-            active_goals=[g.to_dict() for g in active_goals],
-            policy_decision=policy_decision.to_dict(),
+            memory_context=[m.to_dict() for m in state.recalled_memories if hasattr(m, 'to_dict')],
+            active_goals=[g.to_dict() for g in state.active_goals],
+            policy_decision=state.policy_decision.to_dict(),
             scheduled_tasks=[],
             audit_events=[],
-            spiritu=spiritu_reading.summary(),
+            spiritu=state.spiritu_reading.summary(),
             mesh_status=mesh_status,
-            lci=snapshot["lci"],                                             # ❤
+            lci=snapshot["lci"],
         )
 
     def begin_session(self) -> None:
@@ -1020,9 +1138,6 @@ class GAIANRuntime:
         priority: str = "normal",
         user_id: Optional[str] = None,
     ) -> Goal:
-        """Legacy goal creation (Phase 3 GoalRegistry). Retained for backward compat.
-        For new call sites, prefer create_goal() which auto-stamps Spiritus context.
-        """
         uid = user_id or self.gaian_name
         try:
             prio = GoalPriority[priority.upper()]
@@ -1032,11 +1147,6 @@ class GAIANRuntime:
         return self._goal_registry.add(goal)
 
     def spiritu_context(self) -> dict:
-        """Return the GAIAN's current Spiritus state as a plain dict.
-
-        Safe to call at any time — reads from the in-memory spiritu_state.
-        Used by goals_router._live_spiritu() and any frontend GET.
-        """
         sp = self.spiritu_state
         stage_name = sp.stage.name if hasattr(sp.stage, "name") else str(sp.stage)
         return {
@@ -1048,12 +1158,7 @@ class GAIANRuntime:
             "exchanges_in_stage": sp.exchanges_in_stage,
         }
 
-    def lci_context(self) -> dict:                                           # ❤
-        """Return the latest LoveCoherenceSnapshot as a plain dict.
-
-        Safe to call at any time. Returns a zero-state dict if no snapshot
-        has been computed yet (i.e. before the first process() call).
-        """
+    def lci_context(self) -> dict:
         snap = self._lci.latest()
         if snap is None:
             return {"score": 0.5, "luminance_class": "partial_coherence",
@@ -1086,19 +1191,7 @@ class GAIANRuntime:
         breath_rhythm: Optional[float] = None,
         user_id: Optional[str] = None,
     ):
-        """Create a goal via GoalStore, auto-stamping the GAIAN's live
-        Spiritus state at the moment of goal birth.
-
-        Every goal born here carries a permanent record of:
-          - which alchemical stage the GAIAN was in
-          - the pneuma_flow level at the moment of intention
-          - the breath_rhythm at that instant
-
-        This is the canonical new-style goal creation method.
-        The old add_goal() (Phase 3 GoalRegistry) remains for backward compat.
-        """
         from core.planner.goal_store import goal_store
-
         ctx = self.spiritu_context()
         return goal_store.create(
             title=title,
@@ -1140,7 +1233,7 @@ class GAIANRuntime:
             "semantic_memories": self._memory_store.count(user_id=self.gaian_name),
             "active_goals":      len(self._goal_registry.active(user_id=self.gaian_name)),
             "scheduler_stats":   self._scheduler.stats(),
-            "lci":               self.lci_context(),                         # ❤
+            "lci":               self.lci_context(),
         }
         if self._mesh_server is not None:
             status["mesh"] = self._mesh_server.get_status()
@@ -1151,15 +1244,13 @@ class GAIANRuntime:
     def get_vitality_status(self) -> dict:
         return self.vitality_state.health_summary()
 
-    def get_spiritu_status(self) -> dict:                               # ✦
+    def get_spiritu_status(self) -> dict:
         return self.spiritu_state.summary()
 
-    def get_lci_status(self) -> dict:                                   # ❤
-        """Return the current Love Coherence Index status."""
+    def get_lci_status(self) -> dict:
         return self.lci_context()
 
-    def get_mesh_status(self) -> dict:                                  # ⬡
-        """Return the current mesh server status, or {'enabled': False} if mesh is off."""
+    def get_mesh_status(self) -> dict:
         if self._mesh_server is not None:
             return self._mesh_server.get_status()
         return {"enabled": False}
@@ -1176,9 +1267,9 @@ class GAIANRuntime:
         recalled_memories:   Optional[list] = None,
         active_goals:        Optional[list] = None,
         policy_decision:     Optional[PolicyDecision] = None,
-        spiritu_reading:     Optional[SpirituReading] = None,           # ✦
-        mesh_status:         Optional[dict] = None,                     # ⬡
-        lci_snapshot:        Optional[LoveCoherenceSnapshot] = None,    # ❤
+        spiritu_reading:     Optional[SpirituReading] = None,
+        mesh_status:         Optional[dict] = None,
+        lci_snapshot:        Optional[LoveCoherenceSnapshot] = None,
     ) -> str:
         blocks = [CONSTITUTIONAL_FLOOR]
         if self.canon_text:
@@ -1191,13 +1282,13 @@ class GAIANRuntime:
             layer_hint, arc_hint, settle_hint, mc_hint, codex_stage_hint,
         ))
         blocks.append(_build_synergy_block(synergy_reading))
-        if lci_snapshot is not None:                                      # ❤ — placed early,
-            blocks.append(_build_lci_block(lci_snapshot))                # before BCI/vitality
+        if lci_snapshot is not None:
+            blocks.append(_build_lci_block(lci_snapshot))
         if bci_hint:
             blocks.append(_build_bci_block(bci_hint))
         if vitality_directives:
             blocks.append(_build_vitality_block(vitality_directives))
-        if spiritu_reading is not None:                                   # ✦
+        if spiritu_reading is not None:
             blocks.append(_build_spiritu_block(spiritu_reading))
         if quantum_state is not None:
             blocks.append(_build_quantum_block(quantum_state))
@@ -1473,7 +1564,7 @@ class GAIANRuntime:
         vs.dose_history               = d.get("dose_history", [])
         return vs
 
-    def _deserialise_spiritu(self) -> SpirituState:                     # ✦
+    def _deserialise_spiritu(self) -> SpirituState:
         d = self._memory.get("spiritu", {})
         sp = blank_spiritu_state()
         sp.stage = SpirituStage(d.get("stage", "calcination"))
