@@ -1,87 +1,82 @@
 """
-affect_engine.engine — Affective State Engine
+affect_engine.engine
+====================
+AffectEngine — models and tracks the user’s affective state.
 
-Models agent affective state using the PAD dimensional space:
-  - Pleasure  (valence)  : −1.0 (very negative) → +1.0 (very positive)
-  - Arousal   (intensity): 0.0 (calm) → 1.0 (highly activated)
-  - Dominance (control)  : 0.0 (submissive) → 1.0 (dominant)
+The engine accepts raw signal inputs (text sentiment, biometric readings,
+behavioural cues) and maintains a rolling PAD state vector:
+  Pleasure   (−1.0 – +1.0)
+  Arousal    (0.0  –  1.0)
+  Dominance  (0.0  –  1.0)
 
-Appraisal events (OCC model) update the PAD state. An EmotionalRegulator
-applies dampening to prevent runaway arousal.
-
-Reference: Mehrabian & Russell 1974 (PAD); Ortony, Clore & Collins 1988 (OCC)
-           NEXUS_UNIVERSAL_OS.md Domain 2.7
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.2
+GAIAN law              : GAIAN_LAWS.md          Law V   Emotional Sovereignty
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("affect_engine.engine")
 
 
 @dataclass
 class AffectState:
-    """Current PAD affective state of the agent."""
-    pleasure:   float = 0.0   # -1.0 → +1.0
-    arousal:    float = 0.0   #  0.0 →  1.0
-    dominance:  float = 0.5   #  0.0 →  1.0
-
-    def clamp(self) -> None:
-        """Clamp all values to their valid ranges."""
-        self.pleasure  = max(-1.0, min(1.0, self.pleasure))
-        self.arousal   = max(0.0,  min(1.0, self.arousal))
-        self.dominance = max(0.0,  min(1.0, self.dominance))
+    """Current PAD affective state vector."""
+    pleasure: float = 0.0    # -1.0 (negative) – +1.0 (positive)
+    arousal: float = 0.5     #  0.0 (calm)     –  1.0 (activated)
+    dominance: float = 0.5   #  0.0 (submissive) – 1.0 (dominant)
+    label: Optional[str] = None   # e.g. "calm", "elated", "anxious"
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class AffectEngine:
-    """Maintains and updates the agent's PAD affective state.
+    """
+    Affect signal analysis and arc trend engine for GAIA-OS.
 
-    Appraisal events are fed in via appraise(). The state is updated
-    using weighted delta rules. EmotionalRegulator dampening is applied
-    each cycle to prevent runaway values.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.7; PAD model.
+    Maintains a rolling AffectState and exposes methods to ingest new
+    signals and query the current state.
+
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.2
     """
 
-    def __init__(self, initial_state: Optional[AffectState] = None) -> None:
-        self._state = initial_state or AffectState()
-        logger.info("AffectEngine initialised with state %s", self._state)
+    def __init__(self, memory: Any = None) -> None:
+        self.memory = memory
+        self.current_state: AffectState = AffectState()
+        self._backend_name: str = "heuristic"
+        logger.info("AffectEngine created (memory=%s)", memory)
 
     @property
     def state(self) -> AffectState:
-        """Return the current affective state (read-only snapshot)."""
-        return AffectState(
-            pleasure=self._state.pleasure,
-            arousal=self._state.arousal,
-            dominance=self._state.dominance,
-        )
+        """Return the current affective state."""
+        return self.current_state
 
-    def appraise(self, event_type: str, intensity: float = 0.5) -> AffectState:
-        """Apply an OCC appraisal event and update the PAD state.
+    def ingest(self, signal: Dict[str, Any]) -> AffectState:
+        """
+        Ingest a new affective signal and update the rolling state.
 
         Args:
-            event_type: OCC event category string (e.g. 'joy', 'distress', 'hope').
-            intensity:  Event intensity multiplier [0.0, 1.0].
+            signal: Dict with keys such as ``text``, ``heart_rate``,
+                    ``hrv``, ``skin_conductance``, ``label``.
+
         Returns:
             Updated AffectState.
-        Raises:
-            NotImplementedError: Always (stub).
-        Reference: OCC model; NEXUS_UNIVERSAL_OS.md Domain 2.7.
-        """
-        raise NotImplementedError(
-            "AffectEngine.appraise — not yet implemented. "
-            "Expected: map event_type to PAD deltas via OCC appraisal rules, "
-            "update self._state, apply EmotionalRegulator dampening, clamp, return state."
-        )
-
-    def regulate(self) -> None:
-        """Apply homeostatic dampening toward neutral state each cycle.
 
         Raises:
-            NotImplementedError: Always (stub).
+            NotImplementedError: Always — stub.
         """
         raise NotImplementedError(
-            "AffectEngine.regulate — not yet implemented. "
-            "Expected: apply exponential decay toward (0.0, 0.0, 0.5) baseline."
+            "AffectEngine.ingest not yet implemented. "
+            "Expected: parse signal dict, update self.current_state PAD vector "
+            "via backend heuristic or NLP model, return updated AffectState."
         )
+
+    def arc_trend(self, window: int = 10) -> Dict[str, Any]:
+        """
+        Return the affect arc trend over the last ``window`` signals.
+
+        Raises:
+            NotImplementedError: Always — stub.
+        """
+        raise NotImplementedError("AffectEngine.arc_trend not yet implemented.")
