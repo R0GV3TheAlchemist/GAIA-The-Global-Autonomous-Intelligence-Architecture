@@ -1,9 +1,26 @@
 # SECURITY_SPEC.md — NEXUS Zero-Trust Security Architecture
 
-> **Series:** SR-001–SR-014  
-> **Status:** Design Complete — Implementation Pending  
-> **Owner:** Kyle Steen (@R0GV3TheAlchemist)  
-> **Last Updated:** 2026-07-21
+---
+
+**Smart Status:** Canon
+**Last Updated:** 2026-07-21
+**Protected Under:** GAIA Canon Law — see `docs/CANON_LAW_STACK.md`
+
+**Author:** Kyle Alexander Steen
+**Alias:** R0GV3 The Alchemist
+**Role:** GAIA Architect — Sovereign Creator & Primary Author
+**Email:** xxkylesteenxx@outlook.com
+**GitHub:** [@R0GV3TheAlchemist](https://github.com/R0GV3TheAlchemist)
+**Location:** San Antonio, Texas, USA
+
+**© 2026 Kyle Alexander Steen (R0GV3 The Alchemist) — All Rights Reserved**
+**GAIA Architect | NEXUS — Universal Autonomous Intelligence Architecture**
+
+---
+
+> **Series:** SR-001–SR-014
+> **Status:** Design Complete — Implementation Pending
+> **Package:** `src-python/security/`
 
 ---
 
@@ -28,7 +45,7 @@ This document covers:
 1. **Never trust, always verify** — every inter-service call carries a signed token; no ambient authority
 2. **Least privilege** — tokens encode only the capabilities required for a specific operation
 3. **Assume breach** — all paths are authenticated even within the same cluster
-4. **Continuous verification** — tokens have short TTLs (default 15 min); long-lived sessions use refresh via IdentityService
+4. **Continuous verification** — tokens have short TTLs (default 15 min); long-lived sessions use refresh via `IdentityService`
 
 ### 2.2 Identity Namespaces
 
@@ -72,11 +89,11 @@ All classical RSA/ECDSA is **deprecated**. Hybrid mode (classical + PQC) is used
 ```
 NEXUS Root CA (Dilithium-3, offline HSM)
   └── Cluster Intermediate CA (Dilithium-3, online HSM)
-        └── Node Certificate (Dilithium-3, auto-issued)
+        └── Node Certificate (Dilithium-3, auto-issued at boot)
               └── Service Certificate (Dilithium-3, short-lived 24h)
 ```
 
-- **Root CA** is air-gapped, only used to sign Intermediate CAs
+- **Root CA** is air-gapped; only used to sign Intermediate CAs
 - **Cluster Intermediate CA** signs Node certificates at boot time
 - **Node certificates** sign Service certificates on demand
 - All certificates embed the `nexus:` identity namespace string in the Subject Alternative Name (SAN)
@@ -84,12 +101,12 @@ NEXUS Root CA (Dilithium-3, offline HSM)
 ### 3.3 PQC Handshake Flow
 
 ```
-Client                              Server
-  |------ ClientHello (Kyber KEM) ------>|
-  |<----- ServerHello + KEM ciphertext --|  
-  |------ Finished (Dilithium sig) ----->|
-  |<----- Finished (Dilithium sig) ------|
-  |========== Encrypted channel ========|
+Client                                  Server
+  |------ ClientHello (Kyber KEM) ------->|
+  |<----- ServerHello + KEM ciphertext ---|
+  |------ Finished (Dilithium sig) ------->|
+  |<----- Finished (Dilithium sig) --------|
+  |=========== Encrypted channel ==========|
 ```
 
 1. Client sends ClientHello with supported PQC cipher suites
@@ -102,9 +119,7 @@ Client                              Server
 
 ## 4. CapabilityToken Structure
 
-### 4.1 Format
-
-`CapabilityToken` is a signed JWT with PQC header:
+### 4.1 JWT Header
 
 ```json
 {
@@ -130,7 +145,8 @@ Client                              Server
   "nexus:context": {
     "node_id": "nexus:node:a1b2c3d4",
     "cluster": "earth-primary",
-    "clearance": "operational"
+    "clearance": "operational",
+    "qos_tier": 2
   },
   "nexus:delegation_depth": 0
 }
@@ -148,31 +164,35 @@ Examples:
 - `telemetry:metric:emit`
 - `security:key:rotate`
 - `network:route:configure`
+- `resilience:chaos:execute`
 
-### 4.4 Delegation
+### 4.4 Delegation Rules
 
-A token can delegate a subset of its capabilities to another identity by issuing a new token with `nexus:delegation_depth` incremented. Maximum delegation depth is **3**. Delegated tokens cannot grant capabilities the delegator does not hold.
+A token can delegate a **subset** of its capabilities by issuing a new token with `nexus:delegation_depth` incremented:
+- Maximum delegation depth: **3**
+- Delegated tokens cannot grant capabilities the delegator does not hold
+- All delegation events logged to `ImmutableLedger`
 
 ---
 
 ## 5. IdentityService — Provisioning Flow
 
 ```
-1. Bootstrap: Node boots → presents hardware attestation (TPM quote)
-2. IdentityService verifies attestation against known PCR values
-3. Issues Node Certificate signed by Cluster Intermediate CA
-4. Agent/Service registers → presents Node Certificate + service manifest
-5. IdentityService issues CapabilityToken with appropriate claims
-6. Token refreshed every 15 min via IdentityService.refresh(token)
-7. On shutdown: token revoked, node deregistered
+1.  Node boots → presents hardware attestation (TPM quote)
+2.  IdentityService verifies attestation against known PCR values
+3.  Issues Node Certificate signed by Cluster Intermediate CA
+4.  Agent/Service registers → presents Node Certificate + service manifest
+5.  IdentityService validates manifest, issues CapabilityToken with scoped claims
+6.  Token refreshed every 15 min via IdentityService.refresh(token)
+7.  On shutdown: token revoked, node deregistered from ServiceRegistry
 ```
 
 ### 5.1 Revocation
 
-- Revoked tokens are tracked in an in-memory bloom filter per node (fast path)
-- A gossip protocol propagates revocations to all cluster nodes within 500ms
-- Revocation records are persisted to the `ImmutableLedger` (governance package)
-- All PEPs check the local bloom filter on every token verification
+- Revoked tokens tracked in an **in-memory bloom filter** per node (fast path, sub-millisecond)
+- Gossip protocol propagates revocations to all cluster nodes within **500ms**
+- Revocation records persisted to `ImmutableLedger` (governance package)
+- All PEPs check local bloom filter on every token verification call
 
 ---
 
@@ -183,25 +203,27 @@ class HSMAdapter(Protocol):
     def generate_keypair(self, algorithm: str, key_id: str) -> KeyHandle: ...
     def sign(self, key_id: str, message: bytes) -> bytes: ...
     def verify(self, key_id: str, message: bytes, signature: bytes) -> bool: ...
-    def encapsulate(self, recipient_pub: bytes) -> tuple[bytes, bytes]: ...  # (ciphertext, shared_secret)
-    def decapsulate(self, key_id: str, ciphertext: bytes) -> bytes: ...  # shared_secret
+    def encapsulate(self, recipient_pub: bytes) -> tuple[bytes, bytes]: ...
+    # returns (ciphertext, shared_secret)
+    def decapsulate(self, key_id: str, ciphertext: bytes) -> bytes: ...
+    # returns shared_secret
     def destroy_key(self, key_id: str) -> None: ...
     def list_keys(self) -> list[KeyMetadata]: ...
 ```
 
-Two implementations are required:
-- `SoftwareHSMAdapter` — uses `cryptography` + `pqcrypto` libraries; for dev/test
-- `PKCS11HSMAdapter` — wraps a PKCS#11-compliant hardware HSM via `python-pkcs11`
+Two concrete implementations:
+- `SoftwareHSMAdapter` — uses `cryptography` + `pqcrypto` libraries; dev/test only
+- `PKCS11HSMAdapter` — wraps a PKCS#11-compliant hardware HSM via `python-pkcs11`; production
 
 ---
 
-## 7. Key Rotation Scheduler
+## 7. KeyRotationScheduler
 
 ### 7.1 Rotation Policy
 
 | Key Type | Rotation Period | Trigger |
 |---|---|---|
-| Root CA | 5 years | Manual, HSM ceremony |
+| Root CA | 5 years | Manual HSM ceremony |
 | Cluster Intermediate CA | 1 year | Scheduled |
 | Node Certificate | 30 days | Scheduled or on compromise |
 | Service Certificate | 24 hours | Scheduled |
@@ -212,9 +234,9 @@ Two implementations are required:
 ```
 1. Scheduler detects key approaching expiry (10% of lifetime remaining)
 2. Generates new keypair via HSMAdapter
-3. Issues new certificate signed by parent
-4. Broadcasts new certificate to cluster via DiscoveryService gossip
-5. Old certificate enters "grace period" (accepts but not issued) for 1 rotation period
+3. Issues new certificate signed by parent CA
+4. Broadcasts new certificate via DiscoveryService gossip
+5. Old certificate enters grace period (accepts but not issued) for 1 rotation period
 6. Grace period expires → old certificate revoked
 7. Rotation event logged to ImmutableLedger
 ```
@@ -228,8 +250,8 @@ Two implementations are required:
 | SR-001 | `IdentityService` |
 | SR-002 | `CapabilityToken` |
 | SR-003 | `PQCKeyManager` |
-| SR-004 | `HSMAdapter` (SoftwareHSMAdapter) |
-| SR-005 | `HSMAdapter` (PKCS11HSMAdapter) |
+| SR-004 | `HSMAdapter` — `SoftwareHSMAdapter` |
+| SR-005 | `HSMAdapter` — `PKCS11HSMAdapter` |
 | SR-006 | `KeyRotationScheduler` |
 | SR-007 | `CapabilityToken.delegate()` |
 | SR-008 | Zero-trust PEP middleware |
@@ -238,4 +260,4 @@ Two implementations are required:
 | SR-011 | PQC TLS handshake |
 | SR-012 | Certificate chain hierarchy |
 | SR-013 | Hardware attestation bootstrap |
-| SR-014 | ImmutableLedger rotation audit |
+| SR-014 | `ImmutableLedger` rotation audit |
