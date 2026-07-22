@@ -1,52 +1,13 @@
+"""core.obs
+
+Observability sub-package for the NEXUS core runtime.
+
+Provides:
+  - audit_store.AuditStore: tamper-evident, append-only audit log for
+    governance-relevant events across all NEXUS modules.
+
+Future additions (Phase D):
+  - metrics.MetricsRegistry: Prometheus-compatible registry.
+  - trace.TraceContext: distributed tracing context propagation.
 """
-core/obs — Observability & Audit Layer
-Public API for the GAIA-OS observability stack.
-
-Usage:
-    from core.obs import get_logger, get_tracer, get_audit, get_telemetry
-    from core.obs import AuditStore, AuditReader
-"""
-from .structured_logger import StructuredLogger, LogLevel
-from .tracer import TraceContext, get_current_trace_id
-from .audit import AuditLog, AuditEvent, AuditEventType
-from .audit_store import AuditStore, AuditReader, StoredAuditEntry
-from .telemetry import Telemetry
-
-_logger = StructuredLogger()
-_audit = AuditLog()
-_telemetry = Telemetry()
-
-
-def get_logger() -> StructuredLogger:
-    return _logger
-
-
-def get_tracer() -> "TraceContext":
-    return TraceContext
-
-
-def get_audit() -> AuditLog:
-    return _audit
-
-
-def get_telemetry() -> Telemetry:
-    return _telemetry
-
-
-__all__ = [
-    "get_logger",
-    "get_tracer",
-    "get_audit",
-    "get_telemetry",
-    "StructuredLogger",
-    "LogLevel",
-    "TraceContext",
-    "get_current_trace_id",
-    "AuditLog",
-    "AuditEvent",
-    "AuditEventType",
-    "AuditStore",
-    "AuditReader",
-    "StoredAuditEntry",
-    "Telemetry",
-]
+from __future__ import annotations

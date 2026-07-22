@@ -1,13 +1,18 @@
-"""GAIA-OS Agent Telemetry Hub — Issue #188."""
+"""sidecar.telemetry
 
-from .telemetry_event import TelemetryEvent
-from .telemetry_collector import TelemetryCollector, SkillHealthReport, DecisionQualityRecord
-from .orchestration_efficiency import OrchestrationEfficiency
+Telemetry collection sidecar for NEXUS.
 
-__all__ = [
-    "TelemetryEvent",
-    "TelemetryCollector",
-    "SkillHealthReport",
-    "DecisionQualityRecord",
-    "OrchestrationEfficiency",
-]
+This package provides:
+  - TelemetryCollector: the primary interface for emitting structured
+    telemetry events and metrics from any NEXUS module.
+
+Phase B — satisfies the main.py import contract:
+    from sidecar.telemetry import TelemetryCollector
+
+All heavy transport logic (OTLP, Prometheus, InfluxDB) is stubbed;
+subscribe() / flush() / emit() are ready-to-wire interfaces.
+"""
+from __future__ import annotations
+from sidecar.telemetry.collector import TelemetryCollector
+
+__all__ = ["TelemetryCollector"]

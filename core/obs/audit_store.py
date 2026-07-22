@@ -1,704 +1,334 @@
-"""
-core/obs/audit_store.py
-~~~~~~~~~~~~~~~~~~~~~~~
-Immutable, signed, hash-chained audit persistence for GAIA-OS.
+"""core.obs.audit_store
 
-Design
-------
-* NDJSON file  — one JSON object per line, appended on every record().
-  Append-only at the filesystem level; no line is ever overwritten.
-* HMAC-SHA256  — every entry is signed with a key derived from a
-  Gaian-supplied passphrase (PBKDF2) or an auto-generated key stored
-  at <store_dir>/audit.key.  Signature covers the canonical JSON of
-  the entry body (sorted keys, no whitespace).
-* Hash chain   — each entry carries prev_hash (SHA-256 of the previous
-  raw NDJSON line).  verify() walks the chain and reports every broken
-  link so tampering is immediately locatable.
-* JSON-LD      — export_jsonld() wraps entries in a minimal @context
-  that maps GAIA vocabulary to prov-o / schema.org terms.
-* Retention    — max_days prunes entries older than the policy.
-* Purge        — Gaian-controlled right-to-erasure; logs a PURGE event
-  before modifying the file.
-* AuditReader  — read-only interface for third-party auditors.
+AuditStore — Tamper-evident, append-only audit log.
 
-StorageBackend mirror (Issue #281)
-----------------------------------
-The NDJSON file is the canonical ledger — its hash-chain, HMAC, and
-fsync guarantees cannot be replicated by a generic KV store.  The
-StorageBackend is a *secondary mirror* that enables:
+Design intent
+-------------
+Every governance-relevant action in NEXUS (capability grants, consent
+decisions, agent overrides, mesh topology changes, crisis escalations)
+should produce an ``AuditRecord`` and pass it to ``AuditStore.record()``.
 
-  • Mesh-wide audit queries across nodes
-    (key prefix: audit:<gaian_id>:<iso_ts>:<seq>)
-  • Pluggable backend swap via GAIA_STORAGE_BACKEND env var
-    (SQLite by default → CockroachDB in Phase 2)
-  • Health check via AuditStore.backend_ping()
+The store:
+1. Appends records to an in-memory ledger.
+2. Chains each record to its predecessor via a SHA-256 hash link,
+   forming a lightweight append-only Merkle chain — any tampering
+   invalidates all subsequent records.
+3. Exposes ``query()`` for filtered retrieval and ``export()`` for
+   JSON / NDJSON serialisation (useful for compliance reporting).
 
-Dual-write strategy: NDJSON write always happens first.  Backend mirror
-failures are caught and logged but never propagate — the local ledger
-is always the source of truth.
+Phase B scope
+-------------
+- ``record()`` is fully functional (in-memory ledger + hash chain).
+- ``query()`` supports filtering by source, event_type, and time range.
+- ``export()`` is stubbed and raises ``NotImplementedError``.
 
-Usage
------
-    from core.obs.audit_store import AuditStore, AuditReader
+Future backends (Phase D)
+--------------------------
+- SQLite / PostgreSQL for persistence.
+- IPFS / Filecoin for planetary-scale immutable storage.
+- Integration with ``sidecar.telemetry.TelemetryCollector`` so every
+  AuditRecord is also emitted as a telemetry event.
 
-    # Existing usage — unchanged, backend auto-configured from env
-    store = AuditStore(store_dir=Path(".gaia/audit"), passphrase="secret")
-    store.record(event_type="agent.action", actor="planner",
-                 action="call_tool", outcome="ok")
-
-    # Inject a specific backend (e.g. MemoryBackend for tests)
-    from core.storage import MemoryBackend
-    store = AuditStore(store_dir=Path(".gaia/audit"), backend=MemoryBackend())
-
-    # Cross-node mesh audit query (async)
-    entries = await store.query_backend(prefix="audit:luna:")
-
-    reader = AuditReader(store_dir=Path(".gaia/audit"), passphrase="secret")
-    ok, errors = reader.verify()
+References
+----------
+- Portable Agent Memory (arXiv 2605.11032): Merkle-DAG provenance graph
+  for tamper-evidence and capability-based access control.
+- NEXUS GOVERNANCE.md: governance event taxonomy.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
-import hmac
 import json
-import logging
-import os
-import secrets
-import threading
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-try:
-    from .tracer import get_current_trace_id
-except ImportError:  # standalone / test usage
-    def get_current_trace_id() -> Optional[str]:  # type: ignore[misc]
-        return None
-
-try:
-    from core.storage import StorageBackend, get_backend
-    _STORAGE_AVAILABLE = True
-except ImportError:
-    _STORAGE_AVAILABLE = False
-    StorageBackend = object  # type: ignore[misc,assignment]
-
-logger = logging.getLogger("gaia.obs.audit_store")
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Iterator, Mapping, Sequence
 
 
 # ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-NDJSON_FILENAME   = "audit.ndjson"
-KEY_FILENAME      = "audit.key"
-SALT_FILENAME     = "audit.salt"
-
-PBKDF2_ITERATIONS = 260_000   # OWASP 2023 recommendation for HMAC-SHA256
-KEY_BYTES         = 32
-
-# Key prefix for all audit entries in the StorageBackend
-# Format: audit:<gaian_id>:<iso_ts>:<seq>
-# Allows mesh-wide prefix scan: query_backend(prefix="audit:luna:")
-BACKEND_KEY_PREFIX = "audit"
-
-JSONLD_CONTEXT = {
-    "@vocab": "https://gaia-os.dev/audit#",
-    "prov":   "http://www.w3.org/ns/prov#",
-    "schema": "https://schema.org/",
-    "xsd":    "http://www.w3.org/2001/XMLSchema#",
-    # field mappings
-    "ts":         {"@id": "prov:generatedAtTime",  "@type": "xsd:dateTime"},
-    "actor":      {"@id": "prov:wasAttributedTo"},
-    "action":     {"@id": "prov:used"},
-    "outcome":    {"@id": "schema:result"},
-    "event_type": {"@id": "schema:actionStatus"},
-    "trace_id":   {"@id": "prov:wasInfluencedBy"},
-    "resource":   {"@id": "schema:object"},
-}
-
-
-# ---------------------------------------------------------------------------
-# Stored entry dataclass (entry body + envelope)
+# Public types
 # ---------------------------------------------------------------------------
 
 @dataclass
-class StoredAuditEntry:
-    """One persisted audit record — body + tamper-evidence envelope."""
-    # --- body (same fields as AuditEvent) ---
-    event_type: str
-    actor:      str
-    action:     str
-    outcome:    str
-    ts:         str
-    trace_id:   Optional[str]         = None
-    resource:   Optional[str]         = None
-    meta:       Dict[str, Any]        = field(default_factory=dict)
-    # --- envelope ---
-    seq:        int                   = 0       # monotonic sequence number
-    prev_hash:  Optional[str]         = None    # SHA-256 of previous raw line
-    signature:  Optional[str]         = None    # HMAC-SHA256 of canonical body JSON
-
-    def body_dict(self) -> Dict[str, Any]:
-        """Return the signable body — all fields except envelope fields."""
-        return {
-            "event_type": self.event_type,
-            "actor":      self.actor,
-            "action":     self.action,
-            "outcome":    self.outcome,
-            "ts":         self.ts,
-            "trace_id":   self.trace_id,
-            "resource":   self.resource,
-            "meta":       self.meta,
-            "seq":        self.seq,
-            "prev_hash":  self.prev_hash,
-        }
-
-    def canonical_json(self) -> bytes:
-        """Deterministic JSON for signing — sorted keys, no whitespace."""
-        return json.dumps(self.body_dict(), sort_keys=True,
-                          separators=(",", ":"), default=str).encode()
-
-    def to_line(self) -> str:
-        """Serialise to a single NDJSON line (no trailing newline)."""
-        return json.dumps(asdict(self), sort_keys=True,
-                          separators=(",", ":"), default=str)
-
-    def to_bytes(self) -> bytes:
-        """Serialise to bytes for StorageBackend.put()."""
-        return self.to_line().encode("utf-8")
-
-    @staticmethod
-    def from_line(line: str) -> "StoredAuditEntry":
-        d = json.loads(line)
-        return StoredAuditEntry(**{k: d.get(k) for k in StoredAuditEntry.__dataclass_fields__})
-
-    @staticmethod
-    def from_bytes(data: bytes) -> "StoredAuditEntry":
-        """Deserialise from StorageBackend.get() bytes."""
-        return StoredAuditEntry.from_line(data.decode("utf-8"))
-
-
-# ---------------------------------------------------------------------------
-# Key management helpers
-# ---------------------------------------------------------------------------
-
-def _derive_key(passphrase: str, salt: bytes) -> bytes:
-    return hashlib.pbkdf2_hmac(
-        "sha256", passphrase.encode(), salt,
-        PBKDF2_ITERATIONS, dklen=KEY_BYTES,
-    )
-
-
-def _load_or_create_key(store_dir: Path,
-                        passphrase: Optional[str]) -> bytes:
-    """
-    Return a 32-byte HMAC key.
-    - If passphrase given  → derive via PBKDF2 with a stored salt.
-    - If no passphrase     → load or generate a random key file.
-    """
-    if passphrase:
-        salt_path = store_dir / SALT_FILENAME
-        if salt_path.exists():
-            salt = salt_path.read_bytes()
-        else:
-            salt = secrets.token_bytes(32)
-            salt_path.write_bytes(salt)
-        return _derive_key(passphrase, salt)
-
-    key_path = store_dir / KEY_FILENAME
-    if key_path.exists():
-        return key_path.read_bytes()
-    key = secrets.token_bytes(KEY_BYTES)
-    key_path.write_bytes(key)
-    key_path.chmod(0o600)
-    return key
-
-
-def _sign(body_bytes: bytes, key: bytes) -> str:
-    return hmac.new(key, body_bytes, hashlib.sha256).hexdigest()
-
-
-def _verify_sig(entry: StoredAuditEntry, key: bytes) -> bool:
-    expected = _sign(entry.canonical_json(), key)
-    return hmac.compare_digest(expected, entry.signature or "")
-
-
-# ---------------------------------------------------------------------------
-# StorageBackend mirror helpers
-# ---------------------------------------------------------------------------
-
-def _backend_key(gaian_id: str, entry: StoredAuditEntry) -> str:
-    """
-    Build the backend key for a single audit entry.
-    Format: audit:<gaian_id>:<iso_ts>:<seq>
-
-    ISO timestamp is URL-safe (colons replaced with hyphens) so the key
-    sorts chronologically and is safe as a prefix in query().
-    """
-    safe_ts = entry.ts.replace(":", "-").replace("+", "Z")
-    return f"{BACKEND_KEY_PREFIX}:{gaian_id}:{safe_ts}:{entry.seq:010d}"
-
-
-def _mirror_sync(backend: Any, key: str, value: bytes, ttl: Optional[int]) -> None:
-    """
-    Fire-and-forget mirror write.  Runs `backend.put()` in a background
-    thread so the synchronous record() call is never delayed by async I/O.
-    The NDJSON write has already succeeded before this is called.
-    """
-    def _run() -> None:
-        try:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(backend.put(key, value, ttl=ttl))
-            loop.close()
-        except Exception as exc:
-            logger.warning(
-                f"[AuditStore] ⚠ Backend mirror write failed (non-fatal): "
-                f"key={key!r} err={exc}"
-            )
-    t = threading.Thread(target=_run, daemon=True, name="audit-mirror")
-    t.start()
-
-
-# ---------------------------------------------------------------------------
-# AuditStore — write + read
-# ---------------------------------------------------------------------------
-
-class AuditStore:
-    """
-    Append-only, signed, hash-chained audit log backed by an NDJSON file,
-    with an optional StorageBackend mirror for mesh-wide queries.
+class AuditRecord:
+    """A single immutable governance audit record.
 
     Parameters
     ----------
-    store_dir  : directory where audit.ndjson (and key/salt) are stored.
-    passphrase : optional Gaian passphrase for key derivation.  If omitted,
-                 an auto-generated key is used.
-    max_days   : retention policy in days.  Entries older than this are
-                 pruned on open and when apply_retention() is called.
-                 0 = no retention limit.
-    backend    : optional StorageBackend for secondary mirror persistence.
-                 Defaults to get_backend() (SQLite) when core.storage is
-                 available.  Pass None to disable mirroring entirely.
-    gaian_id   : identifier used as the namespace in backend keys.
-                 Defaults to 'unknown'.  Set to the Gaian's name/slug.
-    backend_ttl: TTL in seconds for backend mirror entries.  None = no expiry.
-                 Useful for telemetry-style audit entries that don't need
-                 indefinite backend retention.  The NDJSON file is unaffected.
+    source:
+        Module or component that generated the record
+        (e.g. ``"crisisengine"``, ``"sovereignmemory"``).
+    event_type:
+        Short, dot-namespaced event type
+        (e.g. ``"capability.granted"``, ``"consent.denied"``,
+        ``"crisis.escalated"``).
+    payload:
+        Structured data describing the event.  Must be
+        JSON-serialisable.
+    actor:
+        Identity of the agent / user initiating the action.
+        ``None`` if the event is system-generated.
+    record_id:
+        Auto-generated UUID.
+    timestamp:
+        UTC timestamp assigned at construction time.
+    prev_hash:
+        SHA-256 hash of the previous record's canonical representation.
+        ``"GENESIS"`` for the first record in the chain.
+    record_hash:
+        SHA-256 hash of *this* record's canonical representation
+        (populated by ``AuditStore.record()``).
+    """
+    source: str
+    event_type: str
+    payload: Mapping[str, Any] = field(default_factory=dict)
+    actor: str | None = None
+    record_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: datetime = field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
+    prev_hash: str = "GENESIS"
+    record_hash: str = ""
+
+    def canonical(self) -> str:
+        """Return the canonical JSON string used for hashing.
+
+        The canonical form excludes ``record_hash`` (which is computed
+        from all other fields) and sorts keys deterministically.
+        """
+        data = {
+            "record_id": self.record_id,
+            "source": self.source,
+            "event_type": self.event_type,
+            "actor": self.actor,
+            "payload": self.payload,
+            "timestamp": self.timestamp.isoformat(),
+            "prev_hash": self.prev_hash,
+        }
+        return json.dumps(data, sort_keys=True)
+
+
+@dataclass
+class AuditQuery:
+    """Filter parameters for ``AuditStore.query()``.
+
+    All filters are ANDed together.  Omit (leave as ``None``) any
+    dimension you do not wish to filter on.
+
+    Parameters
+    ----------
+    source:
+        Match records whose ``source`` equals this value.
+    event_type_prefix:
+        Match records whose ``event_type`` starts with this prefix
+        (e.g. ``"capability"`` matches ``"capability.granted"``).
+    actor:
+        Match records with this actor value.
+    since:
+        Include only records at or after this UTC datetime.
+    until:
+        Include only records before or at this UTC datetime.
+    limit:
+        Maximum number of records to return (most recent first).
+        ``None`` means no limit.
+    """
+    source: str | None = None
+    event_type_prefix: str | None = None
+    actor: str | None = None
+    since: datetime | None = None
+    until: datetime | None = None
+    limit: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# AuditStore
+# ---------------------------------------------------------------------------
+
+class AuditStore:
+    """Tamper-evident, append-only audit log for NEXUS governance events.
+
+    Usage
+    -----
+    .. code-block:: python
+
+        from core.obs.audit_store import AuditStore
+
+        store = AuditStore()
+        record = store.record(
+            source="crisisengine",
+            event_type="crisis.escalated",
+            payload={"severity": "CRITICAL", "modules_affected": ["mesh"]},
+            actor="nexus-kernel",
+        )
+        print(record.record_hash)  # SHA-256 chain link
+
+    Integrity verification
+    ----------------------
+    Call ``verify_chain()`` at any time to assert that the hash chain
+    is unbroken.  Returns ``True`` if intact, raises
+    ``IntegrityError`` otherwise.
     """
 
-    def __init__(
-        self,
-        store_dir:   Path,
-        passphrase:  Optional[str]     = None,
-        max_days:    int               = 0,
-        backend:     Optional[Any]     = ...,   # ... sentinel = "use default"
-        gaian_id:    str               = "unknown",
-        backend_ttl: Optional[int]     = None,
-    ) -> None:
-        self._dir      = Path(store_dir)
-        self._path     = self._dir / NDJSON_FILENAME
-        self._max_days = max_days
-        self._lock     = threading.RLock()
-        self._seq      = 0
-        self._prev_hash: Optional[str] = None
-        self._gaian_id  = gaian_id
-        self._backend_ttl = backend_ttl
+    class IntegrityError(Exception):
+        """Raised when the audit chain hash verification fails."""
 
-        self._dir.mkdir(parents=True, exist_ok=True)
-        self._key = _load_or_create_key(self._dir, passphrase)
-
-        # ── StorageBackend setup ───────────────────────────────────────
-        # Three cases:
-        #   backend=...  (sentinel) → use module default (SQLite)
-        #   backend=None            → mirroring disabled
-        #   backend=<instance>      → use the supplied backend
-        if backend is ...:
-            if _STORAGE_AVAILABLE:
-                try:
-                    self._backend: Optional[Any] = get_backend()
-                except Exception as exc:
-                    logger.warning(
-                        f"[AuditStore] Could not initialise default backend: {exc}. "
-                        "Mirroring disabled."
-                    )
-                    self._backend = None
-            else:
-                self._backend = None
-        else:
-            self._backend = backend
-
-        if self._backend is not None:
-            logger.debug(
-                f"[AuditStore] Backend mirror: {self._backend!r} "
-                f"(gaian_id={gaian_id!r})"
-            )
-
-        # Hydrate seq and prev_hash from existing file
-        self._hydrate()
-
-        if max_days > 0:
-            self._apply_retention()
+    def __init__(self) -> None:
+        self._ledger: list[AuditRecord] = []
+        self._head_hash: str = "GENESIS"
 
     # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _hydrate(self) -> None:
-        """Read the last line of an existing store to restore seq + prev_hash."""
-        if not self._path.exists():
-            return
-        last_line: Optional[str] = None
-        with open(self._path, "r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.rstrip("\n")
-                if line:
-                    last_line = line
-                    self._seq += 1
-        if last_line:
-            self._prev_hash = hashlib.sha256(last_line.encode()).hexdigest()
-
-    def _append_line(self, line: str) -> None:
-        with open(self._path, "a", encoding="utf-8") as fh:
-            fh.write(line + "\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-
-    def _read_all_entries(self) -> List[Tuple[str, StoredAuditEntry]]:
-        """Return (raw_line, entry) pairs for every non-empty line."""
-        if not self._path.exists():
-            return []
-        pairs: List[Tuple[str, StoredAuditEntry]] = []
-        with open(self._path, "r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.rstrip("\n")
-                if line:
-                    try:
-                        pairs.append((line, StoredAuditEntry.from_line(line)))
-                    except Exception:  # noqa: BLE001
-                        pass
-        return pairs
-
-    def _rewrite(self, entries: List[StoredAuditEntry]) -> None:
-        """Atomically rewrite the store with a new set of entries."""
-        tmp = self._path.with_suffix(".tmp")
-        with open(tmp, "w", encoding="utf-8") as fh:
-            for e in entries:
-                fh.write(e.to_line() + "\n")
-        tmp.replace(self._path)
-        # Re-hydrate seq + prev_hash
-        self._seq = 0
-        self._prev_hash = None
-        self._hydrate()
-
-    def _apply_retention(self) -> None:
-        if self._max_days <= 0:
-            return
-        cutoff = (datetime.now(timezone.utc)
-                  - timedelta(days=self._max_days)).isoformat()
-        pairs   = self._read_all_entries()
-        kept    = [e for _, e in pairs if e.ts >= cutoff]
-        pruned  = len(pairs) - len(kept)
-        if pruned:
-            self._rewrite(kept)
-
-    # ------------------------------------------------------------------
-    # Public write API
+    # Core API
     # ------------------------------------------------------------------
 
     def record(
         self,
+        source: str,
         event_type: str,
-        actor:      str,
-        action:     str,
-        outcome:    str                      = "ok",
-        resource:   Optional[str]            = None,
-        meta:       Optional[Dict[str, Any]] = None,
-        trace_id:   Optional[str]            = None,
-    ) -> StoredAuditEntry:
-        """
-        Append a signed, hash-chained audit entry to the NDJSON store,
-        then mirror it to the StorageBackend (non-blocking, non-fatal).
-        Thread-safe.  Returns the created entry.
-        """
-        with self._lock:
-            entry = StoredAuditEntry(
-                event_type = event_type,
-                actor      = actor,
-                action     = action,
-                outcome    = outcome,
-                ts         = datetime.now(timezone.utc).isoformat(),
-                trace_id   = trace_id or get_current_trace_id(),
-                resource   = resource,
-                meta       = meta or {},
-                seq        = self._seq,
-                prev_hash  = self._prev_hash,
-            )
-            entry.signature = _sign(entry.canonical_json(), self._key)
-            line = entry.to_line()
+        payload: Mapping[str, Any] | None = None,
+        actor: str | None = None,
+    ) -> AuditRecord:
+        """Append a new ``AuditRecord`` to the ledger.
 
-            # 1. NDJSON write — always first, always fsync’d, always wins.
-            self._append_line(line)
-            self._prev_hash = hashlib.sha256(line.encode()).hexdigest()
-            self._seq += 1
-
-        # 2. Backend mirror — fire-and-forget, never blocks record().
-        #    Runs outside the lock so it cannot cause a deadlock.
-        if self._backend is not None:
-            bkey = _backend_key(self._gaian_id, entry)
-            _mirror_sync(self._backend, bkey, entry.to_bytes(), self._backend_ttl)
-
-        return entry
-
-    # ------------------------------------------------------------------
-    # Retention & Gaian-controlled deletion
-    # ------------------------------------------------------------------
-
-    def apply_retention(self) -> int:
-        """Prune entries older than max_days.  Returns number of entries pruned."""
-        if self._max_days <= 0:
-            return 0
-        with self._lock:
-            before = self._seq
-            self._apply_retention()
-            return before - self._seq
-
-    def purge(self, before_ts: str) -> int:
-        """
-        Gaian right-to-erasure: delete all entries with ts < before_ts.
-        Logs a PURGE record BEFORE modifying the file so the intent is
-        always durable and cannot be erased by the purge itself.
-        Returns number of entries deleted.
-        """
-        self.record(
-            event_type = "audit.purge",
-            actor      = "gaian",
-            action     = "purge",
-            outcome    = "initiated",
-            meta       = {"before_ts": before_ts},
-        )
-        with self._lock:
-            pairs  = self._read_all_entries()
-            kept   = [e for _, e in pairs if e.ts >= before_ts]
-            removed_count = len(pairs) - len(kept)
-            if removed_count:
-                self._rewrite(kept)
-        self.record(
-            event_type = "audit.purge",
-            actor      = "gaian",
-            action     = "purge",
-            outcome    = "ok",
-            meta       = {"before_ts": before_ts, "removed_count": removed_count},
-        )
-        return removed_count
-
-    def delete_store(self) -> None:
-        """Gaian full wipe — delete the NDJSON file entirely."""
-        with self._lock:
-            if self._path.exists():
-                self._path.unlink()
-            self._seq       = 0
-            self._prev_hash = None
-
-    # ------------------------------------------------------------------
-    # Local read API (sync, from NDJSON file)
-    # ------------------------------------------------------------------
-
-    def query(
-        self,
-        event_type: Optional[str] = None,
-        actor:      Optional[str] = None,
-        outcome:    Optional[str] = None,
-        since:      Optional[str] = None,
-    ) -> List[StoredAuditEntry]:
-        """Filter entries by optional criteria from the local NDJSON file."""
-        results = [e for _, e in self._read_all_entries()]
-        if event_type:
-            results = [e for e in results if e.event_type == event_type]
-        if actor:
-            results = [e for e in results if e.actor == actor]
-        if outcome:
-            results = [e for e in results if e.outcome == outcome]
-        if since:
-            results = [e for e in results if e.ts >= since]
-        return results
-
-    def export_json(self) -> str:
-        """Export all entries as a pretty-printed JSON array."""
-        return json.dumps(
-            [asdict(e) for _, e in self._read_all_entries()],
-            indent=2, default=str,
-        )
-
-    def export_jsonld(self) -> str:
-        """
-        Export entries as a JSON-LD document.
-        Maps GAIA audit vocabulary to prov-o / schema.org for
-        regulatory / external reviewer consumption.
-        """
-        entries = [asdict(e) for _, e in self._read_all_entries()]
-        doc = {
-            "@context": JSONLD_CONTEXT,
-            "@type":    "prov:Collection",
-            "@id":      "gaia:audit-log",
-            "prov:generatedBy": "GAIA-OS AuditStore",
-            "prov:generatedAtTime": datetime.now(timezone.utc).isoformat(),
-            "entries": entries,
-        }
-        return json.dumps(doc, indent=2, default=str)
-
-    def verify(self) -> Tuple[bool, List[str]]:
-        """
-        Walk the full entry list and verify:
-          1. Each entry’s HMAC signature is valid.
-          2. Each entry’s prev_hash matches SHA-256 of the previous raw line.
-
-        Returns (all_ok: bool, errors: List[str]).
-        """
-        errors: List[str] = []
-        pairs = self._read_all_entries()
-
-        prev_raw: Optional[str] = None
-        for raw, entry in pairs:
-            if not _verify_sig(entry, self._key):
-                errors.append(
-                    f"seq={entry.seq} ts={entry.ts}: invalid signature"
-                )
-            expected_prev = (
-                hashlib.sha256(prev_raw.encode()).hexdigest()
-                if prev_raw else None
-            )
-            if entry.prev_hash != expected_prev:
-                errors.append(
-                    f"seq={entry.seq} ts={entry.ts}: broken hash chain "
-                    f"(expected {expected_prev!r}, got {entry.prev_hash!r})"
-                )
-            prev_raw = raw
-
-        return (len(errors) == 0, errors)
-
-    def count(self) -> int:
-        return len(self._read_all_entries())
-
-    # ------------------------------------------------------------------
-    # Distributed backend API (async — for mesh-wide audit queries)
-    # ------------------------------------------------------------------
-
-    async def query_backend(
-        self,
-        prefix:    Optional[str] = None,
-        limit:     int           = 200,
-    ) -> List[StoredAuditEntry]:
-        """
-        Query the StorageBackend for audit entries matching a key prefix.
-
-        This enables mesh-wide audit queries: entries from all nodes that
-        share the same backend (e.g. CockroachDB) are visible here.
+        Computes the SHA-256 hash of the canonical record representation
+        and chains it to the previous record's hash.
 
         Args:
-            prefix: Key prefix to scan.  Defaults to
-                    f"{BACKEND_KEY_PREFIX}:{self._gaian_id}:"
-                    to return all entries for this Gaian.
-                    Use "audit:" to scan across all Gaians on the mesh.
-            limit:  Maximum entries to return.
+            source:     Emitting module identifier.
+            event_type: Dot-namespaced event type string.
+            payload:    Structured event data (must be JSON-serialisable).
+            actor:      Identity of the agent / user initiating the action.
 
         Returns:
-            List of StoredAuditEntry, sorted by backend key (chronological).
-            Returns [] if the backend is unavailable.
-
-        Example::
-
-            # All entries for this Gaian:
-            entries = await store.query_backend()
-
-            # All entries for 'luna' since today (ISO prefix scan):
-            entries = await store.query_backend(prefix="audit:luna:2026-06-10")
-
-            # All entries across the entire mesh:
-            entries = await store.query_backend(prefix="audit:")
+            The appended ``AuditRecord`` with ``prev_hash`` and
+            ``record_hash`` populated.
         """
-        if self._backend is None:
-            logger.debug("[AuditStore] query_backend called but no backend configured.")
-            return []
+        rec = AuditRecord(
+            source=source,
+            event_type=event_type,
+            payload=payload or {},
+            actor=actor,
+            prev_hash=self._head_hash,
+        )
+        canonical = rec.canonical()
+        rec.record_hash = hashlib.sha256(canonical.encode()).hexdigest()
+        self._head_hash = rec.record_hash
+        self._ledger.append(rec)
+        return rec
 
-        scan_prefix = prefix or f"{BACKEND_KEY_PREFIX}:{self._gaian_id}:"
-        try:
-            rows = await self._backend.query(scan_prefix, limit=limit)
-        except Exception as exc:
-            logger.warning(f"[AuditStore] ⚠ query_backend failed: {exc}")
-            return []
+    def query(self, q: AuditQuery | None = None) -> list[AuditRecord]:
+        """Return records matching the given ``AuditQuery``.
 
-        entries: List[StoredAuditEntry] = []
-        for _key, raw_bytes in rows:
-            try:
-                entries.append(StoredAuditEntry.from_bytes(raw_bytes))
-            except Exception as exc:
-                logger.debug(f"[AuditStore] Skipping undecodable backend entry: {exc}")
-        return entries
+        Records are returned in chronological order (oldest first) unless
+        ``q.limit`` is set, in which case the *most recent* ``limit``
+        records matching the filter are returned.
 
-    async def backend_ping(self) -> bool:
+        Args:
+            q: ``AuditQuery`` filter.  Pass ``None`` to return all records.
+
+        Returns:
+            Filtered list of ``AuditRecord`` instances.
         """
-        Health-check the StorageBackend.
-        Returns True if reachable, False if unavailable or not configured.
-        Used by the mesh server health endpoint.
+        q = q or AuditQuery()
+        results: list[AuditRecord] = []
+
+        for rec in self._ledger:
+            if q.source is not None and rec.source != q.source:
+                continue
+            if (
+                q.event_type_prefix is not None
+                and not rec.event_type.startswith(q.event_type_prefix)
+            ):
+                continue
+            if q.actor is not None and rec.actor != q.actor:
+                continue
+            if q.since is not None and rec.timestamp < q.since:
+                continue
+            if q.until is not None and rec.timestamp > q.until:
+                continue
+            results.append(rec)
+
+        if q.limit is not None:
+            results = results[-q.limit:]
+
+        return results
+
+    def verify_chain(self) -> bool:
+        """Verify the integrity of the entire hash chain.
+
+        Recomputes each record's hash and checks that it matches the
+        stored ``record_hash`` and that ``prev_hash`` equals the previous
+        record's hash.
+
+        Returns:
+            ``True`` if the chain is intact.
+
+        Raises:
+            AuditStore.IntegrityError: If any record's hash is invalid
+                or the chain linkage is broken.
         """
-        if self._backend is None:
-            return False
-        try:
-            return await self._backend.ping()
-        except Exception:
-            return False
+        prev = "GENESIS"
+        for i, rec in enumerate(self._ledger):
+            if rec.prev_hash != prev:
+                raise AuditStore.IntegrityError(
+                    f"Chain broken at index {i}: "
+                    f"prev_hash mismatch (expected {prev!r}, "
+                    f"got {rec.prev_hash!r})."
+                )
+            expected = hashlib.sha256(rec.canonical().encode()).hexdigest()
+            if rec.record_hash != expected:
+                raise AuditStore.IntegrityError(
+                    f"Hash mismatch at index {i} (record_id={rec.record_id!r}): "
+                    f"expected {expected!r}, stored {rec.record_hash!r}."
+                )
+            prev = rec.record_hash
+        return True
 
+    # ------------------------------------------------------------------
+    # Export stub (Phase D)
+    # ------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# AuditReader — read-only scoped interface for third-party auditors
-# ---------------------------------------------------------------------------
-
-class AuditReader:
-    """
-    Read-only view of an AuditStore.  Hand this to external auditors.
-    Exposes: query, export_json, export_jsonld, verify, count,
-             query_backend (async), backend_ping (async).
-    Does NOT expose: record, purge, delete_store, apply_retention.
-    """
-
-    def __init__(
+    def export(
         self,
-        store_dir:  Path,
-        passphrase: Optional[str] = None,
-        gaian_id:   str           = "unknown",
-        backend:    Optional[Any] = ...,
-    ) -> None:
-        self._store = AuditStore(
-            store_dir=store_dir,
-            passphrase=passphrase,
-            gaian_id=gaian_id,
-            backend=backend,
+        fmt: str = "ndjson",
+        q: AuditQuery | None = None,
+    ) -> str:
+        """Serialise matching records to the requested format.
+
+        Intended implementation
+        -----------------------
+        - ``"ndjson"``: one JSON object per line (Newline-Delimited JSON),
+          ideal for log ingestion pipelines.
+        - ``"json"``: a JSON array.
+        - ``"csv"``: comma-separated with a header row.
+
+        Args:
+            fmt: Output format — ``"ndjson"`` (default), ``"json"``,
+                 or ``"csv"``.
+            q:   Optional ``AuditQuery`` filter.
+
+        Returns:
+            Serialised string in the requested format.
+
+        Raises:
+            NotImplementedError: Always in Phase B.
+        """
+        raise NotImplementedError(
+            f"AuditStore.export(fmt={fmt!r}) is not yet implemented. "
+            "Expected: serialise self.query(q) to the requested format."
         )
 
-    def query(self, **kwargs) -> List[StoredAuditEntry]:
-        return self._store.query(**kwargs)
+    # ------------------------------------------------------------------
+    # Introspection helpers
+    # ------------------------------------------------------------------
 
-    def export_json(self) -> str:
-        return self._store.export_json()
+    def __len__(self) -> int:
+        """Return the number of records in the ledger."""
+        return len(self._ledger)
 
-    def export_jsonld(self) -> str:
-        return self._store.export_jsonld()
+    def head_hash(self) -> str:
+        """Return the hash of the most recently appended record."""
+        return self._head_hash
 
-    def verify(self) -> Tuple[bool, List[str]]:
-        return self._store.verify()
-
-    def count(self) -> int:
-        return self._store.count()
-
-    async def query_backend(
-        self,
-        prefix: Optional[str] = None,
-        limit:  int           = 200,
-    ) -> List[StoredAuditEntry]:
-        """Async mesh-wide audit query — passes through to AuditStore."""
-        return await self._store.query_backend(prefix=prefix, limit=limit)
-
-    async def backend_ping(self) -> bool:
-        return await self._store.backend_ping()
+    def __iter__(self) -> Iterator[AuditRecord]:
+        """Iterate over all records in chronological order."""
+        return iter(self._ledger)
