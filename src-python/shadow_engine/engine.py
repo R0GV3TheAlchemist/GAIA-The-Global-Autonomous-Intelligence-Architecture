@@ -1,70 +1,73 @@
 """
-shadow_engine.engine — Shadow Detection & Integration Engine
+shadow_engine.engine
+====================
+ShadowEngine — Jungian shadow detection and integration tracking.
 
-The ShadowEngine monitors the agent's cognitive shadow — the accumulation
-of unintegrated drives, contradictions, and suppressed signals. When shadow
-load exceeds threshold, the engine escalates to CrisisEngine.
+Maintains a ShadowState with a list of active archetypes and an
+aggregate shadow load score (0.0 – 1.0).
 
-Design references:
-  - Jung, C.G. — Aion (1951); IFS (Internal Family Systems) model
-  - NEXUS_UNIVERSAL_OS.md Domain 2.9
-GAIAN law: GAIAN_LAWS.md Law VII — Shadow Must Be Named
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.4
+GAIAN law              : GAIAN_LAWS.md          Law VI  Crisis Precedes Override
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("shadow_engine.engine")
 
 
 @dataclass
+class ShadowArchetype:
+    """A detected shadow archetype."""
+    name: str                     # e.g. "The Tyrant", "The Victim"
+    activation: float             # 0.0 – 1.0
+    integration: float = 0.0     # 0.0 (unintegrated) – 1.0 (integrated)
+    notes: Optional[str] = None
+
+
+@dataclass
 class ShadowState:
-    """Current shadow load state."""
-    total_load:     float       = 0.0   # 0.0 → 1.0 (1.0 = full shadow saturation)
-    dominant_theme: Optional[str] = None # Highest-weight unintegrated theme
-    integration_score: float   = 1.0   # 1.0 = fully integrated, 0.0 = none
+    """Aggregate shadow state."""
+    archetypes: List[ShadowArchetype] = field(default_factory=list)
+
+    @property
+    def total_load(self) -> float:
+        """Aggregate shadow load: mean activation of all archetypes."""
+        if not self.archetypes:
+            return 0.0
+        return sum(a.activation for a in self.archetypes) / len(self.archetypes)
 
 
 class ShadowEngine:
-    """Detects, tracks, and escalates shadow load for NEXUS agents.
-
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.9;
-               Jung Aion; IFS model; GAIAN_LAWS.md Law VII.
     """
+    Archetypal shadow detection and integration tracking engine.
 
-    LOAD_THRESHOLD = 0.80  # Above this → escalate to CrisisEngine
+    Processes episodic and affect signals to detect activated shadow
+    archetypes and tracks their integration progress.
+
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.4
+    """
 
     def __init__(self) -> None:
         self._state = ShadowState()
-        logger.info("ShadowEngine initialised.")
+        logger.info("ShadowEngine created.")
 
     @property
     def state(self) -> ShadowState:
-        """Return a snapshot of current shadow state."""
-        return ShadowState(
-            total_load=self._state.total_load,
-            dominant_theme=self._state.dominant_theme,
-            integration_score=self._state.integration_score,
-        )
+        """Return the current shadow state."""
+        return self._state
 
-    def ingest(self, signal: str, weight: float) -> ShadowState:
-        """Ingest an unintegrated signal and update shadow load.
+    def detect(self, context: Dict[str, Any]) -> ShadowState:
+        """
+        Detect shadow archetypes from context signals.
 
         Raises:
-            NotImplementedError: Always (stub).
+            NotImplementedError: Always — stub.
         """
         raise NotImplementedError(
-            "ShadowEngine.ingest — not yet implemented. "
-            "Expected: accumulate signal weight into total_load, update dominant_theme, "
-            "check LOAD_THRESHOLD and emit escalation event if breached."
+            "ShadowEngine.detect not yet implemented. "
+            "Expected: analyse context for Jungian shadow patterns, "
+            "update self._state.archetypes, return updated ShadowState."
         )
-
-    def integrate(self, theme: str) -> ShadowState:
-        """Attempt integration of a named shadow theme, reducing load.
-
-        Raises:
-            NotImplementedError: Always (stub).
-        """
-        raise NotImplementedError("ShadowEngine.integrate — not yet implemented.")

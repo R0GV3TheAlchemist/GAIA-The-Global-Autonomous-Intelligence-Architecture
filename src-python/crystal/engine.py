@@ -1,85 +1,78 @@
 """
-crystal.engine — Crystal Lattice Simulation Engine
+crystal.engine
+==============
+CrystalCore — coherence synthesis and orb parameter engine.
 
-Models crystalline lattice structures, phonon propagation, and
-crystal-field interactions for NEXUS quantum-material interfaces.
+Models crystal lattice nodes, phonon propagation, and coherence
+synthesis to generate persona tone alignment scores.
 
-Design references:
-  - ASE (Atomic Simulation Environment) — ase-mirror.github.io
-  - pymatgen — pymatgen.org
-  - Phonon propagation: Born & Huang (1954) Dynamical Theory of Crystal Lattices
-  - NEXUS_UNIVERSAL_OS.md Domain 3.1
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.6
+Tier 1 research        : ASE, pymatgen, phonon propagation models
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("crystal.engine")
 
 
 @dataclass
 class CrystalNode:
-    """A single atomic site in a crystal lattice."""
-    symbol:   str              # Chemical symbol (e.g., 'Si', 'C', 'Au')
-    x:        float            # Cartesian x coordinate (Å)
-    y:        float            # Cartesian y coordinate (Å)
-    z:        float            # Cartesian z coordinate (Å)
-    mass_amu: Optional[float] = None   # Atomic mass (amu); None = lookup from symbol
+    """A node in the crystal lattice."""
+    node_id: str
+    element: str          # e.g. "Si", "C", "Quartz"
+    position: tuple       # (x, y, z) fractional coordinates
+    activation: float = 0.0
+
+
+@dataclass
+class OrbParameters:
+    """Coherence orb parameters."""
+    radius: float = 1.0
+    frequency_hz: float = 7.83
+    phase_deg: float = 0.0
+    coherence_score: float = 0.0
 
 
 @dataclass
 class CrystalLattice:
-    """A collection of CrystalNodes forming a periodic lattice."""
-    nodes:       list[CrystalNode] = field(default_factory=list)
-    lattice_a:   float = 1.0   # Lattice parameter a (Å)
-    lattice_b:   float = 1.0   # Lattice parameter b (Å)
-    lattice_c:   float = 1.0   # Lattice parameter c (Å)
-    space_group: Optional[str] = None
-
-    def add_node(self, node: CrystalNode) -> None:
-        """Add an atomic site to the lattice."""
-        self.nodes.append(node)
+    """A crystal lattice structure."""
+    nodes: List[CrystalNode] = field(default_factory=list)
+    lattice_constant_angstrom: float = 5.43   # default: silicon
+    orb: OrbParameters = field(default_factory=OrbParameters)
 
 
 class CrystalCore:
-    """Crystal lattice simulation engine for NEXUS quantum-material interfaces.
+    """
+    Coherence synthesis engine for GAIA-OS.
 
-    In Phase C this will integrate ASE / pymatgen for full DFT and
-    phonon calculations. In v0.1.0 all simulation methods are stubs.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 3.1; ASE; pymatgen.
+    Manages a CrystalLattice and computes coherence orb parameters
+    aligned with Schumann resonance and persona stability signals.
+
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.6
     """
 
-    def __init__(self, lattice: Optional[CrystalLattice] = None) -> None:
-        self._lattice = lattice or CrystalLattice()
-        logger.info("CrystalCore initialised with %d nodes.", len(self._lattice.nodes))
+    def __init__(self, base_url: str = "http://127.0.0.1:52000") -> None:
+        self.base_url = base_url
+        self._lattice = CrystalLattice()
+        logger.info("CrystalCore created (base_url=%s).", base_url)
 
     @property
     def lattice(self) -> CrystalLattice:
         """Return the current crystal lattice."""
         return self._lattice
 
-    def compute_phonons(self) -> dict:
-        """Compute phonon dispersion for the current lattice.
+    def synthesise(self, signals: Dict[str, Any]) -> OrbParameters:
+        """
+        Synthesise coherence orb parameters from input signals.
 
         Raises:
-            NotImplementedError: Always (stub).
-        Reference: Born & Huang (1954); ASE phonon module.
+            NotImplementedError: Always — stub.
         """
         raise NotImplementedError(
-            "CrystalCore.compute_phonons — not yet implemented. "
-            "Expected: use ASE Phonons class or pymatgen PhononBandStructure "
-            "to compute dispersion, return dict of {q_path, frequencies}."
-        )
-
-    def compute_band_gap(self) -> float:
-        """Estimate electronic band gap via DFT (stub).
-
-        Raises:
-            NotImplementedError: Always (stub).
-        """
-        raise NotImplementedError(
-            "CrystalCore.compute_band_gap — not yet implemented. "
-            "Expected: run DFT via ASE/GPAW or pymatgen, return band gap in eV."
+            "CrystalCore.synthesise not yet implemented. "
+            "Expected: integrate Schumann alignment, affect state, and shadow load "
+            "to compute updated OrbParameters."
         )

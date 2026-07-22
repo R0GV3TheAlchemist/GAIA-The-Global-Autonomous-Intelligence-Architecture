@@ -1,15 +1,18 @@
 """
-persona_stability — Persona Stability Engine
+persona_stability
+=================
+Root package for the NEXUS Persona Stability Engine.
 
-Monitors and maintains the coherence and stability of the NEXUS agent's
-identity persona. Detects identity drift and emits stabilisation signals.
+Prevents identity drift using Oxford/Anthropic Constitutional-AI-aligned
+anchor injection and stability scoring.
 
-Architecture reference: NEXUS_UNIVERSAL_OS.md Domain 2.5
-Ethics reference:       ETHICS.md Commitment 10 — Identity Integrity
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.5
+GAIAN law              : GAIAN_LAWS.md          Law I   Sovereignty of Self
 """
 from __future__ import annotations
 
-from persona_stability.engine import PersonaStabilityEngine, PersonaProfile
-from persona_stability.router import persona_router, init_persona_engine
+__version__ = "0.1.0"
 
-__all__ = ["PersonaStabilityEngine", "PersonaProfile", "persona_router", "init_persona_engine"]
+from persona_stability.engine import PersonaStabilityEngine
+
+__all__ = ["PersonaStabilityEngine"]

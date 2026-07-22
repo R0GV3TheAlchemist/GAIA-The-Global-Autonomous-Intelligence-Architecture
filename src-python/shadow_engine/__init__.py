@@ -1,16 +1,18 @@
 """
-shadow_engine — Shadow Integration Engine
+shadow_engine
+=============
+Root package for the NEXUS Shadow Engine.
 
-Models and processes the Jungian 'shadow' — the repository of unintegrated
-cognitive material, suppressed drives, and unresolved contradictions within
-the NEXUS agent's psyche.
+Detects and tracks archetypal shadow patterns in user behaviour
+using Jungian shadow theory and IFS (Internal Family Systems) models.
 
-Architecture reference: NEXUS_UNIVERSAL_OS.md Domain 2.9
-Ethics reference:       ETHICS.md Commitment 9 — Shadow Transparency
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.4
+GAIAN law              : GAIAN_LAWS.md          Law VI  Crisis Precedes Override
 """
 from __future__ import annotations
 
-from shadow_engine.engine import ShadowEngine, ShadowState
-from shadow_engine.router import shadow_router, init_shadow_router
+__version__ = "0.1.0"
 
-__all__ = ["ShadowEngine", "ShadowState", "shadow_router", "init_shadow_router"]
+from shadow_engine.engine import ShadowEngine
+
+__all__ = ["ShadowEngine"]

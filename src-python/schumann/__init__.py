@@ -1,16 +1,18 @@
 """
-schumann — Schumann Resonance Engine
+schumann
+========
+Root package for the NEXUS Schumann Resonance Engine.
 
-Monitors and processes Schumann resonance signals (Earth's ELF electromagnetic
-resonances, primary frequency ~7.83 Hz) to provide planetary entrainment
-inputs to the NEXUS affect and stage engines.
+Aligns GAIA-OS operations with Earth’s electromagnetic resonance
+frequency (7.83 Hz fundamental and harmonics).
 
-Architecture reference: NEXUS_UNIVERSAL_OS.md Domain 1.6
-HAL dependency:         DeviceCapability.ELF_SENSOR
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 1.4
+GAIAN law              : GAIAN_LAWS.md          Law IV  Mesh Sovereignty
 """
 from __future__ import annotations
 
-from schumann.engine import SchumannEngine, SchumannReading
-from schumann.router import schumann_router, init_schumann_engine
+__version__ = "0.1.0"
 
-__all__ = ["SchumannEngine", "SchumannReading", "schumann_router", "init_schumann_engine"]
+from schumann.engine import SchumannEngine
+
+__all__ = ["SchumannEngine"]
