@@ -1,18 +1,21 @@
-"""
-schumann
-========
-Root package for the NEXUS Schumann Resonance Engine.
+"""schumann
 
-Aligns GAIA-OS operations with Earth’s electromagnetic resonance
-frequency (7.83 Hz fundamental and harmonics).
+NEXUS Schumann Resonance Monitor
 
-Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 1.4
-GAIAN law              : GAIAN_LAWS.md          Law IV  Mesh Sovereignty
+Monitors Earth's ELF (Extremely Low Frequency) Schumann resonances,
+primarily 7.83 Hz, and emits SyncPulse events that synchronise GAIA's
+rhythmic processes with the planetary electromagnetic field.
+
+Architecture reference:
+    NEXUS_UNIVERSAL_OS.md  Domain 4.1 - Schumann Monitor
+Research reference:
+    Schumann 1952              - original ELF cavity resonance theory
+    NickolasRage/schumann-experiment (GitHub) - Python SDR reference impl
+    mhoststetter/sdr (PyPI)    - Python SDR toolkit
 """
 from __future__ import annotations
 
-__version__ = "0.1.0"
+from schumann.engine import SchumannEngine, SyncPulse, EarthFieldReading
+from schumann.router import schumann_router, init_schumann_engine
 
-from schumann.engine import SchumannEngine
-
-__all__ = ["SchumannEngine"]
+__all__ = ["SchumannEngine", "SyncPulse", "EarthFieldReading", "schumann_router", "init_schumann_engine"]

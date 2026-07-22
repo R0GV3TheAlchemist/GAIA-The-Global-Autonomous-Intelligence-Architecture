@@ -1,18 +1,20 @@
-"""
-crystal
-=======
-Root package for the NEXUS Crystal Core.
+"""crystal
 
-Coherence synthesis engine — models crystal lattice resonance,
-orb parameters, and persona tone alignment.
+NEXUS Crystal Lattice Simulation Module
 
-Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.6
-GAIAN law              : GAIAN_LAWS.md          Law I   Sovereignty of Self
+Models periodic crystal structures and phonon propagation within
+the NEXUS architecture. Provides CrystalCore engine and router.
+
+Architecture reference:
+    NEXUS_UNIVERSAL_OS.md  Domain 4.2 - Crystal Simulation
+Research reference:
+    pymatgen (pymatgen.org)  - periodic crystal structure library
+    ASE                      - Atomic Simulation Environment
+    phonopy                  - phonon calculation toolkit
 """
 from __future__ import annotations
 
-__version__ = "0.1.0"
+from crystal.engine import CrystalCore, CrystalNode, CrystalLattice
+from crystal.router import crystal_router, init_crystal_core
 
-from crystal.engine import CrystalCore
-
-__all__ = ["CrystalCore"]
+__all__ = ["CrystalCore", "CrystalNode", "CrystalLattice", "crystal_router", "init_crystal_core"]

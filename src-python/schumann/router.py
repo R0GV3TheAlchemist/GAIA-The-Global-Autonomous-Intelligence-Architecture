@@ -1,54 +1,59 @@
-"""
-schumann.router
-===============
-FastAPI router for Schumann Resonance Engine endpoints.
+"""schumann.router
 
-Endpoints
----------
-  GET /schumann/health     — liveness probe
-  GET /schumann/profile    — current resonance profile
-  GET /schumann/alignment  — current alignment score
+FastAPI Router for Schumann Engine Endpoints
 
-Reference: NEXUS_UNIVERSAL_OS.md  Domain 1.4
+v0.1.0
+  - GET /schumann/health     engine health probe
+  - GET /schumann/last-pulse last emitted SyncPulse
+
+Reference:
+    NEXUS_UNIVERSAL_OS.md Domain 4.1.
 """
 from __future__ import annotations
 
 import logging
-from typing import Optional
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-
 from schumann.engine import SchumannEngine
 
 logger = logging.getLogger("schumann.router")
 
-router = APIRouter(
+schumann_router = APIRouter(
     prefix="/schumann",
     tags=["schumann"],
     responses={404: {"description": "Schumann endpoint not found"}},
 )
 
-_engine: Optional[SchumannEngine] = None
+_engine: SchumannEngine | None = None
+
+
+def _get_engine() -> SchumannEngine:
+    if _engine is None:
+        raise RuntimeError("SchumannEngine not initialised.")
+    return _engine
 
 
 def init_schumann_engine(engine: SchumannEngine) -> None:
-    """Inject the SchumannEngine instance into this router."""
+    """Initialise the Schumann router with a SchumannEngine instance."""
     global _engine
     _engine = engine
     logger.info("SchumannEngine router initialised.")
 
 
-@router.get("/health")
-async def schumann_health() -> JSONResponse:
+@schumann_router.get("/health")
+async def schumann_health(engine: SchumannEngine = Depends(_get_engine)) -> JSONResponse:
     return JSONResponse(content={"engine": "schumann", "status": "online"})
 
 
-@router.get("/profile")
-async def schumann_profile() -> JSONResponse:
-    return JSONResponse(content={"engine": "schumann", "note": "Profile not yet implemented."})
-
-
-@router.get("/alignment")
-async def schumann_alignment() -> JSONResponse:
-    return JSONResponse(content={"engine": "schumann", "alignment_score": 0.0, "note": "Stub value."})
+@schumann_router.get("/last-pulse")
+async def schumann_last_pulse(engine: SchumannEngine = Depends(_get_engine)) -> JSONResponse:
+    pulse = engine.last_pulse
+    if pulse is None:
+        return JSONResponse(content={"engine": "schumann", "pulse": None})
+    return JSONResponse(content={
+        "engine": "schumann",
+        "confirmed": pulse.confirmed,
+        "frequency_hz": pulse.frequency_hz,
+        "confidence": pulse.confidence,
+        "harmonics": pulse.harmonics,
+    })

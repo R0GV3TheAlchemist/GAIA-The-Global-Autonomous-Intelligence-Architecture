@@ -1,78 +1,97 @@
-"""
-crystal.engine
-==============
-CrystalCore — coherence synthesis and orb parameter engine.
+"""crystal.engine
 
-Models crystal lattice nodes, phonon propagation, and coherence
-synthesis to generate persona tone alignment scores.
+NEXUS Crystal Lattice Engine
 
-Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.6
-Tier 1 research        : ASE, pymatgen, phonon propagation models
+Models periodic crystal structures and their phonon modes.
+CrystalLattice wraps pymatgen.core.Structure (Phase B).
+ResonancePulse events are emitted when a phonon mode matches an
+external driving frequency (e.g., Schumann 7.83 Hz coupling).
+
+Research reference:
+    pymatgen.core.Structure   - periodic crystal + symmetry analysis
+    pymatgen.phonon           - phonon band structures, DOS
+    ASE Atomic Simulation Env - DFT calculator interface
+    CrystalResonanceMonitor   - cross-module Schumann coupling
 """
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 logger = logging.getLogger("crystal.engine")
 
 
 @dataclass
 class CrystalNode:
-    """A node in the crystal lattice."""
-    node_id: str
-    element: str          # e.g. "Si", "C", "Quartz"
-    position: tuple       # (x, y, z) fractional coordinates
-    activation: float = 0.0
+    """A single atomic site in a crystal lattice.
 
-
-@dataclass
-class OrbParameters:
-    """Coherence orb parameters."""
-    radius: float = 1.0
-    frequency_hz: float = 7.83
-    phase_deg: float = 0.0
-    coherence_score: float = 0.0
+    Fields:
+        element:     Chemical element symbol (e.g., 'Si', 'C').
+        position:    Fractional coordinates [a, b, c] in the unit cell.
+        site_index:  Integer index within the lattice.
+    """
+    element: str
+    position: list[float]  # [a, b, c] fractional coords
+    site_index: int = 0
 
 
 @dataclass
 class CrystalLattice:
-    """A crystal lattice structure."""
-    nodes: List[CrystalNode] = field(default_factory=list)
-    lattice_constant_angstrom: float = 5.43   # default: silicon
-    orb: OrbParameters = field(default_factory=OrbParameters)
+    """A periodic crystal lattice structure.
+
+    Fields:
+        formula:     Chemical formula string (e.g., 'SiO2').
+        nodes:       List of CrystalNode atomic sites.
+        lattice_abc: Lattice parameters [a, b, c] in Angstroms.
+        lattice_ang: Lattice angles [alpha, beta, gamma] in degrees.
+
+    Phase B: replace with pymatgen.core.Structure as backing type.
+    """
+    formula: str
+    nodes: list[CrystalNode] = field(default_factory=list)
+    lattice_abc: list[float] = field(default_factory=lambda: [5.0, 5.0, 5.0])
+    lattice_ang: list[float] = field(default_factory=lambda: [90.0, 90.0, 90.0])
 
 
 class CrystalCore:
+    """NEXUS crystal lattice simulation core engine.
+
+    Manages CrystalLattice structures and computes phonon modes.
+    Emits ResonancePulse events when mode frequencies match
+    external driving frequencies.
+
+    Phase A: typed stubs.
+    Phase B: wire to pymatgen + ASE + phonopy.
     """
-    Coherence synthesis engine for GAIA-OS.
 
-    Manages a CrystalLattice and computes coherence orb parameters
-    aligned with Schumann resonance and persona stability signals.
+    def __init__(self) -> None:
+        self._lattices: dict[str, CrystalLattice] = {}
+        logger.info("CrystalCore initialised.")
 
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.6
-    """
+    def register_lattice(self, lattice: CrystalLattice) -> None:
+        """Register a crystal lattice for simulation."""
+        self._lattices[lattice.formula] = lattice
+        logger.debug("CrystalCore: registered lattice '%s'.", lattice.formula)
 
-    def __init__(self, base_url: str = "http://127.0.0.1:52000") -> None:
-        self.base_url = base_url
-        self._lattice = CrystalLattice()
-        logger.info("CrystalCore created (base_url=%s).", base_url)
+    def compute_phonon_modes(self, formula: str) -> list[float]:
+        """Compute phonon mode frequencies for a registered lattice.
 
-    @property
-    def lattice(self) -> CrystalLattice:
-        """Return the current crystal lattice."""
-        return self._lattice
+        Args:
+            formula: Chemical formula of the registered lattice.
 
-    def synthesise(self, signals: Dict[str, Any]) -> OrbParameters:
-        """
-        Synthesise coherence orb parameters from input signals.
+        Returns:
+            List of phonon mode frequencies in THz.
 
         Raises:
-            NotImplementedError: Always — stub.
+            NotImplementedError: Phonon calculation not yet implemented.
+                Expected: use phonopy with pymatgen.core.Structure,
+                return list of mode frequencies.
+            KeyError: If formula not registered.
         """
+        if formula not in self._lattices:
+            raise KeyError(f"No lattice registered for formula: {formula}")
         raise NotImplementedError(
-            "CrystalCore.synthesise not yet implemented. "
-            "Expected: integrate Schumann alignment, affect state, and shadow load "
-            "to compute updated OrbParameters."
+            "CrystalCore.compute_phonon_modes() not yet implemented. "
+            "Expected: phonopy + pymatgen.phonon pipeline."
         )
