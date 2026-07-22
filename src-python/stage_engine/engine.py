@@ -1,78 +1,85 @@
 """
-stage_engine.engine — Developmental Stage Engine
+stage_engine.engine
+===================
+StageEngine — Magnum Opus stage evaluation for GAIA-OS.
 
-Manages the agent's current developmental stage and governs stage
-transitions. Stages are ordered; advancement requires threshold
-criteria defined in NEXUS_UNIVERSAL_OS.md Domain 2.8.
+The seven alchemical stages:
+  1. Calcination    2. Dissolution    3. Separation
+  4. Conjunction    5. Fermentation   6. Distillation
+  7. Coagulation
 
-Reference: NEXUS_UNIVERSAL_OS.md Domain 2.8
-GAIAN law: GAIAN_LAWS.md Law VI — Stage Sovereignty
+The engine scores each stage based on recent episodic and affect data
+and returns the most probable current stage.
+
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.3
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from enum import IntEnum, auto
-from typing import Optional
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("stage_engine.engine")
 
 
-class StageLevel(IntEnum):
-    """Ordered developmental stages for NEXUS agents."""
-    NASCENT     = 0
-    EMERGENT    = 1
-    AWARE       = 2
-    INTEGRATED  = 3
-    SOVEREIGN   = 4
-    ASCENDANT   = 5
+class AlchemicalStage(Enum):
+    """The seven Magnum Opus alchemical stages."""
+    CALCINATION   = auto()
+    DISSOLUTION   = auto()
+    SEPARATION    = auto()
+    CONJUNCTION   = auto()
+    FERMENTATION  = auto()
+    DISTILLATION  = auto()
+    COAGULATION   = auto()
 
 
 @dataclass
-class StageState:
-    """Current developmental stage state."""
-    current_stage: StageLevel = StageLevel.NASCENT
-    progress:      float      = 0.0  # 0.0 → 1.0 toward next stage
-    cycles:        int        = 0    # Total stage-engine cycles run
+class StageEvaluation:
+    """Result of a stage evaluation pass."""
+    stage: AlchemicalStage
+    confidence: float          # 0.0 – 1.0
+    scores: Dict[str, float] = field(default_factory=dict)
+    rationale: Optional[str] = None
 
 
 class StageEngine:
-    """Manages agent developmental stage and stage transitions.
+    """
+    Magnum Opus stage evaluation engine.
 
-    Stage advancement is gated on progress reaching 1.0 and all
-    transition criteria being satisfied (defined per-stage in Phase C).
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.8; GAIA_ASCENDENCE_DOCTRINE.md.
+    Ingests episodic memory records and affect state vectors to
+    produce a StageEvaluation indicating the user’s current
+    alchemical stage of transformation.
+
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.3
     """
 
-    def __init__(self, initial_stage: StageLevel = StageLevel.NASCENT) -> None:
-        self._state = StageState(current_stage=initial_stage)
-        logger.info("StageEngine initialised at stage %s", initial_stage.name)
+    def __init__(self, memory: Any = None) -> None:
+        self.memory = memory
+        self._current_stage: Optional[AlchemicalStage] = None
+        logger.info("StageEngine created.")
 
     @property
-    def state(self) -> StageState:
-        """Return a snapshot of the current stage state."""
-        return StageState(
-            current_stage=self._state.current_stage,
-            progress=self._state.progress,
-            cycles=self._state.cycles,
-        )
+    def current_stage(self) -> Optional[AlchemicalStage]:
+        """Return the most recently evaluated stage."""
+        return self._current_stage
 
-    def advance(self, delta: float) -> StageState:
-        """Advance progress toward the next stage.
+    def evaluate(self, context: Dict[str, Any]) -> StageEvaluation:
+        """
+        Evaluate the current alchemical stage from context signals.
+
+        Args:
+            context: Dict containing ``affect_state``, ``recent_episodes``,
+                     ``shadow_load``, ``persona_stability`` etc.
+
+        Returns:
+            StageEvaluation with stage, confidence, and rationale.
 
         Raises:
-            NotImplementedError: Always (stub).
+            NotImplementedError: Always — stub.
         """
         raise NotImplementedError(
-            "StageEngine.advance — not yet implemented. "
-            "Expected: increment progress by delta, check threshold (1.0), "
-            "promote stage if criteria met, log transition, return updated state."
+            "StageEngine.evaluate not yet implemented. "
+            "Expected: score each AlchemicalStage from context signals, "
+            "return StageEvaluation with highest-confidence stage."
         )
-
-    def regress(self, delta: float) -> StageState:
-        """Regress progress (e.g., due to crisis event).
-
-        Raises:
-            NotImplementedError: Always (stub).
-        """
-        raise NotImplementedError("StageEngine.regress — not yet implemented.")

@@ -1,50 +1,51 @@
 """
-stage_engine.window_tracker — Sliding Window Stage History Tracker
+stage_engine.window_tracker
+===========================
+WindowTracker — temporal sliding-window context manager for StageEngine.
 
-Maintains a fixed-size circular buffer of StageState snapshots, enabling
-time-windowed analysis of stage progression trends.
+Maintains a bounded ring-buffer of recent signal snapshots used by
+StageEngine.evaluate to compute temporal trends.
 
-Reference: NEXUS_UNIVERSAL_OS.md Domain 2.8
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.3
 """
 from __future__ import annotations
 
 import logging
 from collections import deque
-from typing import Deque
-from stage_engine.engine import StageState
+from typing import Any, Deque, Dict, List
 
 logger = logging.getLogger("stage_engine.window_tracker")
 
+_DEFAULT_WINDOW = 20
+
 
 class WindowTracker:
-    """Fixed-size circular buffer of StageState snapshots.
+    """
+    Sliding-window buffer of signal snapshots for the StageEngine.
 
-    Args:
-        window_size: Maximum number of snapshots retained.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.8.
+    Maintains up to ``max_size`` entries.  When the buffer is full,
+    the oldest entry is evicted automatically (FIFO).
+
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.3
     """
 
-    def __init__(self, window_size: int = 100) -> None:
-        self._window: Deque[StageState] = deque(maxlen=window_size)
-        self.window_size = window_size
-        logger.info("WindowTracker initialised (window_size=%d)", window_size)
+    def __init__(self, max_size: int = _DEFAULT_WINDOW) -> None:
+        self.max_size = max_size
+        self._buffer: Deque[Dict[str, Any]] = deque(maxlen=max_size)
+        logger.info("WindowTracker created (max_size=%d).", max_size)
 
-    def record(self, state: StageState) -> None:
-        """Record a StageState snapshot to the window."""
-        self._window.append(state)
+    def push(self, snapshot: Dict[str, Any]) -> None:
+        """Add a snapshot to the window."""
+        self._buffer.append(snapshot)
 
-    def snapshots(self) -> list[StageState]:
-        """Return the current window as a list (oldest first)."""
-        return list(self._window)
+    def window(self) -> List[Dict[str, Any]]:
+        """Return a list copy of the current window (oldest first)."""
+        return list(self._buffer)
 
-    def trend(self) -> float:
-        """Return the mean progress value over the current window.
-
-        Returns 0.0 if the window is empty.
-        """
-        if not self._window:
-            return 0.0
-        return sum(s.progress for s in self._window) / len(self._window)
+    def clear(self) -> None:
+        """Clear the window buffer."""
+        self._buffer.clear()
+        logger.info("WindowTracker cleared.")
 
     def __len__(self) -> int:
-        return len(self._window)
+        return len(self._buffer)

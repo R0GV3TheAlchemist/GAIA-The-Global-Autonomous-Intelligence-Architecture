@@ -1,15 +1,19 @@
 """
-stage_engine — Stage / Developmental Stage Engine
+stage_engine
+============
+Root package for the NEXUS Stage Engine.
 
-Tracks the agent's current developmental or cognitive stage, managing
-stage transitions and maintaining a sliding-window history.
+Evaluates the user’s current Magnum Opus alchemical stage and maintains
+a rolling WindowTracker for temporal context.
 
-Architecture reference: NEXUS_UNIVERSAL_OS.md Domain 2.8
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.3
+GAIAN law              : GAIAN_LAWS.md          Law I   Sovereignty of Self
 """
 from __future__ import annotations
 
-from stage_engine.engine       import StageEngine, StageState
-from stage_engine.window_tracker import WindowTracker
-from stage_engine.router       import stage_router, init_stage_engine
+__version__ = "0.1.0"
 
-__all__ = ["StageEngine", "StageState", "WindowTracker", "stage_router", "init_stage_engine"]
+from stage_engine.engine import StageEngine
+from stage_engine.window_tracker import WindowTracker
+
+__all__ = ["StageEngine", "WindowTracker"]
