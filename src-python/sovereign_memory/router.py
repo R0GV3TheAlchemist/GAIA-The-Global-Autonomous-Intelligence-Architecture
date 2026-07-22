@@ -1,50 +1,60 @@
 """
-sovereign_memory.router — FastAPI Router for Sovereign Memory Endpoints
+sovereign_memory.router
+=======================
+FastAPI router for Sovereign Memory endpoints.
 
-v0.1.0 endpoints:
-  GET  /memory/health   — engine health probe
-  GET  /memory/count    — total record count
-  POST /memory/store    — store a new memory record (stub)
+Endpoints
+---------
+  GET  /memory/health    — liveness probe
+  GET  /memory/episodic  — return recent episodic records
+  POST /memory/episodic  — store a new episodic record
 
-Reference: NEXUS_UNIVERSAL_OS.md Domain 2.6
+Reference: NEXUS_UNIVERSAL_OS.md  Domain 2.1
 """
 from __future__ import annotations
 
 import logging
+from typing import Optional
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+
 from sovereign_memory.engine import SovereignMemory
 
 logger = logging.getLogger("sovereign_memory.router")
-memory_router = APIRouter(prefix="/memory", tags=["memory"],
-                          responses={404: {"description": "Memory endpoint not found"}})
 
-_memory_engine: SovereignMemory | None = None
+memory_router = APIRouter(
+    prefix="/memory",
+    tags=["memory"],
+    responses={404: {"description": "Memory endpoint not found"}},
+)
 
-
-def _get_engine() -> SovereignMemory:
-    if _memory_engine is None:
-        raise RuntimeError("SovereignMemory engine not initialised.")
-    return _memory_engine
+_memory: Optional[SovereignMemory] = None
 
 
-def init_memory(engine: SovereignMemory) -> None:
-    global _memory_engine
-    _memory_engine = engine
+def init_memory(memory: SovereignMemory) -> None:
+    """Inject the SovereignMemory instance into this router."""
+    global _memory
+    _memory = memory
     logger.info("SovereignMemory router initialised.")
 
 
+def _get_memory() -> SovereignMemory:
+    if _memory is None:
+        raise RuntimeError("SovereignMemory not initialised.")
+    return _memory
+
+
 @memory_router.get("/health")
-async def memory_health(engine: SovereignMemory = Depends(_get_engine)) -> JSONResponse:
+async def memory_health(memory: SovereignMemory = Depends(_get_memory)) -> JSONResponse:
     return JSONResponse(content={"engine": "sovereign-memory", "status": "online"})
 
 
-@memory_router.get("/count")
-async def memory_count(engine: SovereignMemory = Depends(_get_engine)) -> JSONResponse:
-    return JSONResponse(content={"engine": "sovereign-memory", "record_count": engine.record_count})
+@memory_router.get("/episodic")
+async def get_episodic(memory: SovereignMemory = Depends(_get_memory)) -> JSONResponse:
+    return JSONResponse(content={"engine": "sovereign-memory", "note": "Episodic retrieval not yet implemented."})
 
 
-@memory_router.post("/store")
-async def memory_store(payload: dict, engine: SovereignMemory = Depends(_get_engine)) -> JSONResponse:
-    return JSONResponse(content={"engine": "sovereign-memory",
-                                  "note": "store not yet implemented.", "payload": payload})
+@memory_router.post("/episodic")
+async def post_episodic(payload: dict, memory: SovereignMemory = Depends(_get_memory)) -> JSONResponse:
+    return JSONResponse(content={"engine": "sovereign-memory", "note": "Episodic store not yet implemented.", "payload": payload})

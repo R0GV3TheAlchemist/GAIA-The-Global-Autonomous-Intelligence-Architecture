@@ -1,85 +1,143 @@
 """
-sovereign_memory.engine — Sovereign Memory Engine
+sovereign_memory.engine
+=======================
+SovereignMemory — persistent, local-first memory engine for GAIA-OS.
 
-SovereignMemory is the durable, cryptographically-anchored long-term
-memory store for NEXUS agents. All writes are append-only; records are
-content-addressed (SHA-256) and optionally anchored to an external
-ledger (e.g., IPFS or blockchain notarisation).
+Responsibilities
+----------------
+- Open / close the SQLite soul_mirror.db connection.
+- Store and retrieve episodic memory records.
+- Store and retrieve semantic facts.
+- Store biometric signal snapshots.
 
-Reference: NEXUS_UNIVERSAL_OS.md Domain 2.6
-GAIAN law: GAIAN_LAWS.md Law II — Memory Sovereignty
+All storage is local-only.  No cloud sync in v0.1.0.
+
+Architecture reference : NEXUS_UNIVERSAL_OS.md  Domain 2.1
+GAIAN law              : GAIAN_LAWS.md          Law II  Memory Sovereignty
 """
 from __future__ import annotations
 
-import hashlib
 import logging
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("sovereign_memory.engine")
 
 
 @dataclass
-class MemoryRecord:
-    """A single immutable entry in SovereignMemory."""
-    content:    Any
-    owner_id:   str
-    tags:       list[str]       = field(default_factory=list)
-    record_id:  str             = field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime        = field(default_factory=lambda: datetime.now(timezone.utc))
-    content_hash: str           = ""
+class EpisodicRecord:
+    """A single episodic memory entry."""
+    record_id: str
+    timestamp: str           # ISO-8601 UTC
+    content: str
+    affect_tag: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        if not self.content_hash:
-            self.content_hash = hashlib.sha256(
-                str(self.content).encode()
-            ).hexdigest()
+
+@dataclass
+class SemanticFact:
+    """A persistent semantic fact node."""
+    fact_id: str
+    subject: str
+    predicate: str
+    obj: str
+    confidence: float = 1.0
+
+
+@dataclass
+class BiometricSnapshot:
+    """A biometric signal snapshot."""
+    snapshot_id: str
+    timestamp: str
+    heart_rate: Optional[float] = None
+    hrv: Optional[float] = None
+    skin_conductance: Optional[float] = None
 
 
 class SovereignMemory:
-    """Durable, append-only, content-addressed memory store.
+    """
+    Local-first persistent memory for GAIA-OS.
 
-    All records are hashed on ingestion. Retrieval supports tag-based
-    filtering. Ledger anchoring (IPFS / blockchain) is a Phase C feature.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.6.
+    All data is stored in a local SQLite database (soul_mirror.db).
+    The engine is the single source of truth for all memory subsystems.
+
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1
     """
 
-    def __init__(self) -> None:
-        self._records: dict[str, MemoryRecord] = {}
-        logger.info("SovereignMemory engine initialised.")
+    def __init__(self, db_path: str = "memory.db") -> None:
+        self.db_path = db_path
+        self._connection: Any = None
+        logger.info("SovereignMemory created (db_path=%s)", db_path)
 
-    def store(self, content: Any, owner_id: str, tags: Optional[list[str]] = None) -> MemoryRecord:
-        """Store a new memory record.
+    # ── Lifecycle ──────────────────────────────────────────────────────────
+
+    def open(self) -> None:
+        """
+        Open the SQLite database connection and initialise schema.
 
         Raises:
-            NotImplementedError: Always (stub).
+            NotImplementedError: Always — stub.
         """
         raise NotImplementedError(
-            "SovereignMemory.store — not yet implemented. "
-            "Expected: create MemoryRecord, store in self._records, optionally anchor to ledger."
+            "SovereignMemory.open not yet implemented. "
+            "Expected: open sqlite3 connection to self.db_path, run CREATE TABLE IF NOT EXISTS "
+            "for episodic_records, semantic_facts, biometric_snapshots."
         )
 
-    def recall(self, owner_id: str, tag: Optional[str] = None) -> list[MemoryRecord]:
-        """Retrieve records for an owner, optionally filtered by tag.
+    def close(self) -> None:
+        """
+        Flush pending writes and close the database connection.
 
         Raises:
-            NotImplementedError: Always (stub).
+            NotImplementedError: Always — stub.
         """
         raise NotImplementedError(
-            "SovereignMemory.recall — not yet implemented."
+            "SovereignMemory.close not yet implemented. "
+            "Expected: commit any open transaction, close self._connection."
         )
 
-    def verify(self, record_id: str) -> bool:
-        """Verify the content hash of a stored record.
+    # ── Episodic Memory ────────────────────────────────────────────────────
+
+    def store_episodic(self, record: EpisodicRecord) -> None:
+        """Persist an episodic memory record.
 
         Raises:
-            NotImplementedError: Always (stub).
+            NotImplementedError: Always — stub.
         """
-        raise NotImplementedError("SovereignMemory.verify — not yet implemented.")
+        raise NotImplementedError("SovereignMemory.store_episodic not yet implemented.")
 
-    @property
-    def record_count(self) -> int:
-        """Return the total number of stored records."""
-        return len(self._records)
+    def retrieve_episodic(self, limit: int = 50) -> List[EpisodicRecord]:
+        """Return the most recent episodic records.
+
+        Raises:
+            NotImplementedError: Always — stub.
+        """
+        raise NotImplementedError("SovereignMemory.retrieve_episodic not yet implemented.")
+
+    # ── Semantic Memory ────────────────────────────────────────────────────
+
+    def store_fact(self, fact: SemanticFact) -> None:
+        """Store or update a semantic fact.
+
+        Raises:
+            NotImplementedError: Always — stub.
+        """
+        raise NotImplementedError("SovereignMemory.store_fact not yet implemented.")
+
+    def query_facts(self, subject: Optional[str] = None) -> List[SemanticFact]:
+        """Query semantic facts, optionally filtered by subject.
+
+        Raises:
+            NotImplementedError: Always — stub.
+        """
+        raise NotImplementedError("SovereignMemory.query_facts not yet implemented.")
+
+    # ── Biometric Memory ───────────────────────────────────────────────────
+
+    def store_biometric(self, snapshot: BiometricSnapshot) -> None:
+        """Persist a biometric snapshot.
+
+        Raises:
+            NotImplementedError: Always — stub.
+        """
+        raise NotImplementedError("SovereignMemory.store_biometric not yet implemented.")
