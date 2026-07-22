@@ -1,105 +1,102 @@
-"""
-intelligence.agent — Agent Lifecycle & Coalition Management
+"""intelligence.agent
 
-Defines BaseAgent, the foundational agent abstraction for all NEXUS
-intelligence agents, along with AgentLifecycle state management and
-AgentCoalition for multi-agent coordination.
+NEXUS Agent Abstraction
 
-Design references:
-  - FIPA agent lifecycle standard (initiated, active, suspended, terminated)
-  - Multi-Agent Systems: Wooldridge & Jennings 1995
-  - NEXUS_UNIVERSAL_OS.md Domain 2.2 — Agent Architecture
-Ethics reference: ETHICS.md Commitment 7 — Agent Accountability
-GAIAN law:        GAIAN_LAWS.md Law IV — Coalition Sovereignty
+Defines the Agent class — a self-contained, goal-directed reasoning unit
+within the NEXUS intelligence layer. Each Agent owns a CognitiveKernel
+instance and operates within the governance framework.
+
+Architecture reference:
+    NEXUS_UNIVERSAL_OS.md  Domain 2.2 - Agent
+    GOVERNANCE.md          Agent accountability requirements
+Research reference:
+    Constitutional AI          - agent decision guardrails
+    MemGPT arXiv:2310.08560    - agent-level memory paging
 """
 from __future__ import annotations
 
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Optional
 
 logger = logging.getLogger("intelligence.agent")
 
 
-class AgentLifecycle(Enum):
-    """FIPA-inspired lifecycle states for a NEXUS agent."""
-    INITIATED  = auto()  # Created, not yet active
-    ACTIVE     = auto()  # Running and processing goals
-    SUSPENDED  = auto()  # Temporarily paused by governance
-    TERMINATED = auto()  # Permanently stopped
-
-
-class BaseAgent:
-    """Foundational base class for all NEXUS intelligence agents.
-
-    Subclasses must implement the perceive() and act() methods.
-    The run loop calls perceive → reason → act on each cycle.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.2; FIPA agent lifecycle.
-    """
-
-    def __init__(self, name: str, agent_id: Optional[str] = None) -> None:
-        self.agent_id:  str            = agent_id or str(uuid.uuid4())
-        self.name:      str            = name
-        self.lifecycle: AgentLifecycle = AgentLifecycle.INITIATED
-        self.created_at: datetime      = datetime.now(timezone.utc)
-        logger.info("BaseAgent '%s' (%s) created.", name, self.agent_id)
-
-    def perceive(self) -> dict[str, Any]:
-        """Collect sensor / environment inputs for this agent cycle.
-
-        Raises:
-            NotImplementedError: Must be overridden by subclasses.
-        """
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.perceive — must be implemented by subclasses."
-        )
-
-    def act(self, action: dict[str, Any]) -> None:
-        """Execute the action selected by the reasoning engine.
-
-        Raises:
-            NotImplementedError: Must be overridden by subclasses.
-        """
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.act — must be implemented by subclasses."
-        )
-
-    def run_cycle(self) -> None:
-        """Execute one perceive→reason→act cycle.
-
-        Raises:
-            NotImplementedError: Always (stub in BaseAgent).
-        """
-        raise NotImplementedError(
-            "BaseAgent.run_cycle — not yet implemented. "
-            "Expected: observations = self.perceive(); action = self.reason(observations); "
-            "self.act(action); record to AuditLog."
-        )
+class AgentStatus(Enum):
+    """Lifecycle status of a NEXUS Agent."""
+    INITIALISING = auto()
+    IDLE = auto()
+    RUNNING = auto()
+    SUSPENDED = auto()
+    TERMINATED = auto()
+    ERROR = auto()
 
 
 @dataclass
-class AgentCoalition:
-    """A named coalition of cooperating NEXUS agents.
+class AgentConfig:
+    """Configuration for a NEXUS Agent.
 
-    Coalitions share a common goal and a negotiated resource budget.
-    Membership is dynamic — agents can join or leave mid-execution.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.2; Wooldridge MAS ch.8.
+    Fields:
+        name:           Human-readable agent name.
+        max_cycles:     Maximum cognitive cycles before mandatory rest (0 = unlimited).
+        memory_quota:   Maximum MemorySegment bytes (0 = unlimited).
+        governance_mode: 'strict' | 'audit' | 'permissive' — passed to GovernanceEngine.
     """
-    coalition_id: str           = field(default_factory=lambda: str(uuid.uuid4()))
-    name:         str           = "unnamed-coalition"
-    members:      list[BaseAgent] = field(default_factory=list)
-    shared_goal:  Optional[str] = None
+    name: str
+    max_cycles: int = 0
+    memory_quota: int = 0
+    governance_mode: str = "strict"
 
-    def add_member(self, agent: BaseAgent) -> None:
-        """Add an agent to the coalition."""
-        if agent not in self.members:
-            self.members.append(agent)
-            logger.info("Coalition '%s': added agent '%s'.", self.name, agent.name)
 
-    def remove_member(self, agent: BaseAgent) -> None:
-        """Remove an agent from the coalition."""
-        self.members = [m for m in self.members if m.agent_id != agent.agent_id]
-        logger.info("Coalition '%s': removed agent '%s'.", self.name, agent.name)
+class Agent:
+    """A self-contained NEXUS reasoning agent.
+
+    Each Agent wraps a CognitiveKernel, maintains its own goal stack,
+    and reports lifecycle events to TelemetryCollector.
+
+    Reference:
+        NEXUS_UNIVERSAL_OS.md Domain 2.2.
+        GAIAN_LAWS.md Law I — Sovereignty of Self.
+    """
+
+    def __init__(self, config: AgentConfig) -> None:
+        self.agent_id: str = str(uuid.uuid4())
+        self.config = config
+        self.status: AgentStatus = AgentStatus.INITIALISING
+        self._goals: list[str] = []
+        logger.info("Agent '%s' (%s) initialised.", config.name, self.agent_id)
+
+    def run(self, percept: Any) -> Any:
+        """Run one cognitive cycle on the given percept.
+
+        Args:
+            percept: Input from PerceptionEngine.
+
+        Returns:
+            Decision or action result.
+
+        Raises:
+            NotImplementedError: Always in Phase A stub.
+                Expected: delegate to CognitiveKernel.process(), update status,
+                emit telemetry event, enforce max_cycles limit.
+        """
+        raise NotImplementedError(
+            "Agent.run() not yet implemented. "
+            "Expected: CognitiveKernel.process(percept), telemetry emit, status update."
+        )
+
+    def add_goal(self, goal: str) -> None:
+        """Add a goal to this agent's goal stack.
+
+        Args:
+            goal: Natural-language or structured goal description.
+        """
+        self._goals.append(goal)
+        logger.debug("Agent '%s': goal added — %s.", self.config.name, goal)
+
+    def terminate(self) -> None:
+        """Gracefully terminate this agent."""
+        self.status = AgentStatus.TERMINATED
+        logger.info("Agent '%s' terminated.", self.config.name)

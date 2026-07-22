@@ -1,31 +1,41 @@
-"""
-intelligence — NEXUS Intelligence Layer
+"""intelligence
 
-Root package for the NEXUS cognitive intelligence layer. Provides the
-high-level abstractions for goal-directed reasoning, agent lifecycle
-management, sensor fusion, episodic/semantic/procedural memory, and
-explainable AI decision tracing.
+NEXUS Cognitive Intelligence Layer
 
-Architecture reference: NEXUS_UNIVERSAL_OS.md Domain 2 — Intelligence
-Ethics reference:       ETHICS.md Commitment 6 — Explainability by Default
-GAIAN law reference:    GAIAN_LAWS.md Law V — Transparent Cognition
+The intelligence package provides the higher-order cognitive capabilities
+of NEXUS: perception, reasoning, memory-backed knowledge graphs, agent
+orchestration, and explainability.
+
+Architecture reference:
+    NEXUS_UNIVERSAL_OS.md  Domain 2 - Intelligence Layer
+    ARCHITECTURE.md        Cognitive stack
+
+Research reference:
+    Zep/Graphiti (arXiv:2501.13956)  - bi-temporal knowledge graph memory
+    neo4j-agent-memory (PyPI)         - graph-native agent memory
+    MemGPT (arXiv:2310.08560)         - tiered memory paging
+    SHAP / LIME                        - explainability methods for XAI
 """
 from __future__ import annotations
 
-__version__ = "0.1.0"
-__author__  = "R0GV3TheAlchemist"
-__license__ = "See LICENSE"
-
-from intelligence.cognitive_kernel import GoalStack, ReasoningEngine, AuditLog
-from intelligence.agent            import BaseAgent, AgentLifecycle, AgentCoalition
-from intelligence.perception       import SensorFusion, WorldModel, UncertaintyQuantifier
-from intelligence.knowledge_graph  import EpisodicMemory, SemanticMemory, ProceduralMemory
-from intelligence.explainability   import DecisionTrace, ExplanationSummary
+from intelligence.cognitive_kernel import CognitiveKernel, CognitiveState
+from intelligence.agent import Agent, AgentConfig, AgentStatus
+from intelligence.perception import PerceptionEngine, Percept
+from intelligence.knowledge_graph import KnowledgeGraph, MemoryType, GraphNode, GraphEdge
+from intelligence.explainability import ExplainabilityEngine, Explanation
 
 __all__ = [
-    "GoalStack", "ReasoningEngine", "AuditLog",
-    "BaseAgent", "AgentLifecycle", "AgentCoalition",
-    "SensorFusion", "WorldModel", "UncertaintyQuantifier",
-    "EpisodicMemory", "SemanticMemory", "ProceduralMemory",
-    "DecisionTrace", "ExplanationSummary",
+    "CognitiveKernel",
+    "CognitiveState",
+    "Agent",
+    "AgentConfig",
+    "AgentStatus",
+    "PerceptionEngine",
+    "Percept",
+    "KnowledgeGraph",
+    "MemoryType",
+    "GraphNode",
+    "GraphEdge",
+    "ExplainabilityEngine",
+    "Explanation",
 ]

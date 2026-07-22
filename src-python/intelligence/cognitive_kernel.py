@@ -1,21 +1,23 @@
-"""
-intelligence.cognitive_kernel — Goal Stack & Reasoning Engine
+"""intelligence.cognitive_kernel
 
-The CognitiveKernel coordinates goal-directed reasoning for NEXUS agents.
-It maintains a prioritised GoalStack, dispatches reasoning cycles via
-ReasoningEngine, and records every decision to an immutable AuditLog.
+NEXUS Cognitive Kernel
 
-Design references:
-  - BDI (Belief-Desire-Intention) agent architecture
-  - SOAR cognitive architecture goal stack model
-  - NEXUS_UNIVERSAL_OS.md Domain 2.1 — Cognitive Kernel
-Ethics reference: ETHICS.md Commitment 6 — Explainability by Default
-GAIAN law:        GAIAN_LAWS.md Law V — Transparent Cognition
+The CognitiveKernel orchestrates the full intelligence cycle:
+    Percept → Appraisal → Decision → Action → Memory update
+
+It coordinates PerceptionEngine, KnowledgeGraph, AffectEngine, and
+Governance to produce traceable, auditable cognitive decisions.
+
+Architecture reference:
+    NEXUS_UNIVERSAL_OS.md  Domain 2.1 - Cognitive Kernel
+Research reference:
+    OCC appraisal theory       - event-driven emotion and goal appraisal
+    Constitutional AI           - decision guardrails
+    ETHICS.md Commitment 1-10  - NEXUS ethical commitments
 """
 from __future__ import annotations
 
 import logging
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum, auto
@@ -24,119 +26,73 @@ from typing import Any, Optional
 logger = logging.getLogger("intelligence.cognitive_kernel")
 
 
-class GoalStatus(Enum):
-    """Lifecycle status of a goal in the GoalStack."""
-    PENDING    = auto()
-    ACTIVE     = auto()
-    ACHIEVED   = auto()
-    FAILED     = auto()
-    ABANDONED  = auto()
+class CognitivePhase(Enum):
+    """Phases of the cognitive processing cycle."""
+    IDLE = auto()
+    PERCEIVING = auto()
+    APPRAISING = auto()
+    DECIDING = auto()
+    ACTING = auto()
+    CONSOLIDATING = auto()
 
 
 @dataclass
-class Goal:
-    """A single goal in the NEXUS agent goal stack.
+class CognitiveState:
+    """Snapshot of the current cognitive kernel state.
 
     Fields:
-        goal_id:   Unique identifier (UUID4).
-        name:      Human-readable goal name.
-        priority:  Numeric priority (lower = higher urgency).
-        status:    Current lifecycle status.
-        context:   Arbitrary goal context / parameters.
-        created_at: UTC timestamp of goal creation.
+        phase:          Current CognitivePhase.
+        cycle_count:    Total number of full perception→action cycles completed.
+        last_percept:   Optional reference to the last processed Percept ID.
+        last_decision:  Optional summary of the last decision taken.
+        evaluated_at:   UTC timestamp of this snapshot.
     """
-    name:       str
-    priority:   int             = 0
-    status:     GoalStatus      = GoalStatus.PENDING
-    context:    dict[str, Any]  = field(default_factory=dict)
-    goal_id:    str             = field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: datetime        = field(default_factory=lambda: datetime.now(timezone.utc))
+    phase: CognitivePhase = CognitivePhase.IDLE
+    cycle_count: int = 0
+    last_percept: Optional[str] = None
+    last_decision: Optional[str] = None
+    evaluated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class GoalStack:
-    """Priority-ordered stack of active agent goals.
+class CognitiveKernel:
+    """NEXUS cognitive processing kernel.
 
-    Goals are inserted in priority order (lower priority value = higher
-    urgency). The active goal is always the lowest-priority-value item.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1; BDI architecture.
-    """
+    Orchestrates one full cognitive cycle per `process()` call:
+        1. Receive Percept from PerceptionEngine.
+        2. Appraise against goals and ethical constraints (OCC model).
+        3. Query KnowledgeGraph for relevant context.
+        4. Produce a Decision (governance-checked).
+        5. Emit Action and consolidate memory.
 
-    def __init__(self) -> None:
-        self._goals: list[Goal] = []
-
-    def push(self, goal: Goal) -> None:
-        """Add a goal to the stack (sorted by priority)."""
-        raise NotImplementedError(
-            "GoalStack.push — not yet implemented. "
-            "Expected: insert goal in priority-sorted position."
-        )
-
-    def peek(self) -> Optional[Goal]:
-        """Return the highest-priority goal without removing it."""
-        raise NotImplementedError("GoalStack.peek — not yet implemented.")
-
-    def pop(self) -> Optional[Goal]:
-        """Remove and return the highest-priority goal."""
-        raise NotImplementedError("GoalStack.pop — not yet implemented.")
-
-    def __len__(self) -> int:
-        return len(self._goals)
-
-
-@dataclass
-class AuditEntry:
-    """A single immutable entry in the CognitiveKernel audit log."""
-    entry_id:   str      = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp:  datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    agent_id:   str      = ""
-    action:     str      = ""
-    goal_id:    Optional[str] = None
-    details:    dict[str, Any] = field(default_factory=dict)
-
-
-class AuditLog:
-    """Append-only audit log for all CognitiveKernel decisions.
-
-    Every reasoning cycle, goal transition, and agent action must be
-    recorded here. The log is never truncated in-session.
-    Reference: ETHICS.md Prohibition 6 — No Unaudited Actions.
+    Reference:
+        OCC model — appraisal of events relative to goals.
+        ETHICS.md  — all decisions must be auditable and reversible.
     """
 
     def __init__(self) -> None:
-        self._entries: list[AuditEntry] = []
+        self._state = CognitiveState()
+        logger.info("CognitiveKernel initialised.")
 
-    def record(self, entry: AuditEntry) -> None:
-        """Append a new AuditEntry. Thread-safe append only."""
-        self._entries.append(entry)
-        logger.debug("AuditLog: recorded entry %s — %s", entry.entry_id, entry.action)
+    def process(self, percept: Any) -> Any:
+        """Execute one full cognitive cycle for the given percept.
 
-    def entries(self) -> list[AuditEntry]:
-        """Return a snapshot of all audit entries."""
-        return list(self._entries)
+        Args:
+            percept: A Percept object from PerceptionEngine.
 
-
-class ReasoningEngine:
-    """Stub reasoning engine for NEXUS cognitive cycles.
-
-    Each cycle: reads the top goal from GoalStack, selects an action
-    via a reasoning strategy (rule-based, LLM-backed, or hybrid),
-    records the decision to AuditLog, and returns an action descriptor.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1; SOAR architecture.
-    """
-
-    def __init__(self, goal_stack: GoalStack, audit_log: AuditLog) -> None:
-        self._goal_stack = goal_stack
-        self._audit_log  = audit_log
-        logger.info("ReasoningEngine initialised.")
-
-    def cycle(self) -> Optional[dict[str, Any]]:
-        """Execute one reasoning cycle and return an action descriptor.
+        Returns:
+            A Decision or action descriptor (structure TBD in Phase B).
 
         Raises:
-            NotImplementedError: Always (stub).
-        Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1 — Reasoning Cycle
+            NotImplementedError: Full cycle not yet implemented.
+                Expected: appraise percept, query KnowledgeGraph,
+                check governance policy, produce Decision, update state.
         """
         raise NotImplementedError(
-            "ReasoningEngine.cycle — not yet implemented. "
-            "Expected: peek goal_stack, select action, record to audit_log, return action dict."
+            "CognitiveKernel.process() not yet implemented. "
+            "Expected: appraise → knowledge lookup → governance check → decision → memory write."
         )
+
+    @property
+    def state(self) -> CognitiveState:
+        """Return the current cognitive state snapshot."""
+        return self._state
