@@ -1,124 +1,77 @@
 """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NEXUS — The Universal Autonomous Intelligence Architecture
-  Author   : Kyle Steen
-  GitHub   : R0GV3TheAlchemist
-  Email    : xxkylesteenxx@outlook.com
-  License  : All Rights Reserved © 2026 Kyle Steen
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+intelligence.explainability — Decision Tracing & Explanation
 
-explainability.py — NEXUS Explainability Subsystem.
+Provides DecisionTrace (a structured record of why an agent took an action)
+and ExplanationSummary (a human-readable distillation of one or more traces,
+suitable for audit, governance review, or user-facing explanation).
 
-DecisionTrace records the causal chain from goal → reasoning steps → action.
-ExplanationSummary condenses traces into human-readable justifications.
+Design references:
+  - SHAP (SHapley Additive exPlanations)
+  - LIME (Local Interpretable Model-Agnostic Explanations)
+  - Counterfactual explanation methods (Wachter et al. 2017)
+  - NEXUS_UNIVERSAL_OS.md Domain 2.5 — Explainability Layer
+Ethics reference: ETHICS.md Commitment 6 — Explainability by Default
+GAIAN law:        GAIAN_LAWS.md Law V — Transparent Cognition
 """
-
 from __future__ import annotations
+
+import logging
+import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from uuid import UUID, uuid4
-import time
+from datetime import datetime, timezone
+from typing import Any, Optional
 
-
-@dataclass
-class ReasoningStep:
-    """A single step in a decision reasoning chain."""
-    step_id:     UUID           = field(default_factory=uuid4)
-    description: str            = ""
-    inputs:      Dict[str, Any] = field(default_factory=dict)
-    output:      Any            = None
-    confidence:  float          = 1.0
-    timestamp:   float          = field(default_factory=time.time)
+logger = logging.getLogger("intelligence.explainability")
 
 
 @dataclass
 class DecisionTrace:
+    """A structured record of one agent decision cycle.
+
+    Fields:
+        trace_id:       Unique identifier (UUID4).
+        agent_id:       The agent that made the decision.
+        goal_id:        The goal being pursued at decision time.
+        action_taken:   Description of the action selected.
+        reasoning:      Structured reasoning steps (list of strings or dicts).
+        feature_weights: Optional SHAP-style feature importance weights.
+        timestamp:      UTC timestamp of the decision.
+        confidence:     Agent's self-reported confidence (0.0–1.0).
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.5; SHAP/LIME literature.
     """
-    Full causal trace from goal to emitted action.
-
-    Captures every reasoning step between goal intake and action emission
-    for post-hoc audit, explanation generation, and oversight review.
-    """
-    trace_id:     UUID                = field(default_factory=uuid4)
-    goal_id:      UUID                = field(default_factory=uuid4)
-    goal_desc:    str                 = ""
-    steps:        List[ReasoningStep] = field(default_factory=list)
-    final_action: str                 = ""
-    outcome:      str                 = ""  # SUCCEEDED | FAILED | DEFERRED
-    created_at:   float               = field(default_factory=time.time)
-
-    def add_step(self, description: str,
-                 inputs: Optional[Dict[str, Any]] = None,
-                 output: Any = None,
-                 confidence: float = 1.0) -> ReasoningStep:
-        step = ReasoningStep(
-            description=description,
-            inputs=inputs or {},
-            output=output,
-            confidence=confidence,
-        )
-        self.steps.append(step)
-        return step
-
-    def overall_confidence(self) -> float:
-        """Mean confidence across all reasoning steps."""
-        if not self.steps:
-            return 0.0
-        return sum(s.confidence for s in self.steps) / len(self.steps)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "trace_id":     str(self.trace_id),
-            "goal_id":      str(self.goal_id),
-            "goal_desc":    self.goal_desc,
-            "final_action": self.final_action,
-            "outcome":      self.outcome,
-            "confidence":   self.overall_confidence(),
-            "steps": [
-                {
-                    "step_id":     str(s.step_id),
-                    "description": s.description,
-                    "output":      str(s.output),
-                    "confidence":  s.confidence,
-                }
-                for s in self.steps
-            ],
-        }
+    agent_id:        str
+    goal_id:         Optional[str]
+    action_taken:    str
+    reasoning:       list[Any]           = field(default_factory=list)
+    feature_weights: dict[str, float]    = field(default_factory=dict)
+    trace_id:        str                 = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp:       datetime            = field(default_factory=lambda: datetime.now(timezone.utc))
+    confidence:      float               = 1.0
 
 
+@dataclass
 class ExplanationSummary:
-    """
-    Generates human-readable natural-language justifications
-    from a DecisionTrace for audit panels and oversight interfaces.
-    """
+    """A human-readable distillation of one or more DecisionTraces.
 
-    def summarize(self, trace: DecisionTrace) -> str:
-        """Produce a plain-English summary of the decision trace."""
-        if not trace.steps:
-            return (
-                f"Goal '{trace.goal_desc}' was processed with no "
-                f"intermediate reasoning steps recorded. "
-                f"Final action: '{trace.final_action}'. "
-                f"Outcome: {trace.outcome}."
-            )
-        step_lines = "\n".join(
-            f"  Step {i + 1}: {s.description} "
-            f"(confidence: {s.confidence:.0%})"
-            for i, s in enumerate(trace.steps)
-        )
-        return (
-            f"Goal: '{trace.goal_desc}'\n"
-            f"Reasoning chain ({len(trace.steps)} steps):\n"
-            f"{step_lines}\n"
-            f"Final action: '{trace.final_action}'\n"
-            f"Outcome: {trace.outcome} "
-            f"(overall confidence: {trace.overall_confidence():.0%})"
-        )
+    Generated by the ExplainabilityEngine (Phase C). In v0.1.0 the
+    generate() class method is a stub.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.5; counterfactual explanations.
+    """
+    summary_id:  str           = field(default_factory=lambda: str(uuid.uuid4()))
+    traces:      list[DecisionTrace] = field(default_factory=list)
+    narrative:   str           = ""
+    generated_at: datetime     = field(default_factory=lambda: datetime.now(timezone.utc))
 
-    def to_audit_report(self, trace: DecisionTrace) -> Dict[str, Any]:
-        """Return a structured audit report dict for logging or export."""
-        return {
-            "report_generated_at": time.time(),
-            "trace":               trace.to_dict(),
-            "summary":             self.summarize(trace),
-        }
+    @classmethod
+    def generate(cls, traces: list[DecisionTrace]) -> "ExplanationSummary":
+        """Generate a human-readable explanation from a list of DecisionTraces.
+
+        Raises:
+            NotImplementedError: Always (stub).
+        Reference: ETHICS.md Commitment 6; SHAP/LIME; Wachter et al. 2017.
+        """
+        raise NotImplementedError(
+            "ExplanationSummary.generate — not yet implemented. "
+            "Expected: apply SHAP/LIME attribution to traces, compose narrative string, "
+            "return ExplanationSummary(traces=traces, narrative=...)."
+        )

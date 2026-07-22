@@ -1,160 +1,142 @@
 """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NEXUS — The Universal Autonomous Intelligence Architecture
-  Author   : Kyle Steen
-  GitHub   : R0GV3TheAlchemist
-  Email    : xxkylesteenxx@outlook.com
-  License  : All Rights Reserved © 2026 Kyle Steen
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+intelligence.cognitive_kernel — Goal Stack & Reasoning Engine
 
-cognitive_kernel.py — NEXUS Cognitive Kernel.
+The CognitiveKernel coordinates goal-directed reasoning for NEXUS agents.
+It maintains a prioritised GoalStack, dispatches reasoning cycles via
+ReasoningEngine, and records every decision to an immutable AuditLog.
 
-Manages a goal stack, drives the reasoning engine tick loop,
-and maintains a cryptographically hash-chained audit log.
+Design references:
+  - BDI (Belief-Desire-Intention) agent architecture
+  - SOAR cognitive architecture goal stack model
+  - NEXUS_UNIVERSAL_OS.md Domain 2.1 — Cognitive Kernel
+Ethics reference: ETHICS.md Commitment 6 — Explainability by Default
+GAIAN law:        GAIAN_LAWS.md Law V — Transparent Cognition
 """
-
 from __future__ import annotations
+
+import logging
+import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
-from uuid import UUID, uuid4
-import hashlib, json, time
+from typing import Any, Optional
+
+logger = logging.getLogger("intelligence.cognitive_kernel")
 
 
 class GoalStatus(Enum):
-    PENDING   = auto()
-    ACTIVE    = auto()
-    SUCCEEDED = auto()
-    FAILED    = auto()
-    DEFERRED  = auto()
+    """Lifecycle status of a goal in the GoalStack."""
+    PENDING    = auto()
+    ACTIVE     = auto()
+    ACHIEVED   = auto()
+    FAILED     = auto()
+    ABANDONED  = auto()
 
 
 @dataclass
 class Goal:
-    """A single goal on the cognitive stack."""
-    goal_id:     UUID           = field(default_factory=uuid4)
-    description: str            = ""
-    priority:    int            = 0
-    status:      GoalStatus     = GoalStatus.PENDING
-    context:     Dict[str, Any] = field(default_factory=dict)
-    created_at:  float          = field(default_factory=time.time)
+    """A single goal in the NEXUS agent goal stack.
 
-
-@dataclass
-class AuditEntry:
-    """One entry in the cryptographic audit log."""
-    entry_id:      UUID  = field(default_factory=uuid4)
-    timestamp:     float = field(default_factory=time.time)
-    goal_id:       UUID  = field(default_factory=uuid4)
-    action:        str   = ""
-    result:        str   = ""
-    previous_hash: str   = ""
-    hash:          str   = ""
-
-    def compute_hash(self) -> str:
-        payload = json.dumps({
-            "entry_id":      str(self.entry_id),
-            "timestamp":     self.timestamp,
-            "goal_id":       str(self.goal_id),
-            "action":        self.action,
-            "result":        self.result,
-            "previous_hash": self.previous_hash,
-        }, sort_keys=True)
-        return hashlib.sha256(payload.encode()).hexdigest()
+    Fields:
+        goal_id:   Unique identifier (UUID4).
+        name:      Human-readable goal name.
+        priority:  Numeric priority (lower = higher urgency).
+        status:    Current lifecycle status.
+        context:   Arbitrary goal context / parameters.
+        created_at: UTC timestamp of goal creation.
+    """
+    name:       str
+    priority:   int             = 0
+    status:     GoalStatus      = GoalStatus.PENDING
+    context:    dict[str, Any]  = field(default_factory=dict)
+    goal_id:    str             = field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime        = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class GoalStack:
-    """Priority-ordered stack of cognitive goals."""
+    """Priority-ordered stack of active agent goals.
+
+    Goals are inserted in priority order (lower priority value = higher
+    urgency). The active goal is always the lowest-priority-value item.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1; BDI architecture.
+    """
 
     def __init__(self) -> None:
-        self._goals: List[Goal] = []
+        self._goals: list[Goal] = []
 
     def push(self, goal: Goal) -> None:
-        self._goals.append(goal)
-        self._goals.sort(key=lambda g: -g.priority)
-
-    def pop(self) -> Optional[Goal]:
-        return self._goals.pop(0) if self._goals else None
+        """Add a goal to the stack (sorted by priority)."""
+        raise NotImplementedError(
+            "GoalStack.push — not yet implemented. "
+            "Expected: insert goal in priority-sorted position."
+        )
 
     def peek(self) -> Optional[Goal]:
-        return self._goals[0] if self._goals else None
+        """Return the highest-priority goal without removing it."""
+        raise NotImplementedError("GoalStack.peek — not yet implemented.")
+
+    def pop(self) -> Optional[Goal]:
+        """Remove and return the highest-priority goal."""
+        raise NotImplementedError("GoalStack.pop — not yet implemented.")
 
     def __len__(self) -> int:
         return len(self._goals)
 
 
+@dataclass
+class AuditEntry:
+    """A single immutable entry in the CognitiveKernel audit log."""
+    entry_id:   str      = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp:  datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    agent_id:   str      = ""
+    action:     str      = ""
+    goal_id:    Optional[str] = None
+    details:    dict[str, Any] = field(default_factory=dict)
+
+
 class AuditLog:
-    """Append-only, SHA-256 hash-chained audit log for all cognitive decisions."""
+    """Append-only audit log for all CognitiveKernel decisions.
+
+    Every reasoning cycle, goal transition, and agent action must be
+    recorded here. The log is never truncated in-session.
+    Reference: ETHICS.md Prohibition 6 — No Unaudited Actions.
+    """
 
     def __init__(self) -> None:
-        self._entries: List[AuditEntry] = []
+        self._entries: list[AuditEntry] = []
 
-    def append(self, goal_id: UUID, action: str, result: str) -> AuditEntry:
-        prev_hash = self._entries[-1].hash if self._entries else ""
-        entry = AuditEntry(
-            goal_id=goal_id, action=action,
-            result=result, previous_hash=prev_hash
-        )
-        entry.hash = entry.compute_hash()
+    def record(self, entry: AuditEntry) -> None:
+        """Append a new AuditEntry. Thread-safe append only."""
         self._entries.append(entry)
-        return entry
+        logger.debug("AuditLog: recorded entry %s — %s", entry.entry_id, entry.action)
 
-    def verify(self) -> bool:
-        """Verify chain integrity. Returns True if unmodified."""
-        for i, entry in enumerate(self._entries):
-            if entry.hash != entry.compute_hash():
-                return False
-            if i > 0 and entry.previous_hash != self._entries[i - 1].hash:
-                return False
-        return True
-
-    def entries(self) -> List[AuditEntry]:
+    def entries(self) -> list[AuditEntry]:
+        """Return a snapshot of all audit entries."""
         return list(self._entries)
-
-    def __len__(self) -> int:
-        return len(self._entries)
 
 
 class ReasoningEngine:
-    """
-    Stub reasoning engine. In production, plugs into NEXUS inference
-    backends (symbolic, neural, or hybrid).
-    """
+    """Stub reasoning engine for NEXUS cognitive cycles.
 
-    def reason(self, goal: Goal) -> str:
-        """Process a goal and return an action string. Override in subclasses."""
-        raise NotImplementedError("ReasoningEngine.reason() must be implemented")
-
-
-class CognitiveKernel:
-    """
-    The NEXUS Cognitive Kernel drives the goal-directed reasoning loop.
-
-    Each tick: pop top goal → reason → log → emit action.
+    Each cycle: reads the top goal from GoalStack, selects an action
+    via a reasoning strategy (rule-based, LLM-backed, or hybrid),
+    records the decision to AuditLog, and returns an action descriptor.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1; SOAR architecture.
     """
 
-    def __init__(self, reasoning_engine: ReasoningEngine) -> None:
-        self.goal_stack = GoalStack()
-        self.audit_log  = AuditLog()
-        self._engine    = reasoning_engine
+    def __init__(self, goal_stack: GoalStack, audit_log: AuditLog) -> None:
+        self._goal_stack = goal_stack
+        self._audit_log  = audit_log
+        logger.info("ReasoningEngine initialised.")
 
-    def push_goal(self, goal: Goal) -> None:
-        goal.status = GoalStatus.PENDING
-        self.goal_stack.push(goal)
+    def cycle(self) -> Optional[dict[str, Any]]:
+        """Execute one reasoning cycle and return an action descriptor.
 
-    def tick(self) -> Optional[AuditEntry]:
-        """Execute one reasoning cycle. Returns the audit entry or None."""
-        goal = self.goal_stack.pop()
-        if goal is None:
-            return None
-        goal.status = GoalStatus.ACTIVE
-        try:
-            action = self._engine.reason(goal)
-            goal.status = GoalStatus.SUCCEEDED
-            return self.audit_log.append(goal.goal_id, action, "SUCCEEDED")
-        except Exception as exc:
-            goal.status = GoalStatus.FAILED
-            return self.audit_log.append(goal.goal_id, "FAILED", str(exc))
-
-    def is_audit_intact(self) -> bool:
-        return self.audit_log.verify()
+        Raises:
+            NotImplementedError: Always (stub).
+        Reference: NEXUS_UNIVERSAL_OS.md Domain 2.1 — Reasoning Cycle
+        """
+        raise NotImplementedError(
+            "ReasoningEngine.cycle — not yet implemented. "
+            "Expected: peek goal_stack, select action, record to audit_log, return action dict."
+        )

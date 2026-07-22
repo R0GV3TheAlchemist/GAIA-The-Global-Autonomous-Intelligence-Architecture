@@ -1,104 +1,108 @@
 """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NEXUS — The Universal Autonomous Intelligence Architecture
-  Author   : Kyle Steen
-  GitHub   : R0GV3TheAlchemist
-  Email    : xxkylesteenxx@outlook.com
-  License  : All Rights Reserved © 2026 Kyle Steen
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+intelligence.perception — Sensor Fusion & World Model
 
-perception.py — NEXUS Perception System.
+Provides SensorFusion (aggregates raw sensor streams into a unified
+perceptual frame), WorldModel (the agent's current belief state about
+the environment), and UncertaintyQuantifier (assigns confidence bounds
+to world-model estimates).
 
-SensorFusion combines heterogeneous sensor streams into a unified WorldModel.
-UncertaintyQuantifier attaches Bayesian confidence intervals to all percepts.
+Design references:
+  - Kalman / particle filter sensor fusion literature
+  - OpenFusion / ORB-SLAM3 world model architectures
+  - NEXUS_UNIVERSAL_OS.md Domain 2.3 — Perception Layer
+Ethics reference: ETHICS.md Commitment 3 — Transparency of Operation
+GAIAN law:        GAIAN_LAWS.md Law I — Sovereignty of Self
 """
-
 from __future__ import annotations
+
+import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from uuid import UUID, uuid4
-import time
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+logger = logging.getLogger("intelligence.perception")
 
 
 @dataclass
-class Percept:
-    """A single fused sensor reading."""
-    percept_id: UUID  = field(default_factory=uuid4)
-    sensor_id:  str   = ""
-    modality:   str   = ""   # e.g. "vision", "audio", "tactile", "telemetry"
-    value:      Any   = None
-    timestamp:  float = field(default_factory=time.time)
-    confidence: float = 1.0  # 0.0–1.0 Bayesian confidence
+class SensorReading:
+    """A single timestamped reading from one sensor source."""
+    source:    str
+    value:     Any
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    unit:      Optional[str] = None
+    confidence: float = 1.0   # 0.0–1.0
+
+
+class SensorFusion:
+    """Aggregates heterogeneous sensor readings into a unified perceptual frame.
+
+    In Phase C this will implement Kalman-style weighted fusion. In v0.1.0
+    the fuse() method is a stub.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.3.
+    """
+
+    def __init__(self) -> None:
+        self._readings: list[SensorReading] = []
+        logger.info("SensorFusion initialised.")
+
+    def ingest(self, reading: SensorReading) -> None:
+        """Ingest a new SensorReading into the fusion buffer."""
+        self._readings.append(reading)
+
+    def fuse(self) -> dict[str, Any]:
+        """Fuse buffered readings into a unified perceptual frame.
+
+        Raises:
+            NotImplementedError: Always (stub).
+        """
+        raise NotImplementedError(
+            "SensorFusion.fuse — not yet implemented. "
+            "Expected: apply weighted fusion (Kalman/particle), return fused frame dict."
+        )
+
+    def clear(self) -> None:
+        """Clear the reading buffer after fusion."""
+        self._readings.clear()
 
 
 @dataclass
 class WorldModel:
-    """
-    Unified representation of the perceived world state.
-    Updated each perception cycle by SensorFusion.
-    """
-    model_id:   UUID           = field(default_factory=uuid4)
-    timestamp:  float          = field(default_factory=time.time)
-    entities:   Dict[str, Any] = field(default_factory=dict)
-    confidence: float          = 1.0
-    percepts:   List[Percept]  = field(default_factory=list)
+    """The agent's current belief state about its environment.
 
-    def update_entity(self, name: str, state: Any) -> None:
-        self.entities[name] = state
-        self.timestamp = time.time()
+    Stores a key/value belief map with timestamps and confidence scores.
+    Updated by SensorFusion output on each perception cycle.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.3.
+    """
+    beliefs:    dict[str, Any]   = field(default_factory=dict)
+    confidence: dict[str, float] = field(default_factory=dict)
+    updated_at: Optional[datetime] = None
+
+    def update(self, key: str, value: Any, confidence: float = 1.0) -> None:
+        """Update a belief entry."""
+        self.beliefs[key]    = value
+        self.confidence[key] = confidence
+        self.updated_at      = datetime.now(timezone.utc)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Retrieve a belief value by key."""
+        return self.beliefs.get(key, default)
 
 
 class UncertaintyQuantifier:
-    """
-    Attaches Bayesian confidence intervals to percepts.
-    Uses weighted-average fusion. Replace with Kalman/Bayesian network in production.
-    """
+    """Assigns confidence bounds to WorldModel estimates.
 
-    def quantify(self, percepts: List[Percept]) -> float:
-        """Compute overall model confidence from individual percept confidences."""
-        if not percepts:
-            return 0.0
-        return sum(p.confidence for p in percepts) / len(percepts)
-
-    def calibrate(self, percept: Percept,
-                  prior: float = 0.5,
-                  likelihood: float = 0.9) -> float:
-        """Apply Bayesian update and store result in percept.confidence."""
-        evidence  = likelihood * prior + (1 - likelihood) * (1 - prior)
-        posterior = (likelihood * prior) / evidence if evidence > 0 else prior
-        percept.confidence = min(max(posterior, 0.0), 1.0)
-        return percept.confidence
-
-
-class SensorFusion:
-    """
-    Fuses heterogeneous sensor streams into a unified WorldModel.
-
-    Each registered sensor pushes Percept objects. SensorFusion
-    reconciles conflicts, runs UncertaintyQuantifier, and updates
-    the live WorldModel.
+    In Phase C this will implement Monte Carlo dropout or conformal
+    prediction. In v0.1.0 the quantify() method is a stub.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.3; conformal prediction literature.
     """
 
-    def __init__(self) -> None:
-        self._sensors:    Dict[str, Any]        = {}
-        self._uq:         UncertaintyQuantifier = UncertaintyQuantifier()
-        self.world_model: WorldModel            = WorldModel()
+    def quantify(self, world_model: WorldModel, key: str) -> tuple[float, float]:
+        """Return (lower_bound, upper_bound) confidence interval for a belief.
 
-    def register_sensor(self, sensor_id: str, modality: str) -> None:
-        self._sensors[sensor_id] = {"modality": modality, "active": True}
-
-    def ingest(self, percept: Percept) -> None:
-        """Accept a raw percept and integrate it into the world model."""
-        self._uq.calibrate(percept)
-        self.world_model.percepts.append(percept)
-        self.world_model.update_entity(percept.sensor_id, percept.value)
-
-    def fuse(self) -> WorldModel:
-        """Run a full fusion cycle and return the updated WorldModel snapshot."""
-        self.world_model.confidence = self._uq.quantify(self.world_model.percepts)
-        self.world_model.timestamp  = time.time()
-        return self.world_model
-
-    def reset(self) -> None:
-        """Clear the percept buffer for the next cycle."""
-        self.world_model.percepts.clear()
+        Raises:
+            NotImplementedError: Always (stub).
+        """
+        raise NotImplementedError(
+            "UncertaintyQuantifier.quantify — not yet implemented. "
+            "Expected: apply conformal prediction or MC dropout, return (lb, ub)."
+        )

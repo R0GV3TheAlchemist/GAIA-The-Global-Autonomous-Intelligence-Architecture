@@ -1,129 +1,105 @@
 """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NEXUS — The Universal Autonomous Intelligence Architecture
-  Author   : Kyle Steen
-  GitHub   : R0GV3TheAlchemist
-  Email    : xxkylesteenxx@outlook.com
-  License  : All Rights Reserved © 2026 Kyle Steen
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+intelligence.agent — Agent Lifecycle & Coalition Management
 
-agent.py — NEXUS Agent Framework.
+Defines BaseAgent, the foundational agent abstraction for all NEXUS
+intelligence agents, along with AgentLifecycle state management and
+AgentCoalition for multi-agent coordination.
 
-BaseAgent, AgentLifecycle state machine, and AgentCoalition for
-collaborative multi-agent problem solving.
+Design references:
+  - FIPA agent lifecycle standard (initiated, active, suspended, terminated)
+  - Multi-Agent Systems: Wooldridge & Jennings 1995
+  - NEXUS_UNIVERSAL_OS.md Domain 2.2 — Agent Architecture
+Ethics reference: ETHICS.md Commitment 7 — Agent Accountability
+GAIAN law:        GAIAN_LAWS.md Law IV — Coalition Sovereignty
 """
-
 from __future__ import annotations
-from abc import ABC, abstractmethod
+
+import logging
+import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Dict, List, Optional
-from uuid import UUID, uuid4
-import time
+from typing import Any, Optional
+
+logger = logging.getLogger("intelligence.agent")
 
 
-class AgentState(Enum):
-    SPAWNED     = auto()
-    ACTIVE      = auto()
-    HIBERNATING = auto()
-    TERMINATED  = auto()
+class AgentLifecycle(Enum):
+    """FIPA-inspired lifecycle states for a NEXUS agent."""
+    INITIATED  = auto()  # Created, not yet active
+    ACTIVE     = auto()  # Running and processing goals
+    SUSPENDED  = auto()  # Temporarily paused by governance
+    TERMINATED = auto()  # Permanently stopped
+
+
+class BaseAgent:
+    """Foundational base class for all NEXUS intelligence agents.
+
+    Subclasses must implement the perceive() and act() methods.
+    The run loop calls perceive → reason → act on each cycle.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.2; FIPA agent lifecycle.
+    """
+
+    def __init__(self, name: str, agent_id: Optional[str] = None) -> None:
+        self.agent_id:  str            = agent_id or str(uuid.uuid4())
+        self.name:      str            = name
+        self.lifecycle: AgentLifecycle = AgentLifecycle.INITIATED
+        self.created_at: datetime      = datetime.now(timezone.utc)
+        logger.info("BaseAgent '%s' (%s) created.", name, self.agent_id)
+
+    def perceive(self) -> dict[str, Any]:
+        """Collect sensor / environment inputs for this agent cycle.
+
+        Raises:
+            NotImplementedError: Must be overridden by subclasses.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.perceive — must be implemented by subclasses."
+        )
+
+    def act(self, action: dict[str, Any]) -> None:
+        """Execute the action selected by the reasoning engine.
+
+        Raises:
+            NotImplementedError: Must be overridden by subclasses.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.act — must be implemented by subclasses."
+        )
+
+    def run_cycle(self) -> None:
+        """Execute one perceive→reason→act cycle.
+
+        Raises:
+            NotImplementedError: Always (stub in BaseAgent).
+        """
+        raise NotImplementedError(
+            "BaseAgent.run_cycle — not yet implemented. "
+            "Expected: observations = self.perceive(); action = self.reason(observations); "
+            "self.act(action); record to AuditLog."
+        )
 
 
 @dataclass
-class AgentLifecycle:
-    """Tracks lifecycle state transitions of an agent."""
-    current_state: AgentState  = AgentState.SPAWNED
-    history:       List[tuple] = field(default_factory=list)
-
-    def transition(self, new_state: AgentState) -> None:
-        self.history.append((self.current_state, new_state, time.time()))
-        self.current_state = new_state
-
-
-class BaseAgent(ABC):
-    """
-    Abstract base for all NEXUS agents.
-
-    Concrete agents implement perceive(), decide(), and act().
-    Lifecycle transitions are managed by AgentLifecycle.
-    """
-
-    def __init__(self, name: str) -> None:
-        self.agent_id:  UUID              = uuid4()
-        self.name:      str               = name
-        self.lifecycle: AgentLifecycle    = AgentLifecycle()
-        self._coalition: Optional[AgentCoalition] = None
-
-    @abstractmethod
-    def perceive(self, world_state: dict) -> dict:
-        """Process incoming world state and return percepts."""
-        ...
-
-    @abstractmethod
-    def decide(self, percepts: dict) -> str:
-        """Select an action given current percepts."""
-        ...
-
-    @abstractmethod
-    def act(self, action: str) -> None:
-        """Execute the selected action."""
-        ...
-
-    def run_cycle(self, world_state: dict) -> str:
-        """Execute one full perceive → decide → act cycle."""
-        self.lifecycle.transition(AgentState.ACTIVE)
-        percepts = self.perceive(world_state)
-        action   = self.decide(percepts)
-        self.act(action)
-        return action
-
-    def join_coalition(self, coalition: AgentCoalition) -> None:
-        self._coalition = coalition
-        coalition._members[self.agent_id] = self
-
-    def leave_coalition(self) -> None:
-        if self._coalition:
-            self._coalition._members.pop(self.agent_id, None)
-            self._coalition = None
-
-    @property
-    def state(self) -> AgentState:
-        return self.lifecycle.current_state
-
-
 class AgentCoalition:
+    """A named coalition of cooperating NEXUS agents.
+
+    Coalitions share a common goal and a negotiated resource budget.
+    Membership is dynamic — agents can join or leave mid-execution.
+    Reference: NEXUS_UNIVERSAL_OS.md Domain 2.2; Wooldridge MAS ch.8.
     """
-    A capability-gated coalition of cooperating agents.
-    Coalition formation and dissolution is logged for audit.
-    """
+    coalition_id: str           = field(default_factory=lambda: str(uuid.uuid4()))
+    name:         str           = "unnamed-coalition"
+    members:      list[BaseAgent] = field(default_factory=list)
+    shared_goal:  Optional[str] = None
 
-    def __init__(self, coalition_id: Optional[UUID] = None,
-                 goal: str = "") -> None:
-        self.coalition_id: UUID               = coalition_id or uuid4()
-        self.goal:         str                = goal
-        self._members:     Dict[UUID, BaseAgent] = {}
-        self._log:         List[dict]         = []
+    def add_member(self, agent: BaseAgent) -> None:
+        """Add an agent to the coalition."""
+        if agent not in self.members:
+            self.members.append(agent)
+            logger.info("Coalition '%s': added agent '%s'.", self.name, agent.name)
 
-    def add(self, agent: BaseAgent) -> None:
-        self._members[agent.agent_id] = agent
-        self._log.append({
-            "event": "JOIN", "agent_id": str(agent.agent_id),
-            "name": agent.name, "timestamp": time.time()
-        })
-
-    def remove(self, agent_id: UUID) -> None:
-        agent = self._members.pop(agent_id, None)
-        if agent:
-            self._log.append({
-                "event": "LEAVE", "agent_id": str(agent_id),
-                "timestamp": time.time()
-            })
-
-    def members(self) -> List[BaseAgent]:
-        return list(self._members.values())
-
-    def audit_log(self) -> List[dict]:
-        return list(self._log)
-
-    def __len__(self) -> int:
-        return len(self._members)
+    def remove_member(self, agent: BaseAgent) -> None:
+        """Remove an agent from the coalition."""
+        self.members = [m for m in self.members if m.agent_id != agent.agent_id]
+        logger.info("Coalition '%s': removed agent '%s'.", self.name, agent.name)
