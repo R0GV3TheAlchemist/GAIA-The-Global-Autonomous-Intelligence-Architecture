@@ -1,37 +1,20 @@
+"""twins — Digital twin abstraction and consent model
+
+Provides:
+  - DigitalTwin: represents a digital twin of a physical or agent entity.
+  - ConsentGate: enforces consent policies before twin data is shared.
+  - TwinRegistry: registry of all active digital twins in the NEXUS mesh.
+
+Phase C — all methods are stubbed.
+
+References
+----------
+- Azure Digital Twins / Eclipse Ditto: twin identity and property models.
+- W3C Web of Things: semantic description of twin capabilities.
+- Portable Agent Memory (arXiv 2605.11032): capability-based access
+  control for memory segments maps directly to ConsentGate.
 """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  NEXUS — The Universal Autonomous Intelligence Architecture
-  GAIA  — The Global Autonomous Intelligence Architecture
+from __future__ import annotations
+from twins.engine import DigitalTwin, ConsentGate, TwinRegistry, TwinConfig
 
-  Author   : Kyle Steen
-  GitHub   : R0GV3TheAlchemist (https://github.com/R0GV3TheAlchemist)
-  Email    : xxkylesteenxx@outlook.com
-  Project  : NEXUS / GAIA
-  License  : All Rights Reserved © 2026 Kyle Steen
-             Unauthorized use, reproduction, or distribution
-             of this file or its contents is strictly prohibited.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-twins — NEXUS Digital Twins Package.
-
-Provides DigitalTwin entity lifecycle, TwinState versioning,
-TwinRegistry, TwinEvent subscription, and bulk snapshot export.
-"""
-
-__version__ = "1.0.0"
-__author__ = "Kyle Steen"
-__all__ = [
-    "DigitalTwin",
-    "TwinState",
-    "TwinType",
-    "TwinRegistry",
-    "TwinEvent",
-    "TwinEventType",
-    "TwinSimulation",
-    "SimulationScenario",
-    "SimulationResult",
-]
-
-from twins.entity import DigitalTwin, TwinState, TwinType
-from twins.registry import TwinRegistry, TwinEvent, TwinEventType
-from twins.simulation import TwinSimulation, SimulationScenario, SimulationResult
+__all__ = ["DigitalTwin", "ConsentGate", "TwinRegistry", "TwinConfig"]

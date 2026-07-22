@@ -1,14 +1,13 @@
-"""GAIA Agent Telemetry Hub — sovereign, local, append-only observability."""
+"""telemetry — local src-python mirror of sidecar.telemetry
 
-from .models import TelemetryEvent, SkillHealthReport, OrchestrationEfficiency, DecisionQualityRecord
-from .collector import TelemetryCollector
-from .store import TelemetryStore
+Provides a thin re-export so modules inside src-python can use::
 
-__all__ = [
-    "TelemetryEvent",
-    "SkillHealthReport",
-    "OrchestrationEfficiency",
-    "DecisionQualityRecord",
-    "TelemetryCollector",
-    "TelemetryStore",
-]
+    from telemetry import TelemetryCollector
+
+without needing a fully qualified ``sidecar.*`` path. Delegates all
+implementation to ``sidecar.telemetry.telemetry_collector``.
+"""
+from __future__ import annotations
+from sidecar.telemetry.telemetry_collector import TelemetryCollector, TelemetryEvent, TelemetryConfig
+
+__all__ = ["TelemetryCollector", "TelemetryEvent", "TelemetryConfig"]
