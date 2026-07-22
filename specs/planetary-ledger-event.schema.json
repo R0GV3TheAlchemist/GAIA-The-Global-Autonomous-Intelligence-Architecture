@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nexus.gaia/schemas/planetary-ledger-event.schema.json",
+  "title": "PlanetaryLedgerEvent",
+  "description": "An immutable record in the NEXUS Planetary Ledger — the append-only log of all governance decisions, containment actions, stage transitions, contract executions, and payment events across the GAIA network. Every ledger record MUST conform to this schema.",
+  "type": "object",
+  "required": ["ledger_id", "record_type", "issuer", "timestamp_utc", "schema_version", "content_hash", "content"],
+  "additionalProperties": false,
+  "properties": {
+    "ledger_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID4 unique identifier for this ledger record."
+    },
+    "record_type": {
+      "type": "string",
+      "enum": [
+        "GOVERNANCE_DECISION",
+        "CONTAINMENT_ACTION",
+        "STAGE_TRANSITION",
+        "CONTRACT_EXECUTION",
+        "PAYMENT_EVENT",
+        "TRUST_ASSIGNMENT",
+        "CONSENT_CHANGE",
+        "MEMORY_SNAPSHOT",
+        "POLICY_VIOLATION",
+        "SYSTEM_AUDIT"
+      ],
+      "description": "Type of ledger record. Each type corresponds to a high-stakes NEXUS operation that requires permanent, tamper-evident recording."
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "EID or identifier of the GAIA node or human that created this record (e.g., 'dtn://gaia/founder/', 'governance:policy-uuid')."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Optional EID or identifier of the entity this record concerns (e.g., a being, node, or contract party)."
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of record creation."
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of this schema."
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the serialised 'content' field. Used to verify record integrity."
+    },
+    "previous_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the previous ledger record in the chain (for Merkle-chain integrity). Omitted for the genesis record."
+    },
+    "authorizer_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "EIDs of all parties who authorised this record. Must meet the minimum authorizer count for the record_type per GOVERNANCE.md."
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Optional ISO 3166-1 alpha-2 country code or 'GAIA' for GAIA Sovereign Arbitration Tribunal jurisdiction."
+    },
+    "content": {
+      "type": "object",
+      "description": "The substantive content of the ledger record. Structure varies by record_type."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional free-form tags for querying and filtering the ledger."
+    }
+  },
+  "examples": [
+    {
+      "ledger_id": "660e8400-e29b-41d4-a716-446655440001",
+      "record_type": "STAGE_TRANSITION",
+      "issuer": "dtn://gaia/founder/",
+      "subject": "dtn://gaia/node-beta/",
+      "timestamp_utc": "2026-07-22T21:00:00Z",
+      "schema_version": "1.0.0",
+      "content_hash": "sha256:def789abc123def789abc123def789abc123def789abc123def789abc123def7",
+      "previous_hash": "sha256:abc123def456abc123def456abc123def456abc123def456abc123def456abc1",
+      "authorizer_ids": ["dtn://gaia/founder/"],
+      "jurisdiction": "GAIA",
+      "tags": ["stage", "convergence"],
+      "content": {
+        "previous_stage": "Allegiance",
+        "new_stage": "Convergence",
+        "requires_human_review": true,
+        "evaluation_id": "770e8400-e29b-41d4-a716-446655440002"
+      }
+    }
+  ]
+}
