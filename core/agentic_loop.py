@@ -6,11 +6,13 @@ GAIA's core Perceive → Reason → Act → Observe (PRAO) loop.
 Upgraded to integrate:
   - ActionGate / TrustPolicyEngine (issue #229)
   - CapabilityRegistry (issue #230)
+  - FSToolRegistry (issue #231)
 
 Every tool invocation now:
   1. Asserts the tool is registered in the CapabilityRegistry.
   2. Passes through the ActionGate (permission + Gaian approval).
-  3. Only then executes.
+  3a. If the tool is an FS tool, dispatches via FSToolRegistry.execute() (async-native).
+  3b. Otherwise, dispatches via the flat self._tools dict.
 """
 
 from __future__ import annotations
@@ -91,6 +93,17 @@ except ImportError:  # pragma: no cover
     UnregisteredToolError = None  # type: ignore[assignment,misc]
     get_registry          = None  # type: ignore[assignment,misc]
 
+# ---------------------------------------------------------------------------
+# FSToolRegistry (issue #231)
+# ---------------------------------------------------------------------------
+try:
+    from core.fs.tools import FSToolRegistry, FSToolResult
+    _FS_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _FS_AVAILABLE = False
+    FSToolRegistry = None  # type: ignore[assignment,misc]
+    FSToolResult   = None  # type: ignore[assignment,misc]
+
 _DEFAULT_CANON_STORE = Path.home() / ".gaia" / "data"
 logger = logging.getLogger(__name__)
 
@@ -159,7 +172,7 @@ class ActionResult:
     output:  Any
     success: bool
     error:   Optional[str] = None
-    # NEW: gate & registry metadata
+    # gate & registry metadata
     policy_record_id:   Optional[str] = None
     registry_version:   Optional[str] = None
     permission_scope:   Optional[str] = None
@@ -188,11 +201,6 @@ class _LegacyActionGate:
 # ---------------------------------------------------------------------------
 
 _STUB_COMPLETE_AFTER = 3
-
-# B006 fix: use a closure-based counter instead of a mutable default argument.
-# The previous `_counter: list = [0]` was shared state across all calls,
-# which is a Python footgun — the list is created once at function definition
-# time and mutated across every invocation.
 _stub_counter = [0]
 
 
@@ -237,31 +245,33 @@ def _sl_error(msg: str, meta: Optional[dict] = None) -> None:
 
 class AgenticLoop:
     """
-    PRAO loop with integrated Trust & Permission Policy Engine (#229)
-    and Capability Registry (#230).
+    PRAO loop with integrated Trust & Permission Policy Engine (#229),
+    Capability Registry (#230), and FSToolRegistry (#231).
 
     Tool invocation order per cycle:
       1. CapabilityRegistry.assert_registered(tool_name)   → UnregisteredToolError if unknown
       2. ActionGate.check(tool_name, context)              → ActionDeniedError / ActionPendingApprovalError
-      3. tools[tool_name](**args)                          → actual execution
+      3a. FSToolRegistry.execute() if tool is an FS tool   → async-native, returns FSToolResult
+      3b. self._tools[tool_name](**args)                   → flat-dict fallback for non-FS tools
     """
 
     def __init__(
         self,
-        planner:            Optional[Callable] = None,
-        tools:              Optional[Dict[str, Callable]] = None,
-        perceiver:          Optional[Callable] = None,
-        observer:           Optional[Callable] = None,
-        rag:                Optional[Any] = None,
-        human_callback:     Optional[Callable] = None,
-        action_gate:        Optional[Any] = None,
+        planner:             Optional[Callable] = None,
+        tools:               Optional[Dict[str, Callable]] = None,
+        perceiver:           Optional[Callable] = None,
+        observer:            Optional[Callable] = None,
+        rag:                 Optional[Any] = None,
+        human_callback:      Optional[Callable] = None,
+        action_gate:         Optional[Any] = None,
         capability_registry: Optional[Any] = None,
-        max_iterations:     int = 50,
-        audit:              Optional[Any] = None,
-        telemetry:          Optional[Any] = None,
-        canon_store_path:   Optional[Path] = _DEFAULT_CANON_STORE,
-        session_id:         Optional[str] = None,
-        agent_id:           str = "agentic_loop",
+        fs_tool_registry:    Optional[Any] = None,
+        max_iterations:      int = 50,
+        audit:               Optional[Any] = None,
+        telemetry:           Optional[Any] = None,
+        canon_store_path:    Optional[Path] = _DEFAULT_CANON_STORE,
+        session_id:          Optional[str] = None,
+        agent_id:            str = "agentic_loop",
     ) -> None:
         self._planner            = planner or _default_stub_planner
         self._tools              = tools or {}
@@ -277,9 +287,13 @@ class AgenticLoop:
         self._session_id         = session_id or str(uuid.uuid4())
         self._agent_id           = agent_id
 
+        # --- FSToolRegistry (#231) ---
+        # Stored as a public attribute so tests and external callers can
+        # introspect or hot-swap the registry after construction.
+        self.fs_tool_registry: Optional[Any] = fs_tool_registry
+
         # --- Trust gate setup (#229) ---
         if action_gate is not None:
-            # Accept any injected gate (legacy or TrustActionGate)
             self._gate = action_gate
             self._trust_gate: Optional[Any] = (
                 action_gate if _TRUST_AVAILABLE and isinstance(action_gate, TrustActionGate)
@@ -313,25 +327,21 @@ class AgenticLoop:
             self._rag = RAGPipeline()
 
     # ------------------------------------------------------------------
-    # Pause / Resume / Cancel (AC: loop can be paused and resumed)
+    # Pause / Resume / Cancel
     # ------------------------------------------------------------------
 
     def cancel(self) -> None:
-        """Hard cancel — loop will exit on next iteration."""
         self._cancelled = True
 
     def pause(self) -> None:
-        """Pause — loop will wait until resume() is called."""
         self._paused = True
         logger.info(f"AgenticLoop paused [session={self._session_id}]")
 
     def resume(self) -> None:
-        """Resume a paused loop."""
         self._paused = False
         logger.info(f"AgenticLoop resumed [session={self._session_id}]")
 
     def get_state_snapshot(self, state: "AgentState") -> dict:
-        """Return a serialisable snapshot for Gaian inspection."""
         return {
             "session_id": self._session_id,
             "agent_id": self._agent_id,
@@ -430,12 +440,13 @@ class AgenticLoop:
                 _sl_warning(f"rag.retrieve failed — {exc}")
         return self._planner(state, canon_context=canon_context)
 
-    def _act(self, state: AgentState, action: dict) -> ActionResult:
+    async def _act(self, state: AgentState, action: dict) -> ActionResult:
         """
-        Upgraded _act:
+        Upgraded _act (now async):
           1. Assert tool is in CapabilityRegistry (#230)
           2. Check ActionGate / TrustPolicyEngine (#229)
-          3. Execute
+          3a. If FSToolRegistry knows the tool, await registry.execute() (#231)
+          3b. Otherwise fall back to the flat self._tools dict
         """
         tool_name = action.get("tool", "")
         tool_args = action.get("args", {})
@@ -452,7 +463,6 @@ class AgenticLoop:
                 registry_version = entry.version
                 permission_scope = entry.permission_scope
             except Exception as exc:
-                # UnregisteredToolError or anything else from registry
                 err_msg = str(exc)
                 self._log_warning(
                     f"registry.blocked [{tool_name}]: {err_msg}",
@@ -498,7 +508,6 @@ class AgenticLoop:
                                 policy_record_id=result_eval.record_id,
                             )
                     else:
-                        # No callback — surface approval requirement as error
                         return ActionResult(
                             tool=tool_name, output=None, success=False,
                             error=(
@@ -509,7 +518,6 @@ class AgenticLoop:
                             policy_record_id=result_eval.record_id,
                         )
             except Exception as exc:
-                # Trust gate import/config error — fail safe
                 self._log_error(
                     f"trust_gate.error [{tool_name}]: {exc}",
                     meta={"tool": tool_name},
@@ -528,6 +536,50 @@ class AgenticLoop:
                 )
 
         # --- Step 3: Execute ---
+
+        # 3a. FSToolRegistry path (#231) — async-native, never run_until_complete
+        if self.fs_tool_registry is not None and self.fs_tool_registry.get(tool_name) is not None:
+            t0 = time.monotonic()
+            try:
+                gaian_id   = tool_args.pop("gaian_id",   context.get("gaian_id", "gaia"))
+                caller_id  = tool_args.pop("caller_id",  context.get("caller_id", None))
+                fs_result: Any = await self.fs_tool_registry.execute(
+                    tool_name,
+                    gaian_id=gaian_id,
+                    caller_id=caller_id,
+                    **tool_args,
+                )
+                self._tel_record(f"tool.{tool_name}", time.monotonic() - t0)
+                if fs_result.success:
+                    return ActionResult(
+                        tool=tool_name,
+                        output=fs_result.data,
+                        success=True,
+                        policy_record_id=policy_record_id,
+                        registry_version=registry_version,
+                        permission_scope=permission_scope,
+                    )
+                else:
+                    self._tel_record(f"tool.{tool_name}", time.monotonic() - t0, error=True)
+                    return ActionResult(
+                        tool=tool_name,
+                        output=None,
+                        success=False,
+                        error=fs_result.error,
+                        policy_record_id=policy_record_id,
+                        registry_version=registry_version,
+                        permission_scope=permission_scope,
+                    )
+            except Exception as exc:
+                self._tel_record(f"tool.{tool_name}", time.monotonic() - t0, error=True)
+                return ActionResult(
+                    tool=tool_name, output=None, success=False, error=str(exc),
+                    policy_record_id=policy_record_id,
+                    registry_version=registry_version,
+                    permission_scope=permission_scope,
+                )
+
+        # 3b. Flat-dict fallback for non-FS tools
         tool_fn = self._tools.get(tool_name)
         if tool_fn is None:
             return ActionResult(
@@ -541,7 +593,7 @@ class AgenticLoop:
         try:
             output = tool_fn(**tool_args)
             if asyncio.iscoroutine(output):
-                output = asyncio.get_event_loop().run_until_complete(output)
+                output = await output
             self._tel_record(f"tool.{tool_name}", time.monotonic() - t0)
             return ActionResult(
                 tool=tool_name, output=output, success=True,
@@ -590,8 +642,8 @@ class AgenticLoop:
             meta={"session_id": session_id,
                   "store_path": str(self._canon_store_path) if self._canon_store_path else "memory"})
         try:
-            report   = self._rag.ingest_canon(store_path=self._canon_store_path)
-            warm     = report.get("warm_start", False)
+            report = self._rag.ingest_canon(store_path=self._canon_store_path)
+            warm   = report.get("warm_start", False)
             self._log_info(
                 f"canon.ingest.{'warm' if warm else 'cold'}_start_complete",
                 meta={"session_id": session_id, **report},
@@ -605,15 +657,12 @@ class AgenticLoop:
     # ------------------------------------------------------------------
 
     async def _wait_if_paused(self, session_id: str) -> None:
-        """Yield control while paused, polling every 0.5s."""
         if self._paused:
-            self._log_info("agentic_loop.paused",
-                meta={"session_id": session_id})
+            self._log_info("agentic_loop.paused", meta={"session_id": session_id})
         while self._paused and not self._cancelled:
             await asyncio.sleep(0.5)
         if not self._paused:
-            self._log_info("agentic_loop.resumed",
-                meta={"session_id": session_id})
+            self._log_info("agentic_loop.resumed", meta={"session_id": session_id})
 
     # ------------------------------------------------------------------
     # Main entry point (async)
@@ -631,7 +680,6 @@ class AgenticLoop:
         iterations = 0
         halt       = HaltCondition.MAX_ITERATIONS
 
-        # SESSION_START
         self._audit_event(
             AuditEventType.SESSION_START if _OBS_AVAILABLE else "session.start",
             gaian_id=gaian_id,
@@ -650,7 +698,6 @@ class AgenticLoop:
                 for iteration in range(1, self._max_iterations + 1):
                     iterations = iteration
 
-                    # Pause support (AC: loop can be paused and resumed)
                     await self._wait_if_paused(session_id)
 
                     if self._cancelled:
@@ -677,7 +724,6 @@ class AgenticLoop:
 
                     tool_name = action.get("tool", "unknown")
 
-                    # Emit AGENT_ACTION before execution
                     self._audit_event(
                         AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
                         gaian_id=gaian_id,
@@ -687,11 +733,10 @@ class AgenticLoop:
                               "action": action},
                     )
 
-                    # _act now handles registry + trust gate + execution
-                    result = self._run_phase("act", self._act, state, action)
+                    # _act is now async — await it directly
+                    result = await self._act(state, action)
                     state  = self._run_phase("observe", self._observe, state, result)
 
-                    # Determine halt condition from action result
                     if not result.success:
                         err = result.error or ""
                         if "not registered" in err.lower() or "unregistered" in err.lower():
@@ -717,7 +762,6 @@ class AgenticLoop:
                                       "policy_record_id": result.policy_record_id},
                             )
                             break
-                        # Non-fatal errors: log and continue
                         self._audit_event(
                             AuditEventType.AGENT_ACTION if _OBS_AVAILABLE else "agent.action",
                             gaian_id=gaian_id,
@@ -796,6 +840,7 @@ def create_loop(
     tool_registry:        Optional[Dict[str, Callable]] = None,
     action_gate:          Optional[Any] = None,
     capability_registry:  Optional[Any] = None,
+    fs_tool_registry:     Optional[Any] = None,
     approval_callback:    Optional[Callable] = None,
     planner:              Optional[Callable] = None,
     audit:                Optional[Any] = None,
@@ -811,6 +856,7 @@ def create_loop(
         tools=tool_registry or {},
         action_gate=action_gate,
         capability_registry=capability_registry,
+        fs_tool_registry=fs_tool_registry,
         human_callback=approval_callback,
         max_iterations=max_iterations,
         audit=audit,
