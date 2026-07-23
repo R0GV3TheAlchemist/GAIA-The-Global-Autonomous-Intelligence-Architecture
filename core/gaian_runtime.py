@@ -570,6 +570,27 @@ class GAIANRuntime:
     All GAIA canon language, engine names, and RuntimeResult fields are preserved.
     """
 
+    # ------------------------------------------------------------------
+    # Path safety (CWE-22 / CodeQL py/path-injection remediation)
+    # ------------------------------------------------------------------
+
+    def _safe_path(self, *parts: str) -> Path:
+        """
+        Resolve *parts relative to self.memory_dir and assert the result
+        stays inside that root. Raises ValueError on any traversal attempt.
+
+        This is the single choke-point for all caller-supplied path segments
+        (gaian_name, memory_dir) so that path traversal payloads like
+        '../../etc/passwd' or absolute overrides are blocked before any I/O.
+        """
+        root      = self.memory_dir.resolve()
+        candidate = (root / Path(*parts)).resolve()
+        if not str(candidate).startswith(str(root) + "/") and candidate != root:
+            raise ValueError(
+                f"Path traversal blocked: {candidate!r} escapes root {root!r}"
+            )
+        return candidate
+
     def __init__(
         self,
         gaian_name:    str = "Luna",
@@ -607,15 +628,19 @@ class GAIANRuntime:
             user_id=gaian_name,
             session_id="runtime",
         )
-        _mem_db = str(self.memory_dir / gaian_name / "memory_vec.db")
+
+        # Safe path construction — gaian_name is caller-supplied and must be
+        # validated before use in any filesystem operation (CWE-22 fix).
+        _mem_db   = str(self._safe_path(gaian_name, "memory_vec.db"))
+        _audit_db = str(self._safe_path(gaian_name, "audit.db"))
+
         self._memory_store  = memory_store  or MemoryStore(db_path=_mem_db)
         self._goal_registry = goal_registry or GoalRegistry()
         self._policy        = policy_engine  or PolicyEngine()
         self._scheduler     = scheduler     or TaskScheduler(policy_engine=self._policy)
-        _audit_db = str(self.memory_dir / gaian_name / "audit.db")
         self._audit: ActionLedger = audit_ledger or ActionLedger(db_path=_audit_db)
 
-        self._mem_path = self.memory_dir / gaian_name / "memory.json"
+        self._mem_path = self._safe_path(gaian_name, "memory.json")
         self._memory   = self._load_memory()
 
         self.attachment            = self._deserialise_attachment()
