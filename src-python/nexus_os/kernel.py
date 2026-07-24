@@ -68,10 +68,6 @@ class CapabilityToken:
     """
     An unforgeable token granting a process a specific capability.
 
-    Tokens are issued only by CapabilityAuthority (capability.py).
-    They are non-transferable and expire when the owning process terminates
-    or when the token's expiry timestamp passes.
-
     frozen=True means any attempt to mutate an attribute raises AttributeError.
 
     Reference: NEXUS_UNIVERSAL_OS.md § Domain 5 — Capability System
@@ -120,7 +116,7 @@ class ProcessDescriptor:
         self.priority     = priority
         self.parent_pid   = parent_pid
         self.children_pids: List[str] = []
-        self.tokens: List[CapabilityToken] = []   # capability tokens held by this process
+        self.tokens: List[CapabilityToken] = []
 
     def has_capability(self, object_id: str, operation: str) -> bool:
         """Return True if the process holds a valid, non-expired token for object_id+op."""
@@ -165,7 +161,7 @@ class NexusKernel:
         authority: Any = None,
         ledger: Any = None,
     ) -> None:
-        self._authority = authority   # CapabilityAuthority — injected or created lazily on boot
+        self._authority = authority
         self._ledger    = ledger
         self._processes: Dict[str, ProcessDescriptor] = {}
         self._booted    = False
@@ -198,20 +194,15 @@ class NexusKernel:
         """
         Boot the kernel: initialise the capability authority, create PID-0,
         and mint the root capability set.
-
-        Raises:
-            KernelAlreadyBooted: if boot() is called a second time.
         """
         with self._lock:
             if self._booted:
                 raise KernelAlreadyBooted("NexusKernel is already booted")
 
-            # Lazily create CapabilityAuthority if none was injected
             if self._authority is None:
                 from nexus_os.capability import CapabilityAuthority
                 self._authority = CapabilityAuthority(ledger=self._ledger)
 
-            # Register PID-0 (the kernel process itself)
             pid0 = ProcessDescriptor(
                 pid=self.KERNEL_PID,
                 name="nexus-kernel",
@@ -219,7 +210,6 @@ class NexusKernel:
                 priority=100,
             )
 
-            # Mint the 7 root capabilities and attach them to PID-0
             for object_id, ops in self._ROOT_CAPS:
                 token = self._authority.mint(
                     object_id=object_id,
@@ -264,17 +254,6 @@ class NexusKernel:
     ) -> ProcessDescriptor:
         """
         Create and register a new process.
-
-        Parameters
-        ----------
-        name        : Human-readable process name.
-        owner_id    : PID of the spawning process (defaults to kernel).
-        priority    : Scheduling priority 0-100.
-        initial_ops : Optional map of object_id -> permitted_ops to pre-mint.
-
-        Raises:
-            KernelNotBooted: If the kernel has not been booted.
-            ProcessNotFound: If owner_id is not a known process.
         """
         self._require_booted()
         with self._lock:
@@ -289,7 +268,6 @@ class NexusKernel:
                 parent_pid=owner_id,
             )
 
-            # Mint any initial capabilities
             if initial_ops:
                 for object_id, ops in initial_ops.items():
                     token = self._authority.mint(
@@ -300,17 +278,11 @@ class NexusKernel:
                     proc.tokens.append(token)
 
             self._processes[proc.pid] = proc
-            # Register as child of owner
             self._processes[owner_id].children_pids.append(proc.pid)
             return proc
 
     def get_process(self, pid: str) -> ProcessDescriptor:
-        """Return the ProcessDescriptor for pid.
-
-        Raises:
-            KernelNotBooted: If not booted.
-            ProcessNotFound: If pid is unknown.
-        """
+        """Return the ProcessDescriptor for pid."""
         self._require_booted()
         with self._lock:
             if pid not in self._processes:
@@ -326,11 +298,7 @@ class NexusKernel:
     def terminate(self, pid: str, reason: str = "") -> None:
         """
         Terminate a process and revoke all its capability tokens.
-        Idempotent — calling terminate on an already-terminated process is a no-op.
-
-        Raises:
-            KernelNotBooted: If not booted.
-            ProcessNotFound: If pid is unknown.
+        Idempotent.
         """
         self._require_booted()
         with self._lock:
@@ -338,9 +306,8 @@ class NexusKernel:
                 raise ProcessNotFound(f"PID '{pid}' not found")
             proc = self._processes[pid]
             if proc.state == ProcessState.TERMINATED:
-                return   # idempotent
+                return
             proc.state = ProcessState.TERMINATED
-            # Revoke all tokens held by this process
             for token in list(proc.tokens):
                 try:
                     self._authority.revoke(
@@ -354,11 +321,6 @@ class NexusKernel:
     def reap(self, pid: str) -> None:
         """
         Remove a terminated process from the process table.
-
-        Raises:
-            KernelNotBooted: If not booted.
-            ProcessNotFound: If pid is unknown.
-            ProcessNotTerminated: If process has not been terminated first.
         """
         self._require_booted()
         with self._lock:
@@ -374,11 +336,6 @@ class NexusKernel:
     def suspend(self, pid: str, reason: str = "") -> None:
         """
         Suspend a running process.
-
-        Raises:
-            KernelNotBooted: If not booted.
-            ProcessNotFound: If pid is unknown.
-            InvalidProcessState: If the process is not in RUNNING state.
         """
         self._require_booted()
         with self._lock:
@@ -394,11 +351,6 @@ class NexusKernel:
     def resume(self, pid: str) -> None:
         """
         Resume a suspended process.
-
-        Raises:
-            KernelNotBooted: If not booted.
-            ProcessNotFound: If pid is unknown.
-            InvalidProcessState: If the process is not in SUSPENDED state.
         """
         self._require_booted()
         with self._lock:
@@ -423,24 +375,23 @@ class NexusKernel:
         expiry: Optional[datetime] = None,
     ) -> CapabilityToken:
         """
-        Mint a new capability token on behalf of issuer_pid.
-
-        Raises:
-            KernelNotBooted: If not booted.
-            ProcessNotFound: If issuer_pid is not a known process.
+        Mint a new capability token and register it on the issuing process
+        so that terminate() will revoke it when the process ends.
         """
         self._require_booted()
         with self._lock:
             if issuer_pid not in self._processes:
                 raise ProcessNotFound(f"Issuer PID '{issuer_pid}' not found")
-            return self._authority.mint(
+            token = self._authority.mint(
                 object_id=object_id,
                 permitted_ops=permitted_ops,
                 issuer_pid=issuer_pid,
                 expiry=expiry,
             )
+            # Track token on the issuing process so terminate() can revoke it
+            self._processes[issuer_pid].tokens.append(token)
+            return token
 
-    # Legacy aliases kept for backward compatibility
     def issue_token(
         self,
         pid: str,
