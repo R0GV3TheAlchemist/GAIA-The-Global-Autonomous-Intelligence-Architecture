@@ -18,50 +18,83 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Dict, List, Optional, Set
+from typing import Dict, FrozenSet, List, Optional, Set
 
+
+# ---------------------------------------------------------------------------
+# Kernel exceptions
+# ---------------------------------------------------------------------------
+
+class KernelAlreadyBooted(RuntimeError):
+    """Raised when boot() is called on an already-running kernel."""
+
+class KernelNotBooted(RuntimeError):
+    """Raised when a kernel operation is attempted before boot()."""
+
+class InvalidProcessState(RuntimeError):
+    """Raised when a state transition is illegal for the current ProcessState."""
+
+class ProcessNotFound(KeyError):
+    """Raised when no process with the given PID exists in the kernel."""
+
+class ProcessNotTerminated(RuntimeError):
+    """Raised when reaping a process that has not yet reached TERMINATED state."""
+
+
+# ---------------------------------------------------------------------------
+# Process state
+# ---------------------------------------------------------------------------
 
 class ProcessState(Enum):
     """Lifecycle states for a NEXUS process."""
 
     INITIALISING = auto()
-    READY = auto()
-    RUNNING = auto()
-    BLOCKED = auto()
-    SUSPENDED = auto()
-    TERMINATED = auto()
+    READY        = auto()
+    RUNNING      = auto()
+    BLOCKED      = auto()
+    SUSPENDED    = auto()
+    TERMINATED   = auto()
 
+
+# ---------------------------------------------------------------------------
+# CapabilityToken
+# ---------------------------------------------------------------------------
 
 @dataclass
 class CapabilityToken:
     """
     An unforgeable token granting a process a specific capability.
 
-    Tokens are issued only by NexusKernel.  They are non-transferable
-    and expire when the owning process terminates.
+    Tokens are issued only by CapabilityAuthority (capability.py).
+    They are non-transferable and expire when the owning process terminates
+    or when the token's expiry timestamp passes.
 
     Reference: NEXUS_UNIVERSAL_OS.md § Domain 5 — Capability System
     """
 
-    token_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    owner_pid: str = ""
-    capability_name: str = ""
-    granted_at_ns: int = 0          # Monotonic nanosecond timestamp
-    expires_at_ns: Optional[int] = None  # None = process-lifetime
-    revoked: bool = False
+    token_id:      str                  = field(default_factory=lambda: str(uuid.uuid4()))
+    object_id:     str                  = ""         # canonical resource identifier
+    permitted_ops: FrozenSet[str]       = field(default_factory=frozenset)
+    issuer:        str                  = ""         # PID of issuing process
+    issued_at:     datetime             = field(default_factory=lambda: datetime.now(timezone.utc))
+    expiry:        Optional[datetime]   = None       # None = process-lifetime
 
-    def is_valid(self) -> bool:
-        """
-        Return True if the token has not been revoked and has not expired.
+    def allows(self, operation: str) -> bool:
+        """Return True if this token permits the given operation."""
+        return operation in self.permitted_ops
 
-        Raises:
-            NotImplementedError: Stub — full implementation pending.
-        """
-        raise NotImplementedError(
-            "CapabilityToken.is_valid: stub — implementation pending"
-        )
+    def is_expired(self) -> bool:
+        """Return True if the token has passed its expiry timestamp."""
+        if self.expiry is None:
+            return False
+        return datetime.now(timezone.utc) >= self.expiry
 
+
+# ---------------------------------------------------------------------------
+# ProcessDescriptor
+# ---------------------------------------------------------------------------
 
 @dataclass
 class ProcessDescriptor:
@@ -71,14 +104,18 @@ class ProcessDescriptor:
     Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — Process Model
     """
 
-    pid: str = field(default_factory=lambda: str(uuid.uuid4()))
-    name: str = ""
-    state: ProcessState = ProcessState.INITIALISING
-    capabilities: Set[str] = field(default_factory=set)  # token_ids
-    priority: int = 50          # 0 (lowest) – 100 (highest)
-    parent_pid: Optional[str] = None
-    children_pids: List[str] = field(default_factory=list)
+    pid:          str          = field(default_factory=lambda: str(uuid.uuid4()))
+    name:         str          = ""
+    state:        ProcessState = ProcessState.INITIALISING
+    capabilities: Set[str]     = field(default_factory=set)   # token_ids
+    priority:     int          = 50      # 0 (lowest) – 100 (highest)
+    parent_pid:   Optional[str] = None
+    children_pids: List[str]   = field(default_factory=list)
 
+
+# ---------------------------------------------------------------------------
+# NexusKernel
+# ---------------------------------------------------------------------------
 
 class NexusKernel:
     """
@@ -95,26 +132,24 @@ class NexusKernel:
 
     def __init__(self) -> None:
         self._processes: Dict[str, ProcessDescriptor] = {}
-        self._tokens: Dict[str, CapabilityToken] = {}
-        self._running: bool = False
+        self._tokens:    Dict[str, CapabilityToken]   = {}
+        self._running:   bool                          = False
 
     # ------------------------------------------------------------------
     # Process management
     # ------------------------------------------------------------------
 
-    def spawn(self, name: str, priority: int = 50, parent_pid: Optional[str] = None) -> ProcessDescriptor:
+    def spawn(
+        self,
+        name: str,
+        priority: int = 50,
+        parent_pid: Optional[str] = None,
+    ) -> ProcessDescriptor:
         """
         Create and register a new process.
 
-        Args:
-            name: Human-readable process name.
-            priority: Scheduling priority 0–100.
-            parent_pid: PID of the spawning process, or None for root.
-
-        Returns:
-            The newly created ProcessDescriptor.
-
         Raises:
+            KernelNotBooted: If the kernel has not been booted.
             NotImplementedError: Stub — full implementation pending.
         """
         raise NotImplementedError(
@@ -125,11 +160,8 @@ class NexusKernel:
         """
         Terminate a process and revoke all its capability tokens.
 
-        Args:
-            pid: PID of the process to terminate.
-
         Raises:
-            KeyError: If no process with pid exists.
+            ProcessNotFound: If no process with pid exists.
             NotImplementedError: Stub — full implementation pending.
         """
         raise NotImplementedError(
@@ -148,20 +180,16 @@ class NexusKernel:
     # Capability management
     # ------------------------------------------------------------------
 
-    def issue_token(self, pid: str, capability_name: str, expires_at_ns: Optional[int] = None) -> CapabilityToken:
+    def issue_token(
+        self,
+        pid: str,
+        capability_name: str,
+        expires_at_ns: Optional[int] = None,
+    ) -> CapabilityToken:
         """
         Issue a capability token to an existing process.
 
         The Constitutional Layer must approve every token issuance.
-        Requests for capabilities that violate GAIAN_LAWS.md are denied.
-
-        Args:
-            pid: PID of the requesting process.
-            capability_name: Canonical name of the requested capability.
-            expires_at_ns: Optional expiry timestamp (monotonic nanoseconds).
-
-        Returns:
-            A new CapabilityToken bound to pid.
 
         Raises:
             PermissionError: If the Constitutional Layer denies the request.
@@ -172,12 +200,7 @@ class NexusKernel:
         )
 
     def revoke_token(self, token_id: str) -> None:
-        """
-        Revoke a capability token immediately.
-
-        Raises:
-            NotImplementedError: Stub — full implementation pending.
-        """
+        """Revoke a capability token immediately.  Raises NotImplementedError (stub)."""
         raise NotImplementedError("NexusKernel.revoke_token: stub")
 
     # ------------------------------------------------------------------
@@ -189,6 +212,7 @@ class NexusKernel:
         Boot the kernel: initialise subsystems and start the dispatch loop.
 
         Raises:
+            KernelAlreadyBooted: If the kernel is already running.
             NotImplementedError: Stub — full implementation pending.
         """
         raise NotImplementedError(
@@ -196,10 +220,5 @@ class NexusKernel:
         )
 
     def shutdown(self) -> None:
-        """
-        Gracefully shut down the kernel and all processes.
-
-        Raises:
-            NotImplementedError: Stub — full implementation pending.
-        """
+        """Gracefully shut down the kernel and all processes.  Raises NotImplementedError (stub)."""
         raise NotImplementedError("NexusKernel.shutdown: stub")
