@@ -2,8 +2,7 @@
 """
 Tests for core.c27.audit_log — AuditLogWriter, AuditLogReader, AuditLogIntegrityVerifier.
 
-Authority: C27 §5. Requires C27-IMPL-006 through C27-IMPL-010 to pass.
-All implementation tests are xfail until implementation is in place.
+Authority: C27 §5. Implements C27-IMPL-006 through C27-IMPL-010.
 
 Coverage targets:
 - AuditLogEntry dataclass fields match C27 §5.1 JSON schema
@@ -15,7 +14,7 @@ Coverage targets:
 - AuditLogReader requires RBAC — GAIAN_SELF always authorized, THIRD_PARTY denied
 """
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from core.c27.audit_log import AuditLogEntry, AuditLogWriter, AuditLogReader, AuditLogIntegrityVerifier
 from core.c27.rbac import C27Role
 
@@ -56,7 +55,7 @@ class TestAuditLogEntryContract:
 
 
 # ---------------------------------------------------------------------------
-# AuditLogWriter — requires C27-IMPL-007, C27-IMPL-008
+# AuditLogWriter  (C27-IMPL-007, C27-IMPL-008)
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
@@ -65,7 +64,6 @@ def writer():
 
 
 class TestAuditLogWriter:
-    @pytest.mark.xfail(reason="C27-IMPL-007 not yet implemented", strict=True)
     def test_first_entry_is_genesis(self, writer):
         """Genesis entry must have previous_entry_hash == None."""
         entry = writer.append(
@@ -78,7 +76,6 @@ class TestAuditLogWriter:
         assert len(entry.entry_hash) == 64  # SHA-256 hex
         assert entry.signature != ""
 
-    @pytest.mark.xfail(reason="C27-IMPL-007 not yet implemented", strict=True)
     def test_second_entry_chains_to_first(self, writer):
         """entry_hash of entry N must equal previous_entry_hash of entry N+1."""
         e1 = writer.append(
@@ -95,7 +92,6 @@ class TestAuditLogWriter:
         )
         assert e2.previous_entry_hash == e1.entry_hash
 
-    @pytest.mark.xfail(reason="C27-IMPL-008 not yet implemented", strict=True)
     def test_entry_hash_is_sha256_hex(self, writer):
         entry = writer.append(
             event_type="SYSTEM_EVENT",
@@ -106,7 +102,6 @@ class TestAuditLogWriter:
         assert len(entry.entry_hash) == 64
         assert all(c in "0123456789abcdef" for c in entry.entry_hash)
 
-    @pytest.mark.xfail(reason="C27-IMPL-008 not yet implemented", strict=True)
     def test_signature_is_non_empty(self, writer):
         entry = writer.append(
             event_type="SYSTEM_EVENT",
@@ -116,50 +111,54 @@ class TestAuditLogWriter:
         )
         assert entry.signature != ""
 
+    def test_entries_property_returns_copy(self, writer):
+        writer.append(event_type="EV", actor="a", action="x", payload={})
+        snapshot = writer.entries
+        snapshot.clear()
+        assert len(writer.entries) == 1  # internal list unaffected
+
 
 # ---------------------------------------------------------------------------
-# AuditLogIntegrityVerifier — requires C27-IMPL-010
+# AuditLogIntegrityVerifier  (C27-IMPL-010)
 # ---------------------------------------------------------------------------
 
 class TestAuditLogIntegrityVerifier:
-    @pytest.mark.xfail(reason="C27-IMPL-010 not yet implemented", strict=True)
     def test_intact_chain_returns_true(self):
         verifier = AuditLogIntegrityVerifier()
-        # Assumes writer has built a clean chain for "gaian-integrity-test"
-        writer = AuditLogWriter(gaian_id="gaian-integrity-test")
-        writer.append(event_type="LIFECYCLE_TRANSITION", actor="s", action="A", payload={})
-        writer.append(event_type="STEWARD_ACTION", actor="s", action="B", payload={})
-        assert verifier.verify("gaian-integrity-test") is True
+        w = AuditLogWriter(gaian_id="gaian-integrity-ok")
+        w.append(event_type="LIFECYCLE_TRANSITION", actor="s", action="A", payload={})
+        w.append(event_type="STEWARD_ACTION",       actor="s", action="B", payload={})
+        # Register this writer in the global store used by verifier
+        from core.c27.audit_log import _STORE
+        _STORE["gaian-integrity-ok"] = w
+        assert verifier.verify("gaian-integrity-ok") is True
 
-    @pytest.mark.xfail(reason="C27-IMPL-010 not yet implemented", strict=True)
     def test_tampered_chain_returns_false(self):
-        """If any entry_hash is mutated, verify() must return False."""
-        verifier = AuditLogIntegrityVerifier()
-        writer = AuditLogWriter(gaian_id="gaian-tamper-test")
-        writer.append(event_type="LIFECYCLE_TRANSITION", actor="s", action="A", payload={})
-        # Simulate tampering — implementation must expose entries for this test
-        # TODO: wire up once AuditLogWriter stores entries
-        assert verifier.verify("gaian-tamper-test") is False
+        """Mutating any entry_hash must cause verify() to return False."""
+        from core.c27.audit_log import _STORE
+        w = AuditLogWriter(gaian_id="gaian-tamper")
+        w.append(event_type="LIFECYCLE_TRANSITION", actor="s", action="A", payload={})
+        _STORE["gaian-tamper"] = w
+        # Tamper: overwrite entry_hash on the first entry
+        w.entries[0].entry_hash = "deadbeef" * 8
+        assert AuditLogIntegrityVerifier().verify("gaian-tamper") is False
 
 
 # ---------------------------------------------------------------------------
-# AuditLogReader — RBAC gating, requires C27-IMPL-009
+# AuditLogReader — RBAC gating  (C27-IMPL-009)
 # ---------------------------------------------------------------------------
 
 class TestAuditLogReaderRBAC:
-    @pytest.mark.xfail(reason="C27-IMPL-009 not yet implemented", strict=True)
     def test_gaian_self_can_read_own_log(self):
         reader = AuditLogReader()
         entries = reader.query(
-            gaian_id="gaian-001",
-            requestor_id="gaian-001",
+            gaian_id="gaian-self-reader",
+            requestor_id="gaian-self-reader",
             requestor_role=C27Role.GAIAN_SELF,
         )
-        assert isinstance(entries, list)  # may be empty — access must not be denied
+        assert isinstance(entries, list)  # access must not be denied
 
-    @pytest.mark.xfail(reason="C27-IMPL-009 not yet implemented", strict=True)
     def test_third_party_denied(self):
-        from core.c27.rbac import RBACEnforcer
         reader = AuditLogReader()
         with pytest.raises(PermissionError):
             reader.query(
@@ -168,11 +167,10 @@ class TestAuditLogReaderRBAC:
                 requestor_role=C27Role.THIRD_PARTY,
             )
 
-    @pytest.mark.xfail(reason="C27-IMPL-009 not yet implemented", strict=True)
     def test_sentinel_can_read_audit(self):
         reader = AuditLogReader()
         entries = reader.query(
-            gaian_id="gaian-001",
+            gaian_id="gaian-sentinel-reader",
             requestor_id="sentinel-process",
             requestor_role=C27Role.SENTINEL,
         )

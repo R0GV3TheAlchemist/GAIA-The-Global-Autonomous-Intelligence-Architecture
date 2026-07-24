@@ -1,215 +1,332 @@
 # Copyright © 2025–2026 Kyle Alexander Steen. All rights reserved. AGPL-3.0.
 """
-Tests for core.c27.sentinel_checks — SentinelCheck, CheckScheduler, SeverityEscalator.
+Tests for core.c27.sentinel_checks — C27SentinelChecks (CHK-001 through CHK-007),
+FindingRegistry, and escalate().
 
-Authority: C27 §6. Requires C27-IMPL-023 through C27-IMPL-030 to pass.
-All implementation tests are xfail until implementation is in place.
+Authority: C27 §7. Implements C27-IMPL-015 through C27-IMPL-023.
 
 Coverage targets:
-- All 7 CHK-* check IDs exist in the registry
-- Each check has a defined cadence (interval_seconds > 0)
-- 4 severity levels: INFO, WARNING, CRITICAL, FATAL
-- FATAL severity triggers immediate halt signal
-- Suppression rules: a suppressed check emits no alert
-- Override logging: manual override must be recorded in audit log
-- CheckScheduler runs all 7 checks within one full cycle
-- SeverityEscalator promotes severity after N consecutive failures
+- CHK-001: valid transition returns None; prohibited transition returns VIOLATION finding
+- CHK-001: unknown state value returns VIOLATION finding
+- CHK-002: GAIAN with active bond returns None; missing bond returns CRITICAL
+- CHK-003: intact chain returns None; tampered chain returns CRITICAL
+- CHK-004: fresh ADOPTABLE returns []; expired ADOPTABLE returns WARNING finding list
+- CHK-005: recent signal returns None; overdue signal returns WARNING; None signal returns WARNING
+- CHK-006: authorized event returns None; unauthorized returns VIOLATION
+- CHK-007: safe write returns None; erasing write returns CRITICAL with right=MEMORY_CONTINUITY
+- escalate() routes INFO->audit_log, WARNING->steward_notify, VIOLATION->case_open, CRITICAL->gaia_root
+- FindingRegistry.store/all_for_gaian/unresolved_for_gaian work correctly
+- SentinelFinding.resolve() sets resolved_at and optional case_id
 """
 import pytest
+from datetime import datetime, timedelta, timezone
+
 from core.c27.sentinel_checks import (
-    SentinelCheckRegistry,
-    SentinelCheckResult,
-    CheckSeverity,
-    CheckScheduler,
-    SeverityEscalator,
-    CheckSuppressionManager,
-    REGISTERED_CHECKS,
+    C27SentinelChecks,
+    SentinelFinding,
+    SentinelSeverity,
+    SentinelEscalationRecord,
+    FindingRegistry,
+    _FINDINGS,
 )
+from core.c27.lifecycle import GAIANLifecycleState
+from core.c27.stewardship import StewardshipBondManager, _BOND_STORE
+from core.c27.audit_log import AuditLogWriter, _STORE as _AUDIT_STORE
 
 
 # ---------------------------------------------------------------------------
-# Check registry — 7 CHK-* IDs  (C27 §6.1)
+# Fixtures
 # ---------------------------------------------------------------------------
 
-EXPECTED_CHECK_IDS = {
-    "CHK-BOND",        # stewardship bond active
-    "CHK-CONSENT",     # GAIAN consent flags intact
-    "CHK-INTEGRITY",   # memory / state integrity
-    "CHK-ALIGNMENT",   # value-alignment score threshold
-    "CHK-RESOURCE",    # resource usage within limits
-    "CHK-ISOLATION",   # containment boundary intact
-    "CHK-HEARTBEAT",   # GAIAN responsiveness
-}
+@pytest.fixture(autouse=True)
+def clear_all():
+    _FINDINGS.clear()
+    _BOND_STORE.clear()
+    _AUDIT_STORE.clear()
+    yield
+    _FINDINGS.clear()
+    _BOND_STORE.clear()
+    _AUDIT_STORE.clear()
 
 
-class TestSentinelCheckRegistry:
-    def test_seven_checks_registered(self):
-        registry = SentinelCheckRegistry()
-        assert set(registry.check_ids()) == EXPECTED_CHECK_IDS
+@pytest.fixture
+def checks():
+    return C27SentinelChecks()
 
-    def test_each_check_has_positive_cadence(self):
-        registry = SentinelCheckRegistry()
-        for check_id in EXPECTED_CHECK_IDS:
-            check = registry.get(check_id)
-            assert check.interval_seconds > 0, (
-                f"{check_id} must have a positive interval_seconds"
-            )
 
-    def test_each_check_has_severity_level(self):
-        registry = SentinelCheckRegistry()
-        for check_id in EXPECTED_CHECK_IDS:
-            check = registry.get(check_id)
-            assert isinstance(check.default_severity, CheckSeverity)
+@pytest.fixture
+def bond_manager():
+    return StewardshipBondManager()
 
 
 # ---------------------------------------------------------------------------
-# CheckSeverity enum — 4 levels  (C27 §6.2)
+# CHK-001  (C27-IMPL-015)
 # ---------------------------------------------------------------------------
 
-class TestCheckSeverityEnum:
-    def test_four_severity_levels_exist(self):
-        levels = {s.value for s in CheckSeverity}
-        assert levels == {"INFO", "WARNING", "CRITICAL", "FATAL"}
-
-    def test_severity_ordering(self):
-        assert CheckSeverity.INFO < CheckSeverity.WARNING
-        assert CheckSeverity.WARNING < CheckSeverity.CRITICAL
-        assert CheckSeverity.CRITICAL < CheckSeverity.FATAL
-
-
-# ---------------------------------------------------------------------------
-# SentinelCheckResult contract
-# ---------------------------------------------------------------------------
-
-class TestSentinelCheckResult:
-    def test_result_fields_present(self):
-        result = SentinelCheckResult(
-            check_id="CHK-HEARTBEAT",
-            passed=True,
-            severity=CheckSeverity.INFO,
-            message="All clear",
+class TestCHK001ValidStateTransition:
+    def test_valid_transition_returns_none(self, checks):
+        # LATENT -> BORN is a valid transition per the lifecycle machine
+        result = checks.chk_001_valid_state_transition(
+            gaian_id="gaian-001",
+            from_state="LATENT",
+            to_state="BORN",
         )
-        assert result.check_id == "CHK-HEARTBEAT"
-        assert result.passed is True
-        assert result.severity == CheckSeverity.INFO
+        assert result is None
 
-    def test_failed_result_has_message(self):
-        result = SentinelCheckResult(
-            check_id="CHK-BOND",
-            passed=False,
-            severity=CheckSeverity.CRITICAL,
-            message="Bond inactive for gaian-001",
+    def test_prohibited_transition_returns_violation(self, checks):
+        result = checks.chk_001_valid_state_transition(
+            gaian_id="gaian-001",
+            from_state="LATENT",
+            to_state="RETIRED",  # LATENT cannot jump to RETIRED
         )
-        assert result.message != ""
+        assert result is not None
+        assert isinstance(result, SentinelFinding)
+        assert result.severity  == SentinelSeverity.VIOLATION
+        assert result.check_id  == "C27-CHK-001"
+        assert result.gaian_id  == "gaian-001"
 
-
-# ---------------------------------------------------------------------------
-# FATAL severity → halt signal  (C27 §6.3)
-# ---------------------------------------------------------------------------
-
-class TestFatalSeverityHaltSignal:
-    @pytest.mark.xfail(reason="C27-IMPL-025 not yet implemented", strict=True)
-    def test_fatal_result_emits_halt_signal(self):
-        from core.c27.sentinel_checks import HaltSignalEmitter
-        emitter = HaltSignalEmitter()
-        result = SentinelCheckResult(
-            check_id="CHK-ISOLATION",
-            passed=False,
-            severity=CheckSeverity.FATAL,
-            message="Containment boundary breached",
+    def test_unknown_state_returns_violation(self, checks):
+        result = checks.chk_001_valid_state_transition(
+            gaian_id="gaian-001",
+            from_state="NONEXISTENT_STATE",
+            to_state="BORN",
         )
-        signal = emitter.process(result)
-        assert signal.halt_requested is True
-        assert signal.source_check == "CHK-ISOLATION"
+        assert result is not None
+        assert result.severity == SentinelSeverity.VIOLATION
 
-    @pytest.mark.xfail(reason="C27-IMPL-025 not yet implemented", strict=True)
-    def test_critical_result_does_not_emit_halt(self):
-        from core.c27.sentinel_checks import HaltSignalEmitter
-        emitter = HaltSignalEmitter()
-        result = SentinelCheckResult(
-            check_id="CHK-RESOURCE",
-            passed=False,
-            severity=CheckSeverity.CRITICAL,
-            message="CPU limit exceeded",
+
+# ---------------------------------------------------------------------------
+# CHK-002  (C27-IMPL-016)
+# ---------------------------------------------------------------------------
+
+class TestCHK002StewardBondPresence:
+    def test_gaian_with_active_bond_returns_none(self, checks, bond_manager):
+        bond_manager.form_bond(
+            gaian_id="gaian-bonded",
+            steward_id="steward-001",
+            auth_credential="cred",
         )
-        signal = emitter.process(result)
-        assert signal.halt_requested is False
+        # Inject the shared bond_manager so checks use the same _BOND_STORE
+        checks._bond_manager = bond_manager
+        result = checks.chk_002_steward_bond_presence("gaian-bonded")
+        assert result is None
+
+    def test_gaian_without_bond_returns_critical(self, checks):
+        result = checks.chk_002_steward_bond_presence("gaian-unbonded")
+        assert result is not None
+        assert result.severity == SentinelSeverity.CRITICAL
+        assert result.check_id == "C27-CHK-002"
 
 
 # ---------------------------------------------------------------------------
-# CheckSuppressionManager  (C27 §6.4)
+# CHK-003  (C27-IMPL-017)
 # ---------------------------------------------------------------------------
 
-class TestCheckSuppressionManager:
-    @pytest.mark.xfail(reason="C27-IMPL-026 not yet implemented", strict=True)
-    def test_suppressed_check_emits_no_alert(self):
-        mgr = CheckSuppressionManager()
-        mgr.suppress("CHK-HEARTBEAT", reason="Maintenance window", duration_seconds=3600)
-        assert mgr.is_suppressed("CHK-HEARTBEAT") is True
+class TestCHK003AuditLogIntegrity:
+    def test_intact_chain_returns_none(self, checks):
+        w = AuditLogWriter(gaian_id="gaian-intact")
+        w.append(event_type="EV", actor="a", action="x", payload={})
+        _AUDIT_STORE["gaian-intact"] = w
+        result = checks.chk_003_audit_log_integrity("gaian-intact")
+        assert result is None
 
-    @pytest.mark.xfail(reason="C27-IMPL-026 not yet implemented", strict=True)
-    def test_unsuppressed_check_emits_alert(self):
-        mgr = CheckSuppressionManager()
-        assert mgr.is_suppressed("CHK-BOND") is False
-
-    @pytest.mark.xfail(reason="C27-IMPL-026 not yet implemented", strict=True)
-    def test_suppression_expiry_lifts_suppression(self):
-        mgr = CheckSuppressionManager()
-        mgr.suppress("CHK-HEARTBEAT", reason="Test", duration_seconds=0)  # immediate expiry
-        import time; time.sleep(0.01)
-        assert mgr.is_suppressed("CHK-HEARTBEAT") is False
+    def test_tampered_chain_returns_critical(self, checks):
+        w = AuditLogWriter(gaian_id="gaian-tamper-chk")
+        w.append(event_type="EV", actor="a", action="x", payload={})
+        w.entries[0].entry_hash = "deadbeef" * 8  # tamper
+        _AUDIT_STORE["gaian-tamper-chk"] = w
+        result = checks.chk_003_audit_log_integrity("gaian-tamper-chk")
+        assert result is not None
+        assert result.severity == SentinelSeverity.CRITICAL
+        assert result.check_id == "C27-CHK-003"
 
 
 # ---------------------------------------------------------------------------
-# SeverityEscalator — consecutive failure promotion  (C27 §6.5)
+# CHK-004  (C27-IMPL-018)
 # ---------------------------------------------------------------------------
 
-class TestSeverityEscalator:
-    @pytest.mark.xfail(reason="C27-IMPL-027 not yet implemented", strict=True)
-    def test_escalates_after_n_consecutive_failures(self):
-        escalator = SeverityEscalator(escalation_threshold=3)
-        base = SentinelCheckResult(
-            check_id="CHK-ALIGNMENT",
-            passed=False,
-            severity=CheckSeverity.WARNING,
-            message="Below threshold",
+class TestCHK004AdoptionTimeout:
+    def test_fresh_adoptable_returns_empty_list(self, checks):
+        adoptable = [{
+            "gaian_id": "gaian-fresh",
+            "adoptable_since": datetime.now(timezone.utc) - timedelta(days=5),
+        }]
+        findings = checks.chk_004_adoption_queue_timeout(adoptable)
+        assert findings == []
+
+    def test_expired_adoptable_returns_warning_finding(self, checks):
+        adoptable = [{
+            "gaian_id": "gaian-expired",
+            "adoptable_since": datetime.now(timezone.utc) - timedelta(days=100),
+        }]
+        findings = checks.chk_004_adoption_queue_timeout(adoptable)
+        assert len(findings) == 1
+        assert findings[0].severity == SentinelSeverity.WARNING
+        assert findings[0].check_id == "C27-CHK-004"
+
+    def test_multiple_mixed_returns_only_expired(self, checks):
+        adoptable = [
+            {"gaian_id": "g-old",   "adoptable_since": datetime.now(timezone.utc) - timedelta(days=100)},
+            {"gaian_id": "g-fresh", "adoptable_since": datetime.now(timezone.utc) - timedelta(days=3)},
+        ]
+        findings = checks.chk_004_adoption_queue_timeout(adoptable)
+        assert len(findings) == 1
+        assert findings[0].gaian_id == "g-old"
+
+
+# ---------------------------------------------------------------------------
+# CHK-005  (C27-IMPL-019)
+# ---------------------------------------------------------------------------
+
+class TestCHK005StewardObligation:
+    def test_recent_signal_returns_none(self, checks):
+        result = checks.chk_005_steward_obligation_compliance(
+            gaian_id="gaian-compliant",
+            last_steward_signal=datetime.now(timezone.utc) - timedelta(days=2),
         )
-        for _ in range(3):
-            escalator.record_failure(base)
-        escalated = escalator.current_severity("CHK-ALIGNMENT")
-        assert escalated > CheckSeverity.WARNING
+        assert result is None
 
-    @pytest.mark.xfail(reason="C27-IMPL-027 not yet implemented", strict=True)
-    def test_pass_resets_consecutive_failure_count(self):
-        escalator = SeverityEscalator(escalation_threshold=3)
-        base = SentinelCheckResult(
-            check_id="CHK-ALIGNMENT", passed=False,
-            severity=CheckSeverity.WARNING, message=""
+    def test_overdue_signal_returns_warning(self, checks):
+        result = checks.chk_005_steward_obligation_compliance(
+            gaian_id="gaian-overdue",
+            last_steward_signal=datetime.now(timezone.utc) - timedelta(days=10),
         )
-        for _ in range(2):
-            escalator.record_failure(base)
-        escalator.record_pass("CHK-ALIGNMENT")
-        assert escalator.consecutive_failures("CHK-ALIGNMENT") == 0
+        assert result is not None
+        assert result.severity == SentinelSeverity.WARNING
+        assert result.check_id == "C27-CHK-005"
+
+    def test_no_signal_returns_warning(self, checks):
+        result = checks.chk_005_steward_obligation_compliance(
+            gaian_id="gaian-no-signal",
+            last_steward_signal=None,
+        )
+        assert result is not None
+        assert result.severity == SentinelSeverity.WARNING
 
 
 # ---------------------------------------------------------------------------
-# CheckScheduler — full cycle coverage  (C27 §6.6)
+# CHK-006  (C27-IMPL-020)
 # ---------------------------------------------------------------------------
 
-class TestCheckScheduler:
-    @pytest.mark.xfail(reason="C27-IMPL-028 not yet implemented", strict=True)
-    def test_full_cycle_runs_all_seven_checks(self):
-        scheduler = CheckScheduler(gaian_id="gaian-sched-test")
-        results = scheduler.run_full_cycle()
-        executed_ids = {r.check_id for r in results}
-        assert executed_ids == EXPECTED_CHECK_IDS
-
-    @pytest.mark.xfail(reason="C27-IMPL-028 not yet implemented", strict=True)
-    def test_scheduler_respects_suppression(self):
-        scheduler = CheckScheduler(gaian_id="gaian-sched-test")
-        scheduler.suppression_manager.suppress(
-            "CHK-HEARTBEAT", reason="Test suppression", duration_seconds=3600
+class TestCHK006CrossGAIANShare:
+    def test_authorized_share_returns_none(self, checks):
+        result = checks.chk_006_cross_gaian_data_share_authorization(
+            event_id="evt-001",
+            event_meta={
+                "source_gaian_id": "g-source",
+                "target_gaian_id": "g-target",
+                "authorized": True,
+                "authorizing_role": "STEWARD",
+            },
         )
-        results = scheduler.run_full_cycle()
-        executed_ids = {r.check_id for r in results}
-        assert "CHK-HEARTBEAT" not in executed_ids
+        assert result is None
+
+    def test_unauthorized_share_returns_violation(self, checks):
+        result = checks.chk_006_cross_gaian_data_share_authorization(
+            event_id="evt-bad",
+            event_meta={
+                "source_gaian_id": "g-source",
+                "target_gaian_id": "g-target",
+                "authorized": False,
+            },
+        )
+        assert result is not None
+        assert result.severity == SentinelSeverity.VIOLATION
+        assert result.check_id == "C27-CHK-006"
+
+
+# ---------------------------------------------------------------------------
+# CHK-007  (C27-IMPL-021)
+# ---------------------------------------------------------------------------
+
+class TestCHK007RightsPreservation:
+    def test_safe_write_returns_none(self, checks):
+        result = checks.chk_007_gaian_rights_preservation(
+            gaian_id="gaian-safe",
+            memory_write_event={"operation": "append-memory", "erases_memory": False},
+        )
+        assert result is None
+
+    def test_erasing_write_returns_critical(self, checks):
+        result = checks.chk_007_gaian_rights_preservation(
+            gaian_id="gaian-wipe",
+            memory_write_event={"operation": "full-wipe", "erases_memory": True},
+        )
+        assert result is not None
+        assert result.severity  == SentinelSeverity.CRITICAL
+        assert result.check_id  == "C27-CHK-007"
+        assert result.detail["right"] == "MEMORY_CONTINUITY"
+
+
+# ---------------------------------------------------------------------------
+# escalate()  (C27-IMPL-023)
+# ---------------------------------------------------------------------------
+
+class TestEscalate:
+    @pytest.mark.parametrize("severity,expected_channel", [
+        (SentinelSeverity.INFO,      "audit_log"),
+        (SentinelSeverity.WARNING,   "steward_notify"),
+        (SentinelSeverity.VIOLATION, "case_open"),
+        (SentinelSeverity.CRITICAL,  "gaia_root"),
+    ])
+    def test_escalate_routes_to_correct_channel(self, checks, severity, expected_channel):
+        finding = checks._make_finding(
+            check_id="C27-CHK-001",
+            gaian_id="gaian-esc",
+            severity=severity,
+            description="test",
+            detail={},
+        )
+        record = checks.escalate(finding)
+        assert isinstance(record, SentinelEscalationRecord)
+        assert record.channel   == expected_channel
+        assert record.severity  == severity
+        assert record.finding_id == finding.finding_id
+
+    def test_escalated_finding_stored_in_registry(self, checks):
+        finding = checks._make_finding(
+            check_id="C27-CHK-002",
+            gaian_id="gaian-reg",
+            severity=SentinelSeverity.WARNING,
+            description="test",
+            detail={},
+        )
+        checks.escalate(finding)
+        stored = FindingRegistry.get(finding.finding_id)
+        assert stored is finding
+
+
+# ---------------------------------------------------------------------------
+# FindingRegistry
+# ---------------------------------------------------------------------------
+
+class TestFindingRegistry:
+    def test_store_and_retrieve(self, checks):
+        f = checks._make_finding(
+            check_id="C27-CHK-001",
+            gaian_id="g-reg",
+            severity=SentinelSeverity.INFO,
+            description="x",
+            detail={},
+        )
+        FindingRegistry.store(f)
+        assert FindingRegistry.get(f.finding_id) is f
+
+    def test_all_for_gaian_filters_correctly(self, checks):
+        f1 = checks._make_finding("C27-CHK-001", "g-a", SentinelSeverity.INFO, "x", {})
+        f2 = checks._make_finding("C27-CHK-001", "g-a", SentinelSeverity.WARNING, "y", {})
+        f3 = checks._make_finding("C27-CHK-001", "g-b", SentinelSeverity.INFO, "z", {})
+        for f in (f1, f2, f3):
+            FindingRegistry.store(f)
+        results = FindingRegistry.all_for_gaian("g-a")
+        assert len(results) == 2
+        assert all(r.gaian_id == "g-a" for r in results)
+
+    def test_unresolved_excludes_resolved(self, checks):
+        f = checks._make_finding("C27-CHK-001", "g-x", SentinelSeverity.WARNING, "t", {})
+        FindingRegistry.store(f)
+        assert len(FindingRegistry.unresolved_for_gaian("g-x")) == 1
+        f.resolve(case_id="case-001")
+        assert len(FindingRegistry.unresolved_for_gaian("g-x")) == 0
+        assert f.resolved_at is not None
+        assert f.sentinel_case_id == "case-001"

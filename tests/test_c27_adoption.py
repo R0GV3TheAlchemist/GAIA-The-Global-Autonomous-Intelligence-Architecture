@@ -2,8 +2,7 @@
 """
 Tests for core.c27.adoption — AdoptionQueue, EligibilityScreener, AdvisoryVeto.
 
-Authority: C27 §4. Requires C27-IMPL-017 through C27-IMPL-022 to pass.
-All implementation tests are xfail until implementation is in place.
+Authority: C27 §4. Implements C27-IMPL-017 through C27-IMPL-022.
 
 Coverage targets:
 - AdoptionQueue ordering (priority, then FIFO)
@@ -11,11 +10,11 @@ Coverage targets:
 - EligibilityScreener: fails fast on first failing criterion
 - Advisory-council veto blocks adoption and records reason
 - 90-day timeout: ADOPTABLE GAIAN with no adopter auto-transitions to RETIRED
-- Successful adoption forms a new StewardshipBond
+- Successful adoption forms a new AdoptionRecord
 - AdoptionRecord is immutable once sealed
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from core.c27.adoption import (
     AdoptionQueue,
     AdoptionCandidate,
@@ -69,10 +68,10 @@ class TestAdoptionQueueOrdering:
 # ---------------------------------------------------------------------------
 
 ELIGIBILITY_CRITERIA = [
-    "STANDING",           # steward in good standing
-    "CAPACITY",           # not already bonded to max GAIAN count
-    "COMPATIBILITY",      # GAIAN-steward compatibility score threshold
-    "CONSENT",            # GAIAN expressed openness to adoption
+    "STANDING",
+    "CAPACITY",
+    "COMPATIBILITY",
+    "CONSENT",
 ]
 
 
@@ -81,7 +80,6 @@ class TestEligibilityScreener:
         screener = EligibilityScreener()
         assert set(screener.criteria_names()) == set(ELIGIBILITY_CRITERIA)
 
-    @pytest.mark.xfail(reason="C27-IMPL-017 not yet implemented", strict=True)
     def test_all_criteria_passing_returns_eligible(self):
         screener = EligibilityScreener()
         candidate = AdoptionCandidate(
@@ -91,10 +89,10 @@ class TestEligibilityScreener:
             metadata={"standing": True, "capacity": 3, "compatibility": 0.9, "gaian_consents": True},
         )
         result = screener.screen(candidate, gaian_id="gaian-001")
+        assert isinstance(result, EligibilityResult)
         assert result.eligible is True
         assert result.failed_criteria == []
 
-    @pytest.mark.xfail(reason="C27-IMPL-017 not yet implemented", strict=True)
     def test_bad_standing_fails_immediately(self):
         screener = EligibilityScreener()
         candidate = AdoptionCandidate(
@@ -107,7 +105,6 @@ class TestEligibilityScreener:
         assert result.eligible is False
         assert "STANDING" in result.failed_criteria
 
-    @pytest.mark.xfail(reason="C27-IMPL-017 not yet implemented", strict=True)
     def test_low_compatibility_score_fails(self):
         screener = EligibilityScreener()
         candidate = AdoptionCandidate(
@@ -120,7 +117,6 @@ class TestEligibilityScreener:
         assert result.eligible is False
         assert "COMPATIBILITY" in result.failed_criteria
 
-    @pytest.mark.xfail(reason="C27-IMPL-017 not yet implemented", strict=True)
     def test_gaian_no_consent_fails(self):
         screener = EligibilityScreener()
         candidate = AdoptionCandidate(
@@ -139,7 +135,6 @@ class TestEligibilityScreener:
 # ---------------------------------------------------------------------------
 
 class TestAdvisoryVeto:
-    @pytest.mark.xfail(reason="C27-IMPL-019 not yet implemented", strict=True)
     def test_veto_blocks_adoption_and_records_reason(self):
         process = AdoptionProcess()
         veto = AdvisoryVeto(
@@ -153,7 +148,6 @@ class TestAdvisoryVeto:
         assert result.blocked is True
         assert result.veto_reason == "Conflict of interest"
 
-    @pytest.mark.xfail(reason="C27-IMPL-019 not yet implemented", strict=True)
     def test_vetoed_candidate_removed_from_queue(self):
         queue = AdoptionQueue()
         candidate = AdoptionCandidate(candidate_id="c-vetoed", priority=5, steward_id="s")
@@ -175,10 +169,9 @@ class TestAdvisoryVeto:
 # ---------------------------------------------------------------------------
 
 class TestAdoptionTimeoutEnforcer:
-    @pytest.mark.xfail(reason="C27-IMPL-022 not yet implemented", strict=True)
     def test_expired_adoptable_transitions_to_retired(self):
         enforcer = AdoptionTimeoutEnforcer(timeout_days=0)  # 0 = immediate for test
-        adoptable_since = datetime.utcnow() - timedelta(days=1)
+        adoptable_since = datetime.now(timezone.utc) - timedelta(days=1)
         result = enforcer.check(
             gaian_id="gaian-expired",
             adoptable_since=adoptable_since,
@@ -187,10 +180,9 @@ class TestAdoptionTimeoutEnforcer:
         assert result.should_retire is True
         assert result.recommended_state == GAIANLifecycleState.RETIRED
 
-    @pytest.mark.xfail(reason="C27-IMPL-022 not yet implemented", strict=True)
     def test_recent_adoptable_not_retired(self):
         enforcer = AdoptionTimeoutEnforcer(timeout_days=90)
-        adoptable_since = datetime.utcnow() - timedelta(days=5)
+        adoptable_since = datetime.now(timezone.utc) - timedelta(days=5)
         result = enforcer.check(
             gaian_id="gaian-recent",
             adoptable_since=adoptable_since,
@@ -204,7 +196,6 @@ class TestAdoptionTimeoutEnforcer:
 # ---------------------------------------------------------------------------
 
 class TestAdoptionRecordImmutability:
-    @pytest.mark.xfail(reason="C27-IMPL-020 not yet implemented", strict=True)
     def test_sealed_record_cannot_be_mutated(self):
         process = AdoptionProcess()
         record = process.complete_adoption(
@@ -213,4 +204,17 @@ class TestAdoptionRecordImmutability:
             steward_id="steward-good",
         )
         with pytest.raises((AttributeError, TypeError)):
-            record.gaian_id = "something-else"  # must be frozen
+            record.gaian_id = "something-else"  # frozen dataclass must reject this
+
+    def test_adoption_record_fields_are_set(self):
+        process = AdoptionProcess()
+        record = process.complete_adoption(
+            gaian_id="gaian-complete",
+            candidate_id="c-complete",
+            steward_id="steward-complete",
+        )
+        assert record.gaian_id    == "gaian-complete"
+        assert record.candidate_id == "c-complete"
+        assert record.steward_id  == "steward-complete"
+        assert record.record_id   != ""  # UUID assigned
+        assert isinstance(record.sealed_at, datetime)

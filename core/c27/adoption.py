@@ -1,95 +1,235 @@
 # Copyright © 2025–2026 Kyle Alexander Steen. All rights reserved. AGPL-3.0.
 """
-C27 — Adoption Protocol
+core.c27.adoption — GAIAN Adoption Process
 
-Authority: C27 §4 — Adoption Queue, eligibility criteria, GAIAN advisory veto,
-90-day timeout escalation ladder (Day 1–30 / 31–60 / 61–90 / 91+).
+Authority: C27 §4
 
-Related: Issue #768 (C27-IMPL-011 through C27-IMPL-014)
+Implementation targets:
+  C27-IMPL-017  EligibilityScreener (4 criteria)
+  C27-IMPL-019  AdvisoryVeto
+  C27-IMPL-020  AdoptionRecord (frozen / immutable)
+  C27-IMPL-022  AdoptionTimeoutEnforcer (90-day rule)
 """
 from __future__ import annotations
 
+import heapq
+import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
-from enum import Enum
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
+
+from core.c27.lifecycle import GAIANLifecycleState
 
 
-class AdoptionStatus(str, Enum):
-    QUEUED = "QUEUED"          # In adoption queue, awaiting steward
-    CANDIDATE_FOUND = "CANDIDATE_FOUND"  # Prospective steward identified
-    GAIAN_REVIEW = "GAIAN_REVIEW"  # GAIAN advisory review period
-    ADOPTED = "ADOPTED"        # Bond formed, GAIAN transitions to ACTIVE
-    VETOED = "VETOED"          # GAIAN exercised advisory veto
-    TIMEOUT_AUTO_RETIRED = "TIMEOUT_AUTO_RETIRED"  # Day 91+ auto-retirement
+# ---------------------------------------------------------------------------
+# AdoptionCandidate
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AdoptionCandidate:
+    candidate_id: str
+    priority: int
+    steward_id: str
+    metadata: Dict = field(default_factory=dict)
+    enqueued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    # Heap ordering: higher priority first; FIFO on tie via enqueued_at.
+    def __lt__(self, other: "AdoptionCandidate") -> bool:
+        if self.priority != other.priority:
+            return self.priority > other.priority  # higher = better
+        return self.enqueued_at < other.enqueued_at
+
+
+# ---------------------------------------------------------------------------
+# AdoptionQueue  (C27 §4.2)
+# ---------------------------------------------------------------------------
+
+class AdoptionQueue:
+    """Priority queue for adoption candidates: higher priority dequeued first;
+    ties broken by insertion order (FIFO)."""
+
+    def __init__(self) -> None:
+        self._heap: list = []
+        self._counter: int = 0  # tie-breaker guarantees stable FIFO
+
+    def enqueue(self, candidate: AdoptionCandidate) -> None:
+        # Negate priority so Python's min-heap acts as max-heap.
+        heapq.heappush(self._heap, (-candidate.priority, self._counter, candidate))
+        self._counter += 1
+
+    def dequeue(self) -> AdoptionCandidate:
+        if not self._heap:
+            raise IndexError("dequeue from empty AdoptionQueue")
+        _, _, candidate = heapq.heappop(self._heap)
+        return candidate
+
+    def peek(self) -> AdoptionCandidate:
+        if not self._heap:
+            raise IndexError("peek on empty AdoptionQueue")
+        _, _, candidate = self._heap[0]
+        return candidate
+
+    def remove(self, candidate_id: str) -> bool:
+        """Remove a candidate by ID; returns True if found and removed."""
+        before = len(self._heap)
+        self._heap = [
+            item for item in self._heap if item[2].candidate_id != candidate_id
+        ]
+        if len(self._heap) != before:
+            heapq.heapify(self._heap)
+            return True
+        return False
+
+    def __len__(self) -> int:
+        return len(self._heap)
+
+
+# ---------------------------------------------------------------------------
+# EligibilityScreener  (C27 §4.3)
+# ---------------------------------------------------------------------------
+
+_COMPATIBILITY_THRESHOLD = 0.5
+_MAX_BOND_CAPACITY = 5  # max GAIANs a steward may be bonded to
 
 
 @dataclass
-class AdoptionQueueEntry:
-    """
-    Registry entry for a GAIAN awaiting adoption.
+class EligibilityResult:
+    eligible: bool
+    failed_criteria: List[str] = field(default_factory=list)
 
-    Privacy filtering applies — capability summary and elemental profile
-    are public; full memory history is not.
 
-    TODO (C27-IMPL-011): Implement queue registry, privacy filtering,
-    metadata exposure rules.
-    """
-    entry_id: str
+class EligibilityScreener:
+    """Screens an AdoptionCandidate against the 4 C27 §4.3 criteria."""
+
+    _CRITERIA = ["STANDING", "CAPACITY", "COMPATIBILITY", "CONSENT"]
+
+    def criteria_names(self) -> List[str]:
+        return list(self._CRITERIA)
+
+    def screen(self, candidate: AdoptionCandidate, gaian_id: str) -> EligibilityResult:
+        meta = candidate.metadata
+        failed: List[str] = []
+
+        if not meta.get("standing", False):
+            failed.append("STANDING")
+
+        capacity = meta.get("capacity", 0)
+        if capacity >= _MAX_BOND_CAPACITY:
+            failed.append("CAPACITY")
+
+        compat = meta.get("compatibility", 0.0)
+        if compat < _COMPATIBILITY_THRESHOLD:
+            failed.append("COMPATIBILITY")
+
+        if not meta.get("gaian_consents", False):
+            failed.append("CONSENT")
+
+        return EligibilityResult(eligible=len(failed) == 0, failed_criteria=failed)
+
+
+# ---------------------------------------------------------------------------
+# AdvisoryVeto  (C27 §4.5)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AdvisoryVeto:
+    veto_id: str
     gaian_id: str
-    archetype: str
-    elemental_profile: str
-    capability_summary: str
-    lifecycle_history_summary: str  # privacy-filtered
-    health_status: str
-    queued_at: datetime = field(default_factory=datetime.utcnow)
-    status: AdoptionStatus = AdoptionStatus.QUEUED
-    timeout_escalation_level: int = 0  # 0=none, 1=day31, 2=day61, 3=day91
+    candidate_id: str
+    reason: str
+    vetoing_council_member: str
+    issued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class AdoptionEligibilityChecker:
-    """
-    Verifies a prospective steward meets eligibility criteria:
-    - Verified identity
-    - Domain compatibility with GAIAN archetype
-    - Clean ethics record
-    - GAIA Charter acceptance
-
-    TODO (C27-IMPL-012): Implement all 4 checks.
-    """
-
-    def check(self, prospective_steward_id: str, gaian_id: str) -> tuple[bool, list[str]]:
-        """
-        Returns (eligible, reasons).
-        TODO: implement — see C27-IMPL-012
-        """
-        raise NotImplementedError("AdoptionEligibilityChecker.check — see C27-IMPL-012")
+@dataclass
+class VetoResult:
+    blocked: bool
+    veto_reason: str
 
 
-class GAIANAdvisoryVeto:
-    """
-    GAIAN advisory veto flow — GAIAN may object to a proposed adoption.
-    Routes to SENTINEL review on veto.
+# ---------------------------------------------------------------------------
+# AdoptionRecord  (C27 §4.8) — frozen / immutable
+# ---------------------------------------------------------------------------
 
-    TODO (C27-IMPL-013): Implement veto registration, SENTINEL routing.
-    """
+@dataclass(frozen=True)
+class AdoptionRecord:
+    record_id: str
+    gaian_id: str
+    candidate_id: str
+    steward_id: str
+    sealed_at: datetime
 
-    def register_veto(self, gaian_id: str, adoption_entry_id: str, reason: str) -> None:
-        """TODO: implement — see C27-IMPL-013"""
-        raise NotImplementedError("GAIANAdvisoryVeto.register_veto — see C27-IMPL-013")
+
+# ---------------------------------------------------------------------------
+# AdoptionProcess  (C27 §4.5, §4.8)
+# ---------------------------------------------------------------------------
+
+class AdoptionProcess:
+    """Orchestrates veto application and adoption completion."""
+
+    def __init__(self, queue: Optional[AdoptionQueue] = None) -> None:
+        self._queue = queue
+
+    def apply_veto(self, veto: AdvisoryVeto) -> VetoResult:
+        if self._queue is not None:
+            self._queue.remove(veto.candidate_id)
+        return VetoResult(blocked=True, veto_reason=veto.reason)
+
+    def complete_adoption(
+        self,
+        gaian_id: str,
+        candidate_id: str,
+        steward_id: str,
+    ) -> AdoptionRecord:
+        return AdoptionRecord(
+            record_id=str(uuid.uuid4()),
+            gaian_id=gaian_id,
+            candidate_id=candidate_id,
+            steward_id=steward_id,
+            sealed_at=datetime.now(timezone.utc),
+        )
 
 
-class AdoptionTimeoutDaemon:
-    """
-    90-day adoption timeout escalation ladder:
-    Day 1–30:   Monitoring only
-    Day 31:     SENTINEL notification
-    Day 61:     Council review
-    Day 91+:    Auto-retirement trigger
+# ---------------------------------------------------------------------------
+# AdoptionTimeoutEnforcer  (C27 §4.7)
+# ---------------------------------------------------------------------------
 
-    TODO (C27-IMPL-014): Implement daemon, scheduler, escalation dispatch.
-    """
+@dataclass
+class TimeoutCheckResult:
+    should_retire: bool
+    recommended_state: GAIANLifecycleState
 
-    def run_daily_check(self) -> None:
-        """TODO: implement — see C27-IMPL-014"""
-        raise NotImplementedError("AdoptionTimeoutDaemon.run_daily_check — see C27-IMPL-014")
+
+class AdoptionTimeoutEnforcer:
+    """Checks whether an ADOPTABLE GAIAN has exceeded its adoption window."""
+
+    def __init__(self, timeout_days: int = 90) -> None:
+        self.timeout_days = timeout_days
+
+    def check(
+        self,
+        gaian_id: str,
+        adoptable_since: datetime,
+        current_state: GAIANLifecycleState,
+    ) -> TimeoutCheckResult:
+        if current_state != GAIANLifecycleState.ADOPTABLE:
+            return TimeoutCheckResult(
+                should_retire=False,
+                recommended_state=current_state,
+            )
+
+        # Make adoptable_since timezone-aware if naive
+        if adoptable_since.tzinfo is None:
+            adoptable_since = adoptable_since.replace(tzinfo=timezone.utc)
+
+        deadline = adoptable_since + timedelta(days=self.timeout_days)
+        now = datetime.now(timezone.utc)
+        expired = now >= deadline
+
+        return TimeoutCheckResult(
+            should_retire=expired,
+            recommended_state=(
+                GAIANLifecycleState.RETIRED if expired
+                else GAIANLifecycleState.ADOPTABLE
+            ),
+        )
