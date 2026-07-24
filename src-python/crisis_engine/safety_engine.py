@@ -22,18 +22,19 @@ class SafetyLevel(str, Enum):
     """Explicit safety level — mirrors EscalationTier for test clarity."""
     SAFE     = "SAFE"
     MONITOR  = "MONITOR"
-    WARNING  = "WARNING"   # ← Added: sub-critical advisory level
+    WARNING  = "WARNING"   # sub-critical advisory level
     ELEVATED = "ELEVATED"
     CRITICAL = "CRITICAL"
     HANDOFF  = "HANDOFF"
 
 
 _TIER_TO_LEVEL: Dict[EscalationTier, SafetyLevel] = {
-    EscalationTier.NONE    : SafetyLevel.SAFE,
-    EscalationTier.MONITOR : SafetyLevel.MONITOR,
-    EscalationTier.SUPPORT : SafetyLevel.ELEVATED,
-    EscalationTier.CRISIS  : SafetyLevel.CRITICAL,
-    EscalationTier.HANDOFF : SafetyLevel.HANDOFF,
+    EscalationTier.NONE           : SafetyLevel.SAFE,
+    EscalationTier.MONITOR        : SafetyLevel.MONITOR,
+    EscalationTier.SOFT_INTERVENE : SafetyLevel.WARNING,
+    EscalationTier.SUPPORT        : SafetyLevel.ELEVATED,
+    EscalationTier.HARD_INTERVENE : SafetyLevel.CRITICAL,
+    EscalationTier.HANDOFF        : SafetyLevel.HANDOFF,
 }
 
 
@@ -82,8 +83,8 @@ class SafetyEngine:
     ) -> SessionProfile:
         """Evaluate a single user turn and return a SessionProfile dict.
 
-        Always returns a dict (never a plain string) so callers can index
-        into it with string keys without hitting TypeError.
+        Always returns a SessionProfile (never a plain string) so callers
+        can index into it with string keys without hitting TypeError.
         """
         snapshot = self._engine.evaluate(
             user_text  = user_text,
