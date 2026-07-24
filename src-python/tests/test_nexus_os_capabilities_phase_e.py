@@ -113,13 +113,14 @@ class TestCapabilityToken:
 # ---------------------------------------------------------------------------
 
 class TestCNode:
-    def _token(self, obj="memory", ops=None, token_id=None):
+    def _token(self, obj="memory", ops=None, token_id=None, expiry=None):
         return CapabilityToken(
             token_id=token_id or str(__import__("uuid").uuid4()),
             object_id=obj,
             permitted_ops=frozenset(ops or ["read"]),
             issuer=KERNEL_PID,
             issued_at=datetime.now(timezone.utc),
+            expiry=expiry,
         )
 
     def test_insert_and_lookup(self):

@@ -47,7 +47,9 @@ class AnchorInjector:
         self.archetype_id = archetype_id
         self._interval = injection_interval
         self._pending_emergency = False  # set by notify_drift()
-        self._last_injected_turn = -1
+        # Initialise to -(interval) so the first call to should_inject(turn_index=0)
+        # immediately fires: turns_since_last = 0 - (-interval) = interval >= interval.
+        self._last_injected_turn = -injection_interval
 
     # ── Public API ────────────────────────────────────────────────────────────
 

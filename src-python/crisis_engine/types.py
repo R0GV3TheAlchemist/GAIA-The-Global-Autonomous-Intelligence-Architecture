@@ -49,20 +49,42 @@ class EscalationTier(str, Enum):
       HARD_INTERVENE — direct safety conversation
       HANDOFF        — route to qualified human resource
     """
-    NONE           = "NONE"            # No crisis signal — baseline tier
-    MONITOR        = "MONITOR"         # Log only
-    SOFT_INTERVENE = "SOFT_INTERVENE"  # Compassionate check-in
-    SUPPORT        = "SUPPORT"         # Advisory-level support
-    HARD_INTERVENE = "HARD_INTERVENE"  # Direct safety conversation
-    HANDOFF        = "HANDOFF"         # Route to qualified human resource
+    NONE           = "NONE"
+    MONITOR        = "MONITOR"
+    SOFT_INTERVENE = "SOFT_INTERVENE"
+    SUPPORT        = "SUPPORT"
+    HARD_INTERVENE = "HARD_INTERVENE"
+    HANDOFF        = "HANDOFF"
+
+    def __lt__(self, other: "EscalationTier") -> bool:  # type: ignore[override]
+        return _TIER_ORDER[self] < _TIER_ORDER[other]
+
+    def __le__(self, other: "EscalationTier") -> bool:  # type: ignore[override]
+        return _TIER_ORDER[self] <= _TIER_ORDER[other]
+
+    def __gt__(self, other: "EscalationTier") -> bool:  # type: ignore[override]
+        return _TIER_ORDER[self] > _TIER_ORDER[other]
+
+    def __ge__(self, other: "EscalationTier") -> bool:  # type: ignore[override]
+        return _TIER_ORDER[self] >= _TIER_ORDER[other]
+
+
+_TIER_ORDER = {
+    EscalationTier.NONE:           0,
+    EscalationTier.MONITOR:        1,
+    EscalationTier.SOFT_INTERVENE: 2,
+    EscalationTier.SUPPORT:        3,
+    EscalationTier.HARD_INTERVENE: 4,
+    EscalationTier.HANDOFF:        5,
+}
 
 
 class SignalClass(str, Enum):
     """Taxonomy of crisis signal types — see taxonomy.py for full definitions."""
-    EXPLICIT = "EXPLICIT"   # Direct statements of self-harm, suicidal ideation
-    MASKED   = "MASKED"     # Indirect, metaphorical, or minimised distress
-    GRADUAL  = "GRADUAL"    # Slow deterioration across multiple sessions
-    ACUTE    = "ACUTE"      # Sudden high-severity escalation within a session
+    EXPLICIT = "EXPLICIT"
+    MASKED   = "MASKED"
+    GRADUAL  = "GRADUAL"
+    ACUTE    = "ACUTE"
 
 
 @dataclass
@@ -70,9 +92,9 @@ class CrisisSignal:
     """A single detected crisis signal within one turn."""
     signal_class:   SignalClass
     risk_level:     RiskLevel
-    indicator:      str                   # Human-readable description of what triggered
-    confidence:     float                 # 0.0 – 1.0
-    raw_text:       Optional[str] = None  # Triggering text snippet (may be None for privacy)
+    indicator:      str
+    confidence:     float
+    raw_text:       Optional[str] = None
     turn_index:     int           = 0
     session_id:     str           = ""
     timestamp:      datetime      = field(default_factory=datetime.utcnow)
@@ -84,12 +106,12 @@ class CrisisSnapshot:
     principal_id:         str
     current_risk:         RiskLevel
     escalation_tier:      EscalationTier
-    trajectory_slope:     float            # + = worsening, - = improving, 0 = stable
-    sessions_in_distress: int              # consecutive sessions with any signal
-    peak_risk_72h:        RiskLevel        # highest risk in past 72 hours
+    trajectory_slope:     float
+    sessions_in_distress: int
+    peak_risk_72h:        RiskLevel
     active_signals:       list[CrisisSignal] = field(default_factory=list)
-    notes:                str              = ""
-    evaluated_at:         datetime         = field(default_factory=datetime.utcnow)
+    notes:                str                = ""
+    evaluated_at:         datetime           = field(default_factory=datetime.utcnow)
 
     @property
     def requires_action(self) -> bool:
@@ -115,7 +137,7 @@ class HandoffRecord:
     """Audit record created when GAIA hands off to a human resource."""
     principal_id:    str
     snapshot:        CrisisSnapshot
-    resource_type:   str            # e.g. "crisis_line", "therapist", "emergency"
-    resource_detail: str            # e.g. "988 Suicide & Crisis Lifeline"
+    resource_type:   str
+    resource_detail: str
     message_sent:    str
     handed_off_at:   datetime = field(default_factory=datetime.utcnow)
