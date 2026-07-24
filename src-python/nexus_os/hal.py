@@ -1,169 +1,155 @@
 """
 nexus_os.hal — Hardware Abstraction Layer
+=========================================
+Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — HAL Subsystem
 
-Defines the capability-driven hardware abstraction layer for the NEXUS
-microkernel. Every physical or virtual device is represented as a
-DeviceCapability. Drivers register against these capabilities via the
-HALRegistry. No kernel component accesses hardware directly — all access
-is mediated through registered HALDriver instances.
+Provides a uniform interface over heterogeneous hardware devices.
+Drivers register capabilities; the HALRegistry brokers access under
+capability tokens enforced by the Constitutional Layer.
 
-Design references:
-  - Fuchsia Zircon driver framework — capability routing via component tree
-  - seL4 microkernel hardware device capability model
-  - NEXUS_UNIVERSAL_OS.md Domain 1.2 — Hardware Abstraction
-Ethics reference: ETHICS.md Commitment 3 — Transparency of Operation
-GAIAN law:        GAIAN_LAWS.md Law I — Sovereignty of Self
+All hardware interactions MUST be logged to the GAIAN audit trail
+per GAIAN_LAWS.md § Hardware Sovereignty.
+
+© 2026 Kyle Alexander Steen (The Alchemist). All rights reserved.
+SPDX-License-Identifier: AGPL-3.0-only
 """
+
 from __future__ import annotations
 
-import logging
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Protocol, runtime_checkable
-
-logger = logging.getLogger("nexus_os.hal")
+from typing import Dict, List, Optional, Protocol, runtime_checkable
 
 
 class DeviceCapability(Enum):
-    """Enumeration of all hardware capabilities the NEXUS HAL recognises.
+    """Enumeration of hardware capability classes available on a NEXUS node."""
 
-    Each member represents a distinct device class. The HALRegistry maps
-    these capabilities to registered driver instances. A capability token
-    must name one of these members to access the corresponding hardware.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 1.2
-    """
-    CLOCK         = auto()  # Monotonic wall-clock timekeeping
-    STORAGE       = auto()  # Persistent block storage
-    NETWORK       = auto()  # Network interface / IP stack
-    MESH_RADIO    = auto()  # LoRa mesh radio transceiver
-    ELF_SENSOR    = auto()  # Extremely Low Frequency magnetic sensor (Schumann)
-    CRYPTO_ENGINE = auto()  # Hardware security module / TPM
-    GPU_COMPUTE   = auto()  # GPU compute plane (CUDA / ROCm / Metal)
-    QUANTUM_COPR  = auto()  # Quantum co-processor interface
-    POWER_MONITOR = auto()  # Energy / power consumption telemetry
-    DISPLAY       = auto()  # Display framebuffer output
-    AUDIO         = auto()  # Audio input/output
-    SENSOR_ARRAY  = auto()  # Generic sensor array (temperature, pressure, etc.)
+    COMPUTE = auto()       # General-purpose compute (CPU, GPU, TPU)
+    MEMORY = auto()        # Volatile and non-volatile storage
+    NETWORK = auto()       # Wired, wireless, mesh, interplanetary
+    SENSOR = auto()        # Environmental, biometric, spectral sensors
+    ACTUATOR = auto()      # Physical output — motors, displays, emitters
+    POWER = auto()         # Energy harvesting, storage, wireless power
+    CRYPTOGRAPHIC = auto() # Hardware security modules, TPM, secure enclaves
+    QUANTUM = auto()       # Quantum processing units, QKD interfaces
 
 
 @runtime_checkable
 class HALDriver(Protocol):
-    """Structural protocol that all HAL drivers must satisfy.
+    """
+    Protocol that all hardware drivers must satisfy.
 
-    Drivers are registered with HALRegistry.register and looked up via
-    HALRegistry.get. The protocol is intentionally minimal — drivers must
-    be initializable and provide a probe method that confirms hardware
-    presence without side effects.
-
-    Any object satisfying this protocol can serve as a HALDriver — no
-    inheritance from a base class is required (structural subtyping).
-    Reference: Fuchsia Zircon driver binding model.
+    A HALDriver wraps a single physical or virtual device and exposes
+    a standardised capability surface.  Drivers are registered with the
+    HALRegistry and never accessed directly by higher layers.
     """
 
     @property
-    def capability(self) -> DeviceCapability:
-        """Return the DeviceCapability this driver satisfies."""
+    def device_id(self) -> str:
+        """Unique identifier for this device instance."""
         ...
 
-    def probe(self) -> bool:
-        """Probe the underlying hardware to confirm availability.
+    @property
+    def capabilities(self) -> List[DeviceCapability]:
+        """Capabilities this driver exposes."""
+        ...
 
-        Returns True if the device is present and accessible.
-        Returns False if the device is absent or in a fault state.
-        Must not raise; must be side-effect-free.
+    def initialise(self) -> None:
         """
-        ...
+        Perform driver initialisation and self-test.
 
-    def initialize(self) -> None:
-        """Perform one-time hardware initialization.
-
-        Called by HALRegistry.register after probe returns True.
-        Raises RuntimeError if initialization fails.
+        Raises:
+            RuntimeError: If the device fails self-test.
         """
         ...
 
     def shutdown(self) -> None:
-        """Gracefully shut down and release all hardware resources.
+        """
+        Gracefully shut down the device.
 
-        Called by HALRegistry.deregister or during kernel shutdown.
-        Must not raise.
+        Must release all resources and log shutdown to the GAIAN audit trail.
+        """
+        ...
+
+    def health_check(self) -> bool:
+        """
+        Return True if the device is operating within normal parameters.
         """
         ...
 
 
+@dataclass
 class HALRegistry:
-    """Central registry mapping DeviceCapability → HALDriver.
+    """
+    Central registry for all hardware drivers on a NEXUS node.
 
-    The registry is the sole source of truth for available hardware in the
-    NEXUS OS. No component may acquire hardware access without first obtaining
-    a CapabilityToken from NexusKernel, and no token can be minted for a
-    capability not present in this registry.
+    Maintains a capability index for fast lookup.  All registration
+    and deregistration events are appended to the GAIAN audit trail.
 
-    Thread-safety: The registry uses no internal locking. It is expected to
-    be populated during kernel boot (single-threaded) and read-only thereafter.
-    Hot-plug is not supported in v0.1.0.
-    Reference: seL4 capability derivation tree; NEXUS_UNIVERSAL_OS.md 1.2
+    Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — HAL Registry
     """
 
-    def __init__(self) -> None:
-        self._drivers: dict[DeviceCapability, HALDriver] = {}
+    _drivers: Dict[str, HALDriver] = field(default_factory=dict, init=False, repr=False)
+    _capability_index: Dict[DeviceCapability, List[str]] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def register(self, driver: HALDriver) -> None:
-        """Register a driver for its declared capability.
-
-        Calls driver.probe first. If probe returns False, registration is
-        skipped and a warning is logged. If probe returns True,
-        driver.initialize is called and the driver is stored.
-
-        Args:
-            driver: Any object satisfying the HALDriver Protocol.
-        Raises:
-            TypeError:    If driver does not satisfy the HALDriver Protocol.
-            RuntimeError: If driver.initialize raises.
         """
-        if not isinstance(driver, HALDriver):
-            raise TypeError(f"Object {driver!r} does not satisfy the HALDriver Protocol.")
-        cap = driver.capability
-        if not driver.probe():
-            logger.warning("HAL probe failed for capability %s — driver not registered.", cap.name)
-            return
-        driver.initialize()
-        self._drivers[cap] = driver
-        logger.info("HALDriver registered for capability %s", cap.name)
-
-    def deregister(self, capability: DeviceCapability) -> None:
-        """Deregister and shut down the driver for a given capability.
+        Register a HALDriver and index its capabilities.
 
         Args:
-            capability: The DeviceCapability to remove.
+            driver: The HALDriver instance to register.
+
         Raises:
-            KeyError: If no driver is registered for this capability.
+            ValueError: If a driver with the same device_id is already registered.
+            NotImplementedError: Stub — full implementation pending.
         """
-        driver = self._drivers.pop(capability)
-        driver.shutdown()
-        logger.info("HALDriver deregistered for capability %s", capability.name)
+        raise NotImplementedError(
+            "HALRegistry.register: stub — implementation pending (NEXUS_UNIVERSAL_OS.md § Domain 1)"
+        )
 
-    def get(self, capability: DeviceCapability) -> HALDriver:
-        """Look up the driver for a given capability.
+    def deregister(self, device_id: str) -> None:
+        """
+        Deregister a driver and remove it from the capability index.
 
         Args:
-            capability: The DeviceCapability to look up.
+            device_id: The device_id of the driver to remove.
+
+        Raises:
+            KeyError: If no driver with device_id is registered.
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError(
+            "HALRegistry.deregister: stub — implementation pending (NEXUS_UNIVERSAL_OS.md § Domain 1)"
+        )
+
+    def lookup_by_capability(
+        self, capability: DeviceCapability
+    ) -> List[HALDriver]:
+        """
+        Return all registered drivers that expose the given capability.
+
+        Args:
+            capability: The DeviceCapability to search for.
+
         Returns:
-            The registered HALDriver instance.
+            List of matching HALDriver instances (may be empty).
+
         Raises:
-            KeyError: If no driver is registered for this capability.
+            NotImplementedError: Stub — full implementation pending.
         """
-        try:
-            return self._drivers[capability]
-        except KeyError:
-            raise KeyError(
-                f"No HALDriver registered for capability {capability.name}. "
-                f"Available: {[c.name for c in self._drivers]}"
-            )
+        raise NotImplementedError(
+            "HALRegistry.lookup_by_capability: stub — implementation pending"
+        )
 
-    def available(self) -> list[DeviceCapability]:
-        """Return a list of all currently registered capabilities."""
-        return list(self._drivers.keys())
+    def get(self, device_id: str) -> Optional[HALDriver]:
+        """
+        Return the driver for device_id, or None if not registered.
 
-    def __repr__(self) -> str:
-        caps = [c.name for c in self._drivers]
-        return f"HALRegistry(registered={caps})"
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError(
+            "HALRegistry.get: stub — implementation pending"
+        )

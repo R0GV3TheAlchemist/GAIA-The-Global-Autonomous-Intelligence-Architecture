@@ -1,165 +1,135 @@
 """
-nexus_os.scheduler — Real-Time Scheduler
+nexus_os.scheduler — Real-Time Mixed Scheduler
+================================================
+Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — Scheduler Subsystem
 
-Implements a hybrid real-time task scheduler for the NEXUS OS kernel.
-Supports both hard real-time tasks (Earliest Deadline First) and soft
-priority tasks (weighted priority queue), unified under a single
-asyncio-compatible scheduling loop.
+Implements a mixed-criticality real-time scheduler supporting hard-RT,
+soft-RT, and best-effort task classes.  Energy-aware scheduling integrates
+with the EnergyProfile system to honour planetary resource constraints
+defined in GAIAN_LAWS.md § Energy Stewardship.
 
-Additionally models per-task energy profiles, enabling carbon-aware and
-battery-constrained scheduling aligned with NEXUS's planetary energy grid
-interface.
-
-Design references:
-  - Liu & Layland 1973 EDF and RMS scheduling proofs
-  - asyncio event loop integration patterns (Python 3.11+)
-  - NEXUS_UNIVERSAL_OS.md Domain 1.3 — Scheduler Architecture
-  - ENERGY_GRID_INTERFACE.md — Carbon-aware scheduling
-Ethics reference: ETHICS.md Commitment 5 — Resource Accountability
-GAIAN law:        GAIAN_LAWS.md Law II — Memory Sovereignty (task isolation)
+© 2026 Kyle Alexander Steen (The Alchemist). All rights reserved.
+SPDX-License-Identifier: AGPL-3.0-only
 """
+
 from __future__ import annotations
 
-import asyncio
-import heapq
-import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import IntEnum
-from typing import Awaitable, Callable, Optional
-
-logger = logging.getLogger("nexus_os.scheduler")
+from enum import Enum, auto
+from typing import Callable, Dict, List, Optional
 
 
-class TaskPriority(IntEnum):
-    """Priority levels for NEXUS OS tasks.
-
-    CRITICAL and HIGH tasks are treated as hard real-time and scheduled
-    under Earliest Deadline First. NORMAL and LOW tasks use weighted priority
-    queuing. IDLE tasks run only when no other work exists.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 1.3
+class TaskPriority(Enum):
     """
-    CRITICAL = 0  # Hard real-time, kernel-level (EDF)
-    HIGH     = 1  # Hard real-time, governance/ethics layer (EDF)
-    NORMAL   = 2  # Soft priority, standard engine tasks
-    LOW      = 3  # Soft priority, background analytics
-    IDLE     = 4  # Runs only when scheduler is otherwise empty
+    Scheduling priority class for a NEXUS task.
+
+    HARD_RT tasks have firm deadlines; missing a deadline is a system fault.
+    SOFT_RT tasks are best-effort with latency targets.
+    BACKGROUND tasks run only when no higher-priority work is queued.
+    """
+
+    HARD_RT = auto()     # Hard real-time — deadline must not be missed
+    SOFT_RT = auto()     # Soft real-time — latency target, graceful degradation
+    INTERACTIVE = auto() # Human-interactive — low-latency best-effort
+    BACKGROUND = auto()  # Background — uses spare cycles only
 
 
 @dataclass
 class EnergyProfile:
-    """Energy budget descriptor for a scheduled task.
-
-    Models the expected and maximum energy consumption of a task in
-    milliwatt-hours (mWh). When a task's measured consumption exceeds
-    max_budget_mwh, the scheduler may demote its priority or suspend it
-    pending ENERGY_GRID_INTERFACE negotiation.
-    Reference: ENERGY_GRID_INTERFACE.md; Green Software Foundation SCI spec.
     """
-    expected_mwh:      float = 0.0
-    max_budget_mwh:    float = float("inf")
-    carbon_intensity:  float = 0.0   # gCO2/kWh — 0.0 = unknown
+    Energy budget and consumption model for a scheduled task.
 
-    def is_within_budget(self, actual_mwh: float) -> bool:
-        """Return True if actual consumption is within the max budget."""
-        return actual_mwh <= self.max_budget_mwh
-
-
-@dataclass(order=True)
-class _TaskDescriptor:
-    """Internal descriptor for a task in the RTScheduler queue.
-
-    order=True makes tasks sortable by (deadline_ts, priority) supporting
-    both EDF (sort by deadline) and priority queuing in a unified heapq.
-    Not part of the public API — use RTScheduler to enqueue tasks.
+    The scheduler uses EnergyProfile to make energy-aware dispatch
+    decisions, ensuring the node operates within its planetary energy
+    allocation per GAIAN_LAWS.md § Energy Stewardship.
     """
-    deadline_ts:    float                            # Monotonic timestamp (seconds)
-    priority:       TaskPriority = field(compare=True)
-    task_id:        str          = field(compare=False)
-    coroutine_fn:   Callable[[], Awaitable[None]] = field(compare=False)
-    energy_profile: EnergyProfile = field(compare=False, default_factory=EnergyProfile)
+
+    max_power_mw: float = 0.0          # Maximum allowed power draw in milliwatts
+    estimated_energy_uj: float = 0.0   # Estimated energy per execution in microjoules
+    renewable_only: bool = False       # If True, task runs only on renewable power
+
+
+@dataclass
+class ScheduledTask:
+    """
+    A unit of work registered with the RTScheduler.
+    """
+
+    task_id: str
+    pid: str
+    priority: TaskPriority
+    callback: Callable[[], None]
+    deadline_ns: Optional[int] = None       # Absolute monotonic deadline
+    period_ns: Optional[int] = None         # For periodic tasks
+    energy_profile: EnergyProfile = field(default_factory=EnergyProfile)
+    wcet_ns: int = 0                         # Worst-case execution time estimate
 
 
 class RTScheduler:
-    """Hybrid real-time scheduler for NEXUS OS.
+    """
+    Mixed-criticality real-time scheduler for NEXUS OS.
 
-    Maintains two queues:
-      - Hard RT queue (CRITICAL, HIGH): sorted by deadline (EDF)
-      - Soft priority queue (NORMAL, LOW, IDLE): sorted by priority weight
+    Implements a priority-preemptive dispatch algorithm with energy-aware
+    admission control.  Hard-RT tasks are guaranteed execution before
+    their deadlines; soft-RT and background tasks are scheduled on a
+    best-effort basis with the remaining budget.
 
-    The tick coroutine is called by the kernel's asyncio event loop on each
-    scheduling cycle. It selects the highest-urgency task and dispatches it
-    via asyncio.ensure_future.
-
-    Energy-aware demotion: tasks that exceed their EnergyProfile.max_budget_mwh
-    are demoted from HIGH→NORMAL on the next cycle and a warning is logged.
-    Reference: Liu & Layland 1973 EDF; NEXUS_UNIVERSAL_OS.md Domain 1.3
+    Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — Scheduler Subsystem
     """
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
-        self._hard_rt_queue: list[_TaskDescriptor] = []   # heapq
-        self._soft_queue:    list[_TaskDescriptor] = []   # heapq
-        self._loop = loop or asyncio.get_event_loop()
-        self.running = False
-        logger.info("RTScheduler initialised.")
+    def __init__(self) -> None:
+        self._tasks: Dict[str, ScheduledTask] = {}
+        self._energy_budget_uj: float = float("inf")
 
-    def enqueue(
-        self,
-        task_id: str,
-        coroutine_fn: Callable[[], Awaitable[None]],
-        priority: TaskPriority = TaskPriority.NORMAL,
-        deadline: Optional[datetime] = None,
-        energy_profile: Optional[EnergyProfile] = None,
-    ) -> None:
-        """Enqueue a task for scheduled execution.
+    def submit(self, task: ScheduledTask) -> None:
+        """
+        Submit a task for scheduling.
 
         Args:
-            task_id:        Unique identifier string for this task.
-            coroutine_fn:   Zero-argument async callable to execute.
-            priority:       TaskPriority level (default NORMAL).
-            deadline:       Optional hard deadline. Required for CRITICAL/HIGH.
-            energy_profile: Optional EnergyProfile for carbon-aware scheduling.
+            task: The ScheduledTask to enqueue.
+
         Raises:
-            NotImplementedError: Always (stub).
-        Reference: NEXUS_UNIVERSAL_OS.md Domain 1.3 — Task Queuing
+            ValueError: If a task with the same task_id is already registered.
+            NotImplementedError: Stub — full implementation pending.
         """
         raise NotImplementedError(
-            "RTScheduler.enqueue — not yet implemented. "
-            "Expected: compute deadline_ts from deadline datetime, construct "
-            "_TaskDescriptor, heapq.heappush to appropriate queue."
+            "RTScheduler.submit: stub — implementation pending (NEXUS_UNIVERSAL_OS.md § Domain 1)"
         )
 
-    async def tick(self) -> None:
-        """Execute one scheduling cycle.
-
-        Selects the most urgent task from the hard RT queue (if non-empty)
-        or the soft queue, and dispatches it. Handles energy demotion.
-        Raises:
-            NotImplementedError: Always (stub).
-        Reference: NEXUS_UNIVERSAL_OS.md Domain 1.3 — Scheduler Loop
+    def cancel(self, task_id: str) -> None:
         """
-        raise NotImplementedError(
-            "RTScheduler.tick — not yet implemented. "
-            "Expected: pop from hard_rt_queue if non-empty (EDF), else soft_queue, "
-            "dispatch via asyncio.ensure_future(task.coroutine_fn()), "
-            "handle energy budget tracking."
-        )
+        Cancel and dequeue a scheduled task.
 
-    async def run(self) -> None:
-        """Start the continuous scheduling loop.
-
-        Calls tick in an infinite loop with a short asyncio.sleep yield
-        between cycles to allow other coroutines to run.
         Raises:
-            NotImplementedError: Always (stub).
+            KeyError: If no task with task_id exists.
+            NotImplementedError: Stub — full implementation pending.
         """
-        raise NotImplementedError(
-            "RTScheduler.run — not yet implemented. "
-            "Expected: self.running = True; while self.running: await self.tick(); "
-            "await asyncio.sleep(0)"
-        )
+        raise NotImplementedError("RTScheduler.cancel: stub")
 
-    def stop(self) -> None:
-        """Signal the scheduler run loop to exit after the current tick."""
-        self.running = False
-        logger.info("RTScheduler stop signal received.")
+    def tick(self) -> None:
+        """
+        Advance the scheduler by one tick: dispatch the highest-priority
+        ready task and update energy accounting.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("RTScheduler.tick: stub")
+
+    def set_energy_budget(self, budget_uj: float) -> None:
+        """
+        Set the total energy budget available for this scheduling epoch.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("RTScheduler.set_energy_budget: stub")
+
+    def get_queue(self, priority: Optional[TaskPriority] = None) -> List[ScheduledTask]:
+        """
+        Return the current task queue, optionally filtered by priority class.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("RTScheduler.get_queue: stub")

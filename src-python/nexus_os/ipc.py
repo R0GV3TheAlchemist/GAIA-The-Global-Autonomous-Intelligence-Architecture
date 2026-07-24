@@ -1,115 +1,133 @@
 """
 nexus_os.ipc — Inter-Process Communication
+===========================================
+Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — IPC Subsystem
 
-Provides the kernel-mediated message-passing primitives for NEXUS OS.
-All IPC is channel-based: a sender writes a Message to a Channel; the
-receiver reads from it. Channels are capability-gated — a process must
-hold a valid CapabilityToken naming the channel to send or receive.
+Provides typed, capability-gated message channels between NEXUS processes.
+Channels are unidirectional; bidirectional communication uses two channels.
+Delivery semantics are declared per-channel and enforced by the kernel.
 
-Design references:
-  - ZeroMQ message patterns (push/pull, pub/sub, req/rep)
-  - Python multiprocessing.Queue and asyncio.Queue
-  - Actor model (Pykka / Thespian) for message-driven concurrency
-  - NEXUS_UNIVERSAL_OS.md Domain 1.4 — IPC Layer
-Ethics reference: ETHICS.md Commitment 2 — No Silent Data Sharing
-GAIAN law:        GAIAN_LAWS.md Law III — No Silent Override
+All IPC traffic that crosses trust boundaries is logged to the GAIAN
+audit trail per GAIAN_LAWS.md § Communication Sovereignty.
+
+© 2026 Kyle Alexander Steen (The Alchemist). All rights reserved.
+SPDX-License-Identifier: AGPL-3.0-only
 """
+
 from __future__ import annotations
 
-import asyncio
-import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Any, Optional
+from typing import Any, Generic, List, Optional, TypeVar
 
-logger = logging.getLogger("nexus_os.ipc")
+T = TypeVar("T")
 
 
 class DeliverySemantics(Enum):
-    """Delivery guarantee semantics for a Channel.
-
-    AT_MOST_ONCE:  Fire-and-forget. Messages may be dropped.
-    AT_LEAST_ONCE: Retried until acknowledged. Duplicates possible.
-    EXACTLY_ONCE:  Idempotent delivery with deduplication (future).
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 1.4
     """
-    AT_MOST_ONCE  = auto()
+    Message delivery guarantees for a Channel.
+
+    AT_MOST_ONCE   — fire-and-forget; messages may be lost.
+    AT_LEAST_ONCE  — retried until acknowledged; duplicates possible.
+    EXACTLY_ONCE   — guaranteed single delivery (higher overhead).
+    """
+
+    AT_MOST_ONCE = auto()
     AT_LEAST_ONCE = auto()
-    EXACTLY_ONCE  = auto()
+    EXACTLY_ONCE = auto()
 
 
 @dataclass
-class Message:
-    """A kernel IPC message.
-
-    Fields:
-        msg_id:    Unique message identifier (UUID4).
-        sender:    PID of the sending process.
-        recipient: PID or channel name of the intended recipient.
-        payload:   Arbitrary serialisable payload.
-        sent_at:   UTC timestamp when the message was created.
-        topic:     Optional routing topic / subject string.
+class Message(Generic[T]):
     """
-    sender:    str
-    recipient: str
-    payload:   Any
-    msg_id:    str      = field(default_factory=lambda: str(uuid.uuid4()))
-    sent_at:   datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    topic:     Optional[str] = None
+    A single unit of inter-process communication.
+
+    Type parameter T is the payload type; callers should parameterise
+    explicitly for static analysis (e.g. Message[SensorReading]).
+    """
+
+    message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    sender_pid: str = ""
+    recipient_pid: str = ""
+    payload: Optional[T] = None
+    timestamp_ns: int = 0        # Monotonic send timestamp
+    sequence_number: int = 0
+    acknowledged: bool = False
 
 
-class Channel:
-    """A kernel-mediated, capability-gated message channel.
+class Channel(Generic[T]):
+    """
+    A unidirectional, capability-gated message channel.
 
-    Wraps an asyncio.Queue and enforces DeliverySemantics. In v0.1.0
-    only AT_MOST_ONCE is fully implemented; AT_LEAST_ONCE and EXACTLY_ONCE
-    are stubs that raise NotImplementedError.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 1.4; ZeroMQ pattern guide.
+    Channels are created by the kernel in response to a process holding
+    a valid IPC capability token.  The channel owner may grant read or
+    write access to other processes via sub-tokens.
+
+    Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — IPC Subsystem
     """
 
     def __init__(
         self,
-        name: str,
-        semantics: DeliverySemantics = DeliverySemantics.AT_MOST_ONCE,
-        max_size: int = 256,
+        sender_pid: str,
+        recipient_pid: str,
+        semantics: DeliverySemantics = DeliverySemantics.AT_LEAST_ONCE,
+        capacity: int = 256,
     ) -> None:
-        self.name = name
+        self.channel_id: str = str(uuid.uuid4())
+        self.sender_pid = sender_pid
+        self.recipient_pid = recipient_pid
         self.semantics = semantics
-        self._queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=max_size)
-        logger.info("Channel '%s' created with semantics %s", name, semantics.name)
+        self.capacity = capacity
+        self._queue: List[Message[T]] = []
 
-    async def send(self, message: Message) -> None:
-        """Send a message to this channel.
+    def send(self, message: Message[T]) -> None:
+        """
+        Enqueue a message for delivery to the recipient.
 
         Args:
-            message: The Message to enqueue.
+            message: The Message to send.
+
         Raises:
-            NotImplementedError: If semantics is not AT_MOST_ONCE (stub).
-            asyncio.QueueFull: If the channel buffer is full.
+            OverflowError: If the channel queue is at capacity.
+            NotImplementedError: Stub — full implementation pending.
         """
-        if self.semantics != DeliverySemantics.AT_MOST_ONCE:
-            raise NotImplementedError(
-                f"Channel.send — semantics {self.semantics.name} not yet implemented. "
-                "Only AT_MOST_ONCE is supported in v0.1.0."
-            )
-        await self._queue.put(message)
-        logger.debug("Channel '%s': message %s enqueued.", self.name, message.msg_id)
+        raise NotImplementedError(
+            "Channel.send: stub — implementation pending (NEXUS_UNIVERSAL_OS.md § Domain 1)"
+        )
 
-    async def receive(self) -> Message:
-        """Receive the next message from this channel (blocks until available).
-
-        Returns:
-            The next Message in the queue.
+    def receive(self) -> Optional[Message[T]]:
         """
-        message = await self._queue.get()
-        logger.debug("Channel '%s': message %s dequeued.", self.name, message.msg_id)
-        return message
+        Dequeue and return the next message, or None if the queue is empty.
 
-    def qsize(self) -> int:
-        """Return the current number of messages waiting in the channel."""
-        return self._queue.qsize()
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("Channel.receive: stub")
 
-    def __repr__(self) -> str:
-        return f"Channel(name={self.name!r}, semantics={self.semantics.name}, qsize={self.qsize()})"
+    def acknowledge(self, message_id: str) -> None:
+        """
+        Acknowledge receipt of a message (required for AT_LEAST_ONCE and EXACTLY_ONCE).
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("Channel.acknowledge: stub")
+
+    def is_empty(self) -> bool:
+        """
+        Return True if the channel queue contains no messages.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("Channel.is_empty: stub")
+
+    def drain(self) -> List[Message[T]]:
+        """
+        Return and clear all queued messages.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("Channel.drain: stub")

@@ -1,116 +1,149 @@
 """
-nexus_os.memory — Memory Broker
+nexus_os.memory — Capability-Based Memory Manager
+===================================================
+Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — Memory Subsystem
 
-Provides the MemoryBroker, the NEXUS OS component responsible for allocating,
-tracking, and releasing MemoryRegions assigned to processes. The broker does
-not perform raw memory management — it maintains a logical ledger of region
-ownership, enabling the governance layer to audit and revoke memory grants.
+Manages physical and virtual memory allocation under a capability model.
+No process may access a MemoryRegion without holding a valid capability
+token granted by the kernel.  The broker enforces isolation between
+processes and ensures no region is accessible after deallocation.
 
-Design references:
-  - seL4 Untyped memory and CNode derivation
-  - MINIX 3 memory server pattern
-  - NEXUS_UNIVERSAL_OS.md Domain 1.5 — Memory Architecture
-Ethics reference: ETHICS.md Commitment 4 — Resource Sovereignty
-GAIAN law:        GAIAN_LAWS.md Law II — Memory Sovereignty
+Sovereign memory regions are protected per GAIAN_LAWS.md § Memory Sovereignty
+and SOVEREIGNTY.md.
+
+© 2026 Kyle Alexander Steen (The Alchemist). All rights reserved.
+SPDX-License-Identifier: AGPL-3.0-only
 """
+
 from __future__ import annotations
 
-import logging
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Optional
+from typing import Dict, List, Optional
 
-logger = logging.getLogger("nexus_os.memory")
+
+class MemoryProtection(Enum):
+    """Access protection flags for a MemoryRegion."""
+
+    READ = auto()
+    READ_WRITE = auto()
+    READ_EXECUTE = auto()
+    NONE = auto()   # Reserved / guard pages
 
 
 class MemoryType(Enum):
-    """Classification of a MemoryRegion by backing store and access pattern."""
-    VOLATILE    = auto()  # In-process heap / RAM (lost on shutdown)
-    PERSISTENT  = auto()  # Written to durable storage (WAL / DB)
-    SHARED      = auto()  # Shared across process boundaries
-    ENCRYPTED   = auto()  # Encrypted at rest (requires CRYPTO_ENGINE capability)
-    QUANTUM     = auto()  # Quantum co-processor state buffer (future)
+    """Physical memory backing type."""
+
+    VOLATILE = auto()      # DRAM — lost on power loss
+    PERSISTENT = auto()    # NVM / PMEM — survives reboot
+    SOVEREIGN = auto()     # Encrypted sovereign store — per SOVEREIGNTY.md
+    SHARED = auto()        # Explicitly shared across processes via IPC
 
 
 @dataclass
 class MemoryRegion:
-    """A logical memory region tracked by the MemoryBroker.
-
-    Fields:
-        region_id:  Unique identifier (UUID4).
-        owner_pid:  PID of the process that owns this region.
-        size_bytes: Allocated size in bytes.
-        mem_type:   Classification of backing store.
-        label:      Human-readable label for audit logs.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 1.5
     """
-    owner_pid:  str
-    size_bytes: int
-    mem_type:   MemoryType  = MemoryType.VOLATILE
-    label:      str         = "unnamed-region"
-    region_id:  str         = field(default_factory=lambda: str(uuid.uuid4()))
+    A contiguous, capability-gated region of memory.
+
+    MemoryRegions are allocated by MemoryBroker and accessed only
+    through valid capability tokens.  Regions carry metadata about
+    their backing type and protection level.
+
+    Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — Memory Subsystem
+    """
+
+    region_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    owner_pid: str = ""
+    size_bytes: int = 0
+    protection: MemoryProtection = MemoryProtection.READ_WRITE
+    memory_type: MemoryType = MemoryType.VOLATILE
+    base_address: Optional[int] = None     # Physical/virtual base — None until mapped
+    is_mapped: bool = False
+    is_zeroed: bool = False
 
 
 class MemoryBroker:
-    """Logical ledger of MemoryRegion ownership for NEXUS OS processes.
+    """
+    Central authority for memory allocation and capability enforcement.
 
-    The broker allocates and releases MemoryRegions, maintaining a complete
-    audit trail of every allocation. In v0.1.0 all allocation methods are
-    stubs — they document intent and raise NotImplementedError.
-    Reference: NEXUS_UNIVERSAL_OS.md Domain 1.5; seL4 Untyped memory.
+    The MemoryBroker is the only entity that may create MemoryRegions.
+    All allocation, mapping, and deallocation requests are validated
+    against the requesting process's capability tokens.
+
+    Sovereign regions (MemoryType.SOVEREIGN) are encrypted at rest
+    and only accessible to their owning GAIAN entity.
+
+    Reference: NEXUS_UNIVERSAL_OS.md § Domain 1 — Memory Subsystem
     """
 
     def __init__(self) -> None:
-        self._regions: dict[str, MemoryRegion] = {}
-        logger.info("MemoryBroker initialised.")
+        self._regions: Dict[str, MemoryRegion] = {}
+        self._total_bytes: int = 0
+        self._allocated_bytes: int = 0
 
     def allocate(
         self,
-        owner_pid: str,
+        pid: str,
         size_bytes: int,
-        mem_type: MemoryType = MemoryType.VOLATILE,
-        label: str = "unnamed-region",
+        protection: MemoryProtection = MemoryProtection.READ_WRITE,
+        memory_type: MemoryType = MemoryType.VOLATILE,
     ) -> MemoryRegion:
-        """Allocate a new MemoryRegion and register it in the ledger.
+        """
+        Allocate a new MemoryRegion for the given process.
 
         Args:
-            owner_pid:  PID of the requesting process.
-            size_bytes: Requested allocation size in bytes.
-            mem_type:   Backing store classification.
-            label:      Human-readable label for audit logs.
+            pid: PID of the requesting process.
+            size_bytes: Number of bytes to allocate.
+            protection: Access protection for the region.
+            memory_type: Backing memory type.
+
         Returns:
-            A new MemoryRegion registered in the broker ledger.
+            A new, unmapped MemoryRegion.
+
         Raises:
-            NotImplementedError: Always (stub).
-        Reference: NEXUS_UNIVERSAL_OS.md Domain 1.5
+            MemoryError: If insufficient memory is available.
+            PermissionError: If the process lacks MEMORY capability.
+            NotImplementedError: Stub — full implementation pending.
         """
         raise NotImplementedError(
-            "MemoryBroker.allocate — not yet implemented. "
-            "Expected: create MemoryRegion, store in self._regions, log allocation, return region."
+            "MemoryBroker.allocate: stub — implementation pending (NEXUS_UNIVERSAL_OS.md § Domain 1)"
         )
 
-    def release(self, region_id: str) -> None:
-        """Release a MemoryRegion and remove it from the ledger.
-
-        Args:
-            region_id: The UUID of the region to release.
-        Raises:
-            NotImplementedError: Always (stub).
-            KeyError: (future) If region_id not found.
+    def map_region(self, region_id: str) -> int:
         """
-        raise NotImplementedError(
-            "MemoryBroker.release — not yet implemented. "
-            "Expected: pop region from self._regions, log release event."
-        )
+        Map a region into the process address space and return its base address.
 
-    def regions_for(self, owner_pid: str) -> list[MemoryRegion]:
-        """Return all MemoryRegions currently owned by the given process."""
-        return [r for r in self._regions.values() if r.owner_pid == owner_pid]
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("MemoryBroker.map_region: stub")
 
-    def all_regions(self) -> list[MemoryRegion]:
-        """Return a snapshot of all allocated MemoryRegions (for audit)."""
-        return list(self._regions.values())
+    def deallocate(self, region_id: str) -> None:
+        """
+        Deallocate a region, zeroing and releasing its backing store.
 
-    def __repr__(self) -> str:
-        return f"MemoryBroker(allocated_regions={len(self._regions)})"
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("MemoryBroker.deallocate: stub")
+
+    def transfer_ownership(self, region_id: str, new_owner_pid: str) -> None:
+        """
+        Transfer ownership of a region to another process.
+
+        Both processes must hold compatible capability tokens.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("MemoryBroker.transfer_ownership: stub")
+
+    def stats(self) -> Dict[str, int]:
+        """
+        Return allocation statistics: total, allocated, and free bytes.
+
+        Raises:
+            NotImplementedError: Stub — full implementation pending.
+        """
+        raise NotImplementedError("MemoryBroker.stats: stub")
